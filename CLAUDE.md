@@ -64,11 +64,55 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   name = ?` round-trip per tag. This assumes single-writer, single-tab
   usage (true for this app's design); don't add multi-tab sync assumptions
   without addressing that this map can go stale across tabs.
+- **Schema upgrades for already-existing libraries.** `SCHEMA` uses
+  `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
+  exists — it does **not** retroactively add new columns to someone's
+  existing `library.sqlite`. Any column added after the initial release
+  needs a corresponding entry in `SCHEMA_MIGRATIONS` (an `ALTER TABLE ...
+  ADD COLUMN ...` string), applied via `applySchemaMigrations()` right
+  after opening an existing library, with the failure path (column already
+  exists) silently ignored. `loadDb()` also immediately persists the
+  upgraded schema back to disk rather than leaving the upgrade only in
+  memory. If you add a new column, add the migration in the same change —
+  don't just add it to `SCHEMA` and assume everyone's starting fresh;
+  people have real libraries with real captured documents already.
 - **OCR (Tesseract.js) only runs on images, not PDFs.** Recognizing a PDF
-  would require rendering its first page to a canvas client-side (e.g. via
-  pdf.js) before handing it to Tesseract — not implemented. The UI disables
-  the OCR button and explains this for PDF uploads; don't silently attempt
-  OCR on a PDF file object, it will not work as expected.
+  would require first rendering its first page to a canvas client-side (e.g.
+  via pdf.js) before handing it to Tesseract — not implemented. The UI
+  disables the OCR button and explains this for PDF uploads; don't silently
+  attempt OCR on a PDF file object, it will not work as expected.
+- **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
+  Tesseract's `{blocks: true}` output specifically — the default
+  `recognize()` call only returns plain text, not per-word bounding boxes.
+  `flattenOcrWords()` flattens the `blocks -> paragraphs -> lines -> words`
+  tree. `buildSearchablePdf()` then uses jsPDF to place the source image as
+  a full-page background with each word rendered as invisible
+  (`renderingMode: 'invisible'`) text positioned at its bounding box — the
+  same technique tools like `ocrmypdf` use. Two jsPDF unit gotchas that are
+  easy to reintroduce as bugs if this code is touched:
+  - jsPDF's `unit: 'px'` does **not** default to a 1:1 pixel mapping; the
+    `hotfixes: ['px_scaling']` constructor option is required to make 1 unit
+    equal 1 real image pixel, matching the coordinates `addImage()` and
+    Tesseract's `bbox` both use. Without it, all text lands in the wrong
+    place.
+  - `setFontSize()` **always** takes points, regardless of the document's
+    configured unit. Word heights from Tesseract are in pixels, so they're
+    converted via `wordHeightPx * 0.75` (96 CSS px per inch ÷ 72 pt per
+    inch) before being passed to `setFontSize()`.
+  - Horizontal scaling to exactly match each word's bbox width is
+    deliberately not attempted (would need jsPDF's transform-matrix text
+    API); only x/y position and approximate font size are set. This was a
+    deliberate scope cut for robustness, not an oversight — don't add
+    matrix-based scaling without a way to visually verify it, since it
+    can't be checked in this project's offline test setup (see below).
+  - When a searchable PDF is built, the *processed* file is the generated
+    PDF (`file_path`), and the *original* upload is preserved untouched in
+    a subfolder next to it (`original_file_path`) — mirroring the layout
+    `migrate_to_new_library.py` produces for migrated documents and that
+    Mariner Paperless itself used. When a searchable PDF *isn't* built
+    (PDF upload, or an image format other than JPEG/PNG), the picked file
+    is saved directly as `file_path` with `original_file_path` left `NULL`
+    — there's no meaningfully separate "original" in that case.
 - **No persistence of the folder handle across page reloads.** A person
   re-selects the library folder every session. This is a deliberate,
   accepted limitation (see README), not something to silently work around
@@ -92,7 +136,13 @@ that can't be scripted. The approach used during development:
   `getFile` behave like the real API's contract (including throwing
   `NotFoundError` when a file doesn't exist and `create` wasn't passed).
 - Stub `window.Tesseract.createWorker`/`recognize`/`terminate` to return
-  canned text instead of running real OCR.
+  canned text and a realistic word/bbox tree (mimicking the `{blocks: true}`
+  output shape) instead of running real OCR.
+- Stub `window.jspdf.jsPDF` with a fake class that records every
+  constructor option, `addImage`/`setFontSize`/`text` call, and `output()`
+  invocation, so the searchable-PDF code path's *logic* (correct
+  coordinates, correct options, correct call sequencing) can be verified
+  without a real PDF renderer.
 - Drive the UI with Playwright: open a seeded "migrated" library, add a new
   document (verifying OCR-button gating for images vs. PDFs, tag reuse vs.
   creation, and the persisted `library.sqlite` bytes after save), and
@@ -101,7 +151,11 @@ that can't be scripted. The approach used during development:
 This validates the app's own logic thoroughly but does **not** validate
 that real `sql.js`/`Tesseract.js`/the real browser dialog behave exactly as
 assumed — that still needs an actual browser test after nontrivial changes,
-same as the sibling repo's live viewer.
+same as the sibling repo's live viewer. This is especially true for the
+searchable-PDF feature: the stub confirms jsPDF is *called* correctly, but
+not that the resulting PDF actually renders with correctly positioned,
+selectable text in a real PDF viewer — verify that visually after any
+change to `buildSearchablePdf()`.
 
 ## Working conventions
 

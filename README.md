@@ -26,7 +26,12 @@ working" problem that motivated this project in the first place.
   the library, with category/type filters
 - **Capture** — add a new document (PDF or image), with client-side OCR
   (German, English, or both) via [Tesseract.js](https://github.com/naptha/tesseract.js)
-  running entirely in your browser
+  running entirely in your browser. For JPEG/PNG images, this also builds a
+  **searchable PDF** — the image with an invisible, selectable text layer
+  positioned over each recognized word (the same "sandwich" technique tools
+  like `ocrmypdf` use) — while the original image is preserved untouched in
+  a subfolder next to it, mirroring how Mariner Paperless itself laid out
+  processed vs. original files.
 - **Tag & organize** — category, document type, payment method, amount,
   date, notes, and free-form tags per document
 - **Open originals** — one click to open the actual file from disk
@@ -60,7 +65,10 @@ documents
     document_type       TEXT
     payment_method      TEXT     -- nullable, only meaningful for receipts/invoices
     amount              REAL     -- nullable
-    date                TEXT     -- ISO 8601
+    date                TEXT     -- ISO 8601, the document's own date (e.g. invoice date)
+    import_date         TEXT     -- ISO 8601, when the document was scanned/captured/imported
+                                  -- (for migrated documents, this comes from Mariner's own
+                                  -- import date; for captured documents, it equals created_at)
     notes               TEXT
     ocr_text            TEXT
     ocr_language        TEXT     -- 'deu' / 'eng' / 'eng+deu' / NULL
@@ -86,10 +94,20 @@ document_tags
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not
   something Document Studio can work around.
-- **OCR works on images, not PDFs.** Tesseract.js recognizes images
-  directly; OCR-ing a PDF would require first rendering it to an image
-  client-side, which isn't implemented yet. PDFs can still be captured —
-  just add notes manually instead of relying on OCR.
+- **OCR and searchable PDFs work on JPEG/PNG images, not PDF uploads.**
+  Tesseract.js recognizes images directly; turning a PDF into a searchable
+  PDF would require first rendering its pages to images client-side (e.g.
+  via pdf.js), which isn't implemented yet. Uploading a PDF still works —
+  it's just saved as-is, with any OCR text added manually to the notes
+  field instead. Other image formats (WEBP, GIF, TIFF) are OCR'd for
+  extracted text but not turned into a searchable PDF, since jsPDF's image
+  embedding is only used here with JPEG/PNG.
+- **Searchable PDF text positioning is best-effort.** Word bounding boxes
+  come directly from Tesseract; horizontal stretching to exactly match each
+  word's width isn't attempted (only position and approximate font size
+  are), so the invisible text layer may not align pixel-for-pixel with the
+  visible word underneath on close inspection — it should still select and
+  search correctly.
 - **No thumbnails yet** for newly captured documents.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
