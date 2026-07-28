@@ -182,7 +182,7 @@
   const SCHEMA = `
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY, title TEXT, category TEXT, document_type TEXT,
-      payment_method TEXT, amount REAL, date TEXT, notes TEXT, ocr_text TEXT,
+      payment_method TEXT, amount REAL, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER
     );
@@ -192,8 +192,23 @@
     );
   `;
 
+  // Columns added after a library may already have been created. CREATE TABLE IF NOT
+  // EXISTS above is a no-op for existing tables, so new columns need an explicit
+  // ALTER TABLE here. Each entry is tried and any "duplicate column" failure (i.e. a
+  // database that already has it) is silently ignored -- this makes opening an older
+  // library safely upgrade it in place instead of breaking on a missing column.
+  const SCHEMA_MIGRATIONS = [
+    'ALTER TABLE documents ADD COLUMN import_date TEXT',
+  ];
+  function applySchemaMigrations(){
+    for(const sql of SCHEMA_MIGRATIONS){
+      try{ db.run(sql); }catch(e){ /* column already exists -- fine */ }
+    }
+  }
+
   let SQL = null;
   let TesseractLoaded = false;
+  let JsPdfLoaded = false;
   let db = null;
   let rootDirHandle = null;
   let filesDirHandle = null;
@@ -207,6 +222,8 @@
   let sortDir = 'desc';
   let pendingFile = null;
   let pendingOcrText = '';
+  let pendingOcrWords = null;      // flat array of {text, bbox:{x0,y0,x1,y1}} from Tesseract, or null if no OCR run
+  let pendingImageDims = null;     // {width, height} in pixels of the picked image, or null for non-images
 
   const el = (id) => document.getElementById(id);
   const statusEl = el('status');
@@ -250,6 +267,82 @@
     });
     TesseractLoaded = true;
     return window.Tesseract;
+  }
+
+  async function ensureJsPdf(){
+    if(JsPdfLoaded && window.jspdf) return window.jspdf;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load PDF engine from CDN'));
+      document.head.appendChild(s);
+    });
+    JsPdfLoaded = true;
+    return window.jspdf;
+  }
+
+  // Tesseract's {blocks:true} output is a nested blocks -> paragraphs -> lines -> words
+  // tree. Flatten it to a simple array of {text, bbox} for placing invisible text.
+  function flattenOcrWords(data){
+    const words = [];
+    for(const block of (data.blocks || [])){
+      for(const para of (block.paragraphs || [])){
+        for(const line of (para.lines || [])){
+          for(const word of (line.words || [])){
+            if(word && word.text && word.bbox) words.push({ text: word.text, bbox: word.bbox });
+          }
+        }
+      }
+    }
+    return words;
+  }
+
+  function fileToDataUrl(file){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Could not read file'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function loadImageDimensions(dataUrl){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.onerror = () => reject(new Error('Could not read image dimensions'));
+      img.src = dataUrl;
+    });
+  }
+
+  // Builds a searchable PDF: the original image as a full-page background, with each
+  // OCR'd word placed as invisible, selectable text positioned over its bounding box.
+  // This is the same "sandwich" technique tools like ocrmypdf use. Returns a Uint8Array.
+  async function buildSearchablePdf(imageDataUrl, imageFormat, dims, words){
+    const { jsPDF } = await ensureJsPdf();
+    const { width, height } = dims;
+    const doc = new jsPDF({
+      orientation: width > height ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [width, height],
+      compress: true,
+      // Without this, jsPDF's 'px' unit uses a non-1:1 scale factor historically kept
+      // for backwards compatibility. This hotfix makes 1 unit == 1 real image pixel,
+      // matching the coordinates addImage() and Tesseract's bbox both use.
+      hotfixes: ['px_scaling'],
+    });
+    doc.addImage(imageDataUrl, imageFormat, 0, 0, width, height);
+
+    const PX_TO_PT = 0.75; // setFontSize() always takes points, regardless of document unit
+    for(const word of words){
+      const { y0, y1, x0 } = word.bbox;
+      const wordHeightPx = Math.max(1, y1 - y0);
+      doc.setFontSize(wordHeightPx * PX_TO_PT);
+      doc.text(word.text, x0, y1, { renderingMode: 'invisible', baseline: 'alphabetic' });
+    }
+
+    return doc.output('arraybuffer');
   }
 
   // --- library open / init ---
@@ -313,6 +406,8 @@
     const buf = await file.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
     db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
+    applySchemaMigrations(); // adds any columns introduced after this library was created
+    await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
   }
 
@@ -341,7 +436,7 @@
 
   function loadDocumentsFromDb(){
     const { columns, rows } = queryAll(`
-      SELECT id, title, category, document_type, payment_method, amount, date, notes,
+      SELECT id, title, category, document_type, payment_method, amount, date, import_date, notes,
              ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id
       FROM documents
     `);
@@ -372,6 +467,7 @@
       allDocs.push({
         id, title: row[idx.title], category: row[idx.category], document_type: row[idx.document_type],
         payment_method: row[idx.payment_method], amount: row[idx.amount], date: row[idx.date],
+        import_date: row[idx.import_date],
         notes: row[idx.notes], ocr_text: row[idx.ocr_text], ocr_language: row[idx.ocr_language],
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
         created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
@@ -533,6 +629,7 @@
             <div><b>Category</b> ${escapeHtml(d.category || '—')} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
             <div><b>Date</b> ${formatDate(d.date)} · <b>Amount</b> ${formatAmount(d)}</div>
             <div><b>Payment</b> ${escapeHtml(d.payment_method || '—')}</div>
+            <div><b>Imported</b> ${formatDate(d.import_date)}</div>
             <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
           </div>
           <div class="modal-actions">${actions.join('') || '<span class="doc-sub">No file recorded for this document</span>'}</div>
@@ -573,6 +670,8 @@
   function openCaptureModal(){
     pendingFile = null;
     pendingOcrText = '';
+    pendingOcrWords = null;
+    pendingImageDims = null;
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
@@ -644,6 +743,8 @@
 
   function handlePickedFile(file){
     pendingFile = file;
+    pendingOcrWords = null;
+    pendingImageDims = null;
     el('save-doc-btn').disabled = false;
     const isImage = file.type.startsWith('image/');
     el('run-ocr-btn').disabled = !isImage;
@@ -652,7 +753,10 @@
     const previewArea = el('file-preview-area');
     if(isImage){
       const url = URL.createObjectURL(file);
-      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB</div></div></div>`;
+      const pdfNote = (file.type === 'image/jpeg' || file.type === 'image/png')
+        ? 'Running OCR will build a searchable PDF (image + invisible text layer); the original stays alongside it.'
+        : 'OCR text will be extracted, but a searchable PDF can only be built from JPEG/PNG — this file will be saved as-is.';
+      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB</div><div class="doc-sub">${pdfNote}</div></div></div>`;
     }else{
       previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div></div></div>`;
     }
@@ -669,11 +773,20 @@
       const Tesseract = await ensureTesseract();
       ocrStatusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
       const worker = await Tesseract.createWorker(lang.split('+'));
-      const { data } = await worker.recognize(pendingFile);
+      // Request the {blocks:true} output specifically -- by default Tesseract.js v5+
+      // only returns plain text, not the per-word bounding boxes a searchable PDF needs.
+      const { data } = await worker.recognize(pendingFile, {}, { blocks: true });
       await worker.terminate();
       pendingOcrText = data.text || '';
       el('f-ocr-text').value = pendingOcrText;
-      ocrStatusEl.textContent = 'Done.';
+
+      pendingOcrWords = flattenOcrWords(data);
+      const dataUrl = await fileToDataUrl(pendingFile);
+      pendingImageDims = await loadImageDimensions(dataUrl);
+
+      ocrStatusEl.textContent = pendingOcrWords.length
+        ? `Done — ${pendingOcrWords.length} words positioned for a searchable PDF.`
+        : 'Done, but no words with position data were found.';
     }catch(e){
       ocrStatusEl.textContent = 'OCR failed: ' + e.message;
     }finally{
@@ -697,11 +810,47 @@
 
     try{
       const id = nextDocId++;
-      const destName = `${id}_${safeFilename(pendingFile.name, 'document')}`;
-      const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
-      const writable = await destHandle.createWritable();
-      await writable.write(await pendingFile.arrayBuffer());
-      await writable.close();
+      const canBuildSearchablePdf = pendingOcrWords && pendingOcrWords.length && pendingImageDims
+        && (pendingFile.type === 'image/jpeg' || pendingFile.type === 'image/png');
+
+      let filePathForDb, originalFilePathForDb;
+
+      if(canBuildSearchablePdf){
+        const imageFormat = pendingFile.type === 'image/jpeg' ? 'JPEG' : 'PNG';
+        const dataUrl = await fileToDataUrl(pendingFile);
+        const pdfBytes = await buildSearchablePdf(dataUrl, imageFormat, pendingImageDims, pendingOcrWords);
+
+        const baseName = safeFilename((el('f-title').value.trim() || pendingFile.name.replace(/\.[^.]+$/, '')), 'document');
+        const processedName = `${id}_${baseName}.pdf`;
+        const processedHandle = await filesDirHandle.getFileHandle(processedName, { create: true });
+        const processedWritable = await processedHandle.createWritable();
+        await processedWritable.write(pdfBytes);
+        await processedWritable.close();
+
+        // Original raw file goes in a subfolder next to the processed PDF -- the
+        // same layout Mariner Paperless used, and what migrate_to_new_library.py
+        // produces for migrated documents.
+        const subfolderName = `${id}_${baseName}`;
+        const subfolderHandle = await filesDirHandle.getDirectoryHandle(subfolderName, { create: true });
+        const originalName = safeFilename(pendingFile.name, 'original');
+        const originalHandle = await subfolderHandle.getFileHandle(originalName, { create: true });
+        const originalWritable = await originalHandle.createWritable();
+        await originalWritable.write(await pendingFile.arrayBuffer());
+        await originalWritable.close();
+
+        filePathForDb = `files/${processedName}`;
+        originalFilePathForDb = `files/${subfolderName}/${originalName}`;
+      }else{
+        // No word-position OCR data available (PDF upload, unsupported image type,
+        // or OCR wasn't run) -- just save the picked file directly, same as before.
+        const destName = `${id}_${safeFilename(pendingFile.name, 'document')}`;
+        const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
+        const writable = await destHandle.createWritable();
+        await writable.write(await pendingFile.arrayBuffer());
+        await writable.close();
+        filePathForDb = `files/${destName}`;
+        originalFilePathForDb = null;
+      }
 
       const title = el('f-title').value.trim() || null;
       const category = el('f-category').value.trim() || null;
@@ -713,13 +862,17 @@
       const notes = el('f-notes').value.trim() || null;
       const ocrText = el('f-ocr-text').value.trim() || null;
       const ocrLanguage = pendingOcrText ? el('ocr-lang').value : null;
+      const createdAt = nowIso();
+      // For a captured document there's no separate "scan then import later" step --
+      // capturing it here IS the import moment, so import_date == created_at.
+      const importDate = createdAt;
 
       db.run(`
         INSERT INTO documents (id, title, category, document_type, payment_method, amount, date,
-                                notes, ocr_text, ocr_language, file_path, original_file_path,
+                                import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'captured', NULL)
-      `, [id, title, category, documentType, paymentMethod, amount, date, notes, ocrText, ocrLanguage, `files/${destName}`, nowIso()]);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL)
+      `, [id, title, category, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -738,8 +891,9 @@
 
       allDocs.push({
         id, title, category, document_type: documentType, payment_method: paymentMethod, amount, date,
-        notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: `files/${destName}`,
-        original_file_path: null, created_at: nowIso(), source: 'captured', source_legacy_id: null,
+        import_date: importDate,
+        notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
+        original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
         tags: tagsForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
