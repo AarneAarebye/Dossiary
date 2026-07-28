@@ -1,0 +1,760 @@
+<style>
+  :root{
+    --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --ink:#12181a; --ink-2:#1b2426; --panel:#1e2a2c; --line: rgba(217,210,189,0.14);
+    --phosphor:#4fe0a6; --phosphor-dim: rgba(79,224,166,0.35);
+    --amber:#d99a3f; --amber-dim: rgba(217,154,63,0.35);
+    --red:#e0715c; --text:#e7e2d4; --text-dim:#9a978a; --text-ink:#12181a; --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  #app{ background:var(--ink); color:var(--text); font-family:var(--font-sans); min-height:100vh; position:relative; }
+  .scanline{
+    position:absolute; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--phosphor), transparent);
+    opacity:0.6; pointer-events:none; animation: scan 3.2s linear infinite; box-shadow: 0 0 8px var(--phosphor);
+  }
+  @keyframes scan{ 0%{top:0%;opacity:0;} 5%{opacity:0.6;} 95%{opacity:0.6;} 100%{top:100%;opacity:0;} }
+  @media (prefers-reduced-motion: reduce){ .scanline{ animation:none; display:none; } }
+
+  header{ padding:28px 32px 20px; border-bottom:1px solid var(--line); display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .brand{ display:flex; align-items:baseline; gap:14px; }
+  .brand-mark{ font-family:var(--font-mono); font-size:11px; letter-spacing:0.18em; color:var(--amber); border:1px solid var(--amber-dim); padding:3px 7px; border-radius:var(--radius); text-transform:uppercase; }
+  h1{ font-family:var(--font-display); font-weight:600; font-size:26px; letter-spacing:-0.01em; margin:0; }
+  .sub{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:4px; }
+  .stats{ display:flex; gap:22px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .stat b{ color:var(--phosphor); font-size:15px; display:block; font-weight:600; }
+
+  .toolbar{ padding:16px 32px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .search{ flex:1 1 240px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
+  .search:focus{ border-color:var(--phosphor-dim); box-shadow:0 0 0 3px rgba(79,224,166,0.08); }
+  select{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 10px; border-radius:var(--radius); outline:none; }
+  button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
+  button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
+  button.primary{ background:var(--phosphor); color:var(--text-ink); border-color:var(--phosphor); font-weight:600; }
+  button.primary:hover:not(:disabled){ color:var(--text-ink); opacity:0.9; }
+  button.accent{ background:var(--amber); color:var(--text-ink); border-color:var(--amber); font-weight:600; }
+  button.accent:hover:not(:disabled){ color:var(--text-ink); opacity:0.9; }
+  button:disabled{ opacity:0.35; cursor:not-allowed; }
+  button:focus-visible, .search:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible{ outline:2px solid var(--phosphor); outline-offset:1px; }
+
+  .empty{ margin:60px auto; max-width:560px; text-align:center; padding:40px 32px; border:1px dashed var(--line); border-radius:6px; }
+  .empty h2{ font-family:var(--font-display); font-weight:600; font-size:20px; margin:0 0 8px; }
+  .empty p{ color:var(--text-dim); font-size:13.5px; line-height:1.6; margin:0 0 20px; }
+  .empty .hint{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:18px; line-height:1.7; text-align:left; }
+
+  .table-wrap{ padding:0 32px 40px; overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; margin-top:18px; min-width:800px; }
+  thead th{ text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); font-weight:500; padding:8px 14px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; white-space:nowrap; }
+  thead th:hover{ color:var(--phosphor); }
+  thead th.active{ color:var(--phosphor); }
+  tbody tr{ border-bottom:1px solid rgba(217,210,189,0.06); cursor:pointer; }
+  tbody tr:hover{ background:rgba(79,224,166,0.045); }
+  tbody td{ padding:11px 14px; font-size:13px; vertical-align:top; }
+  .doc-title{ color:var(--text); font-weight:500; }
+  .doc-sub{ color:var(--text-dim); font-family:var(--font-mono); font-size:11px; margin-top:2px; }
+  .pill{ display:inline-block; font-family:var(--font-mono); font-size:10.5px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--text-dim); margin:1px 4px 1px 0; }
+  .pill.type{ border-color:var(--phosphor-dim); color:var(--phosphor); }
+  .pill.captured{ border-color:var(--amber-dim); color:var(--amber); }
+  .amount{ font-family:var(--font-mono); color:var(--amber); }
+  .date{ font-family:var(--font-mono); color:var(--text-dim); font-size:12px; white-space:nowrap; }
+  .id{ font-family:var(--font-mono); color:var(--text-dim); font-size:11px; }
+  .count-line{ padding:0 32px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .status{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:0 32px 10px; min-height:16px; }
+  .status.err{ color:var(--red); } .status.ok{ color:var(--phosphor); } .status.busy{ color:var(--amber); }
+
+  /* modal shared */
+  .backdrop{ position:fixed; inset:0; background:rgba(6,9,10,0.75); backdrop-filter:blur(2px); display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; z-index:50; overflow-y:auto; }
+  .modal{ background:var(--panel); border:1px solid var(--line); border-radius:6px; max-width:640px; width:100%; padding:26px 28px 28px; position:relative; }
+  .modal.wide{ max-width:760px; }
+  .modal-close{ position:absolute; top:16px; right:16px; }
+  .modal h2{ font-family:var(--font-display); font-size:19px; font-weight:600; margin:0 0 18px; padding-right:32px; }
+  .modal-section{ margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+  .modal-section:first-of-type{ margin-top:0; padding-top:0; border-top:none; }
+  .modal-section h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
+  .modal-meta{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); line-height:1.9; }
+  .modal-meta b{ color:var(--text); font-weight:500; }
+  .modal-actions{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .ocr-box{ max-height:200px; overflow-y:auto; font-family:var(--font-mono); font-size:11.5px; line-height:1.7; color:var(--text-dim); background:var(--ink-2); padding:12px; border-radius:var(--radius); white-space:pre-wrap; }
+
+  /* form */
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin-bottom:5px; }
+  .field input[type=text], .field input[type=number], .field input[type=date], .field textarea{
+    width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius);
+    padding:8px 10px; color:var(--text); font-family:var(--font-sans); font-size:13px; outline:none;
+  }
+  .field textarea{ font-family:var(--font-mono); font-size:12px; resize:vertical; }
+  .field-row{ display:flex; gap:12px; }
+  .field-row .field{ flex:1; }
+  .file-drop{
+    border:1px dashed var(--line); border-radius:6px; padding:18px; text-align:center; cursor:pointer;
+    font-family:var(--font-mono); font-size:12px; color:var(--text-dim); margin-bottom:14px;
+  }
+  .file-drop:hover{ border-color:var(--phosphor-dim); color:var(--phosphor); }
+  .file-preview{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .file-preview img{ width:64px; height:80px; object-fit:cover; border-radius:3px; border:1px solid var(--line); }
+  .file-preview .file-icon{ width:64px; height:80px; border-radius:3px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); background:var(--ink-2); text-align:center; padding:4px; }
+  .ocr-row{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+  .spinner{ display:inline-block; width:11px; height:11px; border:2px solid var(--amber-dim); border-top-color:var(--amber); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  @media (max-width:640px){
+    header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; }
+    .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
+  }
+</style>
+
+<div id="app">
+  <div class="scanline"></div>
+  <header>
+    <div>
+      <div class="brand">
+        <span class="brand-mark">STUDIO</span>
+        <h1>Document Studio</h1>
+      </div>
+      <div class="sub" id="sub-label">No library open</div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="toolbar" id="toolbar" style="display:none;">
+    <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags…" />
+    <select id="category-filter"><option value="">All categories</option></select>
+    <select id="type-filter"><option value="">All types</option></select>
+    <button class="accent" id="add-btn">＋ Add document</button>
+    <button id="reload-btn">Switch library</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div id="empty-state" class="empty">
+    <h2>No library open</h2>
+    <p>Open a library folder created by <code>migrate_to_new_library.py</code>, or start a brand new one here.
+       Everything happens locally in your browser — nothing is uploaded.</p>
+    <button class="primary" id="open-btn">Open library folder</button>
+    <div class="hint">
+      Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).<br/>
+      This app needs write access to save new documents, so pick <b>"Edit"</b>/allow when your browser asks.<br/><br/>
+      <b style="color:var(--text)">Important:</b> open this file directly in your browser (not inside a chat
+      preview pane) — folder write access is blocked inside embedded frames.
+    </div>
+  </div>
+
+  <div id="init-state" class="empty" style="display:none;">
+    <h2>Empty folder</h2>
+    <p id="init-message">No <code>library.sqlite</code> found in that folder.</p>
+    <button class="primary" id="init-btn">Initialize a new library here</button>
+    <button id="pick-again-btn">Choose a different folder</button>
+  </div>
+
+  <div class="count-line" id="count-line" style="display:none;"></div>
+
+  <div class="table-wrap" id="table-wrap" style="display:none;">
+    <table id="doc-table">
+      <thead>
+        <tr>
+          <th data-key="title">Document</th>
+          <th data-key="category">Category</th>
+          <th data-key="document_type">Type</th>
+          <th data-key="date">Date</th>
+          <th data-key="amount">Amount</th>
+          <th>Tags</th>
+        </tr>
+      </thead>
+      <tbody id="doc-tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="modal-root"></div>
+</div>
+
+<datalist id="category-list"></datalist>
+<datalist id="type-list"></datalist>
+<datalist id="payment-list"></datalist>
+<datalist id="tag-list"></datalist>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
+<script>
+(function(){
+  const SCHEMA = `
+    CREATE TABLE IF NOT EXISTS documents (
+      id INTEGER PRIMARY KEY, title TEXT, category TEXT, document_type TEXT,
+      payment_method TEXT, amount REAL, date TEXT, notes TEXT, ocr_text TEXT,
+      ocr_language TEXT, file_path TEXT, original_file_path TEXT,
+      created_at TEXT, source TEXT, source_legacy_id INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
+    CREATE TABLE IF NOT EXISTS document_tags (
+      document_id INTEGER, tag_id INTEGER, PRIMARY KEY (document_id, tag_id)
+    );
+  `;
+
+  let SQL = null;
+  let TesseractLoaded = false;
+  let db = null;
+  let rootDirHandle = null;
+  let filesDirHandle = null;
+  let dbFileHandle = null;
+  let allDocs = [];
+  let tagsByDocId = {};
+  let tagNameToId = {};
+  let nextDocId = 1;
+  let nextTagId = 1;
+  let sortKey = 'date';
+  let sortDir = 'desc';
+  let pendingFile = null;
+  let pendingOcrText = '';
+
+  const el = (id) => document.getElementById(id);
+  const statusEl = el('status');
+  const subLabel = el('sub-label');
+  const statsEl = el('stats');
+  const toolbar = el('toolbar');
+  const emptyState = el('empty-state');
+  const initState = el('init-state');
+  const tableWrap = el('table-wrap');
+  const tbody = el('doc-tbody');
+  const countLine = el('count-line');
+  const searchInput = el('search');
+  const categoryFilter = el('category-filter');
+  const typeFilter = el('type-filter');
+  const modalRoot = el('modal-root');
+
+  function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function nowIso(){ return new Date().toISOString(); }
+  function safeFilename(name, fallback){
+    if(!name) name = fallback;
+    let cleaned = name.replace(/[^a-zA-Z0-9\-_. ()]/g, '_').trim();
+    cleaned = cleaned.replace(/^\.+/, '');
+    return cleaned || fallback;
+  }
+
+  async function ensureSqlJs(){
+    if(SQL) return SQL;
+    SQL = await initSqlJs({ locateFile: (f) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/${f}` });
+    return SQL;
+  }
+
+  async function ensureTesseract(){
+    if(TesseractLoaded && window.Tesseract) return window.Tesseract;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load OCR engine from CDN'));
+      document.head.appendChild(s);
+    });
+    TesseractLoaded = true;
+    return window.Tesseract;
+  }
+
+  // --- library open / init ---
+
+  el('open-btn').addEventListener('click', openLibrary);
+  el('reload-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
+  el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
+  el('init-btn').addEventListener('click', initNewLibrary);
+
+  async function openLibrary(){
+    if(typeof window.showDirectoryPicker !== 'function'){
+      setStatus('Your browser does not support the File System Access API. Use Chrome or Edge.', 'err');
+      return;
+    }
+    try{
+      setStatus('Opening folder picker…');
+      rootDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      setStatus('Checking for library.sqlite…');
+      try{
+        dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
+        filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
+        await loadDb();
+      }catch(e){
+        emptyState.style.display = 'none';
+        initState.style.display = 'block';
+        el('init-message').innerHTML = `No <code>library.sqlite</code> found in "<b>${escapeHtml(rootDirHandle.name)}</b>".`;
+        setStatus('');
+      }
+    }catch(e){
+      if(e.name === 'AbortError'){ setStatus('Folder selection cancelled.'); }
+      else{ setStatus('Could not open that folder: ' + e.message, 'err'); }
+    }
+  }
+
+  async function initNewLibrary(){
+    try{
+      setStatus('Setting up SQLite engine…');
+      await ensureSqlJs();
+      const newDb = new SQL.Database();
+      newDb.run(SCHEMA);
+      const bytes = newDb.export();
+      dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
+      const writable = await dbFileHandle.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+      filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
+      db = newDb;
+      initState.style.display = 'none';
+      setStatus('Initialized a new empty library.', 'ok');
+      afterDbReady();
+    }catch(e){
+      setStatus('Could not initialize a new library: ' + e.message, 'err');
+    }
+  }
+
+  async function loadDb(){
+    setStatus('Loading SQLite engine…');
+    await ensureSqlJs();
+    setStatus('Reading library.sqlite…');
+    const file = await dbFileHandle.getFile();
+    const buf = await file.arrayBuffer();
+    db = new SQL.Database(new Uint8Array(buf));
+    db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
+    afterDbReady();
+  }
+
+  function afterDbReady(){
+    emptyState.style.display = 'none';
+    initState.style.display = 'none';
+    loadDocumentsFromDb();
+    setStatus(`Opened ${allDocs.length} documents from ${rootDirHandle.name}.`, 'ok');
+  }
+
+  function resetAll(){
+    db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
+    allDocs = []; tagsByDocId = {}; tagNameToId = {}; nextDocId = 1; nextTagId = 1;
+    emptyState.style.display = 'block'; initState.style.display = 'none';
+    toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
+    subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
+  }
+
+  // --- db helpers ---
+
+  function queryAll(sql){
+    const res = db.exec(sql);
+    if(!res || !res.length) return { columns: [], rows: [] };
+    return { columns: res[0].columns, rows: res[0].values };
+  }
+
+  function loadDocumentsFromDb(){
+    const { columns, rows } = queryAll(`
+      SELECT id, title, category, document_type, payment_method, amount, date, notes,
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id
+      FROM documents
+    `);
+    const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
+
+    const tags = queryAll('SELECT id, name FROM tags');
+    const tIdx = Object.fromEntries(tags.columns.map((c, i) => [c, i]));
+    tagNameToId = {};
+    let maxTagId = 0;
+    for(const row of tags.rows){
+      tagNameToId[row[tIdx.name]] = row[tIdx.id];
+      maxTagId = Math.max(maxTagId, row[tIdx.id]);
+    }
+    nextTagId = maxTagId + 1;
+
+    const links = queryAll('SELECT document_id, tag_id FROM document_tags');
+    const tagIdToName = Object.fromEntries(Object.entries(tagNameToId).map(([n, i]) => [i, n]));
+    tagsByDocId = {};
+    for(const [docId, tagId] of links.rows){
+      (tagsByDocId[docId] = tagsByDocId[docId] || []).push(tagIdToName[tagId] || ('#' + tagId));
+    }
+
+    allDocs = [];
+    let maxDocId = 0;
+    for(const row of rows){
+      const id = row[idx.id];
+      maxDocId = Math.max(maxDocId, id);
+      allDocs.push({
+        id, title: row[idx.title], category: row[idx.category], document_type: row[idx.document_type],
+        payment_method: row[idx.payment_method], amount: row[idx.amount], date: row[idx.date],
+        notes: row[idx.notes], ocr_text: row[idx.ocr_text], ocr_language: row[idx.ocr_language],
+        file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
+        created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
+        tags: tagsByDocId[id] || [],
+      });
+    }
+    nextDocId = maxDocId + 1;
+
+    toolbar.style.display = 'flex';
+    tableWrap.style.display = 'block';
+    subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+    renderStats();
+    populateFilters();
+    populateDatalists();
+    render();
+  }
+
+  async function persistDb(){
+    const bytes = db.export();
+    const writable = await dbFileHandle.createWritable();
+    await writable.write(bytes);
+    await writable.close();
+  }
+
+  async function resolveFileHandle(relPath, create){
+    const parts = relPath.split('/');
+    let dirHandle = rootDirHandle;
+    for(let i = 0; i < parts.length - 1; i++){
+      dirHandle = await dirHandle.getDirectoryHandle(parts[i], { create: !!create });
+    }
+    return dirHandle.getFileHandle(parts[parts.length - 1], { create: !!create });
+  }
+
+  // --- rendering (browse list) ---
+
+  function displayName(d){ return d.title || d.category || d.document_type || ('Document #' + d.id); }
+
+  function renderStats(){
+    const categories = new Set(allDocs.map(d => d.category).filter(Boolean));
+    const types = new Set(allDocs.map(d => d.document_type).filter(Boolean));
+    const captured = allDocs.filter(d => d.source === 'captured').length;
+    statsEl.innerHTML = `
+      <div class="stat"><b>${allDocs.length}</b>documents</div>
+      <div class="stat"><b>${categories.size}</b>categories</div>
+      <div class="stat"><b>${captured}</b>captured here</div>
+    `;
+  }
+
+  function populateFilters(){
+    const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
+    const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
+    categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    typeFilter.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  }
+
+  function populateDatalists(){
+    const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
+    const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
+    const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
+    const tagNames = Object.keys(tagNameToId).sort();
+    el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
+    el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
+    el('tag-list').innerHTML = tagNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
+  }
+
+  function formatDate(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
+  }
+  function formatAmount(d){
+    if(typeof d.amount === 'number' && !isNaN(d.amount) && d.amount !== 0) return d.amount.toFixed(2);
+    return '—';
+  }
+
+  function currentFilters(){
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value };
+  }
+  function applyFilters(docs){
+    const { q, category, type } = currentFilters();
+    return docs.filter(d => {
+      if(category && d.category !== category) return false;
+      if(type && d.document_type !== type) return false;
+      if(q){
+        const hay = [d.title, d.category, d.document_type, d.notes, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+  function sortDocs(docs){
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...docs].sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if(sortKey === 'amount'){ av = av || 0; bv = bv || 0; return (av - bv) * dir; }
+      if(sortKey === 'date'){ av = av || ''; bv = bv || ''; return av.localeCompare(bv) * dir; }
+      av = (av || '').toString().toLowerCase(); bv = (bv || '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
+    });
+  }
+
+  function render(){
+    const filtered = applyFilters(allDocs);
+    const sorted = sortDocs(filtered);
+    countLine.style.display = 'block';
+    countLine.textContent = `Showing ${sorted.length} of ${allDocs.length} documents`;
+
+    tbody.innerHTML = sorted.map(d => `
+      <tr data-id="${d.id}">
+        <td>
+          <div class="doc-title">${escapeHtml(displayName(d))}</div>
+          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : ''}</div>
+        </td>
+        <td>${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}</td>
+        <td>${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
+        <td class="date">${formatDate(d.date)}</td>
+        <td class="amount">${formatAmount(d)}</td>
+        <td>${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
+      </tr>
+    `).join('');
+
+    document.querySelectorAll('thead th[data-key]').forEach(th => th.classList.toggle('active', th.dataset.key === sortKey));
+    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openDetail(Number(tr.dataset.id))));
+  }
+
+  searchInput.addEventListener('input', render);
+  categoryFilter.addEventListener('change', render);
+  typeFilter.addEventListener('change', render);
+  document.querySelectorAll('thead th[data-key]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if(sortKey === key){ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+      else{ sortKey = key; sortDir = key === 'date' ? 'desc' : 'asc'; }
+      render();
+    });
+  });
+
+  // --- detail modal (view existing document) ---
+
+  function closeModal(){ modalRoot.innerHTML = ''; document.removeEventListener('keydown', onModalKeydown); }
+  function onModalKeydown(e){ if(e.key === 'Escape') closeModal(); }
+
+  async function openDetail(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!d) return;
+
+    const actions = [];
+    if(d.file_path) actions.push(`<button class="primary" id="open-file-btn">Open file</button>`);
+    if(d.original_file_path) actions.push(`<button id="open-original-btn">Open original file</button>`);
+
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>${escapeHtml(displayName(d))}</h2>
+          <div class="modal-meta">
+            <div><b>Category</b> ${escapeHtml(d.category || '—')} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
+            <div><b>Date</b> ${formatDate(d.date)} · <b>Amount</b> ${formatAmount(d)}</div>
+            <div><b>Payment</b> ${escapeHtml(d.payment_method || '—')}</div>
+            <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
+          </div>
+          <div class="modal-actions">${actions.join('') || '<span class="doc-sub">No file recorded for this document</span>'}</div>
+          <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
+          ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
+          ${d.ocr_text ? `<div class="modal-section"><h3>OCR text</h3><div class="ocr-box">${escapeHtml(d.ocr_text)}</div></div>` : ''}
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    if(d.file_path){
+      el('open-file-btn').addEventListener('click', async () => {
+        try{
+          const fh = await resolveFileHandle(d.file_path, false);
+          const file = await fh.getFile();
+          window.open(URL.createObjectURL(file), '_blank');
+        }catch(e){ alert('Could not open file: ' + e.message); }
+      });
+    }
+    if(d.original_file_path){
+      el('open-original-btn').addEventListener('click', async () => {
+        try{
+          const fh = await resolveFileHandle(d.original_file_path, false);
+          const file = await fh.getFile();
+          window.open(URL.createObjectURL(file), '_blank');
+        }catch(e){ alert('Could not open file: ' + e.message); }
+      });
+    }
+  }
+
+  // --- capture modal (add new document) ---
+
+  el('add-btn').addEventListener('click', openCaptureModal);
+
+  function openCaptureModal(){
+    pendingFile = null;
+    pendingOcrText = '';
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Add document</h2>
+
+          <div class="file-drop" id="file-drop">
+            Click to choose a file (PDF or image)
+            <input type="file" id="file-input" accept="application/pdf,image/*" style="display:none" />
+          </div>
+          <div id="file-preview-area"></div>
+
+          <div class="ocr-row">
+            <select id="ocr-lang" disabled>
+              <option value="eng+deu">Auto (German + English)</option>
+              <option value="deu">German only</option>
+              <option value="eng">English only</option>
+            </select>
+            <button id="run-ocr-btn" disabled>Run OCR</button>
+            <span id="ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
+          </div>
+
+          <div class="field">
+            <label for="f-ocr-text">Extracted / notes text (editable)</label>
+            <textarea id="f-ocr-text" rows="5" placeholder="Runs after OCR, or type/paste manually"></textarea>
+          </div>
+
+          <div class="field-row">
+            <div class="field"><label for="f-title">Title</label><input type="text" id="f-title" /></div>
+            <div class="field"><label for="f-date">Date</label><input type="date" id="f-date" /></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="f-category">Category</label><input type="text" id="f-category" list="category-list" /></div>
+            <div class="field"><label for="f-type">Document type</label><input type="text" id="f-type" list="type-list" /></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
+            <div class="field"><label for="f-amount">Amount</label><input type="number" step="0.01" id="f-amount" /></div>
+          </div>
+          <div class="field">
+            <label for="f-tags">Tags (comma-separated)</label>
+            <input type="text" id="f-tags" list="tag-list" placeholder="e.g. medical, insurance" />
+          </div>
+          <div class="field">
+            <label for="f-notes">Notes</label>
+            <textarea id="f-notes" rows="3"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button class="primary" id="save-doc-btn" disabled>Save document</button>
+            <button id="cancel-doc-btn">Cancel</button>
+          </div>
+          <div class="status" id="capture-status" style="padding:10px 0 0;"></div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('cancel-doc-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    el('file-drop').addEventListener('click', () => el('file-input').click());
+    el('file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if(file) handlePickedFile(file);
+    });
+    el('run-ocr-btn').addEventListener('click', runOcr);
+  }
+
+  function handlePickedFile(file){
+    pendingFile = file;
+    el('save-doc-btn').disabled = false;
+    const isImage = file.type.startsWith('image/');
+    el('run-ocr-btn').disabled = !isImage;
+    el('ocr-lang').disabled = !isImage;
+
+    const previewArea = el('file-preview-area');
+    if(isImage){
+      const url = URL.createObjectURL(file);
+      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB</div></div></div>`;
+    }else{
+      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div></div></div>`;
+    }
+    if(!el('f-title').value) el('f-title').value = file.name.replace(/\.[^.]+$/, '');
+  }
+
+  async function runOcr(){
+    if(!pendingFile) return;
+    const lang = el('ocr-lang').value;
+    const ocrStatusEl = el('ocr-status');
+    el('run-ocr-btn').disabled = true;
+    ocrStatusEl.innerHTML = '<span class="spinner"></span> Loading OCR engine…';
+    try{
+      const Tesseract = await ensureTesseract();
+      ocrStatusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
+      const worker = await Tesseract.createWorker(lang.split('+'));
+      const { data } = await worker.recognize(pendingFile);
+      await worker.terminate();
+      pendingOcrText = data.text || '';
+      el('f-ocr-text').value = pendingOcrText;
+      ocrStatusEl.textContent = 'Done.';
+    }catch(e){
+      ocrStatusEl.textContent = 'OCR failed: ' + e.message;
+    }finally{
+      el('run-ocr-btn').disabled = false;
+    }
+  }
+
+  el('save-doc-btn') && null; // (listener attached in openCaptureModal's DOM; re-bound below since element is recreated each open)
+
+  modalRoot.addEventListener('click', (e) => {
+    if(e.target && e.target.id === 'save-doc-btn') saveNewDocument();
+  });
+
+  async function saveNewDocument(){
+    if(!pendingFile){ return; }
+    const captureStatus = el('capture-status');
+    const saveBtn = el('save-doc-btn');
+    saveBtn.disabled = true;
+    captureStatus.className = 'status busy';
+    captureStatus.innerHTML = '<span class="spinner"></span> Saving…';
+
+    try{
+      const id = nextDocId++;
+      const destName = `${id}_${safeFilename(pendingFile.name, 'document')}`;
+      const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
+      const writable = await destHandle.createWritable();
+      await writable.write(await pendingFile.arrayBuffer());
+      await writable.close();
+
+      const title = el('f-title').value.trim() || null;
+      const category = el('f-category').value.trim() || null;
+      const documentType = el('f-type').value.trim() || null;
+      const paymentMethod = el('f-payment').value.trim() || null;
+      const amountRaw = el('f-amount').value.trim();
+      const amount = amountRaw === '' ? null : parseFloat(amountRaw);
+      const date = el('f-date').value || null;
+      const notes = el('f-notes').value.trim() || null;
+      const ocrText = el('f-ocr-text').value.trim() || null;
+      const ocrLanguage = pendingOcrText ? el('ocr-lang').value : null;
+
+      db.run(`
+        INSERT INTO documents (id, title, category, document_type, payment_method, amount, date,
+                                notes, ocr_text, ocr_language, file_path, original_file_path,
+                                created_at, source, source_legacy_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'captured', NULL)
+      `, [id, title, category, documentType, paymentMethod, amount, date, notes, ocrText, ocrLanguage, `files/${destName}`, nowIso()]);
+
+      const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+      const tagsForDoc = [];
+      for(const name of tagNames){
+        let tagId = tagNameToId[name];
+        if(tagId === undefined){
+          tagId = nextTagId++;
+          db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+          tagNameToId[name] = tagId;
+        }
+        db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
+        tagsForDoc.push(name);
+      }
+
+      await persistDb();
+
+      allDocs.push({
+        id, title, category, document_type: documentType, payment_method: paymentMethod, amount, date,
+        notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: `files/${destName}`,
+        original_file_path: null, created_at: nowIso(), source: 'captured', source_legacy_id: null,
+        tags: tagsForDoc,
+      });
+      renderStats(); populateFilters(); populateDatalists(); render();
+      subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+
+      closeModal();
+      setStatus(`Saved "${title || 'Document #' + id}" as #${id}.`, 'ok');
+    }catch(e){
+      captureStatus.className = 'status err';
+      captureStatus.textContent = 'Save failed: ' + e.message;
+      saveBtn.disabled = false;
+      nextDocId--; // roll back the reservation since the save didn't complete
+    }
+  }
+
+  resetAll();
+})();
+</script>
