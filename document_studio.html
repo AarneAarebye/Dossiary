@@ -174,6 +174,7 @@
 </div>
 
 <datalist id="category-list"></datalist>
+<datalist id="subcategory-list"></datalist>
 <datalist id="type-list"></datalist>
 <datalist id="payment-list"></datalist>
 <datalist id="person-list"></datalist>
@@ -184,7 +185,7 @@
 (function(){
   const SCHEMA = `
     CREATE TABLE IF NOT EXISTS documents (
-      id INTEGER PRIMARY KEY, title TEXT, category TEXT, document_type TEXT,
+      id INTEGER PRIMARY KEY, title TEXT, category TEXT, subcategory TEXT, document_type TEXT,
       payment_method TEXT, amount REAL, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER
@@ -206,6 +207,7 @@
   // library safely upgrade it in place instead of breaking on a missing column.
   const SCHEMA_MIGRATIONS = [
     'ALTER TABLE documents ADD COLUMN import_date TEXT',
+    'ALTER TABLE documents ADD COLUMN subcategory TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -365,6 +367,7 @@
     const lines = [
       `Title: ${fields.title || ''}`,
       `Category: ${fields.category || ''}`,
+      `Subcategory: ${fields.subcategory || ''}`,
       `Document type: ${fields.documentType || ''}`,
       `Payment method: ${fields.paymentMethod || ''}`,
       `Amount: ${fields.amount != null ? fields.amount : ''}`,
@@ -481,7 +484,7 @@
 
   function loadDocumentsFromDb(){
     const { columns, rows } = queryAll(`
-      SELECT id, title, category, document_type, payment_method, amount, date, import_date, notes,
+      SELECT id, title, category, subcategory, document_type, payment_method, amount, date, import_date, notes,
              ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id
       FROM documents
     `);
@@ -527,7 +530,7 @@
       const id = row[idx.id];
       maxDocId = Math.max(maxDocId, id);
       allDocs.push({
-        id, title: row[idx.title], category: row[idx.category], document_type: row[idx.document_type],
+        id, title: row[idx.title], category: row[idx.category], subcategory: row[idx.subcategory], document_type: row[idx.document_type],
         payment_method: row[idx.payment_method], amount: row[idx.amount], date: row[idx.date],
         import_date: row[idx.import_date],
         notes: row[idx.notes], ocr_text: row[idx.ocr_text], ocr_language: row[idx.ocr_language],
@@ -590,11 +593,13 @@
 
   function populateDatalists(){
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
+    const subcategories = [...new Set(allDocs.map(d => d.subcategory).filter(Boolean))].sort();
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
+    el('subcategory-list').innerHTML = subcategories.map(s => `<option value="${escapeHtml(s)}">`).join('');
     el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
     el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('person-list').innerHTML = people.map(p => `<option value="${escapeHtml(p)}">`).join('');
@@ -622,7 +627,7 @@
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
       if(q){
-        const hay = [d.title, d.category, d.document_type, d.notes, d.ocr_text, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
@@ -651,7 +656,7 @@
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
           <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : ''}</div>
         </td>
-        <td>${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}</td>
+        <td>${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
         <td>${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
         <td>${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
         <td class="date">${formatDate(d.date)}</td>
@@ -696,7 +701,7 @@
           <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
           <h2>${escapeHtml(displayName(d))}</h2>
           <div class="modal-meta">
-            <div><b>Category</b> ${escapeHtml(d.category || '—')} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
+            <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
             <div><b>Date</b> ${formatDate(d.date)} · <b>Amount</b> ${formatAmount(d)}</div>
             <div><b>Payment</b> ${escapeHtml(d.payment_method || '—')}</div>
             <div><b>Imported</b> ${formatDate(d.import_date)}</div>
@@ -777,6 +782,10 @@
           <div class="field-row">
             <div class="field"><label for="f-category">Category</label><input type="text" id="f-category" list="category-list" /></div>
             <div class="field"><label for="f-type">Document type</label><input type="text" id="f-type" list="type-list" /></div>
+          </div>
+          <div class="field">
+            <label for="f-subcategory">Subcategory</label>
+            <input type="text" id="f-subcategory" list="subcategory-list" placeholder="Independent of category, not a child of it" />
           </div>
           <div class="field-row">
             <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
@@ -931,6 +940,7 @@
 
       const title = el('f-title').value.trim() || null;
       const category = el('f-category').value.trim() || null;
+      const subcategory = el('f-subcategory').value.trim() || null;
       const documentType = el('f-type').value.trim() || null;
       const paymentMethod = el('f-payment').value.trim() || null;
       const amountRaw = el('f-amount').value.trim();
@@ -945,11 +955,11 @@
       const importDate = createdAt;
 
       db.run(`
-        INSERT INTO documents (id, title, category, document_type, payment_method, amount, date,
+        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL)
-      `, [id, title, category, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt]);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL)
+      `, [id, title, category, subcategory, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -978,13 +988,13 @@
       }
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, documentType, paymentMethod, amount, date, importDate, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        title, category, subcategory, documentType, paymentMethod, amount, date, importDate, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
 
       allDocs.push({
-        id, title, category, document_type: documentType, payment_method: paymentMethod, amount, date,
+        id, title, category, subcategory, document_type: documentType, payment_method: paymentMethod, amount, date,
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,

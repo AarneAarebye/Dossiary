@@ -70,6 +70,7 @@ documents
     id                  INTEGER PRIMARY KEY
     title               TEXT
     category            TEXT
+    subcategory         TEXT     -- independent of category, NOT a child of it (see note below)
     document_type       TEXT
     payment_method      TEXT     -- nullable, only meaningful for receipts/invoices
     amount              REAL     -- nullable
@@ -112,6 +113,13 @@ from Mariner's "Person" custom field — which sometimes held multiple names
 joined with "&" (e.g. "Arne & Jana") — split into individual people so that
 filtering by one name finds every document they're part of, not just ones
 where they're the *only* name.
+
+`subcategory` is despite its name **not** nested under `category` — that's
+how Mariner's own schema worked (no foreign key between the two tables),
+and it holds in the data too: the same subcategory name shows up under
+different categories on different documents (e.g. "Dentist" appears under
+both "Medical" and "Health"). It's carried over as-is: a second, independent
+classification field.
 
 ## Limitations
 

@@ -74,6 +74,14 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   someone else. If touching this, keep `migrate_to_new_library.py` in the
   sibling repo in sync — it does the equivalent split-on-`&` migration in
   Python.
+- **`subcategory` is a flat, independent field, not nested under
+  `category`** — despite the name, and despite what a naive redesign might
+  assume. This matches Mariner's own schema (`ZSUBCATEGORY` has no foreign
+  key to `ZCATEGORY`) and the real data (the same subcategory name appears
+  under different categories on different documents). Don't build a
+  category → subcategory cascading dropdown or similar hierarchy UI on the
+  assumption that one is scoped to the other; it isn't, in the source data
+  or here.
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's
