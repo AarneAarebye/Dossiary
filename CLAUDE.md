@@ -97,6 +97,23 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   removed from every document that used it) are left in place rather than
   pruned — they're harmless unused lookup entries and still useful for
   datalist autocomplete; don't add cleanup logic for this without a reason.
+- **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
+  `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
+  `display` on any element carrying a matching `data-field="<id>"`
+  attribute — table headers, table cells (added fresh in every `render()`
+  call, so `applyColumnVisibility()` runs again at the end of `render()`
+  to reapply to the new cells), and the `<span class="filter-wrap">`
+  wrapping each filter `<select>`. If you add a new configurable field,
+  you need **all three**: an entry in `FIELD_DEFS`, a `data-field` on the
+  `<th>` (and matching `<td>` in `render()`'s row template), and — if it
+  has a filter — a `data-field`-wrapped `<span>` around its `<select>` in
+  the toolbar. Missing any one of these means the toggle silently does
+  nothing for that piece. The preference itself is stored in
+  `library.sqlite`'s `settings` table (`INSERT OR REPLACE`, not the
+  `ON CONFLICT ... DO UPDATE` upsert syntax — deliberately, since upsert
+  support depends on the SQLite version sql.js happens to bundle, and
+  `INSERT OR REPLACE` has been supported forever), not browser storage —
+  keep it that way so the preference travels with the library folder.
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's
@@ -176,8 +193,17 @@ that can't be scripted. The approach used during development:
 - Stub `window.initSqlJs` with a small generic `FakeDatabase` class that
   parses/serializes its whole state as JSON (instead of real SQLite bytes)
   and implements just enough of `run()`/`exec()`/`export()` — via regex
-  parsing of the actual SQL strings the app sends — to exercise real INSERT
-  and SELECT logic without a real SQLite engine.
+  parsing of the actual SQL strings the app sends — to exercise real
+  `INSERT`/`UPDATE`/`DELETE`/`SELECT ... WHERE` logic without a real
+  SQLite engine. This needed real extending as the app grew past pure
+  inserts: `run()` handles `UPDATE ... SET ... WHERE col = ?` and
+  `DELETE FROM ... WHERE col = ?` (used by editing), and `INSERT OR
+  REPLACE` semantics (used by settings) in addition to the original
+  `INSERT OR IGNORE`; `exec()` handles a single `WHERE col = 'literal'`
+  clause (used by the settings lookup). If a future change sends the app's
+  first `UPDATE`/`DELETE`/`SELECT` with a shape the stub doesn't recognize
+  yet, extend the stub's regex matching rather than working around it —
+  the whole point is exercising the app's real SQL strings.
 - Stub `window.showDirectoryPicker` and the `FileSystemDirectoryHandle` /
   `FileSystemFileHandle` interfaces with an in-memory `Map`-based fake
   filesystem, so `getFileHandle`/`getDirectoryHandle`/`createWritable`/

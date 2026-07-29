@@ -47,6 +47,12 @@ working" problem that motivated this project in the first place.
   category, subcategory, type, payment method, amount, date, people, tags,
   notes, OCR text) after the fact. This only ever changes `library.sqlite`
   — the underlying file on disk is never touched or replaced.
+- **Configurable columns & filters** — the "⚙ Columns" button in the
+  toolbar lets you show/hide table columns (Category, Type, Payment method,
+  People, Date, Amount, Tags); each one that supports filtering shows or
+  hides its matching filter dropdown at the same time. The choice is saved
+  in `library.sqlite` itself, so it travels with the library folder rather
+  than being tied to one browser or device.
 
 ## Getting started
 
@@ -108,7 +114,16 @@ document_people
     document_id  INTEGER
     person_id    INTEGER
     PRIMARY KEY (document_id, person_id)
+
+settings
+    key    TEXT PRIMARY KEY
+    value  TEXT
 ```
+
+`settings` is a small key-value table for app preferences that should
+travel with the library rather than live in browser storage — currently
+just `visible_columns` (a JSON array of which table columns and their
+matching filters are shown).
 
 "People" works exactly like tags: a document can relate to more than one
 person (a joint bill, a shared appointment, etc.), so it's a many-to-many

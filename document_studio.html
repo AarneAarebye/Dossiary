@@ -31,6 +31,14 @@
   .search{ flex:1 1 240px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
   .search:focus{ border-color:var(--phosphor-dim); box-shadow:0 0 0 3px rgba(79,224,166,0.08); }
   select{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 10px; border-radius:var(--radius); outline:none; }
+  .columns-menu-wrap{ position:relative; }
+  .columns-menu{
+    position:absolute; top:calc(100% + 6px); right:0; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:10px 12px; z-index:40; min-width:180px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .columns-menu-item{ display:flex; align-items:center; gap:8px; padding:5px 0; font-family:var(--font-mono); font-size:12px; }
+  .columns-menu-item input{ accent-color:var(--phosphor); }
+  .columns-menu-item label{ cursor:pointer; user-select:none; }
   button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
   button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
   button.primary{ background:var(--phosphor); color:var(--text-ink); border-color:var(--phosphor); font-weight:600; }
@@ -123,9 +131,14 @@
 
   <div class="toolbar" id="toolbar" style="display:none;">
     <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
-    <select id="category-filter"><option value="">All categories</option></select>
-    <select id="type-filter"><option value="">All types</option></select>
-    <select id="person-filter"><option value="">All people</option></select>
+    <span class="filter-wrap" data-field="category"><select id="category-filter"><option value="">All categories</option></select></span>
+    <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
+    <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
+    <span class="filter-wrap" data-field="payment_method"><select id="payment-filter"><option value="">All payment methods</option></select></span>
+    <div class="columns-menu-wrap">
+      <button id="columns-btn">⚙ Columns</button>
+      <div class="columns-menu" id="columns-menu" style="display:none;"></div>
+    </div>
     <button class="accent" id="add-btn">＋ Add document</button>
     <button id="reload-btn">Switch library</button>
   </div>
@@ -159,12 +172,13 @@
       <thead>
         <tr>
           <th data-key="title">Document</th>
-          <th data-key="category">Category</th>
-          <th data-key="document_type">Type</th>
-          <th>People</th>
-          <th data-key="date">Date</th>
-          <th data-key="amount">Amount</th>
-          <th>Tags</th>
+          <th data-key="category" data-field="category">Category</th>
+          <th data-key="document_type" data-field="document_type">Type</th>
+          <th data-key="payment_method" data-field="payment_method">Payment</th>
+          <th data-field="people">People</th>
+          <th data-key="date" data-field="date">Date</th>
+          <th data-key="amount" data-field="amount">Amount</th>
+          <th data-field="tags">Tags</th>
         </tr>
       </thead>
       <tbody id="doc-tbody"></tbody>
@@ -199,6 +213,7 @@
     CREATE TABLE IF NOT EXISTS document_people (
       document_id INTEGER, person_id INTEGER, PRIMARY KEY (document_id, person_id)
     );
+    CREATE TABLE IF NOT EXISTS settings ( key TEXT PRIMARY KEY, value TEXT );
   `;
 
   // Columns added after a library may already have been created. CREATE TABLE IF NOT
@@ -231,6 +246,20 @@
   let nextDocId = 1;
   let nextTagId = 1;
   let nextPersonId = 1;
+  // Configurable columns/filters. 'title' isn't here -- it's always shown, it's the
+  // primary identifier for a row. hasFilter marks fields that get a toolbar dropdown
+  // in addition to being a table column.
+  const FIELD_DEFS = [
+    { id: 'category', label: 'Category', hasFilter: true, defaultVisible: true },
+    { id: 'document_type', label: 'Type', hasFilter: true, defaultVisible: true },
+    { id: 'payment_method', label: 'Payment method', hasFilter: true, defaultVisible: false },
+    { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
+    { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
+    { id: 'amount', label: 'Amount', hasFilter: false, defaultVisible: true },
+    { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
+  ];
+  let visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+
   let sortKey = 'date';
   let sortDir = 'desc';
   let pendingFile = null;
@@ -252,6 +281,7 @@
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
+  const paymentFilter = el('payment-filter');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -470,6 +500,7 @@
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
+    visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
@@ -546,6 +577,9 @@
     toolbar.style.display = 'flex';
     tableWrap.style.display = 'block';
     subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+    loadColumnSettings();
+    renderColumnsMenu();
+    applyColumnVisibility();
     renderStats();
     populateFilters();
     populateDatalists();
@@ -557,6 +591,55 @@
     const writable = await dbFileHandle.createWritable();
     await writable.write(bytes);
     await writable.close();
+  }
+
+  // --- column/filter visibility settings (stored in library.sqlite itself, so the
+  // preference travels with the library rather than being tied to one browser) ---
+
+  function loadColumnSettings(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'visible_columns'").rows;
+    if(rows.length){
+      try{
+        const ids = JSON.parse(rows[0][0]);
+        if(Array.isArray(ids)){
+          visibleColumns = new Set(ids.filter(id => FIELD_DEFS.some(f => f.id === id)));
+          return;
+        }
+      }catch(e){ /* fall through to defaults below */ }
+    }
+    visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+  }
+
+  async function saveColumnSettings(){
+    const json = JSON.stringify([...visibleColumns]);
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('visible_columns', ?)", [json]);
+    await persistDb();
+  }
+
+  function applyColumnVisibility(){
+    document.querySelectorAll('[data-field]').forEach(elm => {
+      const field = elm.dataset.field;
+      const show = visibleColumns.has(field);
+      elm.style.display = show ? '' : 'none';
+    });
+  }
+
+  function renderColumnsMenu(){
+    const menu = el('columns-menu');
+    menu.innerHTML = FIELD_DEFS.map(f => `
+      <div class="columns-menu-item">
+        <input type="checkbox" id="col-toggle-${f.id}" ${visibleColumns.has(f.id) ? 'checked' : ''} />
+        <label for="col-toggle-${f.id}">${escapeHtml(f.label)}</label>
+      </div>
+    `).join('');
+    FIELD_DEFS.forEach(f => {
+      el(`col-toggle-${f.id}`).addEventListener('change', async (e) => {
+        if(e.target.checked) visibleColumns.add(f.id);
+        else visibleColumns.delete(f.id);
+        applyColumnVisibility();
+        await saveColumnSettings();
+      });
+    });
   }
 
   async function resolveFileHandle(relPath, create){
@@ -587,9 +670,11 @@
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
+    const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
     categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     typeFilter.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     personFilter.innerHTML = '<option value="">All people</option>' + people.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    paymentFilter.innerHTML = '<option value="">All payment methods</option>' + payments.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
   }
 
   function populateDatalists(){
@@ -619,14 +704,15 @@
   }
 
   function currentFilters(){
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value };
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, payment: paymentFilter.value };
   }
   function applyFilters(docs){
-    const { q, category, type, person } = currentFilters();
+    const { q, category, type, person, payment } = currentFilters();
     return docs.filter(d => {
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
+      if(payment && d.payment_method !== payment) return false;
       if(q){
         const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
@@ -657,23 +743,37 @@
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
           <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : ''}</div>
         </td>
-        <td>${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
-        <td>${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
-        <td>${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
-        <td class="date">${formatDate(d.date)}</td>
-        <td class="amount">${formatAmount(d)}</td>
-        <td>${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
+        <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
+        <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
+        <td data-field="payment_method">${d.payment_method ? escapeHtml(d.payment_method) : '<span class="doc-sub">—</span>'}</td>
+        <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
+        <td class="date" data-field="date">${formatDate(d.date)}</td>
+        <td class="amount" data-field="amount">${formatAmount(d)}</td>
+        <td data-field="tags">${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
       </tr>
     `).join('');
 
     document.querySelectorAll('thead th[data-key]').forEach(th => th.classList.toggle('active', th.dataset.key === sortKey));
     tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openDetail(Number(tr.dataset.id))));
+    applyColumnVisibility();
   }
 
   searchInput.addEventListener('input', render);
   categoryFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
+  paymentFilter.addEventListener('change', render);
+
+  el('columns-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = el('columns-menu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.columns-menu-wrap');
+    if(wrap && !wrap.contains(e.target)) el('columns-menu').style.display = 'none';
+  });
+
   document.querySelectorAll('thead th[data-key]').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
