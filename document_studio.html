@@ -695,6 +695,7 @@
     const actions = [];
     if(d.file_path) actions.push(`<button class="primary" id="open-file-btn">Open file</button>`);
     if(d.original_file_path) actions.push(`<button id="open-original-btn">Open original file</button>`);
+    actions.push(`<button id="edit-doc-btn">Edit</button>`);
 
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
@@ -708,7 +709,7 @@
             <div><b>Imported</b> ${formatDate(d.import_date)}</div>
             <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
           </div>
-          <div class="modal-actions">${actions.join('') || '<span class="doc-sub">No file recorded for this document</span>'}</div>
+          <div class="modal-actions">${actions.join('')}${(!d.file_path && !d.original_file_path) ? '<span class="doc-sub" style="align-self:center;">No file recorded for this document</span>' : ''}</div>
           <div class="modal-section"><h3>People</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || '—'}</p></div>
           <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
           ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
@@ -737,6 +738,157 @@
           window.open(URL.createObjectURL(file), '_blank');
         }catch(e){ alert('Could not open file: ' + e.message); }
       });
+    }
+    el('edit-doc-btn').addEventListener('click', () => openEditForm(id));
+  }
+
+  // --- edit modal (update existing document's metadata) ---
+
+  function openEditForm(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!d) return;
+
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Edit document</h2>
+
+          <div class="field-row">
+            <div class="field"><label for="e-title">Title</label><input type="text" id="e-title" value="${escapeHtml(d.title || '')}" /></div>
+            <div class="field"><label for="e-date">Date</label><input type="date" id="e-date" value="${escapeHtml((d.date || '').slice(0, 10))}" /></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="e-category">Category</label><input type="text" id="e-category" list="category-list" value="${escapeHtml(d.category || '')}" /></div>
+            <div class="field"><label for="e-type">Document type</label><input type="text" id="e-type" list="type-list" value="${escapeHtml(d.document_type || '')}" /></div>
+          </div>
+          <div class="field">
+            <label for="e-subcategory">Subcategory</label>
+            <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="Independent of category, not a child of it" />
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="e-payment">Payment method</label><input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" /></div>
+            <div class="field"><label for="e-amount">Amount</label><input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" /></div>
+          </div>
+          <div class="field">
+            <label for="e-person">People (comma-separated)</label>
+            <input type="text" id="e-person" list="person-list" value="${escapeHtml((d.people||[]).join(', '))}" placeholder="Who this document relates to, e.g. Arne, Jana" />
+          </div>
+          <div class="field">
+            <label for="e-tags">Tags (comma-separated)</label>
+            <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="e.g. medical, insurance" />
+          </div>
+          <div class="field">
+            <label for="e-notes">Notes</label>
+            <textarea id="e-notes" rows="3">${escapeHtml(d.notes || '')}</textarea>
+          </div>
+          <div class="field">
+            <label for="e-ocr-text">OCR / extracted text</label>
+            <textarea id="e-ocr-text" rows="5">${escapeHtml(d.ocr_text || '')}</textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button class="primary" id="save-edit-btn">Save changes</button>
+            <button id="cancel-edit-btn">Cancel</button>
+          </div>
+          <div class="status" id="edit-status" style="padding:10px 0 0;"></div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('cancel-edit-btn').addEventListener('click', () => openDetail(id));
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
+  }
+
+  // Recovers the base filename (no extension) a document's files were saved under,
+  // so an edit can rewrite the matching sidecar .txt without needing to store that
+  // base name separately -- it's always derivable from file_path.
+  function sidecarBaseNameFromFilePath(filePath){
+    if(!filePath) return null;
+    const name = filePath.replace(/^files\//, '');
+    return name.replace(/\.[^.]+$/, '');
+  }
+
+  async function saveEditedDocument(id){
+    const editStatus = el('edit-status');
+    const saveBtn = el('save-edit-btn');
+    saveBtn.disabled = true;
+    editStatus.className = 'status busy';
+    editStatus.innerHTML = '<span class="spinner"></span> Saving…';
+
+    try{
+      const title = el('e-title').value.trim() || null;
+      const category = el('e-category').value.trim() || null;
+      const subcategory = el('e-subcategory').value.trim() || null;
+      const documentType = el('e-type').value.trim() || null;
+      const paymentMethod = el('e-payment').value.trim() || null;
+      const amountRaw = el('e-amount').value.trim();
+      const amount = amountRaw === '' ? null : parseFloat(amountRaw);
+      const date = el('e-date').value || null;
+      const notes = el('e-notes').value.trim() || null;
+      const ocrText = el('e-ocr-text').value.trim() || null;
+
+      db.run(`
+        UPDATE documents SET title=?, category=?, subcategory=?, document_type=?, payment_method=?,
+                              amount=?, date=?, notes=?, ocr_text=?
+        WHERE id=?
+      `, [title, category, subcategory, documentType, paymentMethod, amount, date, notes, ocrText, id]);
+
+      // Re-link tags: drop existing links for this document, then re-add based on
+      // the edited comma-separated list (same find-or-create pattern as capture).
+      db.run('DELETE FROM document_tags WHERE document_id = ?', [id]);
+      const tagNames = el('e-tags').value.split(',').map(t => t.trim()).filter(Boolean);
+      const tagsForDoc = [];
+      for(const name of tagNames){
+        let tagId = tagNameToId[name];
+        if(tagId === undefined){
+          tagId = nextTagId++;
+          db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+          tagNameToId[name] = tagId;
+        }
+        db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
+        tagsForDoc.push(name);
+      }
+
+      db.run('DELETE FROM document_people WHERE document_id = ?', [id]);
+      const personNames = el('e-person').value.split(',').map(p => p.trim()).filter(Boolean);
+      const peopleForDoc = [];
+      for(const name of personNames){
+        let personId = personNameToId[name];
+        if(personId === undefined){
+          personId = nextPersonId++;
+          db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+          personNameToId[name] = personId;
+        }
+        db.run('INSERT OR IGNORE INTO document_people (document_id, person_id) VALUES (?, ?)', [id, personId]);
+        peopleForDoc.push(name);
+      }
+
+      const d = allDocs.find(x => x.id === id);
+      const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
+      if(sidecarBaseName){
+        await writeSidecarFile(sidecarBaseName, buildSidecarText({
+          title, category, subcategory, documentType, paymentMethod, amount, date,
+          importDate: d.import_date, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        }));
+      }
+
+      await persistDb();
+
+      Object.assign(d, {
+        title, category, subcategory, document_type: documentType, payment_method: paymentMethod,
+        amount, date, notes, ocr_text: ocrText, tags: tagsForDoc, people: peopleForDoc,
+      });
+      renderStats(); populateFilters(); populateDatalists(); render();
+
+      setStatus(`Saved changes to "${title || 'Document #' + id}".`, 'ok');
+      openDetail(id);
+    }catch(e){
+      editStatus.className = 'status err';
+      editStatus.textContent = 'Save failed: ' + e.message;
+      saveBtn.disabled = false;
     }
   }
 

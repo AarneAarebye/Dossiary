@@ -43,6 +43,10 @@ working" problem that motivated this project in the first place.
   date, notes, people, and free-form tags per document — a document can
   relate to more than one person, filterable the same way tags are
 - **Open originals** — one click to open the actual file from disk
+- **Edit** — click any document, then "Edit" to update its metadata (title,
+  category, subcategory, type, payment method, amount, date, people, tags,
+  notes, OCR text) after the fact. This only ever changes `library.sqlite`
+  — the underlying file on disk is never touched or replaced.
 
 ## Getting started
 

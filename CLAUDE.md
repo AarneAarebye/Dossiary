@@ -82,6 +82,21 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   category → subcategory cascading dropdown or similar hierarchy UI on the
   assumption that one is scoped to the other; it isn't, in the source data
   or here.
+- **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
+  only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
+  via delete-then-reinsert of that document's links (not a diff), reusing
+  the same find-or-create pattern as capture. It never touches `file_path`,
+  `original_file_path`, `created_at`, `import_date`, `source`, or
+  `source_legacy_id` — there's no file-replacement feature, deliberately
+  out of scope so far. After saving, the sidecar `.txt` is rewritten via
+  `sidecarBaseNameFromFilePath()`, which derives the base filename from the
+  existing `file_path` rather than storing it separately — if the
+  file-naming scheme in `saveNewDocument()` ever changes, this derivation
+  needs to change with it, or edited documents will silently write their
+  sidecar to the wrong name. Orphaned `tags`/`people` rows (a tag or person
+  removed from every document that used it) are left in place rather than
+  pruned — they're harmless unused lookup entries and still useful for
+  datalist autocomplete; don't add cleanup logic for this without a reason.
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's
