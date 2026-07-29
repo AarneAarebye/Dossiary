@@ -113,6 +113,21 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
     (PDF upload, or an image format other than JPEG/PNG), the picked file
     is saved directly as `file_path` with `original_file_path` left `NULL`
     — there's no meaningfully separate "original" in that case.
+- **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
+  written next to every captured document's primary file, containing the
+  fields that only live in `library.sqlite` (category, tags, notes, OCR
+  text, etc.) so Spotlight/Finder search can find them — Spotlight has no
+  visibility into a SQLite file's rows otherwise, and there is no way to
+  register a real Spotlight importer from a browser context. If the
+  metadata fields captured in `saveNewDocument()` change, update
+  `buildSidecarText()`'s field list to match — it's easy for these to drift
+  out of sync since nothing enforces they stay identical. The sidecar's
+  base filename always matches the primary file's stem (without extension),
+  never the original's — so it's discoverable sitting right next to what a
+  person would actually open. `migrate_to_new_library.py` in the sibling
+  repo does the equivalent thing in Python (`build_sidecar_text()`) for
+  migrated documents; keep both in sync if the sidecar format changes,
+  since a person migrating and then capturing should get consistent files.
 - **No persistence of the folder handle across page reloads.** A person
   re-selects the library folder every session. This is a deliberate,
   accepted limitation (see README), not something to silently work around

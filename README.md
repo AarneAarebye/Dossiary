@@ -23,7 +23,8 @@ working" problem that motivated this project in the first place.
 ## Features
 
 - **Browse** — sortable, searchable, filterable list of every document in
-  the library, with category/type filters
+  the library, with category/type filters. Search matches title, category,
+  document type, notes, tags, and OCR text.
 - **Capture** — add a new document (PDF or image), with client-side OCR
   (German, English, or both) via [Tesseract.js](https://github.com/naptha/tesseract.js)
   running entirely in your browser. For JPEG/PNG images, this also builds a
@@ -32,6 +33,12 @@ working" problem that motivated this project in the first place.
   like `ocrmypdf` use) — while the original image is preserved untouched in
   a subfolder next to it, mirroring how Mariner Paperless itself laid out
   processed vs. original files.
+- **Spotlight/Finder search** — every captured document also gets a plain
+  `.txt` sidecar file (title, category, tags, notes, OCR text) written next
+  to it, so macOS's built-in file search can find documents by fields that
+  otherwise only live inside `library.sqlite`. This isn't a real Spotlight
+  *integration* (not possible from a browser — see Limitations below); it's
+  just an ordinary text file that happens to get indexed like any other.
 - **Tag & organize** — category, document type, payment method, amount,
   date, notes, and free-form tags per document
 - **Open originals** — one click to open the actual file from disk
@@ -90,6 +97,12 @@ document_tags
 
 ## Limitations
 
+- **No real Spotlight/Core Spotlight integration.** A browser-based app has
+  no access to `CSSearchableIndex` or the ability to register a Spotlight
+  importer — both require native code installed at the system level. The
+  `.txt` sidecar files get *incidental* Spotlight benefit (since Spotlight
+  indexes any plain text file's content), but this is a workaround, not a
+  true integration, and it doesn't cover PDFs without a text layer.
 - **Re-select the folder each session.** Browsers don't allow persisting
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not

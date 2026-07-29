@@ -121,7 +121,7 @@
   </header>
 
   <div class="toolbar" id="toolbar" style="display:none;">
-    <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags…" />
+    <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
     <select id="category-filter"><option value="">All categories</option></select>
     <select id="type-filter"><option value="">All types</option></select>
     <button class="accent" id="add-btn">＋ Add document</button>
@@ -345,6 +345,38 @@
     return doc.output('arraybuffer');
   }
 
+  // Builds a plain-text sidecar file with the fields that only live inside library.sqlite
+  // (category, tags, notes, OCR text, etc.) so tools that index plain text on disk --
+  // Spotlight/Finder search on macOS being the main one -- can find documents by those
+  // fields. This isn't a "real" Spotlight integration (impossible from a browser -- see
+  // CLAUDE.md), just a plain-text file that happens to get indexed like any other .txt.
+  function buildSidecarText(fields){
+    const lines = [
+      `Title: ${fields.title || ''}`,
+      `Category: ${fields.category || ''}`,
+      `Document type: ${fields.documentType || ''}`,
+      `Payment method: ${fields.paymentMethod || ''}`,
+      `Amount: ${fields.amount != null ? fields.amount : ''}`,
+      `Date: ${fields.date || ''}`,
+      `Imported: ${fields.importDate || ''}`,
+      `Tags: ${(fields.tags || []).join(', ')}`,
+      '',
+      'Notes:',
+      fields.notes || '',
+      '',
+      'OCR text:',
+      fields.ocrText || '',
+    ];
+    return lines.join('\n');
+  }
+
+  async function writeSidecarFile(baseName, text){
+    const handle = await filesDirHandle.getFileHandle(`${baseName}.txt`, { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(text);
+    await writable.close();
+  }
+
   // --- library open / init ---
 
   el('open-btn').addEventListener('click', openLibrary);
@@ -554,7 +586,7 @@
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(q){
-        const hay = [d.title, d.category, d.document_type, d.notes, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        const hay = [d.title, d.category, d.document_type, d.notes, d.ocr_text, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
@@ -813,7 +845,7 @@
       const canBuildSearchablePdf = pendingOcrWords && pendingOcrWords.length && pendingImageDims
         && (pendingFile.type === 'image/jpeg' || pendingFile.type === 'image/png');
 
-      let filePathForDb, originalFilePathForDb;
+      let filePathForDb, originalFilePathForDb, sidecarBaseName;
 
       if(canBuildSearchablePdf){
         const imageFormat = pendingFile.type === 'image/jpeg' ? 'JPEG' : 'PNG';
@@ -840,6 +872,7 @@
 
         filePathForDb = `files/${processedName}`;
         originalFilePathForDb = `files/${subfolderName}/${originalName}`;
+        sidecarBaseName = `${id}_${baseName}`;
       }else{
         // No word-position OCR data available (PDF upload, unsupported image type,
         // or OCR wasn't run) -- just save the picked file directly, same as before.
@@ -850,6 +883,7 @@
         await writable.close();
         filePathForDb = `files/${destName}`;
         originalFilePathForDb = null;
+        sidecarBaseName = destName.replace(/\.[^.]+$/, '');
       }
 
       const title = el('f-title').value.trim() || null;
@@ -886,6 +920,10 @@
         db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
         tagsForDoc.push(name);
       }
+
+      await writeSidecarFile(sidecarBaseName, buildSidecarText({
+        title, category, documentType, paymentMethod, amount, date, importDate, notes, ocrText, tags: tagsForDoc,
+      }));
 
       await persistDb();
 
