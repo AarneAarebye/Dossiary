@@ -124,6 +124,7 @@
     <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
     <select id="category-filter"><option value="">All categories</option></select>
     <select id="type-filter"><option value="">All types</option></select>
+    <select id="person-filter"><option value="">All people</option></select>
     <button class="accent" id="add-btn">＋ Add document</button>
     <button id="reload-btn">Switch library</button>
   </div>
@@ -159,6 +160,7 @@
           <th data-key="title">Document</th>
           <th data-key="category">Category</th>
           <th data-key="document_type">Type</th>
+          <th>People</th>
           <th data-key="date">Date</th>
           <th data-key="amount">Amount</th>
           <th>Tags</th>
@@ -174,6 +176,7 @@
 <datalist id="category-list"></datalist>
 <datalist id="type-list"></datalist>
 <datalist id="payment-list"></datalist>
+<datalist id="person-list"></datalist>
 <datalist id="tag-list"></datalist>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
@@ -189,6 +192,10 @@
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
       document_id INTEGER, tag_id INTEGER, PRIMARY KEY (document_id, tag_id)
+    );
+    CREATE TABLE IF NOT EXISTS people ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
+    CREATE TABLE IF NOT EXISTS document_people (
+      document_id INTEGER, person_id INTEGER, PRIMARY KEY (document_id, person_id)
     );
   `;
 
@@ -216,8 +223,11 @@
   let allDocs = [];
   let tagsByDocId = {};
   let tagNameToId = {};
+  let peopleByDocId = {};
+  let personNameToId = {};
   let nextDocId = 1;
   let nextTagId = 1;
+  let nextPersonId = 1;
   let sortKey = 'date';
   let sortDir = 'desc';
   let pendingFile = null;
@@ -238,6 +248,7 @@
   const searchInput = el('search');
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
+  const personFilter = el('person-filter');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -359,6 +370,7 @@
       `Amount: ${fields.amount != null ? fields.amount : ''}`,
       `Date: ${fields.date || ''}`,
       `Imported: ${fields.importDate || ''}`,
+      `People: ${(fields.people || []).join(', ')}`,
       `Tags: ${(fields.tags || []).join(', ')}`,
       '',
       'Notes:',
@@ -452,7 +464,8 @@
 
   function resetAll(){
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
-    allDocs = []; tagsByDocId = {}; tagNameToId = {}; nextDocId = 1; nextTagId = 1;
+    allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
+    nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
@@ -491,6 +504,23 @@
       (tagsByDocId[docId] = tagsByDocId[docId] || []).push(tagIdToName[tagId] || ('#' + tagId));
     }
 
+    const people = queryAll('SELECT id, name FROM people');
+    const pIdx = Object.fromEntries(people.columns.map((c, i) => [c, i]));
+    personNameToId = {};
+    let maxPersonId = 0;
+    for(const row of people.rows){
+      personNameToId[row[pIdx.name]] = row[pIdx.id];
+      maxPersonId = Math.max(maxPersonId, row[pIdx.id]);
+    }
+    nextPersonId = maxPersonId + 1;
+
+    const personLinks = queryAll('SELECT document_id, person_id FROM document_people');
+    const personIdToName = Object.fromEntries(Object.entries(personNameToId).map(([n, i]) => [i, n]));
+    peopleByDocId = {};
+    for(const [docId, personId] of personLinks.rows){
+      (peopleByDocId[docId] = peopleByDocId[docId] || []).push(personIdToName[personId] || ('#' + personId));
+    }
+
     allDocs = [];
     let maxDocId = 0;
     for(const row of rows){
@@ -504,6 +534,7 @@
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
         created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
         tags: tagsByDocId[id] || [],
+        people: peopleByDocId[id] || [],
       });
     }
     nextDocId = maxDocId + 1;
@@ -551,18 +582,22 @@
   function populateFilters(){
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
+    const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     typeFilter.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    personFilter.innerHTML = '<option value="">All people</option>' + people.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
   }
 
   function populateDatalists(){
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
+    const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
     el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
+    el('person-list').innerHTML = people.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('tag-list').innerHTML = tagNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
   }
 
@@ -578,15 +613,16 @@
   }
 
   function currentFilters(){
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value };
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value };
   }
   function applyFilters(docs){
-    const { q, category, type } = currentFilters();
+    const { q, category, type, person } = currentFilters();
     return docs.filter(d => {
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
+      if(person && !(d.people||[]).includes(person)) return false;
       if(q){
-        const hay = [d.title, d.category, d.document_type, d.notes, d.ocr_text, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        const hay = [d.title, d.category, d.document_type, d.notes, d.ocr_text, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
@@ -617,6 +653,7 @@
         </td>
         <td>${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}</td>
         <td>${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
+        <td>${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
         <td class="date">${formatDate(d.date)}</td>
         <td class="amount">${formatAmount(d)}</td>
         <td>${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
@@ -630,6 +667,7 @@
   searchInput.addEventListener('input', render);
   categoryFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
+  personFilter.addEventListener('change', render);
   document.querySelectorAll('thead th[data-key]').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
@@ -665,6 +703,7 @@
             <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
           </div>
           <div class="modal-actions">${actions.join('') || '<span class="doc-sub">No file recorded for this document</span>'}</div>
+          <div class="modal-section"><h3>People</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || '—'}</p></div>
           <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
           ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
           ${d.ocr_text ? `<div class="modal-section"><h3>OCR text</h3><div class="ocr-box">${escapeHtml(d.ocr_text)}</div></div>` : ''}
@@ -742,6 +781,10 @@
           <div class="field-row">
             <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
             <div class="field"><label for="f-amount">Amount</label><input type="number" step="0.01" id="f-amount" /></div>
+          </div>
+          <div class="field">
+            <label for="f-person">People (comma-separated)</label>
+            <input type="text" id="f-person" list="person-list" placeholder="Who this document relates to, e.g. Arne, Jana" />
           </div>
           <div class="field">
             <label for="f-tags">Tags (comma-separated)</label>
@@ -921,8 +964,21 @@
         tagsForDoc.push(name);
       }
 
+      const personNames = el('f-person').value.split(',').map(p => p.trim()).filter(Boolean);
+      const peopleForDoc = [];
+      for(const name of personNames){
+        let personId = personNameToId[name];
+        if(personId === undefined){
+          personId = nextPersonId++;
+          db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+          personNameToId[name] = personId;
+        }
+        db.run('INSERT OR IGNORE INTO document_people (document_id, person_id) VALUES (?, ?)', [id, personId]);
+        peopleForDoc.push(name);
+      }
+
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, documentType, paymentMethod, amount, date, importDate, notes, ocrText, tags: tagsForDoc,
+        title, category, documentType, paymentMethod, amount, date, importDate, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
@@ -932,7 +988,7 @@
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
-        tags: tagsForDoc,
+        tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
       subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;

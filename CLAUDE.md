@@ -64,6 +64,16 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   name = ?` round-trip per tag. This assumes single-writer, single-tab
   usage (true for this app's design); don't add multi-tab sync assumptions
   without addressing that this map can go stale across tabs.
+- **People are structured exactly like tags** (`people` + `document_people`
+  many-to-many, `personNameToId` map, comma-separated input in the capture
+  form) — a document can relate to more than one person. Don't regress this
+  to a single `person TEXT` column on `documents`; an earlier version of
+  this app did that, and it was wrong: Mariner's own source data has
+  multi-person values (e.g. "Arne & Jana"), and a single string field makes
+  "find everything about Arne" impossible for any document he shares with
+  someone else. If touching this, keep `migrate_to_new_library.py` in the
+  sibling repo in sync — it does the equivalent split-on-`&` migration in
+  Python.
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's

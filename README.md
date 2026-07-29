@@ -40,7 +40,8 @@ working" problem that motivated this project in the first place.
   *integration* (not possible from a browser — see Limitations below); it's
   just an ordinary text file that happens to get indexed like any other.
 - **Tag & organize** — category, document type, payment method, amount,
-  date, notes, and free-form tags per document
+  date, notes, people, and free-form tags per document — a document can
+  relate to more than one person, filterable the same way tags are
 - **Open originals** — one click to open the actual file from disk
 
 ## Getting started
@@ -93,7 +94,24 @@ document_tags
     document_id  INTEGER
     tag_id       INTEGER
     PRIMARY KEY (document_id, tag_id)
+
+people
+    id    INTEGER PRIMARY KEY
+    name  TEXT UNIQUE
+
+document_people
+    document_id  INTEGER
+    person_id    INTEGER
+    PRIMARY KEY (document_id, person_id)
 ```
+
+"People" works exactly like tags: a document can relate to more than one
+person (a joint bill, a shared appointment, etc.), so it's a many-to-many
+relationship, not a single field. For migrated documents, this is backfilled
+from Mariner's "Person" custom field — which sometimes held multiple names
+joined with "&" (e.g. "Arne & Jana") — split into individual people so that
+filtering by one name finds every document they're part of, not just ones
+where they're the *only* name.
 
 ## Limitations
 
