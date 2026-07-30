@@ -37,6 +37,17 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
 
 ## Architecture notes
 
+- **`<!DOCTYPE html>` and `<meta charset="UTF-8">` at the very top are
+  load-bearing, not boilerplate** — don't remove them thinking they're
+  unnecessary for a file that isn't a "real" full HTML document. Without
+  the DOCTYPE, the browser renders in quirks mode, which has an obscure
+  legacy behavior where `<table>` elements don't inherit `color` from
+  ancestors — this made every table cell render invisible (black text on
+  the dark background) until it was diagnosed and fixed. Without the
+  charset declaration, special characters (the footer's `©`/`·`, the
+  `＋`/`✕` used elsewhere in the UI) rely on browser encoding-sniffing
+  instead of a guarantee. Both bugs are the kind that "work fine" in quick
+  testing and then fail unpredictably for someone else — keep both lines.
 - **File System Access API** (`showDirectoryPicker({mode: 'readwrite'})`)
   gives a `FileSystemDirectoryHandle` for the chosen library folder. This
   only works in a real top-level page — it's blocked inside cross-origin
