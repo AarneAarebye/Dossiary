@@ -82,6 +82,25 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   category → subcategory cascading dropdown or similar hierarchy UI on the
   assumption that one is scoped to the other; it isn't, in the source data
   or here.
+- **Document previews** (`generateThumbnail()`, `writeThumbnail()`,
+  `regenerateThumbnail()`) are stored as PNG files in a `thumbnails/`
+  folder at the library root (`thumbnails/<id>.png`), not as BLOBs in
+  `library.sqlite` — deliberately, to keep the database small and mirror
+  the `files/`/`thumbnails/` split Mariner itself used. `migrate_to_new_library.py`
+  populates `thumbnail_path` by copying Mariner's own `ZTHUMBNAILPATH` file
+  directly during migration — it does **not** render anything client-side
+  for migrated documents, and this app doesn't either unless someone
+  explicitly clicks "Generate"/"Regenerate" preview. Don't add automatic
+  bulk preview generation on library open; across several libraries with
+  potentially thousands of documents each, silently rendering every
+  missing preview on open would be slow and surprising. `generateThumbnail()`
+  handles two input types only: `image/*` (direct canvas downscale) and
+  `application/pdf` (first page rendered via pdf.js) — anything else
+  returns `null`, which is an expected, non-error outcome, not something
+  to add more format branches for without being asked. The pdf.js main
+  library and its worker script **must be the exact same pinned CDN
+  version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
+  mismatch, so don't update one without the other.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing

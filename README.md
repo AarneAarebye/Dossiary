@@ -53,6 +53,14 @@ working" problem that motivated this project in the first place.
   hides its matching filter dropdown at the same time. The choice is saved
   in `library.sqlite` itself, so it travels with the library folder rather
   than being tied to one browser or device.
+- **Document previews** — every document can show a small preview image in
+  its detail view. Migrated documents get Mariner's own thumbnail, copied
+  over directly by `migrate_to_new_library.py`. Newly captured documents
+  get one generated automatically (an image gets downscaled directly; a
+  PDF gets its first page rendered via [pdf.js](https://mozilla.github.io/pdf.js/)).
+  A "Generate preview" / "Regenerate preview" button in the detail view
+  lets you create one on demand for any document that's missing one, or
+  refresh an existing one.
 
 ## Getting started
 
@@ -96,6 +104,7 @@ documents
     created_at          TEXT     -- ISO 8601, when the record was created
     source              TEXT     -- 'migrated' or 'captured'
     source_legacy_id    INTEGER  -- traceability only, for migrated documents
+    thumbnail_path       TEXT     -- relative to library root, nullable
 
 tags
     id    INTEGER PRIMARY KEY
@@ -166,11 +175,14 @@ classification field.
   are), so the invisible text layer may not align pixel-for-pixel with the
   visible word underneath on close inspection — it should still select and
   search correctly.
-- **No thumbnails yet** for newly captured documents.
+- **Preview generation only covers images and PDFs.** Other file types
+  (if you ever capture something else) won't get a preview — "Generate
+  preview" will just report it can't handle that format.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
-- **Needs network on first load** (to fetch the sql.js and Tesseract.js
-  WebAssembly bundles from their CDNs) even though your documents never
+- **Needs network on first load** (to fetch the sql.js, Tesseract.js,
+  jsPDF, and pdf.js WebAssembly/JS bundles from their CDNs) even though
+  your documents never
   leave your machine.
 
 ## License
