@@ -93,6 +93,19 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   category → subcategory cascading dropdown or similar hierarchy UI on the
   assumption that one is scoped to the other; it isn't, in the source data
   or here.
+- **`organization`/`organization_to` are plain text columns, not a
+  many-to-many relation** — despite being backfilled from Mariner custom
+  fields the same way `people` is (`ZCUSTOMRECEIPTITEM` → `ZCUSTOMITEM`).
+  **Do not apply the `&`-splitting logic used for people here.** Real
+  organization names legitimately contain `&` as part of one name (e.g.
+  "Dres. Ernestus & Cop, Sandhausen", "Stadtwerke Walldorf GmbH & Co. KG")
+  — confirmed against every `&`-containing value in the library this was
+  built against, none of which were actually two organizations. Splitting
+  these would silently corrupt real names. If a future custom field needs
+  backfilling, check its actual `&`-containing values against real data
+  before deciding whether it's more like `people` (genuinely multi-valued)
+  or more like `organization` (single value that happens to contain `&`)
+  — don't assume either pattern by default.
 - **Document previews** (`generateThumbnail()`, `writeThumbnail()`,
   `regenerateThumbnail()`) are stored as PNG files in a `thumbnails/`
   folder at the library root (`thumbnails/<id>.png`), not as BLOBs in

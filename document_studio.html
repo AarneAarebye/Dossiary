@@ -153,6 +153,7 @@
     <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
     <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
     <span class="filter-wrap" data-field="payment_method"><select id="payment-filter"><option value="">All payment methods</option></select></span>
+    <span class="filter-wrap" data-field="organization"><select id="organization-filter"><option value="">All organizations</option></select></span>
     <div class="columns-menu-wrap">
       <button id="columns-btn">⚙ Columns</button>
       <div class="columns-menu" id="columns-menu" style="display:none;"></div>
@@ -193,6 +194,7 @@
           <th data-key="category" data-field="category">Category</th>
           <th data-key="document_type" data-field="document_type">Type</th>
           <th data-key="payment_method" data-field="payment_method">Payment</th>
+          <th data-key="organization" data-field="organization">Organization</th>
           <th data-field="people">People</th>
           <th data-key="date" data-field="date">Date</th>
           <th data-key="amount" data-field="amount">Amount</th>
@@ -213,6 +215,7 @@
 
 <datalist id="category-list"></datalist>
 <datalist id="subcategory-list"></datalist>
+<datalist id="organization-list"></datalist>
 <datalist id="type-list"></datalist>
 <datalist id="payment-list"></datalist>
 <datalist id="person-list"></datalist>
@@ -226,7 +229,8 @@
       id INTEGER PRIMARY KEY, title TEXT, category TEXT, subcategory TEXT, document_type TEXT,
       payment_method TEXT, amount REAL, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
-      created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT
+      created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
+      organization TEXT, organization_to TEXT
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -248,6 +252,8 @@
     'ALTER TABLE documents ADD COLUMN import_date TEXT',
     'ALTER TABLE documents ADD COLUMN subcategory TEXT',
     'ALTER TABLE documents ADD COLUMN thumbnail_path TEXT',
+    'ALTER TABLE documents ADD COLUMN organization TEXT',
+    'ALTER TABLE documents ADD COLUMN organization_to TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -278,6 +284,7 @@
     { id: 'category', label: 'Category', hasFilter: true, defaultVisible: true },
     { id: 'document_type', label: 'Type', hasFilter: true, defaultVisible: true },
     { id: 'payment_method', label: 'Payment method', hasFilter: true, defaultVisible: false },
+    { id: 'organization', label: 'Organization', hasFilter: true, defaultVisible: true },
     { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
     { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
     { id: 'amount', label: 'Amount', hasFilter: false, defaultVisible: true },
@@ -307,6 +314,7 @@
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
   const paymentFilter = el('payment-filter');
+  const organizationFilter = el('organization-filter');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -505,6 +513,8 @@
       `Amount: ${fields.amount != null ? fields.amount : ''}`,
       `Date: ${fields.date || ''}`,
       `Imported: ${fields.importDate || ''}`,
+      `Organization: ${fields.organization || ''}`,
+      `Organization to: ${fields.organizationTo || ''}`,
       `People: ${(fields.people || []).join(', ')}`,
       `Tags: ${(fields.tags || []).join(', ')}`,
       '',
@@ -618,7 +628,8 @@
   function loadDocumentsFromDb(){
     const { columns, rows } = queryAll(`
       SELECT id, title, category, subcategory, document_type, payment_method, amount, date, import_date, notes,
-             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path,
+             organization, organization_to
       FROM documents
     `);
     const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -670,6 +681,7 @@
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
         created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
         thumbnail_path: row[idx.thumbnail_path],
+        organization: row[idx.organization], organization_to: row[idx.organization_to],
         tags: tagsByDocId[id] || [],
         people: peopleByDocId[id] || [],
       });
@@ -773,10 +785,12 @@
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
+    const organizations = [...new Set(allDocs.map(d => d.organization).filter(Boolean))].sort();
     categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     typeFilter.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     personFilter.innerHTML = '<option value="">All people</option>' + people.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
     paymentFilter.innerHTML = '<option value="">All payment methods</option>' + payments.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    organizationFilter.innerHTML = '<option value="">All organizations</option>' + organizations.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
   }
 
   function populateDatalists(){
@@ -785,12 +799,14 @@
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
+    const organizations = [...new Set(allDocs.flatMap(d => [d.organization, d.organization_to]).filter(Boolean))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('subcategory-list').innerHTML = subcategories.map(s => `<option value="${escapeHtml(s)}">`).join('');
     el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
     el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('person-list').innerHTML = people.map(p => `<option value="${escapeHtml(p)}">`).join('');
+    el('organization-list').innerHTML = organizations.map(o => `<option value="${escapeHtml(o)}">`).join('');
     el('tag-list').innerHTML = tagNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
   }
 
@@ -806,17 +822,18 @@
   }
 
   function currentFilters(){
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, payment: paymentFilter.value };
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, payment: paymentFilter.value, organization: organizationFilter.value };
   }
   function applyFilters(docs){
-    const { q, category, type, person, payment } = currentFilters();
+    const { q, category, type, person, payment, organization } = currentFilters();
     return docs.filter(d => {
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
       if(payment && d.payment_method !== payment) return false;
+      if(organization && d.organization !== organization) return false;
       if(q){
-        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, d.organization, d.organization_to, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
@@ -848,6 +865,7 @@
         <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
         <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
         <td data-field="payment_method">${d.payment_method ? escapeHtml(d.payment_method) : '<span class="doc-sub">—</span>'}</td>
+        <td data-field="organization">${d.organization ? escapeHtml(d.organization) : '<span class="doc-sub">—</span>'}</td>
         <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
         <td class="date" data-field="date">${formatDate(d.date)}</td>
         <td class="amount" data-field="amount">${formatAmount(d)}</td>
@@ -865,6 +883,7 @@
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
   paymentFilter.addEventListener('change', render);
+  organizationFilter.addEventListener('change', render);
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -923,6 +942,7 @@
                 <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
                 <div><b>Date</b> ${formatDate(d.date)} · <b>Amount</b> ${formatAmount(d)}</div>
                 <div><b>Payment</b> ${escapeHtml(d.payment_method || '—')}</div>
+                <div><b>Organization</b> ${escapeHtml(d.organization || '—')}${d.organization_to ? ' → ' + escapeHtml(d.organization_to) : ''}</div>
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
               </div>
@@ -1026,6 +1046,10 @@
             <div class="field"><label for="e-payment">Payment method</label><input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" /></div>
             <div class="field"><label for="e-amount">Amount</label><input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" /></div>
           </div>
+          <div class="field-row">
+            <div class="field"><label for="e-organization">Organization</label><input type="text" id="e-organization" list="organization-list" value="${escapeHtml(d.organization || '')}" /></div>
+            <div class="field"><label for="e-organization-to">Organization to</label><input type="text" id="e-organization-to" list="organization-list" value="${escapeHtml(d.organization_to || '')}" /></div>
+          </div>
           <div class="field">
             <label for="e-person">People (comma-separated)</label>
             <input type="text" id="e-person" list="person-list" value="${escapeHtml((d.people||[]).join(', '))}" placeholder="Who this document relates to, e.g. Arne, Jana" />
@@ -1083,14 +1107,16 @@
       const amountRaw = el('e-amount').value.trim();
       const amount = amountRaw === '' ? null : parseFloat(amountRaw);
       const date = el('e-date').value || null;
+      const organization = el('e-organization').value.trim() || null;
+      const organizationTo = el('e-organization-to').value.trim() || null;
       const notes = el('e-notes').value.trim() || null;
       const ocrText = el('e-ocr-text').value.trim() || null;
 
       db.run(`
         UPDATE documents SET title=?, category=?, subcategory=?, document_type=?, payment_method=?,
-                              amount=?, date=?, notes=?, ocr_text=?
+                              amount=?, date=?, notes=?, ocr_text=?, organization=?, organization_to=?
         WHERE id=?
-      `, [title, category, subcategory, documentType, paymentMethod, amount, date, notes, ocrText, id]);
+      `, [title, category, subcategory, documentType, paymentMethod, amount, date, notes, ocrText, organization, organizationTo, id]);
 
       // Re-link tags: drop existing links for this document, then re-add based on
       // the edited comma-separated list (same find-or-create pattern as capture).
@@ -1127,7 +1153,7 @@
       if(sidecarBaseName){
         await writeSidecarFile(sidecarBaseName, buildSidecarText({
           title, category, subcategory, documentType, paymentMethod, amount, date,
-          importDate: d.import_date, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+          importDate: d.import_date, organization, organizationTo, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
         }));
       }
 
@@ -1135,7 +1161,7 @@
 
       Object.assign(d, {
         title, category, subcategory, document_type: documentType, payment_method: paymentMethod,
-        amount, date, notes, ocr_text: ocrText, tags: tagsForDoc, people: peopleForDoc,
+        amount, date, organization, organization_to: organizationTo, notes, ocr_text: ocrText, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
@@ -1199,6 +1225,10 @@
           <div class="field-row">
             <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
             <div class="field"><label for="f-amount">Amount</label><input type="number" step="0.01" id="f-amount" /></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="f-organization">Organization</label><input type="text" id="f-organization" list="organization-list" /></div>
+            <div class="field"><label for="f-organization-to">Organization to</label><input type="text" id="f-organization-to" list="organization-list" placeholder="e.g. referred to a specialist" /></div>
           </div>
           <div class="field">
             <label for="f-person">People (comma-separated)</label>
@@ -1364,6 +1394,8 @@
       const amountRaw = el('f-amount').value.trim();
       const amount = amountRaw === '' ? null : parseFloat(amountRaw);
       const date = el('f-date').value || null;
+      const organization = el('f-organization').value.trim() || null;
+      const organizationTo = el('f-organization-to').value.trim() || null;
       const notes = el('f-notes').value.trim() || null;
       const ocrText = el('f-ocr-text').value.trim() || null;
       const ocrLanguage = pendingOcrText ? el('ocr-lang').value : null;
@@ -1375,9 +1407,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
-      `, [id, title, category, subcategory, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
+                                created_at, source, source_legacy_id, thumbnail_path, organization, organization_to)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?)
+      `, [id, title, category, subcategory, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, organization, organizationTo]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -1406,7 +1438,7 @@
       }
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, subcategory, documentType, paymentMethod, amount, date, importDate, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        title, category, subcategory, documentType, paymentMethod, amount, date, importDate, organization, organizationTo, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
@@ -1416,7 +1448,7 @@
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb,
+        thumbnail_path: thumbnailPathForDb, organization, organization_to: organizationTo,
         tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();

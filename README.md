@@ -39,14 +39,17 @@ working" problem that motivated this project in the first place.
   otherwise only live inside `library.sqlite`. This isn't a real Spotlight
   *integration* (not possible from a browser — see Limitations below); it's
   just an ordinary text file that happens to get indexed like any other.
-- **Tag & organize** — category, document type, payment method, amount,
-  date, notes, people, and free-form tags per document — a document can
-  relate to more than one person, filterable the same way tags are
+- **Tag & organize** — category, subcategory, document type, payment
+  method, organization (and organization-to, for referral-style
+  documents), amount, date, notes, people, and free-form tags per
+  document — a document can relate to more than one person, filterable
+  the same way tags are
 - **Open originals** — one click to open the actual file from disk
 - **Edit** — click any document, then "Edit" to update its metadata (title,
-  category, subcategory, type, payment method, amount, date, people, tags,
-  notes, OCR text) after the fact. This only ever changes `library.sqlite`
-  — the underlying file on disk is never touched or replaced.
+  category, subcategory, type, payment method, organization, amount, date,
+  people, tags, notes, OCR text) after the fact. This only ever changes
+  `library.sqlite` — the underlying file on disk is never touched or
+  replaced.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
   People, Date, Amount, Tags); each one that supports filtering shows or
@@ -105,6 +108,8 @@ documents
     source              TEXT     -- 'migrated' or 'captured'
     source_legacy_id    INTEGER  -- traceability only, for migrated documents
     thumbnail_path       TEXT     -- relative to library root, nullable
+    organization         TEXT     -- e.g. who a bill is from, who referred a document
+    organization_to      TEXT     -- for referral-style documents (from organization, to organization_to)
 
 tags
     id    INTEGER PRIMARY KEY
@@ -148,6 +153,14 @@ and it holds in the data too: the same subcategory name shows up under
 different categories on different documents (e.g. "Dentist" appears under
 both "Medical" and "Health"). It's carried over as-is: a second, independent
 classification field.
+
+`organization`/`organization_to` are plain text fields, **not** modeled as
+a many-to-many relation the way people are — despite both being backfilled
+from Mariner custom fields via the same mechanism. Real organization names
+legitimately contain "&" (e.g. "Dres. Ernestus & Cop, Sandhausen", a German
+medical practice partnership; "Stadtwerke Walldorf GmbH & Co. KG"), so
+splitting on "&" the way `Person` does would corrupt them rather than
+separate genuinely distinct organizations.
 
 ## Limitations
 
