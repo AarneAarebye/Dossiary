@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<meta charset="UTF-8">
 <style>
   :root{
     --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
@@ -120,9 +121,16 @@
   @keyframes spin{ to{ transform:rotate(360deg); } }
 
   .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  footer{
+    padding: 18px 32px 22px; border-top: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); text-align: center;
+  }
+  footer a{ color: var(--text-dim); text-decoration: underline; text-underline-offset: 2px; }
+  footer a:hover{ color: var(--phosphor); }
   @media (max-width:640px){
     header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
+    footer{ padding:16px 16px 20px; }
   }
 </style>
 
@@ -196,6 +204,11 @@
   </div>
 
   <div id="modal-root"></div>
+
+  <footer>
+    © 2026 Aarne Aarebye · MIT License ·
+    <a href="https://github.com/AarneAarebye/DocumentStudio" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/DocumentStudio</a>
+  </footer>
 </div>
 
 <datalist id="category-list"></datalist>
