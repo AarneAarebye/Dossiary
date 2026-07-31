@@ -125,6 +125,27 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   library and its worker script **must be the exact same pinned CDN
   version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
   mismatch, so don't update one without the other.
+- **Dynamic per-type fields** (`typeFieldOrder`, `loadTypeFieldOrder()`,
+  `applyDynamicFieldsForType()`) show/hide/reorder only the Organization,
+  Organization To, and People fields (`ALL_DYNAMIC_FIELDS`) in the
+  capture/edit forms, based on `document_type_fields` — a table this app
+  only *reads*, never writes; `migrate_to_new_library.py` is the sole
+  writer, populated by decoding Mariner's `ZDATATYPE.ZFIELDORDERARRAY`
+  (see that script's own notes for the decoding details). **Don't extend
+  this to hide core fields** (category, subcategory, date, notes, tags,
+  payment method, amount) — there's no reliable way to identify what
+  Mariner's built-in ("Unnamed") display-order entries actually mean, only
+  named custom fields map cleanly via `ZCUSTOMITEM.ZNAME`, so those three
+  are the only fields this can safely apply to. A document type absent
+  from `document_type_fields` (new/unknown, or migrated from a library
+  where a type had no display-order data) means "no restriction" — all
+  three fields show, unchanged from pre-feature behavior; this is the
+  correct fallback, not a bug to "fix" by requiring every type to have an
+  entry. Hiding a field via `display:none` does **not** clear its value —
+  confirmed this is safe (switching document types back and forth doesn't
+  lose data the person already typed into a field that becomes hidden)
+  before relying on it; don't change the show/hide mechanism to actually
+  clear hidden fields' values without preserving this property.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing

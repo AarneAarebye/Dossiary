@@ -241,6 +241,9 @@
       document_id INTEGER, person_id INTEGER, PRIMARY KEY (document_id, person_id)
     );
     CREATE TABLE IF NOT EXISTS settings ( key TEXT PRIMARY KEY, value TEXT );
+    CREATE TABLE IF NOT EXISTS document_type_fields (
+      document_type TEXT, field TEXT, position INTEGER, PRIMARY KEY (document_type, field)
+    );
   `;
 
   // Columns added after a library may already have been created. CREATE TABLE IF NOT
@@ -291,6 +294,8 @@
     { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
   ];
   let visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+  let typeFieldOrder = {}; // { "Medical Referral": ["organization_to", "people"], ... } -- absence of a
+                            // key means "no restriction, show all three" (new/unknown document type)
 
   let sortKey = 'date';
   let sortDir = 'desc';
@@ -692,6 +697,7 @@
     tableWrap.style.display = 'block';
     subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
     loadColumnSettings();
+    loadTypeFieldOrder();
     renderColumnsMenu();
     applyColumnVisibility();
     renderStats();
@@ -722,6 +728,43 @@
       }catch(e){ /* fall through to defaults below */ }
     }
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+  }
+
+  function loadTypeFieldOrder(){
+    typeFieldOrder = {};
+    const { rows } = queryAll('SELECT document_type, field, position FROM document_type_fields');
+    for(const [typeName, field, position] of rows){
+      (typeFieldOrder[typeName] = typeFieldOrder[typeName] || []).push({ field, position });
+    }
+    for(const typeName in typeFieldOrder){
+      typeFieldOrder[typeName].sort((a, b) => a.position - b.position);
+    }
+  }
+
+  // Shows/hides/reorders the Organization, Organization To, and People fields in the
+  // capture ('f') or edit ('e') form based on what's actually relevant to the given
+  // document type -- per Mariner's own per-type display-field order, migrated into
+  // document_type_fields. An unknown/new document type (not in typeFieldOrder) means
+  // "no restriction", so all three fields show, in their default order.
+  const ALL_DYNAMIC_FIELDS = ['organization', 'organization_to', 'people'];
+  function applyDynamicFieldsForType(prefix, typeName){
+    const container = el(`dynamic-fields-${prefix}`);
+    if(!container) return;
+    const entry = typeFieldOrder[(typeName || '').trim()];
+    const orderedFields = entry ? entry.map(e => e.field) : ALL_DYNAMIC_FIELDS;
+    const visibleSet = new Set(orderedFields);
+
+    for(const field of ALL_DYNAMIC_FIELDS){
+      const fieldEl = container.querySelector(`[data-dynamic-field="${field}"]`);
+      if(fieldEl) fieldEl.style.display = visibleSet.has(field) ? '' : 'none';
+    }
+    // Reorder visible fields to match the type's display order; fields not
+    // mentioned (shouldn't happen when orderedFields === ALL_DYNAMIC_FIELDS,
+    // but defensively) keep their existing relative position at the end.
+    for(const field of orderedFields){
+      const fieldEl = container.querySelector(`[data-dynamic-field="${field}"]`);
+      if(fieldEl) container.appendChild(fieldEl);
+    }
   }
 
   async function saveColumnSettings(){
@@ -1046,13 +1089,19 @@
             <div class="field"><label for="e-payment">Payment method</label><input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" /></div>
             <div class="field"><label for="e-amount">Amount</label><input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" /></div>
           </div>
-          <div class="field-row">
-            <div class="field"><label for="e-organization">Organization</label><input type="text" id="e-organization" list="organization-list" value="${escapeHtml(d.organization || '')}" /></div>
-            <div class="field"><label for="e-organization-to">Organization to</label><input type="text" id="e-organization-to" list="organization-list" value="${escapeHtml(d.organization_to || '')}" /></div>
-          </div>
-          <div class="field">
-            <label for="e-person">People (comma-separated)</label>
-            <input type="text" id="e-person" list="person-list" value="${escapeHtml((d.people||[]).join(', '))}" placeholder="Who this document relates to, e.g. Arne, Jana" />
+          <div id="dynamic-fields-e">
+            <div class="field" data-dynamic-field="organization">
+              <label for="e-organization">Organization</label>
+              <input type="text" id="e-organization" list="organization-list" value="${escapeHtml(d.organization || '')}" />
+            </div>
+            <div class="field" data-dynamic-field="organization_to">
+              <label for="e-organization-to">Organization to</label>
+              <input type="text" id="e-organization-to" list="organization-list" value="${escapeHtml(d.organization_to || '')}" />
+            </div>
+            <div class="field" data-dynamic-field="people">
+              <label for="e-person">People (comma-separated)</label>
+              <input type="text" id="e-person" list="person-list" value="${escapeHtml((d.people||[]).join(', '))}" placeholder="Who this document relates to, e.g. Arne, Jana" />
+            </div>
           </div>
           <div class="field">
             <label for="e-tags">Tags (comma-separated)</label>
@@ -1080,6 +1129,9 @@
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
+
+    applyDynamicFieldsForType('e', d.document_type || '');
+    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value));
   }
 
   // Recovers the base filename (no extension) a document's files were saved under,
@@ -1226,13 +1278,19 @@
             <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
             <div class="field"><label for="f-amount">Amount</label><input type="number" step="0.01" id="f-amount" /></div>
           </div>
-          <div class="field-row">
-            <div class="field"><label for="f-organization">Organization</label><input type="text" id="f-organization" list="organization-list" /></div>
-            <div class="field"><label for="f-organization-to">Organization to</label><input type="text" id="f-organization-to" list="organization-list" placeholder="e.g. referred to a specialist" /></div>
-          </div>
-          <div class="field">
-            <label for="f-person">People (comma-separated)</label>
-            <input type="text" id="f-person" list="person-list" placeholder="Who this document relates to, e.g. Arne, Jana" />
+          <div id="dynamic-fields-f">
+            <div class="field" data-dynamic-field="organization">
+              <label for="f-organization">Organization</label>
+              <input type="text" id="f-organization" list="organization-list" />
+            </div>
+            <div class="field" data-dynamic-field="organization_to">
+              <label for="f-organization-to">Organization to</label>
+              <input type="text" id="f-organization-to" list="organization-list" placeholder="e.g. referred to a specialist" />
+            </div>
+            <div class="field" data-dynamic-field="people">
+              <label for="f-person">People (comma-separated)</label>
+              <input type="text" id="f-person" list="person-list" placeholder="Who this document relates to, e.g. Arne, Jana" />
+            </div>
           </div>
           <div class="field">
             <label for="f-tags">Tags (comma-separated)</label>
@@ -1262,6 +1320,9 @@
       if(file) handlePickedFile(file);
     });
     el('run-ocr-btn').addEventListener('click', runOcr);
+
+    applyDynamicFieldsForType('f', ''); // no type picked yet -- show all three fields
+    el('f-type').addEventListener('change', () => applyDynamicFieldsForType('f', el('f-type').value));
   }
 
   function handlePickedFile(file){

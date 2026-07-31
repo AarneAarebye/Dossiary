@@ -64,6 +64,13 @@ working" problem that motivated this project in the first place.
   A "Generate preview" / "Regenerate preview" button in the detail view
   lets you create one on demand for any document that's missing one, or
   refresh an existing one.
+- **Dynamic fields per document type** — the Organization, Organization To,
+  and People fields show, hide, and reorder themselves in the capture/edit
+  forms based on what's actually relevant to the document type you've
+  picked, mirroring how Mariner Paperless itself decided which fields to
+  display per type. A document type with no such data (a brand new type,
+  or one from a library where this wasn't tracked) just shows all three,
+  same as before this feature existed.
 
 ## Getting started
 
@@ -132,12 +139,26 @@ document_people
 settings
     key    TEXT PRIMARY KEY
     value  TEXT
+
+document_type_fields
+    document_type  TEXT
+    field          TEXT      -- 'organization', 'organization_to', or 'people'
+    position       INTEGER   -- display order within this document type
+    PRIMARY KEY (document_type, field)
 ```
 
 `settings` is a small key-value table for app preferences that should
 travel with the library rather than live in browser storage — currently
 just `visible_columns` (a JSON array of which table columns and their
 matching filters are shown).
+
+`document_type_fields` drives the capture/edit forms' dynamic field
+behavior (see "Dynamic fields per document type" above): for a document
+type present in this table, only the listed fields show, in the given
+order; a type absent from it has no restriction — Document Studio shows
+all three. Populated by `migrate_to_new_library.py` from Mariner's own
+per-type display-field configuration; Document Studio itself never writes
+to this table, only reads it.
 
 "People" works exactly like tags: a document can relate to more than one
 person (a joint bill, a shared appointment, etc.), so it's a many-to-many
