@@ -71,6 +71,11 @@ working" problem that motivated this project in the first place.
   display per type. A document type with no such data (a brand new type,
   or one from a library where this wasn't tracked) just shows all three,
   same as before this feature existed.
+- **Date defaults to today when capturing** — since that's right for a
+  freshly-received document but wrong for a backlog of older mail, it's
+  visually flagged (amber-tinted, with a "double-check this" note) until
+  you actually touch the field, so an unreviewed guess doesn't quietly
+  pass for a real value.
 
 ## Getting started
 

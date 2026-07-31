@@ -146,6 +146,19 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   lose data the person already typed into a field that becomes hidden)
   before relying on it; don't change the show/hide mechanism to actually
   clear hidden fields' values without preserving this property.
+- **The capture form's date field is preset to today (`todayIsoDate()`),
+  but only in the capture form** — not the edit form, which correctly
+  pre-fills with the document's own existing date, a real value, not a
+  guess. The preset is intentionally visually flagged (`.field-guess`
+  class + `#f-date-hint`), cleared on the field's first `input` event,
+  because `date` is the document's own content date (e.g. an invoice
+  date), which is very often *not* today for anything that isn't
+  freshly-received mail — unlike `import_date`, which genuinely is "now"
+  and doesn't need a field or a guess at all. Don't extend this
+  preset-and-flag pattern to `import_date` (it's already correct without
+  one) or remove the visual flag thinking it's unnecessary friction — an
+  unflagged default here would be a silently wrong date more often than
+  a right one, for anyone working through a backlog of older documents.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
