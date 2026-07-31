@@ -199,6 +199,7 @@
           <th data-key="organization" data-field="organization">Organization</th>
           <th data-field="people">People</th>
           <th data-key="date" data-field="date">Date</th>
+          <th data-key="import_date" data-field="import_date">Imported</th>
           <th data-key="amount" data-field="amount">Amount</th>
           <th data-field="tags">Tags</th>
         </tr>
@@ -292,6 +293,7 @@
     { id: 'organization', label: 'Organization', hasFilter: true, defaultVisible: true },
     { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
     { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
+    { id: 'import_date', label: 'Imported', hasFilter: false, defaultVisible: false },
     { id: 'amount', label: 'Amount', hasFilter: false, defaultVisible: true },
     { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
   ];
@@ -914,6 +916,7 @@
         <td data-field="organization">${d.organization ? escapeHtml(d.organization) : '<span class="doc-sub">—</span>'}</td>
         <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
         <td class="date" data-field="date">${formatDate(d.date)}</td>
+        <td class="date" data-field="import_date">${formatDate(d.import_date)}</td>
         <td class="amount" data-field="amount">${formatAmount(d)}</td>
         <td data-field="tags">${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
       </tr>

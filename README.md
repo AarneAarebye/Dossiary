@@ -52,10 +52,10 @@ working" problem that motivated this project in the first place.
   replaced.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
-  People, Date, Amount, Tags); each one that supports filtering shows or
-  hides its matching filter dropdown at the same time. The choice is saved
-  in `library.sqlite` itself, so it travels with the library folder rather
-  than being tied to one browser or device.
+  Organization, People, Date, Imported, Amount, Tags); each one that
+  supports filtering shows or hides its matching filter dropdown at the
+  same time. The choice is saved in `library.sqlite` itself, so it travels
+  with the library folder rather than being tied to one browser or device.
 - **Document previews** — every document can show a small preview image in
   its detail view. Migrated documents get Mariner's own thumbnail, copied
   over directly by `migrate_to_new_library.py`. Newly captured documents
