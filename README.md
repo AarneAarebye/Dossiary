@@ -83,6 +83,11 @@ working" problem that motivated this project in the first place.
   visually flagged (amber-tinted, with a "double-check this" note) until
   you actually touch the field, so an unreviewed guess doesn't quietly
   pass for a real value.
+- **Clear button on Document Type** — a small "✕" next to the Document
+  Type field in both capture and edit forms clears it and refocuses, so
+  the full datalist of existing types pops back up instead of staying
+  filtered to whatever was typed before — handy when you want to pick a
+  different type from the list rather than retype one.
 
 ## Getting started
 

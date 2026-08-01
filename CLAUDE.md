@@ -184,6 +184,15 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   one) or remove the visual flag thinking it's unnecessary friction — an
   unflagged default here would be a silently wrong date more often than
   a right one, for anyone working through a backlog of older documents.
+- **`wireClearButton(inputId, clearBtnId)`** is a small, generic helper —
+  currently wired only to Document Type (`f-type`/`e-type` +
+  `f-type-clear`/`e-type-clear`) — that clears a datalist-backed text
+  input and refocuses it, dispatching a real `change` event so whatever
+  listener is already on the input (here, `applyDynamicFieldsForType()`)
+  fires exactly as it would from a manual edit. If this gets extended to
+  other datalist fields (Category, Organization, etc.), reuse this
+  function rather than duplicating the clear-and-refocus logic — it's
+  deliberately not hardcoded to Document Type specifically.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
