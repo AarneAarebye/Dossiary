@@ -120,6 +120,9 @@
   .field textarea{ font-family:var(--font-mono); font-size:12px; resize:vertical; }
   .field input.field-guess{ border-color:var(--amber-dim); background:rgba(217,154,63,0.06); }
   .field-guess-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--amber); margin-top:5px; }
+  .field-orphaned{ border-top:1px dashed var(--line); padding-top:14px; margin-top:2px; }
+  .field-orphaned input, .field-orphaned .checkbox-label{ border-color:var(--line) !important; opacity:0.9; }
+  .field-orphaned-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); margin-top:5px; font-style:italic; }
   .field-prominent{ padding:12px 14px; border:1px solid var(--phosphor-dim); border-radius:6px; background:rgba(79,224,166,0.04); margin-bottom:16px; }
   .field-prominent label{ color:var(--phosphor); font-weight:600; }
   .field-prominent input{ font-size:14px !important; }
@@ -894,16 +897,17 @@
     return Array.from(container.querySelectorAll('[data-field-id]')).map(elm => Number(elm.dataset.fieldId));
   }
 
-  function renderPeopleFieldHtml(prefix, existingPeople){
+  function renderPeopleFieldHtml(prefix, existingPeople, orphaned){
     const value = (existingPeople || []).join(', ');
     const inputId = `${prefix}-person`;
     return `
-      <div class="field" data-dynamic-field="People">
+      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="People">
         <label for="${inputId}">People (comma-separated)</label>
         <div class="field-with-clear">
           <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="Who this document relates to, e.g. Arne, Jana" />
           <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear people">✕</button>
         </div>
+        ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
       </div>
     `;
   }
@@ -914,40 +918,45 @@
   // documents.payment_method (dedicated typed columns Amount already had, e.g. REAL
   // for amount), not in the generic document_field_values table. There was no
   // reason to migrate that storage just to make them configurable.
-  function renderAmountFieldHtml(prefix, existingAmount){
+  function renderAmountFieldHtml(prefix, existingAmount, orphaned){
     const inputId = `${prefix}-amount`;
     const value = existingAmount != null ? existingAmount : '';
     return `
-      <div class="field" data-dynamic-field="Amount">
+      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="Amount">
         <label for="${inputId}">Amount</label>
         <div class="field-with-clear">
           <input type="number" step="0.01" id="${inputId}" value="${value}" />
           <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear amount">✕</button>
         </div>
+        ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
       </div>
     `;
   }
 
-  function renderPaymentFieldHtml(prefix, existingPayment){
+  function renderPaymentFieldHtml(prefix, existingPayment, orphaned){
     const inputId = `${prefix}-payment`;
     return `
-      <div class="field" data-dynamic-field="Payment method">
+      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="Payment method">
         <label for="${inputId}">Payment method</label>
         <div class="field-with-clear">
           <input type="text" id="${inputId}" list="payment-list" value="${escapeHtml(existingPayment || '')}" />
           <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear payment method">✕</button>
         </div>
+        ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
       </div>
     `;
   }
 
-  function renderGenericFieldHtml(prefix, field, existingValue){
+  function renderGenericFieldHtml(prefix, field, existingValue, orphaned){
     const inputId = `${prefix}-field-${field.id}`;
+    const orphanedClass = orphaned ? ' field-orphaned' : '';
+    const orphanedHint = orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : '';
     if(field.type === 'checkbox'){
       const checked = existingValue === '1' ? 'checked' : '';
       return `
-        <div class="field" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
+        <div class="field${orphanedClass}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
           <label class="checkbox-label" for="${inputId}"><input type="checkbox" id="${inputId}" ${checked} /> ${escapeHtml(field.name)}</label>
+          ${orphanedHint}
         </div>
       `;
     }
@@ -956,9 +965,10 @@
     else if(field.type === 'date'){ inputType = 'date'; }
     const value = field.type === 'date' ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
     return `
-      <div class="field" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
+      <div class="field${orphanedClass}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
         <label for="${inputId}">${escapeHtml(field.name)}</label>
         <input type="${inputType}" id="${inputId}" ${extra} value="${escapeHtml(value)}" />
+        ${orphanedHint}
       </div>
     `;
   }
@@ -973,23 +983,53 @@
   // already typed into fields that get removed -- a known, accepted limitation
   // given the field set is now fully dynamic rather than a fixed handful of
   // always-present elements.
-  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, existingAmount, existingPayment){
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, existingAmount, existingPayment, isEdit){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
-    const entry = typeFieldOrder[(typeName || '').trim()];
-    if(!entry || !entry.length){
-      container.innerHTML = '';
-      return;
-    }
-    container.innerHTML = entry.map(({ field: fieldName }) => {
-      if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople);
-      if(fieldName === 'Amount') return renderAmountFieldHtml(prefix, existingAmount);
-      if(fieldName === 'Payment method') return renderPaymentFieldHtml(prefix, existingPayment);
+    const entry = typeFieldOrder[(typeName || '').trim()] || [];
+    const configuredNames = new Set(entry.map(e => e.field));
+
+    let html = entry.map(({ field: fieldName }) => {
+      if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople, false);
+      if(fieldName === 'Amount') return renderAmountFieldHtml(prefix, existingAmount, false);
+      if(fieldName === 'Payment method') return renderPaymentFieldHtml(prefix, existingPayment, false);
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
       if(!fieldDef) return '';
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
-      return renderGenericFieldHtml(prefix, fieldDef, existingValue);
+      return renderGenericFieldHtml(prefix, fieldDef, existingValue, false);
     }).join('');
+
+    // When editing, a document can have real data in a field that isn't (or is no
+    // longer) configured to display for its current type -- reclassified, or the
+    // field got removed from that type's config in Field Settings after the fact.
+    // That data is still there in the database; hiding it entirely from the edit
+    // form would make it invisible and impossible to clean up. Show it too,
+    // appended after the normally-configured fields and clearly marked, so editing
+    // remains the one place a person can always see and fix everything a document
+    // actually has -- never just capture-only intent.
+    if(isEdit){
+      const orphanedHtml = [];
+      if(existingPeople && existingPeople.length && !configuredNames.has('People')){
+        orphanedHtml.push(renderPeopleFieldHtml(prefix, existingPeople, true));
+      }
+      if(existingAmount != null && existingAmount !== 0 && !configuredNames.has('Amount')){
+        orphanedHtml.push(renderAmountFieldHtml(prefix, existingAmount, true));
+      }
+      if(existingPayment && !configuredNames.has('Payment method')){
+        orphanedHtml.push(renderPaymentFieldHtml(prefix, existingPayment, true));
+      }
+      if(existingValues){
+        for(const fieldName of Object.keys(existingValues)){
+          if(configuredNames.has(fieldName)) continue;
+          const fieldDef = fieldDefs.find(f => f.name === fieldName);
+          if(!fieldDef) continue;
+          orphanedHtml.push(renderGenericFieldHtml(prefix, fieldDef, existingValues[fieldName], true));
+        }
+      }
+      html += orphanedHtml.join('');
+    }
+
+    container.innerHTML = html;
     if(container.querySelector(`#${prefix}-person`)){
       wireClearButton(`${prefix}-person`, `${prefix}-person-clear`);
     }
@@ -1380,8 +1420,8 @@
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
-    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.payment_method);
-    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.payment_method));
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.payment_method, true);
+    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.payment_method, true));
     wireClearButton('e-type', 'e-type-clear');
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');

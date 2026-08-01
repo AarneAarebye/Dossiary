@@ -119,6 +119,15 @@ working" problem that motivated this project in the first place.
   view's header reflects this too: Payment and Amount only appear there
   when a document actually has a value for them, rather than always
   showing an empty placeholder.
+- **Editing never hides data behind a configuration change** — if a
+  document has a value in a field that isn't (or is no longer) configured
+  to display for its current type — reclassified, or the field got
+  removed from that type's setup in Field Settings — the Edit dialog
+  still shows it, appended after the normally-configured fields and
+  visually marked ("Not shown for this document type"), so you always
+  have the chance to review, fix, or clear it. It just won't appear again
+  once cleared, or once you change the document's type to something that
+  doesn't include it and don't touch it.
 
 ## Getting started
 

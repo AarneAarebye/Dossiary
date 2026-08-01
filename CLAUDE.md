@@ -261,6 +261,36 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   become sentinel/configurable like these two, apply the same
   has-a-value-or-don't-show-it treatment rather than defaulting to an
   always-shown placeholder line.
+- **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
+  "orphaned" fields render** — a field with a real value in
+  `d.customFields`/`d.people`/`d.amount`/`d.payment_method` that isn't in
+  the current type's `document_type_fields` configuration (removed from
+  that type's setup after the fact, or the document was reclassified to a
+  type that never had it). Only the edit form passes `isEdit=true`;
+  capture never has pre-existing values to orphan in the first place, so
+  passing it there would be a no-op at best and confusing if it weren't.
+  Orphaned fields are appended after the normally-configured ones and
+  rendered with the same functions (`renderPeopleFieldHtml()` /
+  `renderAmountFieldHtml()` / `renderPaymentFieldHtml()` /
+  `renderGenericFieldHtml()`, each now taking a trailing `orphaned`
+  boolean) so they behave identically once on screen — same input types,
+  same `data-field-id`/`data-dynamic-field` attributes, same save-time
+  handling — the only difference is the `.field-orphaned` class and the
+  `.field-orphaned-hint` note. **This is deliberate: an orphaned field
+  needs to be exactly as editable/clearable as a configured one**, not a
+  special read-only or half-functional state, since the entire point is
+  giving someone the chance to actually fix or clear the data, not just
+  see that it exists. This falls out of the existing save logic
+  (`getShownFieldIds()`, the `d.amount`/`d.payment_method` fallback in
+  `saveEditedDocument()`) for free, precisely because orphaned fields use
+  the same rendering and the same DOM attributes as configured ones —
+  don't add separate handling for them in the save path; if saving ever
+  needs to special-case orphaned fields, something about this design has
+  gone wrong. Re-selecting a type mid-edit re-evaluates which fields are
+  orphaned against the *original* document's persisted values (`d.*`),
+  not whatever's currently typed into the form — switching types back
+  and forth during a single edit session doesn't lose track of what the
+  document actually has.
 - **A real debugging lesson from building this feature, worth remembering
   for future large refactors**: an earlier, incomplete attempt at this
   exact feature had left dead scaffolding in the file (a duplicate
