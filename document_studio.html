@@ -1222,8 +1222,8 @@
               <h2 style="margin:0 0 12px;">${escapeHtml(displayName(d))}</h2>
               <div class="modal-meta">
                 <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
-                <div><b>Date</b> ${formatDate(d.date)} · <b>Amount</b> ${formatAmount(d)}</div>
-                <div><b>Payment</b> ${escapeHtml(d.payment_method || '—')}</div>
+                <div><b>Date</b> ${formatDate(d.date)}${(d.amount != null && d.amount !== 0) ? ' · <b>Amount</b> ' + formatAmount(d) : ''}</div>
+                ${d.payment_method ? `<div><b>Payment</b> ${escapeHtml(d.payment_method)}</div>` : ''}
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
               </div>

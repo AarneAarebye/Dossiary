@@ -115,7 +115,10 @@ working" problem that motivated this project in the first place.
   lets you turn either off per document type if it's not relevant there.
   Reclassifying a document to a type where one of these isn't configured
   never discards the value already saved — it's just not shown until you
-  either add the field back for that type or reclassify again.
+  either add the field back for that type or reclassify again. The detail
+  view's header reflects this too: Payment and Amount only appear there
+  when a document actually has a value for them, rather than always
+  showing an empty placeholder.
 
 ## Getting started
 

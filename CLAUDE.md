@@ -248,6 +248,19 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   return `null` (field not in the DOM), rather than defaulting to blank/
   null the way a genuinely-cleared field would. Don't simplify this to
   "missing field means null" without preserving that distinction.
+- **The detail view's header (`openDetail()`'s `modal-meta` block) shows
+  Payment and Amount conditionally, not as always-present placeholder
+  lines.** `<b>Amount</b>` only appends onto the Date line when
+  `d.amount != null && d.amount !== 0`; the whole `<b>Payment</b>` line
+  only renders when `d.payment_method` is truthy. This intentionally
+  differs from Category/Type/Date/Imported/ID, which always show (with a
+  `—` placeholder when empty) — those aren't newly-optional per-type
+  fields the way Amount/Payment are, so an empty placeholder there is
+  still informative, whereas an empty Payment/Amount line would just be
+  noise for a document whose type doesn't use them. If more fields
+  become sentinel/configurable like these two, apply the same
+  has-a-value-or-don't-show-it treatment rather than defaulting to an
+  always-shown placeholder line.
 - **A real debugging lesson from building this feature, worth remembering
   for future large refactors**: an earlier, incomplete attempt at this
   exact feature had left dead scaffolding in the file (a duplicate
