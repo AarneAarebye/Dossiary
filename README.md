@@ -62,6 +62,11 @@ working" problem that motivated this project in the first place.
   is saved in `library.sqlite` itself, so it travels with the library
   folder rather than being tied to one browser or device. (Custom fields
   as table columns/filters is planned but not built yet — see Limitations.)
+- **The table header stays visible while scrolling** — useful once a
+  library has enough documents that the list genuinely scrolls. The
+  document list itself is a bounded, independently-scrolling area (not
+  the whole page), so column headers (and the ability to click one to
+  sort) are always in reach no matter how far down the list you are.
 - **Document previews** — every document can show a small preview image in
   its detail view. Migrated documents get Mariner's own thumbnail, copied
   over directly by `migrate_to_new_library.py`. Newly captured documents

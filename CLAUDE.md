@@ -48,6 +48,30 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   `＋`/`✕` used elsewhere in the UI) rely on browser encoding-sniffing
   instead of a guarantee. Both bugs are the kind that "work fine" in quick
   testing and then fail unpredictably for someone else — keep both lines.
+- **`.table-wrap` is a deliberate, bounded scroll container** (`overflow:auto`
+  + `max-height:calc(100vh - 230px)`), not just "the table with horizontal
+  scroll" it looks like at a glance. This exists specifically so `thead
+  th`'s `position:sticky; top:0;` has something correct to stick to. The
+  original version only had `overflow-x:auto` (no `overflow-y` set at
+  all) — which looks harmless, but per the CSS Overflow spec, if one axis
+  is anything other than `visible` and the other is left as `visible`,
+  the browser silently forces the `visible` one to compute as `auto` too.
+  That turned `.table-wrap` into an unintended vertical scroll container,
+  which broke the sticky header — it stuck to the top of `.table-wrap`'s
+  own (never-scrolling, since the *page* was scrolling instead) box
+  rather than the viewport, so it just scrolled away like nothing was
+  sticky at all. Setting `overflow-y: visible` explicitly does **not**
+  fix this — the spec doesn't allow "one visible, one not" as a computed
+  combination, so the browser overrides it back to `auto` regardless of
+  what's literally written. The actual fix was to stop fighting that
+  rule and lean into it: make `.table-wrap` an intentional, bounded
+  scroll container for both axes, so sticky has exactly one clear,
+  correctly-scrolling ancestor. If you ever need to adjust the header/
+  toolbar layout, `230px` is calibrated against their current combined
+  height — recalibrate it (verify empirically, e.g. checking
+  `getBoundingClientRect()` on `thead th` before/after a large internal
+  scroll stays roughly constant) rather than assuming a nearby value is
+  still correct.
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, plus sql.js
