@@ -100,6 +100,16 @@ working" problem that motivated this project in the first place.
   or any custom fields show up at all (see "Dynamic fields per document
   type"), it's deliberately not just another field in the middle of the
   form. Pick it first, then everything below reflects that choice.
+- **Field settings** — the "⚙ Manage fields" button opens a dialog for
+  managing which fields show per document type (and in what order), plus
+  a default document type that pre-fills the Add Document form. Mirrors
+  Mariner Paperless's own Document Types / Fields / Display Fields screen:
+  pick a type on the left, add fields to it from the middle column, reorder
+  or remove them on the right — changes save immediately. Deliberately
+  scoped to document types already in use (a brand new type comes into
+  existence by typing it into the Add/Edit form, not from this dialog),
+  and to toggling/reordering *existing* custom fields — it doesn't create
+  new ones from scratch.
 
 ## Getting started
 
@@ -188,8 +198,9 @@ document_type_fields
 
 `settings` is a small key-value table for app preferences that should
 travel with the library rather than live in browser storage — currently
-just `visible_columns` (a JSON array of which table columns and their
-matching filters are shown).
+`visible_columns` (a JSON array of which table columns and their
+matching filters are shown) and `default_document_type` (pre-fills the
+Add Document form's Document Type field).
 
 **Custom fields are fully generic** (`fields` + `document_field_values`) —
 Organization, Year, Date From, Paid, whatever your library actually uses.

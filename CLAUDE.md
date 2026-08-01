@@ -210,6 +210,49 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   than fields suddenly appearing below content they've already entered.
   If you reorder the form again, keep Document Type near the top — this
   was a deliberate UX fix, not an arbitrary ordering.
+- **Field settings modal** (`openFieldSettingsModal()`, `manage-fields-btn`
+  in the toolbar) manages `document_type_fields` directly, mirroring
+  Mariner's own Document Types / Fields / Display Fields screen: pick a
+  type (`getUsedDocumentTypes()` — union of types actually on a document
+  and types already in `typeFieldOrder`, deliberately *not* every type
+  that could theoretically exist), add/remove/reorder its fields
+  (`addFieldToType()`/`removeFieldFromType()`/`moveFieldInType()`, each
+  saving immediately via `persistTypeFieldOrder()` — delete-then-reinsert
+  for that type, not a diff). **Deliberately doesn't create new custom
+  fields** — only toggles/reorders existing `fields` rows; if that's ever
+  wanted, it's new scope, not an extension of this dialog's existing
+  behavior. `default_document_type` (in `settings`) pre-fills `f-type`
+  and immediately shows that type's configured fields when "Add document"
+  opens (`applyDynamicFieldsForType('f', defaultDocumentType || '')`
+  instead of always starting blank).
+- **A real debugging lesson from building this feature, worth remembering
+  for future large refactors**: an earlier, incomplete attempt at this
+  exact feature had left dead scaffolding in the file (a duplicate
+  `defaultDocumentType` declaration, an unused `document_types` table, a
+  `knownDocumentTypes` loader, a stray call to a function that no longer
+  existed). The stray call caused `loadDocumentsFromDb()` to throw and
+  silently abort partway through — breaking the columns menu and, for
+  libraries loaded via `loadDb()` rather than a fresh `initNewLibrary()`,
+  breaking the initial `render()` call too. **This did not show up in
+  `pageerror`/`console` listeners in every test**, and a manual
+  step-by-step reproduction of the *same* actions succeeded — because the
+  manual repro didn't happen to trigger the one code path (loading an
+  existing/seeded library, or opening the columns menu) that touched the
+  broken line. The lesson: after deleting a function or variable during a
+  refactor, grep the whole file for its name before trusting that syntax
+  validation + a few manual clicks means it's fine — a stray reference
+  can silently break a code path that isn't the one you happened to test
+  by hand, and passing tests that route through a different, less-current
+  stub file can mask it further (see the next note).
+- **Not every test file was using the shared `stub_studio2.js`.**
+  `test_studio.py` (the oldest test in this suite) had its own fully
+  embedded, increasingly-stale copy of the fake File System Access API,
+  missing tables added to the schema long after it was written. It's
+  since been switched to use `stub_studio2.js` like every other test.
+  If a new test file ever gets created by copying an old one, check it's
+  reading `stub_studio2.js` rather than embedding its own stub — a
+  second stale copy would silently stop testing against current behavior
+  the same way this one did.
 - **`runOcrForEdit()` is deliberately separate from `runOcr()`, not a
   shared function with a flag.** `runOcr()` (capture) operates on
   `pendingFile`, a not-yet-saved in-memory File, and requests

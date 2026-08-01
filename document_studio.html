@@ -40,6 +40,18 @@
   .columns-menu-item{ display:flex; align-items:center; gap:8px; padding:5px 0; font-family:var(--font-mono); font-size:12px; }
   .columns-menu-item input{ accent-color:var(--phosphor); }
   .columns-menu-item label{ cursor:pointer; user-select:none; }
+  .fs-columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
+  .fs-col h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
+  .fs-list{ border:1px solid var(--line); border-radius:var(--radius); max-height:280px; overflow-y:auto; background:var(--ink-2); }
+  .fs-list-item{ padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid rgba(217,210,189,0.06); display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .fs-list-item:last-child{ border-bottom:none; }
+  .fs-list-item:hover{ background:rgba(79,224,166,0.06); }
+  .fs-list-item.active{ background:rgba(79,224,166,0.12); color:var(--phosphor); }
+  .fs-list-empty{ padding:14px 10px; font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono); }
+  .fs-item-actions{ display:flex; gap:2px; flex-shrink:0; }
+  .fs-item-actions button{ padding:2px 6px; font-size:10px; border:none; background:transparent; color:var(--text-dim); }
+  .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
+  .fs-item-actions button.fs-remove:hover{ color:var(--red); }
   button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
   button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
   button.primary{ background:var(--phosphor); color:var(--text-ink); border-color:var(--phosphor); font-weight:600; }
@@ -173,6 +185,7 @@
       <button id="columns-btn">⚙ Columns</button>
       <div class="columns-menu" id="columns-menu" style="display:none;"></div>
     </div>
+    <button id="manage-fields-btn">⚙ Manage fields</button>
     <button class="accent" id="add-btn">＋ Add document</button>
     <button id="reload-btn">Switch library</button>
   </div>
@@ -319,6 +332,8 @@
   let fieldNameToId = {};   // name -> id, built from fieldDefs
   let nextFieldId = 1;
   let fieldValuesByDocId = {}; // { docId: { fieldName: valueString, ... } }
+  let defaultDocumentType = null; // prefills Document Type when opening "Add document"
+  let fsSelectedType = null; // currently selected type inside the Field Settings modal
 
   let sortKey = 'date';
   let sortDir = 'desc';
@@ -660,6 +675,7 @@
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
+    defaultDocumentType = null; fsSelectedType = null;
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
@@ -743,6 +759,7 @@
     tableWrap.style.display = 'block';
     subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
     loadColumnSettings();
+    loadDefaultDocumentType();
     loadTypeFieldOrder();
     renderColumnsMenu();
     applyColumnVisibility();
@@ -774,6 +791,30 @@
       }catch(e){ /* fall through to defaults below */ }
     }
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+  }
+
+  function loadDefaultDocumentType(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'default_document_type'").rows;
+    defaultDocumentType = rows.length ? rows[0][0] : null;
+  }
+
+  async function saveDefaultDocumentType(value){
+    defaultDocumentType = value || null;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('default_document_type', ?)", [defaultDocumentType || '']);
+    await persistDb();
+  }
+
+  // Document types worth managing in the Field Settings dialog: ones actually
+  // assigned to at least one document, plus any that already have field
+  // configuration (so a type's setup stays visible/editable even if every
+  // document of that type was later deleted or reclassified). Deliberately
+  // does NOT include arbitrary never-used types -- there's no need to manage
+  // fields for a type nothing uses yet; typing a brand new type in the
+  // capture/edit form is how a type comes into existence in the first place.
+  function getUsedDocumentTypes(){
+    const fromDocs = allDocs.map(d => d.document_type).filter(Boolean);
+    const fromConfig = Object.keys(typeFieldOrder);
+    return [...new Set([...fromDocs, ...fromConfig])].sort();
   }
 
   function loadTypeFieldOrder(){
@@ -810,11 +851,6 @@
     }
   }
 
-  // Shows/hides/reorders the Organization, Organization To, and People fields in the
-  // capture ('f') or edit ('e') form based on what's actually relevant to the given
-  // document type -- per Mariner's own per-type display-field order, migrated into
-  // document_type_fields. An unknown/new document type (not in typeFieldOrder) means
-  // "no restriction", so all three fields show, in their default order.
   // Reads all dynamically-rendered generic field values (everything except People)
   // from the capture/edit form's dynamic-fields container, as [{fieldId, value}].
   // Checkboxes are always included ('1'/'0') since unchecked is meaningful data,
@@ -994,7 +1030,7 @@
   function populateDatalists(){
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
     const subcategories = [...new Set(allDocs.map(d => d.subcategory).filter(Boolean))].sort();
-    const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
+    const types = getUsedDocumentTypes();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
@@ -1445,6 +1481,156 @@
   // --- capture modal (add new document) ---
 
   el('add-btn').addEventListener('click', openCaptureModal);
+  el('manage-fields-btn').addEventListener('click', openFieldSettingsModal);
+
+  // --- field settings modal (manage which fields show per document type, and the default type) ---
+
+  function openFieldSettingsModal(){
+    const usedTypes = getUsedDocumentTypes();
+    fsSelectedType = usedTypes.length ? usedTypes[0] : null;
+
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Field settings</h2>
+          <div class="field">
+            <label for="fs-default-type">Default document type (pre-fills "Add document")</label>
+            <select id="fs-default-type">
+              <option value="">— None —</option>
+              ${usedTypes.map(t => `<option value="${escapeHtml(t)}" ${t === defaultDocumentType ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="fs-columns">
+            <div class="fs-col">
+              <h3>Document Types</h3>
+              <div class="fs-list" id="fs-type-list"></div>
+            </div>
+            <div class="fs-col">
+              <h3>Fields</h3>
+              <div class="fs-list" id="fs-available-list"></div>
+            </div>
+            <div class="fs-col">
+              <h3>Display Fields</h3>
+              <div class="fs-list" id="fs-display-list"></div>
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top:16px;">
+            <button id="fs-done-btn">Done</button>
+          </div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('fs-done-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    el('fs-default-type').addEventListener('change', (e) => saveDefaultDocumentType(e.target.value));
+
+    renderFieldSettingsTypeList();
+    renderFieldSettingsFieldColumns();
+  }
+
+  function renderFieldSettingsTypeList(){
+    const usedTypes = getUsedDocumentTypes();
+    const listEl = el('fs-type-list');
+    if(!usedTypes.length){
+      listEl.innerHTML = `<div class="fs-list-empty">No document types in use yet. Type one into the Add/Edit document form first.</div>`;
+      return;
+    }
+    listEl.innerHTML = usedTypes.map(t => `
+      <div class="fs-list-item ${t === fsSelectedType ? 'active' : ''}" data-type="${escapeHtml(t)}">${escapeHtml(t)}</div>
+    `).join('');
+    listEl.querySelectorAll('.fs-list-item').forEach(itemEl => {
+      itemEl.addEventListener('click', () => {
+        fsSelectedType = itemEl.dataset.type;
+        renderFieldSettingsTypeList();
+        renderFieldSettingsFieldColumns();
+      });
+    });
+  }
+
+  function renderFieldSettingsFieldColumns(){
+    const availableEl = el('fs-available-list');
+    const displayEl = el('fs-display-list');
+    if(!fsSelectedType){
+      availableEl.innerHTML = `<div class="fs-list-empty">Select a document type.</div>`;
+      displayEl.innerHTML = `<div class="fs-list-empty">Select a document type.</div>`;
+      return;
+    }
+
+    const allFieldNames = ['People', ...fieldDefs.map(f => f.name)];
+    const currentEntries = (typeFieldOrder[fsSelectedType] || []).slice().sort((a, b) => a.position - b.position);
+    const shownNames = new Set(currentEntries.map(e => e.field));
+    const availableNames = allFieldNames.filter(n => !shownNames.has(n));
+
+    availableEl.innerHTML = availableNames.length
+      ? availableNames.map(n => `<div class="fs-list-item" data-field="${escapeHtml(n)}"><span>${escapeHtml(n)}</span><span class="fs-item-actions"><button type="button" class="fs-add" title="Add to Display Fields">+</button></span></div>`).join('')
+      : `<div class="fs-list-empty">All fields are already shown for this type.</div>`;
+    availableEl.querySelectorAll('.fs-list-item').forEach(itemEl => {
+      itemEl.querySelector('.fs-add').addEventListener('click', () => addFieldToType(itemEl.dataset.field));
+    });
+
+    displayEl.innerHTML = currentEntries.length
+      ? currentEntries.map((entry, i) => `
+          <div class="fs-list-item" data-field="${escapeHtml(entry.field)}">
+            <span>${escapeHtml(entry.field)}</span>
+            <span class="fs-item-actions">
+              <button type="button" class="fs-up" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
+              <button type="button" class="fs-down" title="Move down" ${i === currentEntries.length - 1 ? 'disabled' : ''}>↓</button>
+              <button type="button" class="fs-remove" title="Remove">✕</button>
+            </span>
+          </div>
+        `).join('')
+      : `<div class="fs-list-empty">No fields shown for this type yet — add some from the left.</div>`;
+    displayEl.querySelectorAll('.fs-list-item').forEach(itemEl => {
+      const fieldName = itemEl.dataset.field;
+      itemEl.querySelector('.fs-remove').addEventListener('click', () => removeFieldFromType(fieldName));
+      const upBtn = itemEl.querySelector('.fs-up');
+      const downBtn = itemEl.querySelector('.fs-down');
+      if(!upBtn.disabled) upBtn.addEventListener('click', () => moveFieldInType(fieldName, -1));
+      if(!downBtn.disabled) downBtn.addEventListener('click', () => moveFieldInType(fieldName, 1));
+    });
+  }
+
+  async function addFieldToType(fieldName){
+    const entries = (typeFieldOrder[fsSelectedType] || []).slice();
+    entries.push({ field: fieldName, position: entries.length });
+    typeFieldOrder[fsSelectedType] = entries;
+    await persistTypeFieldOrder(fsSelectedType);
+    renderFieldSettingsFieldColumns();
+  }
+
+  async function removeFieldFromType(fieldName){
+    const entries = (typeFieldOrder[fsSelectedType] || []).filter(e => e.field !== fieldName);
+    entries.forEach((e, i) => e.position = i);
+    typeFieldOrder[fsSelectedType] = entries;
+    await persistTypeFieldOrder(fsSelectedType);
+    renderFieldSettingsFieldColumns();
+  }
+
+  async function moveFieldInType(fieldName, direction){
+    const entries = (typeFieldOrder[fsSelectedType] || []).slice().sort((a, b) => a.position - b.position);
+    const idx = entries.findIndex(e => e.field === fieldName);
+    const swapIdx = idx + direction;
+    if(idx === -1 || swapIdx < 0 || swapIdx >= entries.length) return;
+    [entries[idx], entries[swapIdx]] = [entries[swapIdx], entries[idx]];
+    entries.forEach((e, i) => e.position = i);
+    typeFieldOrder[fsSelectedType] = entries;
+    await persistTypeFieldOrder(fsSelectedType);
+    renderFieldSettingsFieldColumns();
+  }
+
+  // Writes the in-memory typeFieldOrder[typeName] back to document_type_fields:
+  // drop this type's existing rows, then re-insert in the new order. Simpler and
+  // safer than trying to diff old vs. new rows for a table this small.
+  async function persistTypeFieldOrder(typeName){
+    db.run('DELETE FROM document_type_fields WHERE document_type = ?', [typeName]);
+    for(const entry of typeFieldOrder[typeName] || []){
+      db.run('INSERT INTO document_type_fields (document_type, field_name, position) VALUES (?, ?, ?)', [typeName, entry.field, entry.position]);
+    }
+    await persistDb();
+  }
 
   function openCaptureModal(){
     pendingFile = null;
@@ -1481,7 +1667,7 @@
           <div class="field field-prominent">
             <label for="f-type">Document type</label>
             <div class="field-with-clear">
-              <input type="text" id="f-type" list="type-list" placeholder="Pick this first — it determines which fields show below" />
+              <input type="text" id="f-type" list="type-list" value="${escapeHtml(defaultDocumentType || '')}" placeholder="Pick this first — it determines which fields show below" />
               <button type="button" class="clear-btn" id="f-type-clear" title="Clear" aria-label="Clear document type">✕</button>
             </div>
           </div>
@@ -1559,7 +1745,7 @@
     });
     el('run-ocr-btn').addEventListener('click', runOcr);
 
-    applyDynamicFieldsForType('f', ''); // no type picked yet -- no configured fields to show
+    applyDynamicFieldsForType('f', defaultDocumentType || ''); // pre-filled default type's fields show immediately, if one is set
     el('f-type').addEventListener('change', () => applyDynamicFieldsForType('f', el('f-type').value));
     wireClearButton('f-type', 'f-type-clear');
     wireClearButton('f-category', 'f-category-clear');
