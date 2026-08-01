@@ -93,19 +93,25 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   category → subcategory cascading dropdown or similar hierarchy UI on the
   assumption that one is scoped to the other; it isn't, in the source data
   or here.
-- **`organization`/`organization_to` are plain text columns, not a
-  many-to-many relation** — despite being backfilled from Mariner custom
-  fields the same way `people` is (`ZCUSTOMRECEIPTITEM` → `ZCUSTOMITEM`).
-  **Do not apply the `&`-splitting logic used for people here.** Real
-  organization names legitimately contain `&` as part of one name (e.g.
-  "Dres. Ernestus & Cop, Sandhausen", "Stadtwerke Walldorf GmbH & Co. KG")
-  — confirmed against every `&`-containing value in the library this was
-  built against, none of which were actually two organizations. Splitting
-  these would silently corrupt real names. If a future custom field needs
+- **Custom fields (`fields` + `document_field_values`) are fully generic —
+  not a fixed set of hardcoded columns.** This replaced an earlier design
+  that had dedicated `organization`/`organization_to` columns on
+  `documents`; that approach didn't scale once it became clear Mariner
+  libraries can have 15+ real custom fields (Organization, Year, Date
+  From, Paid, Reimbursable, ...), not just those two. `fields.type` is one
+  of `'text'`/`'number'`/`'date'`/`'checkbox'`, confirmed empirically
+  against real `ZCUSTOMRECEIPTITEM` data (see `migrate_to_new_library.py`'s
+  own notes for how) — `renderGenericFieldHtml()` picks the input type
+  from this, and `formatCustomFieldValue()` formats stored values for
+  display accordingly (checkbox `'1'`/`'0'` → `Yes`/`No`, date → a
+  readable date rather than the raw ISO string).
+  **Do not apply people-style `&`-splitting to generic field values.**
+  `people` is genuinely multi-valued in Mariner's own data (`"Arne &
+  Jana"` means two people); most other fields aren't — real values like
+  `"Dres. Ernestus & Cop, Sandhausen"` legitimately contain `&` as part of
+  one name, and splitting would corrupt them. If a future field needs
   backfilling, check its actual `&`-containing values against real data
-  before deciding whether it's more like `people` (genuinely multi-valued)
-  or more like `organization` (single value that happens to contain `&`)
-  — don't assume either pattern by default.
+  before assuming either pattern.
 - **Document previews** (`generateThumbnail()`, `writeThumbnail()`,
   `regenerateThumbnail()`) are stored as PNG files in a `thumbnails/`
   folder at the library root (`thumbnails/<id>.png`), not as BLOBs in
@@ -126,26 +132,45 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
   mismatch, so don't update one without the other.
 - **Dynamic per-type fields** (`typeFieldOrder`, `loadTypeFieldOrder()`,
-  `applyDynamicFieldsForType()`) show/hide/reorder only the Organization,
-  Organization To, and People fields (`ALL_DYNAMIC_FIELDS`) in the
-  capture/edit forms, based on `document_type_fields` — a table this app
-  only *reads*, never writes; `migrate_to_new_library.py` is the sole
-  writer, populated by decoding Mariner's `ZDATATYPE.ZFIELDORDERARRAY`
-  (see that script's own notes for the decoding details). **Don't extend
-  this to hide core fields** (category, subcategory, date, notes, tags,
-  payment method, amount) — there's no reliable way to identify what
-  Mariner's built-in ("Unnamed") display-order entries actually mean, only
-  named custom fields map cleanly via `ZCUSTOMITEM.ZNAME`, so those three
-  are the only fields this can safely apply to. A document type absent
-  from `document_type_fields` (new/unknown, or migrated from a library
-  where a type had no display-order data) means "no restriction" — all
-  three fields show, unchanged from pre-feature behavior; this is the
-  correct fallback, not a bug to "fix" by requiring every type to have an
-  entry. Hiding a field via `display:none` does **not** clear its value —
-  confirmed this is safe (switching document types back and forth doesn't
-  lose data the person already typed into a field that becomes hidden)
-  before relying on it; don't change the show/hide mechanism to actually
-  clear hidden fields' values without preserving this property.
+  `applyDynamicFieldsForType()`, `renderGenericFieldHtml()`,
+  `renderPeopleFieldHtml()`) fully rebuild the capture/edit forms'
+  `dynamic-fields-f`/`dynamic-fields-e` container's HTML from scratch
+  whenever the document type changes, based on `document_type_fields` — a
+  table this app only *reads*, never writes; `migrate_to_new_library.py`
+  is the sole writer, populated by decoding Mariner's own
+  `ZDATATYPE.ZFIELDORDERARRAY` (see that script's own notes for the
+  decoding details). A document type **absent** from `document_type_fields`
+  (a brand new type, or one from a library where this wasn't tracked)
+  shows **none** of its custom fields or People — this deliberately
+  matches Mariner's own behavior (a type shows nothing until fields are
+  explicitly assigned to it), and is not a bug to "fix" with a
+  show-everything fallback; an earlier version of this feature did exactly
+  that (with a fixed 3-field set) and it was changed on purpose once the
+  field set became fully generic and type-dependent.
+  **Known, accepted limitation:** because the container is rebuilt from
+  scratch (not just shown/hidden) on every type change, switching document
+  types mid-capture does **not** preserve anything already typed into
+  fields that get removed — this is a real regression from the old fixed
+  3-field version (which could hide-without-losing since there were only
+  ever 3 possible elements), traded off deliberately for supporting an
+  arbitrary, type-dependent field set. Don't "fix" this without a real
+  reason to invest in cross-rebuild value preservation; it wasn't judged
+  worth the complexity for how the app is actually used (pick a type near
+  the start of a capture, not partway through). The **edit** form doesn't
+  have this problem in the same way — `saveEditedDocument()` always reads
+  `d.customFields` (the document's actual persisted values) fresh on every
+  type-change re-render, not values typed during the current edit session,
+  so switching types back and forth during an edit correctly restores
+  previously-saved values for fields that reappear.
+  Saving reads the rendered form via `readDynamicFieldValues()` (skips
+  blank text/number/date fields, but always includes checkboxes — an
+  unchecked box is meaningful data, not "empty") and `getShownFieldIds()`
+  (every field currently rendered, regardless of value, needed so editing
+  correctly clears a field the person emptied out — `readDynamicFieldValues()`
+  alone can't tell "never had a value" apart from "just cleared it").
+  `readDynamicPeopleValue()` reads the People input specifically, which —
+  like every other dynamic field — may not exist in the DOM at all if
+  'People' isn't configured for the current type.
 - **The capture form's date field is preset to today (`todayIsoDate()`),
   but only in the capture form** — not the edit form, which correctly
   pre-fills with the document's own existing date, a real value, not a

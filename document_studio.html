@@ -108,6 +108,8 @@
   .field textarea{ font-family:var(--font-mono); font-size:12px; resize:vertical; }
   .field input.field-guess{ border-color:var(--amber-dim); background:rgba(217,154,63,0.06); }
   .field-guess-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--amber); margin-top:5px; }
+  .checkbox-label{ display:flex !important; align-items:center; gap:8px; cursor:pointer; text-transform:none !important; letter-spacing:normal !important; font-family:var(--font-sans) !important; font-size:13px !important; color:var(--text) !important; }
+  .checkbox-label input[type=checkbox]{ width:15px; height:15px; accent-color:var(--phosphor); cursor:pointer; }
   .field-row{ display:flex; gap:12px; }
   .field-row .field{ flex:1; }
   .file-drop{
@@ -155,7 +157,6 @@
     <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
     <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
     <span class="filter-wrap" data-field="payment_method"><select id="payment-filter"><option value="">All payment methods</option></select></span>
-    <span class="filter-wrap" data-field="organization"><select id="organization-filter"><option value="">All organizations</option></select></span>
     <div class="columns-menu-wrap">
       <button id="columns-btn">⚙ Columns</button>
       <div class="columns-menu" id="columns-menu" style="display:none;"></div>
@@ -196,7 +197,6 @@
           <th data-key="category" data-field="category">Category</th>
           <th data-key="document_type" data-field="document_type">Type</th>
           <th data-key="payment_method" data-field="payment_method">Payment</th>
-          <th data-key="organization" data-field="organization">Organization</th>
           <th data-field="people">People</th>
           <th data-key="date" data-field="date">Date</th>
           <th data-key="import_date" data-field="import_date">Imported</th>
@@ -218,7 +218,6 @@
 
 <datalist id="category-list"></datalist>
 <datalist id="subcategory-list"></datalist>
-<datalist id="organization-list"></datalist>
 <datalist id="type-list"></datalist>
 <datalist id="payment-list"></datalist>
 <datalist id="person-list"></datalist>
@@ -232,8 +231,7 @@
       id INTEGER PRIMARY KEY, title TEXT, category TEXT, subcategory TEXT, document_type TEXT,
       payment_method TEXT, amount REAL, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
-      created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
-      organization TEXT, organization_to TEXT
+      created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -245,7 +243,11 @@
     );
     CREATE TABLE IF NOT EXISTS settings ( key TEXT PRIMARY KEY, value TEXT );
     CREATE TABLE IF NOT EXISTS document_type_fields (
-      document_type TEXT, field TEXT, position INTEGER, PRIMARY KEY (document_type, field)
+      document_type TEXT, field_name TEXT, position INTEGER, PRIMARY KEY (document_type, field_name)
+    );
+    CREATE TABLE IF NOT EXISTS fields ( id INTEGER PRIMARY KEY, name TEXT UNIQUE, type TEXT );
+    CREATE TABLE IF NOT EXISTS document_field_values (
+      document_id INTEGER, field_id INTEGER, value TEXT, PRIMARY KEY (document_id, field_id)
     );
   `;
 
@@ -258,8 +260,7 @@
     'ALTER TABLE documents ADD COLUMN import_date TEXT',
     'ALTER TABLE documents ADD COLUMN subcategory TEXT',
     'ALTER TABLE documents ADD COLUMN thumbnail_path TEXT',
-    'ALTER TABLE documents ADD COLUMN organization TEXT',
-    'ALTER TABLE documents ADD COLUMN organization_to TEXT',
+    'ALTER TABLE document_type_fields ADD COLUMN field_name TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -290,7 +291,6 @@
     { id: 'category', label: 'Category', hasFilter: true, defaultVisible: true },
     { id: 'document_type', label: 'Type', hasFilter: true, defaultVisible: true },
     { id: 'payment_method', label: 'Payment method', hasFilter: true, defaultVisible: false },
-    { id: 'organization', label: 'Organization', hasFilter: true, defaultVisible: true },
     { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
     { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
     { id: 'import_date', label: 'Imported', hasFilter: false, defaultVisible: false },
@@ -298,8 +298,15 @@
     { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
   ];
   let visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
-  let typeFieldOrder = {}; // { "Medical Referral": ["organization_to", "people"], ... } -- absence of a
-                            // key means "no restriction, show all three" (new/unknown document type)
+  let typeFieldOrder = {}; // { "Medical Referral": [{field:"Organization To",position:0}, {field:"People",position:1}], ... }
+                            // absence of a key means "no configured display fields for this type" --
+                            // an unconfigured type shows none of its generic/People fields, matching
+                            // Mariner's own behavior (fields must be explicitly assigned to a type).
+  let fieldDefs = [];       // [{id, name, type}, ...] from the `fields` table -- type is one of
+                            // 'text' | 'number' | 'date' | 'checkbox'
+  let fieldNameToId = {};   // name -> id, built from fieldDefs
+  let nextFieldId = 1;
+  let fieldValuesByDocId = {}; // { docId: { fieldName: valueString, ... } }
 
   let sortKey = 'date';
   let sortDir = 'desc';
@@ -323,7 +330,6 @@
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
   const paymentFilter = el('payment-filter');
-  const organizationFilter = el('organization-filter');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -513,27 +519,30 @@
   // Spotlight/Finder search on macOS being the main one -- can find documents by those
   // fields. This isn't a "real" Spotlight integration (impossible from a browser -- see
   // CLAUDE.md), just a plain-text file that happens to get indexed like any other .txt.
-  function buildSidecarText(fields){
+  function buildSidecarText(opts){
     const lines = [
-      `Title: ${fields.title || ''}`,
-      `Category: ${fields.category || ''}`,
-      `Subcategory: ${fields.subcategory || ''}`,
-      `Document type: ${fields.documentType || ''}`,
-      `Payment method: ${fields.paymentMethod || ''}`,
-      `Amount: ${fields.amount != null ? fields.amount : ''}`,
-      `Date: ${fields.date || ''}`,
-      `Imported: ${fields.importDate || ''}`,
-      `Organization: ${fields.organization || ''}`,
-      `Organization to: ${fields.organizationTo || ''}`,
-      `People: ${(fields.people || []).join(', ')}`,
-      `Tags: ${(fields.tags || []).join(', ')}`,
+      `Title: ${opts.title || ''}`,
+      `Category: ${opts.category || ''}`,
+      `Subcategory: ${opts.subcategory || ''}`,
+      `Document type: ${opts.documentType || ''}`,
+      `Payment method: ${opts.paymentMethod || ''}`,
+      `Amount: ${opts.amount != null ? opts.amount : ''}`,
+      `Date: ${opts.date || ''}`,
+      `Imported: ${opts.importDate || ''}`,
+    ];
+    for(const [name, value] of Object.entries(opts.customFields || {})){
+      lines.push(`${name}: ${value}`);
+    }
+    lines.push(
+      `People: ${(opts.people || []).join(', ')}`,
+      `Tags: ${(opts.tags || []).join(', ')}`,
       '',
       'Notes:',
-      fields.notes || '',
+      opts.notes || '',
       '',
       'OCR text:',
-      fields.ocrText || '',
-    ];
+      opts.ocrText || '',
+    );
     return lines.join('\n');
   }
 
@@ -621,6 +630,7 @@
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
+    fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
@@ -638,8 +648,7 @@
   function loadDocumentsFromDb(){
     const { columns, rows } = queryAll(`
       SELECT id, title, category, subcategory, document_type, payment_method, amount, date, import_date, notes,
-             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path,
-             organization, organization_to
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path
       FROM documents
     `);
     const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -678,6 +687,9 @@
       (peopleByDocId[docId] = peopleByDocId[docId] || []).push(personIdToName[personId] || ('#' + personId));
     }
 
+    loadFieldDefs();
+    loadFieldValues();
+
     allDocs = [];
     let maxDocId = 0;
     for(const row of rows){
@@ -691,7 +703,7 @@
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
         created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
         thumbnail_path: row[idx.thumbnail_path],
-        organization: row[idx.organization], organization_to: row[idx.organization_to],
+        customFields: fieldValuesByDocId[id] || {}, // { "Organization": "Dr. Schröter", "Paid": "1", ... }
         tags: tagsByDocId[id] || [],
         people: peopleByDocId[id] || [],
       });
@@ -737,7 +749,7 @@
 
   function loadTypeFieldOrder(){
     typeFieldOrder = {};
-    const { rows } = queryAll('SELECT document_type, field, position FROM document_type_fields');
+    const { rows } = queryAll('SELECT document_type, field_name, position FROM document_type_fields');
     for(const [typeName, field, position] of rows){
       (typeFieldOrder[typeName] = typeFieldOrder[typeName] || []).push({ field, position });
     }
@@ -746,30 +758,135 @@
     }
   }
 
+  function loadFieldDefs(){
+    const { rows } = queryAll('SELECT id, name, type FROM fields');
+    fieldDefs = rows.map(([id, name, type]) => ({ id, name, type }));
+    fieldNameToId = {};
+    let maxFieldId = 0;
+    for(const f of fieldDefs){
+      fieldNameToId[f.name] = f.id;
+      maxFieldId = Math.max(maxFieldId, f.id);
+    }
+    nextFieldId = maxFieldId + 1;
+  }
+
+  function loadFieldValues(){
+    fieldValuesByDocId = {};
+    const idToField = Object.fromEntries(fieldDefs.map(f => [f.id, f]));
+    const { rows } = queryAll('SELECT document_id, field_id, value FROM document_field_values');
+    for(const [docId, fieldId, value] of rows){
+      const field = idToField[fieldId];
+      if(!field) continue;
+      (fieldValuesByDocId[docId] = fieldValuesByDocId[docId] || {})[field.name] = value;
+    }
+  }
+
   // Shows/hides/reorders the Organization, Organization To, and People fields in the
   // capture ('f') or edit ('e') form based on what's actually relevant to the given
   // document type -- per Mariner's own per-type display-field order, migrated into
   // document_type_fields. An unknown/new document type (not in typeFieldOrder) means
   // "no restriction", so all three fields show, in their default order.
-  const ALL_DYNAMIC_FIELDS = ['organization', 'organization_to', 'people'];
-  function applyDynamicFieldsForType(prefix, typeName){
+  // Reads all dynamically-rendered generic field values (everything except People)
+  // from the capture/edit form's dynamic-fields container, as [{fieldId, value}].
+  // Checkboxes are always included ('1'/'0') since unchecked is meaningful data,
+  // not "empty" the way a blank text/number/date field is (those are skipped
+  // entirely when empty, same convention as the rest of the app's optional fields).
+  function readDynamicFieldValues(prefix){
+    const container = el(`dynamic-fields-${prefix}`);
+    if(!container) return [];
+    const values = [];
+    container.querySelectorAll('[data-field-id]').forEach(fieldEl => {
+      const fieldId = Number(fieldEl.dataset.fieldId);
+      const input = fieldEl.querySelector('input');
+      if(!input) return;
+      let value;
+      if(input.type === 'checkbox'){
+        value = input.checked ? '1' : '0';
+      }else{
+        value = input.value.trim();
+        if(!value) return;
+      }
+      values.push({ fieldId, value });
+    });
+    return values;
+  }
+
+  // The People input only exists in the DOM when 'People' is a configured field for
+  // the currently selected document type -- may be absent entirely.
+  function readDynamicPeopleValue(prefix){
+    const input = el(`${prefix}-person`);
+    return input ? input.value : '';
+  }
+
+  // All field IDs currently rendered in the dynamic-fields container, regardless of
+  // whether they currently hold a value -- unlike readDynamicFieldValues(), which
+  // skips blank text/number/date fields. Needed to know which fields to clear when
+  // editing, since a field the person just emptied out wouldn't otherwise show up
+  // anywhere in "what has a value now".
+  function getShownFieldIds(prefix){
+    const container = el(`dynamic-fields-${prefix}`);
+    if(!container) return [];
+    return Array.from(container.querySelectorAll('[data-field-id]')).map(elm => Number(elm.dataset.fieldId));
+  }
+
+  function renderPeopleFieldHtml(prefix, existingPeople){
+    const value = (existingPeople || []).join(', ');
+    const inputId = `${prefix}-person`;
+    return `
+      <div class="field" data-dynamic-field="People">
+        <label for="${inputId}">People (comma-separated)</label>
+        <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="Who this document relates to, e.g. Arne, Jana" />
+      </div>
+    `;
+  }
+
+  function renderGenericFieldHtml(prefix, field, existingValue){
+    const inputId = `${prefix}-field-${field.id}`;
+    if(field.type === 'checkbox'){
+      const checked = existingValue === '1' ? 'checked' : '';
+      return `
+        <div class="field" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
+          <label class="checkbox-label" for="${inputId}"><input type="checkbox" id="${inputId}" ${checked} /> ${escapeHtml(field.name)}</label>
+        </div>
+      `;
+    }
+    let inputType = 'text', extra = '';
+    if(field.type === 'number'){ inputType = 'number'; extra = 'step="any"'; }
+    else if(field.type === 'date'){ inputType = 'date'; }
+    const value = field.type === 'date' ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
+    return `
+      <div class="field" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
+        <label for="${inputId}">${escapeHtml(field.name)}</label>
+        <input type="${inputType}" id="${inputId}" ${extra} value="${escapeHtml(value)}" />
+      </div>
+    `;
+  }
+
+  // Rebuilds the capture ('f') or edit ('e') form's dynamic-fields container from
+  // scratch to match whatever fields are configured for the given document type
+  // (via document_type_fields), in their configured order. An unconfigured type
+  // (not present in typeFieldOrder) renders nothing extra -- matching Mariner's own
+  // behavior, where a document type shows no custom fields until fields are
+  // explicitly assigned to it. Note: because this rebuilds the container's HTML
+  // from scratch, switching document types mid-capture does NOT preserve anything
+  // already typed into fields that get removed -- a known, accepted limitation
+  // given the field set is now fully dynamic rather than a fixed handful of
+  // always-present elements.
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
     const entry = typeFieldOrder[(typeName || '').trim()];
-    const orderedFields = entry ? entry.map(e => e.field) : ALL_DYNAMIC_FIELDS;
-    const visibleSet = new Set(orderedFields);
-
-    for(const field of ALL_DYNAMIC_FIELDS){
-      const fieldEl = container.querySelector(`[data-dynamic-field="${field}"]`);
-      if(fieldEl) fieldEl.style.display = visibleSet.has(field) ? '' : 'none';
+    if(!entry || !entry.length){
+      container.innerHTML = '';
+      return;
     }
-    // Reorder visible fields to match the type's display order; fields not
-    // mentioned (shouldn't happen when orderedFields === ALL_DYNAMIC_FIELDS,
-    // but defensively) keep their existing relative position at the end.
-    for(const field of orderedFields){
-      const fieldEl = container.querySelector(`[data-dynamic-field="${field}"]`);
-      if(fieldEl) container.appendChild(fieldEl);
-    }
+    container.innerHTML = entry.map(({ field: fieldName }) => {
+      if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople);
+      const fieldDef = fieldDefs.find(f => f.name === fieldName);
+      if(!fieldDef) return '';
+      const existingValue = existingValues ? existingValues[fieldName] : undefined;
+      return renderGenericFieldHtml(prefix, fieldDef, existingValue);
+    }).join('');
   }
 
   async function saveColumnSettings(){
@@ -833,12 +950,10 @@
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
-    const organizations = [...new Set(allDocs.map(d => d.organization).filter(Boolean))].sort();
     categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     typeFilter.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     personFilter.innerHTML = '<option value="">All people</option>' + people.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
     paymentFilter.innerHTML = '<option value="">All payment methods</option>' + payments.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-    organizationFilter.innerHTML = '<option value="">All organizations</option>' + organizations.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
   }
 
   function populateDatalists(){
@@ -847,14 +962,12 @@
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
-    const organizations = [...new Set(allDocs.flatMap(d => [d.organization, d.organization_to]).filter(Boolean))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('subcategory-list').innerHTML = subcategories.map(s => `<option value="${escapeHtml(s)}">`).join('');
     el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
     el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('person-list').innerHTML = people.map(p => `<option value="${escapeHtml(p)}">`).join('');
-    el('organization-list').innerHTML = organizations.map(o => `<option value="${escapeHtml(o)}">`).join('');
     el('tag-list').innerHTML = tagNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
   }
 
@@ -869,19 +982,29 @@
     return '—';
   }
 
+  // Formats a raw document_field_values string for display, based on the field's
+  // type in `fields` -- e.g. a checkbox's '1'/'0' as 'Yes'/'No', a date as a
+  // readable date rather than a raw ISO string.
+  function formatCustomFieldValue(fieldName, rawValue){
+    const def = fieldDefs.find(f => f.name === fieldName);
+    if(!def) return rawValue;
+    if(def.type === 'checkbox') return rawValue === '1' ? 'Yes' : 'No';
+    if(def.type === 'date') return formatDate(rawValue);
+    return rawValue;
+  }
+
   function currentFilters(){
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, payment: paymentFilter.value, organization: organizationFilter.value };
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, payment: paymentFilter.value };
   }
   function applyFilters(docs){
-    const { q, category, type, person, payment, organization } = currentFilters();
+    const { q, category, type, person, payment } = currentFilters();
     return docs.filter(d => {
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
       if(payment && d.payment_method !== payment) return false;
-      if(organization && d.organization !== organization) return false;
       if(q){
-        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, d.organization, d.organization_to, (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
@@ -913,7 +1036,6 @@
         <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
         <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
         <td data-field="payment_method">${d.payment_method ? escapeHtml(d.payment_method) : '<span class="doc-sub">—</span>'}</td>
-        <td data-field="organization">${d.organization ? escapeHtml(d.organization) : '<span class="doc-sub">—</span>'}</td>
         <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
         <td class="date" data-field="date">${formatDate(d.date)}</td>
         <td class="date" data-field="import_date">${formatDate(d.import_date)}</td>
@@ -932,7 +1054,6 @@
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
   paymentFilter.addEventListener('change', render);
-  organizationFilter.addEventListener('change', render);
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -991,7 +1112,6 @@
                 <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
                 <div><b>Date</b> ${formatDate(d.date)} · <b>Amount</b> ${formatAmount(d)}</div>
                 <div><b>Payment</b> ${escapeHtml(d.payment_method || '—')}</div>
-                <div><b>Organization</b> ${escapeHtml(d.organization || '—')}${d.organization_to ? ' → ' + escapeHtml(d.organization_to) : ''}</div>
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
               </div>
@@ -999,6 +1119,7 @@
           </div>
           <div class="modal-actions">${actions.join('')}${(!d.file_path && !d.original_file_path) ? '<span class="doc-sub" style="align-self:center;">No file recorded for this document</span>' : ''}</div>
           <div class="status" id="thumb-status" style="padding:8px 0 0;"></div>
+          ${Object.keys(d.customFields || {}).length ? `<div class="modal-section"><h3>Fields</h3><div class="modal-meta">${Object.entries(d.customFields).map(([name, value]) => `<div><b>${escapeHtml(name)}</b> ${escapeHtml(formatCustomFieldValue(name, value))}</div>`).join('')}</div></div>` : ''}
           <div class="modal-section"><h3>People</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || '—'}</p></div>
           <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
           ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
@@ -1095,20 +1216,7 @@
             <div class="field"><label for="e-payment">Payment method</label><input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" /></div>
             <div class="field"><label for="e-amount">Amount</label><input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" /></div>
           </div>
-          <div id="dynamic-fields-e">
-            <div class="field" data-dynamic-field="organization">
-              <label for="e-organization">Organization</label>
-              <input type="text" id="e-organization" list="organization-list" value="${escapeHtml(d.organization || '')}" />
-            </div>
-            <div class="field" data-dynamic-field="organization_to">
-              <label for="e-organization-to">Organization to</label>
-              <input type="text" id="e-organization-to" list="organization-list" value="${escapeHtml(d.organization_to || '')}" />
-            </div>
-            <div class="field" data-dynamic-field="people">
-              <label for="e-person">People (comma-separated)</label>
-              <input type="text" id="e-person" list="person-list" value="${escapeHtml((d.people||[]).join(', '))}" placeholder="Who this document relates to, e.g. Arne, Jana" />
-            </div>
-          </div>
+          <div id="dynamic-fields-e"></div>
           <div class="field">
             <label for="e-tags">Tags (comma-separated)</label>
             <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="e.g. medical, insurance" />
@@ -1136,8 +1244,8 @@
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
-    applyDynamicFieldsForType('e', d.document_type || '');
-    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value));
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people);
+    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people));
   }
 
   // Recovers the base filename (no extension) a document's files were saved under,
@@ -1165,16 +1273,14 @@
       const amountRaw = el('e-amount').value.trim();
       const amount = amountRaw === '' ? null : parseFloat(amountRaw);
       const date = el('e-date').value || null;
-      const organization = el('e-organization').value.trim() || null;
-      const organizationTo = el('e-organization-to').value.trim() || null;
       const notes = el('e-notes').value.trim() || null;
       const ocrText = el('e-ocr-text').value.trim() || null;
 
       db.run(`
         UPDATE documents SET title=?, category=?, subcategory=?, document_type=?, payment_method=?,
-                              amount=?, date=?, notes=?, ocr_text=?, organization=?, organization_to=?
+                              amount=?, date=?, notes=?, ocr_text=?
         WHERE id=?
-      `, [title, category, subcategory, documentType, paymentMethod, amount, date, notes, ocrText, organization, organizationTo, id]);
+      `, [title, category, subcategory, documentType, paymentMethod, amount, date, notes, ocrText, id]);
 
       // Re-link tags: drop existing links for this document, then re-add based on
       // the edited comma-separated list (same find-or-create pattern as capture).
@@ -1193,7 +1299,7 @@
       }
 
       db.run('DELETE FROM document_people WHERE document_id = ?', [id]);
-      const personNames = el('e-person').value.split(',').map(p => p.trim()).filter(Boolean);
+      const personNames = readDynamicPeopleValue('e').split(',').map(p => p.trim()).filter(Boolean);
       const peopleForDoc = [];
       for(const name of personNames){
         let personId = personNameToId[name];
@@ -1206,12 +1312,34 @@
         peopleForDoc.push(name);
       }
 
+      // Re-link generic custom field values the same way -- drop, then re-add from
+      // whatever's currently rendered. Fields not currently shown for this document's
+      // type (e.g. it was reclassified) are NOT touched here, since they're simply not
+      // present in the DOM at all right now -- their prior values remain in the
+      // database, associated with the field by id, and will reappear if the document
+      // is later reclassified back to a type that shows that field again.
       const d = allDocs.find(x => x.id === id);
+      const shownFieldIds = getShownFieldIds('e');
+      for(const fieldId of shownFieldIds){
+        db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [id, fieldId]);
+      }
+      const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
+      const customFieldsForDoc = { ...d.customFields };
+      for(const fieldId of shownFieldIds){
+        const name = idToFieldName[fieldId];
+        if(name) delete customFieldsForDoc[name]; // clear first; re-added below if still non-blank
+      }
+      for(const { fieldId, value } of readDynamicFieldValues('e')){
+        db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, fieldId, value]);
+        const name = idToFieldName[fieldId];
+        if(name) customFieldsForDoc[name] = value;
+      }
+
       const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
       if(sidecarBaseName){
         await writeSidecarFile(sidecarBaseName, buildSidecarText({
           title, category, subcategory, documentType, paymentMethod, amount, date,
-          importDate: d.import_date, organization, organizationTo, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+          importDate: d.import_date, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
         }));
       }
 
@@ -1219,7 +1347,7 @@
 
       Object.assign(d, {
         title, category, subcategory, document_type: documentType, payment_method: paymentMethod,
-        amount, date, organization, organization_to: organizationTo, notes, ocr_text: ocrText, tags: tagsForDoc, people: peopleForDoc,
+        amount, date, notes, ocr_text: ocrText, customFields: customFieldsForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
@@ -1288,20 +1416,7 @@
             <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
             <div class="field"><label for="f-amount">Amount</label><input type="number" step="0.01" id="f-amount" /></div>
           </div>
-          <div id="dynamic-fields-f">
-            <div class="field" data-dynamic-field="organization">
-              <label for="f-organization">Organization</label>
-              <input type="text" id="f-organization" list="organization-list" />
-            </div>
-            <div class="field" data-dynamic-field="organization_to">
-              <label for="f-organization-to">Organization to</label>
-              <input type="text" id="f-organization-to" list="organization-list" placeholder="e.g. referred to a specialist" />
-            </div>
-            <div class="field" data-dynamic-field="people">
-              <label for="f-person">People (comma-separated)</label>
-              <input type="text" id="f-person" list="person-list" placeholder="Who this document relates to, e.g. Arne, Jana" />
-            </div>
-          </div>
+          <div id="dynamic-fields-f"></div>
           <div class="field">
             <label for="f-tags">Tags (comma-separated)</label>
             <input type="text" id="f-tags" list="tag-list" placeholder="e.g. medical, insurance" />
@@ -1331,7 +1446,7 @@
     });
     el('run-ocr-btn').addEventListener('click', runOcr);
 
-    applyDynamicFieldsForType('f', ''); // no type picked yet -- show all three fields
+    applyDynamicFieldsForType('f', ''); // no type picked yet -- no configured fields to show
     el('f-type').addEventListener('change', () => applyDynamicFieldsForType('f', el('f-type').value));
 
     // The date field is preset to today as a starting guess, not a real value --
@@ -1473,8 +1588,6 @@
       const amountRaw = el('f-amount').value.trim();
       const amount = amountRaw === '' ? null : parseFloat(amountRaw);
       const date = el('f-date').value || null;
-      const organization = el('f-organization').value.trim() || null;
-      const organizationTo = el('f-organization-to').value.trim() || null;
       const notes = el('f-notes').value.trim() || null;
       const ocrText = el('f-ocr-text').value.trim() || null;
       const ocrLanguage = pendingOcrText ? el('ocr-lang').value : null;
@@ -1486,9 +1599,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, organization, organization_to)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?)
-      `, [id, title, category, subcategory, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, organization, organizationTo]);
+                                created_at, source, source_legacy_id, thumbnail_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
+      `, [id, title, category, subcategory, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -1503,7 +1616,7 @@
         tagsForDoc.push(name);
       }
 
-      const personNames = el('f-person').value.split(',').map(p => p.trim()).filter(Boolean);
+      const personNames = readDynamicPeopleValue('f').split(',').map(p => p.trim()).filter(Boolean);
       const peopleForDoc = [];
       for(const name of personNames){
         let personId = personNameToId[name];
@@ -1516,8 +1629,16 @@
         peopleForDoc.push(name);
       }
 
+      const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
+      const customFieldsForDoc = {};
+      for(const { fieldId, value } of readDynamicFieldValues('f')){
+        db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, fieldId, value]);
+        const name = idToFieldName[fieldId];
+        if(name) customFieldsForDoc[name] = value;
+      }
+
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, subcategory, documentType, paymentMethod, amount, date, importDate, organization, organizationTo, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        title, category, subcategory, documentType, paymentMethod, amount, date, importDate, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
@@ -1527,7 +1648,7 @@
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, organization, organization_to: organizationTo,
+        thumbnail_path: thumbnailPathForDb, customFields: customFieldsForDoc,
         tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();

@@ -34,28 +34,34 @@ working" problem that motivated this project in the first place.
   a subfolder next to it, mirroring how Mariner Paperless itself laid out
   processed vs. original files.
 - **Spotlight/Finder search** — every captured document also gets a plain
-  `.txt` sidecar file (title, category, tags, notes, OCR text) written next
-  to it, so macOS's built-in file search can find documents by fields that
-  otherwise only live inside `library.sqlite`. This isn't a real Spotlight
-  *integration* (not possible from a browser — see Limitations below); it's
-  just an ordinary text file that happens to get indexed like any other.
+  `.txt` sidecar file (title, category, tags, notes, OCR text, custom
+  field values) written next to it, so macOS's built-in file search can
+  find documents by fields that otherwise only live inside
+  `library.sqlite`. This isn't a real Spotlight *integration* (not
+  possible from a browser — see Limitations below); it's just an ordinary
+  text file that happens to get indexed like any other.
+- **Custom fields, fully generic** — text, number, date, and checkbox
+  fields (Organization, Year, Date From, Paid, Reimbursable — whatever
+  your library uses) are all modeled the same way, backfilled from
+  Mariner's own field definitions and values. Not a fixed set of
+  hardcoded fields.
 - **Tag & organize** — category, subcategory, document type, payment
-  method, organization (and organization-to, for referral-style
-  documents), amount, date, notes, people, and free-form tags per
-  document — a document can relate to more than one person, filterable
+  method, amount, date, notes, people, custom fields, and free-form tags
+  per document — a document can relate to more than one person, filterable
   the same way tags are
 - **Open originals** — one click to open the actual file from disk
 - **Edit** — click any document, then "Edit" to update its metadata (title,
-  category, subcategory, type, payment method, organization, amount, date,
-  people, tags, notes, OCR text) after the fact. This only ever changes
-  `library.sqlite` — the underlying file on disk is never touched or
-  replaced.
+  category, subcategory, type, payment method, amount, date, people, tags,
+  custom field values, notes, OCR text) after the fact. This only ever
+  changes `library.sqlite` — the underlying file on disk is never touched
+  or replaced.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
-  Organization, People, Date, Imported, Amount, Tags); each one that
-  supports filtering shows or hides its matching filter dropdown at the
-  same time. The choice is saved in `library.sqlite` itself, so it travels
-  with the library folder rather than being tied to one browser or device.
+  People, Date, Imported, Amount, Tags); each one that supports filtering
+  shows or hides its matching filter dropdown at the same time. The choice
+  is saved in `library.sqlite` itself, so it travels with the library
+  folder rather than being tied to one browser or device. (Custom fields
+  as table columns/filters is planned but not built yet — see Limitations.)
 - **Document previews** — every document can show a small preview image in
   its detail view. Migrated documents get Mariner's own thumbnail, copied
   over directly by `migrate_to_new_library.py`. Newly captured documents
@@ -64,13 +70,14 @@ working" problem that motivated this project in the first place.
   A "Generate preview" / "Regenerate preview" button in the detail view
   lets you create one on demand for any document that's missing one, or
   refresh an existing one.
-- **Dynamic fields per document type** — the Organization, Organization To,
-  and People fields show, hide, and reorder themselves in the capture/edit
-  forms based on what's actually relevant to the document type you've
-  picked, mirroring how Mariner Paperless itself decided which fields to
-  display per type. A document type with no such data (a brand new type,
-  or one from a library where this wasn't tracked) just shows all three,
-  same as before this feature existed.
+- **Dynamic fields per document type** — capture/edit forms only show the
+  custom fields (and People) actually configured for whatever document
+  type you've picked, in the configured order, mirroring how Mariner
+  Paperless itself decided which fields to display per type. An
+  unconfigured document type (a brand new type, or a library where this
+  wasn't tracked) shows none of its custom fields at all — matching
+  Mariner's own behavior, where fields have to be explicitly assigned to
+  a type before they show up.
 - **Date defaults to today when capturing** — since that's right for a
   freshly-received document but wrong for a backlog of older mail, it's
   visually flagged (amber-tinted, with a "double-check this" note) until
@@ -119,9 +126,7 @@ documents
     created_at          TEXT     -- ISO 8601, when the record was created
     source              TEXT     -- 'migrated' or 'captured'
     source_legacy_id    INTEGER  -- traceability only, for migrated documents
-    thumbnail_path       TEXT     -- relative to library root, nullable
-    organization         TEXT     -- e.g. who a bill is from, who referred a document
-    organization_to      TEXT     -- for referral-style documents (from organization, to organization_to)
+    thumbnail_path      TEXT     -- relative to library root, nullable
 
 tags
     id    INTEGER PRIMARY KEY
@@ -145,11 +150,23 @@ settings
     key    TEXT PRIMARY KEY
     value  TEXT
 
+fields
+    id    INTEGER PRIMARY KEY
+    name  TEXT UNIQUE
+    type  TEXT      -- 'text', 'number', 'date', or 'checkbox'
+
+document_field_values
+    document_id  INTEGER
+    field_id     INTEGER
+    value        TEXT     -- always stored as text; interpreted per fields.type when read
+    PRIMARY KEY (document_id, field_id)
+
 document_type_fields
     document_type  TEXT
-    field          TEXT      -- 'organization', 'organization_to', or 'people'
+    field_name     TEXT      -- a name from `fields`, OR the literal 'People' as a sentinel
+                              -- for the special multi-valued people/document_people system
     position       INTEGER   -- display order within this document type
-    PRIMARY KEY (document_type, field)
+    PRIMARY KEY (document_type, field_name)
 ```
 
 `settings` is a small key-value table for app preferences that should
@@ -157,13 +174,23 @@ travel with the library rather than live in browser storage — currently
 just `visible_columns` (a JSON array of which table columns and their
 matching filters are shown).
 
+**Custom fields are fully generic** (`fields` + `document_field_values`) —
+Organization, Year, Date From, Paid, whatever your library actually uses.
+Each field has a type (`text`/`number`/`date`/`checkbox`) that determines
+how it's rendered and how its stored (always-text) value gets interpreted.
+Populated by `migrate_to_new_library.py` from Mariner's own field
+definitions and real values; Document Studio reads and writes this table
+as documents are captured/edited, but doesn't yet have a UI for *defining*
+new fields itself — see Limitations.
+
 `document_type_fields` drives the capture/edit forms' dynamic field
 behavior (see "Dynamic fields per document type" above): for a document
-type present in this table, only the listed fields show, in the given
-order; a type absent from it has no restriction — Document Studio shows
-all three. Populated by `migrate_to_new_library.py` from Mariner's own
-per-type display-field configuration; Document Studio itself never writes
-to this table, only reads it.
+type present in this table, only the listed fields — plus People, via the
+`'People'` sentinel — show, in the given order. A type absent from this
+table shows **none** of its custom fields at all, matching Mariner's own
+behavior (fields must be explicitly assigned to a type before they
+display). Populated by `migrate_to_new_library.py`, which decodes
+Mariner's own per-type display-field configuration.
 
 "People" works exactly like tags: a document can relate to more than one
 person (a joint bill, a shared appointment, etc.), so it's a many-to-many
@@ -180,13 +207,13 @@ different categories on different documents (e.g. "Dentist" appears under
 both "Medical" and "Health"). It's carried over as-is: a second, independent
 classification field.
 
-`organization`/`organization_to` are plain text fields, **not** modeled as
-a many-to-many relation the way people are — despite both being backfilled
-from Mariner custom fields via the same mechanism. Real organization names
-legitimately contain "&" (e.g. "Dres. Ernestus & Cop, Sandhausen", a German
-medical practice partnership; "Stadtwerke Walldorf GmbH & Co. KG"), so
-splitting on "&" the way `Person` does would corrupt them rather than
-separate genuinely distinct organizations.
+Unlike People, **most custom fields are plain values, not split on "&".**
+Person is genuinely multi-valued in practice ("Arne & Jana" means two
+people); most other fields aren't — a real "Organization" value can
+legitimately contain "&" as part of one name (e.g. "Dres. Ernestus & Cop,
+Sandhausen", a German medical practice partnership; "Stadtwerke Walldorf
+GmbH & Co. KG"), and splitting on it would corrupt the name rather than
+separate genuinely distinct values.
 
 ## Limitations
 
@@ -217,6 +244,18 @@ separate genuinely distinct organizations.
 - **Preview generation only covers images and PDFs.** Other file types
   (if you ever capture something else) won't get a preview — "Generate
   preview" will just report it can't handle that format.
+- **No UI yet for managing document types, fields, or which fields show
+  per type.** `fields` and `document_type_fields` are fully readable and
+  writable by the app when capturing/editing documents, but there's no
+  settings screen (yet) for *defining* a new field, renaming one, or
+  changing which fields a document type shows — that all currently
+  requires editing the database directly, or re-running the migration
+  script. A settings screen mirroring this is planned.
+- **Custom fields aren't table columns/filters yet.** They show correctly
+  in the capture/edit forms and the detail view, but the main document
+  list only has columns for the fixed fields (Category, Type, Payment
+  method, People, Date, Amount, Tags) — not yet for arbitrary custom
+  fields like Organization or Year. They are, however, included in search.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
 - **Needs network on first load** (to fetch the sql.js, Tesseract.js,
