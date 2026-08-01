@@ -48,6 +48,17 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   `＋`/`✕` used elsewhere in the UI) rely on browser encoding-sniffing
   instead of a guarantee. Both bugs are the kind that "work fine" in quick
   testing and then fail unpredictably for someone else — keep both lines.
+- **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
+  link/modal) lists exactly the CDN dependencies this file actually loads
+  (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, plus sql.js
+  loaded unconditionally for the database itself) — keep it in sync if a
+  dependency is added, removed, or swapped. The license for each was
+  verified directly against its own repo's `LICENSE` file when this was
+  written (sql.js MIT, Tesseract.js Apache-2.0, jsPDF MIT, pdf.js
+  Apache-2.0), not assumed from general familiarity — if any of these
+  ever change their license, or a new dependency gets added, verify the
+  same way rather than guessing; this is exactly the kind of detail
+  that's easy to get subtly wrong from memory.
 - **File System Access API** (`showDirectoryPicker({mode: 'readwrite'})`)
   gives a `FileSystemDirectoryHandle` for the chosen library folder. This
   only works in a real top-level page — it's blocked inside cross-origin

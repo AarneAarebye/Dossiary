@@ -312,3 +312,20 @@ separate genuinely distinct values.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Third-party libraries
+
+Document Studio itself has no dependencies to install — everything below is
+loaded from a CDN at runtime, only when a feature that needs it is actually
+used (OCR, generating a searchable PDF, or rendering a PDF page for a
+preview/OCR). None of it ever touches your documents except locally, in
+your own browser.
+
+| Library | Used for | License |
+|---|---|---|
+| [sql.js](https://github.com/sql-js/sql.js) | Reading/writing `library.sqlite` (SQLite compiled to WebAssembly) | MIT |
+| [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR text extraction | Apache-2.0 |
+| [jsPDF](https://github.com/parallax/jsPDF) | Building the searchable PDF layer for captured images | MIT |
+| [pdf.js](https://github.com/mozilla/pdf.js) | Rendering a PDF's first page (for previews and OCR) | Apache-2.0 |
+
+Same in-app, via the "Libraries" link in the footer.

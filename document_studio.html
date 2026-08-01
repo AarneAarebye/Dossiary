@@ -240,7 +240,8 @@
 
   <footer>
     © 2026 Aarne Aarebye · MIT License ·
-    <a href="https://github.com/AarneAarebye/DocumentStudio" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/DocumentStudio</a>
+    <a href="https://github.com/AarneAarebye/DocumentStudio" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/DocumentStudio</a> ·
+    <a href="#" id="libraries-link">Libraries</a>
   </footer>
 </div>
 
@@ -606,6 +607,7 @@
   el('reload-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
   el('init-btn').addEventListener('click', initNewLibrary);
+  el('libraries-link').addEventListener('click', (e) => { e.preventDefault(); openLibrariesModal(); });
 
   async function openLibrary(){
     if(typeof window.showDirectoryPicker !== 'function'){
@@ -1230,6 +1232,41 @@
 
   function closeModal(){ modalRoot.innerHTML = ''; document.removeEventListener('keydown', onModalKeydown); }
   function onModalKeydown(e){ if(e.key === 'Escape') closeModal(); }
+
+  const OPEN_SOURCE_LIBRARIES = [
+    { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', use: 'Reading/writing library.sqlite (SQLite compiled to WebAssembly)' },
+    { name: 'Tesseract.js', url: 'https://github.com/naptha/tesseract.js', license: 'Apache-2.0', use: 'OCR text extraction' },
+    { name: 'jsPDF', url: 'https://github.com/parallax/jsPDF', license: 'MIT', use: 'Building the searchable PDF layer for captured images' },
+    { name: 'pdf.js', url: 'https://github.com/mozilla/pdf.js', license: 'Apache-2.0', use: "Rendering a PDF's first page (for previews and OCR)" },
+  ];
+
+  function openLibrariesModal(){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Open source libraries</h2>
+          <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 16px;">
+            Loaded from a CDN at runtime, only when a feature that needs it is
+            actually used. None of it ever sees your documents except locally,
+            in your own browser.
+          </p>
+          ${OPEN_SOURCE_LIBRARIES.map(lib => `
+            <div class="modal-section" style="margin-top:14px; padding-top:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <a href="${lib.url}" target="_blank" rel="noopener noreferrer" style="color:var(--phosphor); font-weight:600; font-size:13px;">${escapeHtml(lib.name)}</a>
+                <span class="doc-sub" style="font-family:var(--font-mono);">${escapeHtml(lib.license)}</span>
+              </div>
+              <div class="doc-sub" style="margin-top:3px;">${escapeHtml(lib.use)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+  }
 
   async function openDetail(id){
     const d = allDocs.find(x => x.id === id);
