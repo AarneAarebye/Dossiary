@@ -83,11 +83,13 @@ working" problem that motivated this project in the first place.
   visually flagged (amber-tinted, with a "double-check this" note) until
   you actually touch the field, so an unreviewed guess doesn't quietly
   pass for a real value.
-- **Clear button on Document Type** — a small "✕" next to the Document
-  Type field in both capture and edit forms clears it and refocuses, so
-  the full datalist of existing types pops back up instead of staying
-  filtered to whatever was typed before — handy when you want to pick a
-  different type from the list rather than retype one.
+- **Clear button on every datalist field, plus Amount** — a small "✕" on
+  Category, Subcategory, Document Type, Payment method, People, Tags, and
+  Amount, in both capture and edit forms, clears that one field and
+  refocuses it — for the datalist-backed fields, this pops the full list
+  of existing values back up instead of staying filtered to whatever was
+  typed before, handy when you want to pick a different value from the
+  list rather than retype one.
 - **Re-run OCR on an existing document** — the Edit dialog has its own
   "Run OCR" button, refreshing just the OCR text field against the
   document's actual saved file. Unlike the capture form (images only),

@@ -184,15 +184,23 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   one) or remove the visual flag thinking it's unnecessary friction — an
   unflagged default here would be a silently wrong date more often than
   a right one, for anyone working through a backlog of older documents.
-- **`wireClearButton(inputId, clearBtnId)`** is a small, generic helper —
-  currently wired only to Document Type (`f-type`/`e-type` +
-  `f-type-clear`/`e-type-clear`) — that clears a datalist-backed text
-  input and refocuses it, dispatching a real `change` event so whatever
-  listener is already on the input (here, `applyDynamicFieldsForType()`)
-  fires exactly as it would from a manual edit. If this gets extended to
-  other datalist fields (Category, Organization, etc.), reuse this
-  function rather than duplicating the clear-and-refocus logic — it's
-  deliberately not hardcoded to Document Type specifically.
+- **`wireClearButton(inputId, clearBtnId)`** is a small, generic helper,
+  wired to Category, Subcategory, Document Type, Payment method, People,
+  Tags, and Amount in both forms (`f-*`/`e-*` + matching `*-clear`
+  button) — clears an input and refocuses it, dispatching a real `change`
+  event so whatever listener is already on the input (Document Type's
+  `applyDynamicFieldsForType()` being the one that actually depends on
+  this) fires exactly as it would from a manual edit. Works the same for
+  plain fields with no such listener (Amount, Category) — the dispatched
+  event is just a no-op there. **The People field is a special case**:
+  since it's rendered dynamically inside `renderPeopleFieldHtml()`
+  (rebuilt from scratch on every document-type change, not a fixed DOM
+  element), its clear button has to be re-wired every time that HTML is
+  rebuilt — done at the end of `applyDynamicFieldsForType()`, guarded by
+  checking the People input actually exists first (it may not, if People
+  isn't configured for the current type). If more dynamic per-type
+  fields ever get clear buttons too, follow that same re-wire-after-rebuild
+  pattern rather than assuming a one-time wire-up at form-open is enough.
 - **`runOcrForEdit()` is deliberately separate from `runOcr()`, not a
   shared function with a flag.** `runOcr()` (capture) operates on
   `pendingFile`, a not-yet-saved in-memory File, and requests

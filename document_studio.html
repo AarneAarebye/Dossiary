@@ -861,7 +861,10 @@
     return `
       <div class="field" data-dynamic-field="People">
         <label for="${inputId}">People (comma-separated)</label>
-        <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="Who this document relates to, e.g. Arne, Jana" />
+        <div class="field-with-clear">
+          <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="Who this document relates to, e.g. Arne, Jana" />
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear people">✕</button>
+        </div>
       </div>
     `;
   }
@@ -913,6 +916,9 @@
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
       return renderGenericFieldHtml(prefix, fieldDef, existingValue);
     }).join('');
+    if(container.querySelector(`#${prefix}-person`)){
+      wireClearButton(`${prefix}-person`, `${prefix}-person-clear`);
+    }
   }
 
   async function saveColumnSettings(){
@@ -1231,7 +1237,13 @@
             <div class="field"><label for="e-date">Date</label><input type="date" id="e-date" value="${escapeHtml((d.date || '').slice(0, 10))}" /></div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="e-category">Category</label><input type="text" id="e-category" list="category-list" value="${escapeHtml(d.category || '')}" /></div>
+            <div class="field">
+              <label for="e-category">Category</label>
+              <div class="field-with-clear">
+                <input type="text" id="e-category" list="category-list" value="${escapeHtml(d.category || '')}" />
+                <button type="button" class="clear-btn" id="e-category-clear" title="Clear" aria-label="Clear category">✕</button>
+              </div>
+            </div>
             <div class="field">
               <label for="e-type">Document type</label>
               <div class="field-with-clear">
@@ -1242,16 +1254,34 @@
           </div>
           <div class="field">
             <label for="e-subcategory">Subcategory</label>
-            <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="Independent of category, not a child of it" />
+            <div class="field-with-clear">
+              <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="Independent of category, not a child of it" />
+              <button type="button" class="clear-btn" id="e-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
+            </div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="e-payment">Payment method</label><input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" /></div>
-            <div class="field"><label for="e-amount">Amount</label><input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" /></div>
+            <div class="field">
+              <label for="e-payment">Payment method</label>
+              <div class="field-with-clear">
+                <input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" />
+                <button type="button" class="clear-btn" id="e-payment-clear" title="Clear" aria-label="Clear payment method">✕</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="e-amount">Amount</label>
+              <div class="field-with-clear">
+                <input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" />
+                <button type="button" class="clear-btn" id="e-amount-clear" title="Clear" aria-label="Clear amount">✕</button>
+              </div>
+            </div>
           </div>
           <div id="dynamic-fields-e"></div>
           <div class="field">
             <label for="e-tags">Tags (comma-separated)</label>
-            <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="e.g. medical, insurance" />
+            <div class="field-with-clear">
+              <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="e.g. medical, insurance" />
+              <button type="button" class="clear-btn" id="e-tags-clear" title="Clear" aria-label="Clear tags">✕</button>
+            </div>
           </div>
           <div class="field">
             <label for="e-notes">Notes</label>
@@ -1288,6 +1318,11 @@
     applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people);
     el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people));
     wireClearButton('e-type', 'e-type-clear');
+    wireClearButton('e-category', 'e-category-clear');
+    wireClearButton('e-subcategory', 'e-subcategory-clear');
+    wireClearButton('e-payment', 'e-payment-clear');
+    wireClearButton('e-amount', 'e-amount-clear');
+    wireClearButton('e-tags', 'e-tags-clear');
     el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
   }
 
@@ -1448,7 +1483,13 @@
             </div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="f-category">Category</label><input type="text" id="f-category" list="category-list" /></div>
+            <div class="field">
+              <label for="f-category">Category</label>
+              <div class="field-with-clear">
+                <input type="text" id="f-category" list="category-list" />
+                <button type="button" class="clear-btn" id="f-category-clear" title="Clear" aria-label="Clear category">✕</button>
+              </div>
+            </div>
             <div class="field">
               <label for="f-type">Document type</label>
               <div class="field-with-clear">
@@ -1459,16 +1500,34 @@
           </div>
           <div class="field">
             <label for="f-subcategory">Subcategory</label>
-            <input type="text" id="f-subcategory" list="subcategory-list" placeholder="Independent of category, not a child of it" />
+            <div class="field-with-clear">
+              <input type="text" id="f-subcategory" list="subcategory-list" placeholder="Independent of category, not a child of it" />
+              <button type="button" class="clear-btn" id="f-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
+            </div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="f-payment">Payment method</label><input type="text" id="f-payment" list="payment-list" /></div>
-            <div class="field"><label for="f-amount">Amount</label><input type="number" step="0.01" id="f-amount" /></div>
+            <div class="field">
+              <label for="f-payment">Payment method</label>
+              <div class="field-with-clear">
+                <input type="text" id="f-payment" list="payment-list" />
+                <button type="button" class="clear-btn" id="f-payment-clear" title="Clear" aria-label="Clear payment method">✕</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="f-amount">Amount</label>
+              <div class="field-with-clear">
+                <input type="number" step="0.01" id="f-amount" />
+                <button type="button" class="clear-btn" id="f-amount-clear" title="Clear" aria-label="Clear amount">✕</button>
+              </div>
+            </div>
           </div>
           <div id="dynamic-fields-f"></div>
           <div class="field">
             <label for="f-tags">Tags (comma-separated)</label>
-            <input type="text" id="f-tags" list="tag-list" placeholder="e.g. medical, insurance" />
+            <div class="field-with-clear">
+              <input type="text" id="f-tags" list="tag-list" placeholder="e.g. medical, insurance" />
+              <button type="button" class="clear-btn" id="f-tags-clear" title="Clear" aria-label="Clear tags">✕</button>
+            </div>
           </div>
           <div class="field">
             <label for="f-notes">Notes</label>
@@ -1498,6 +1557,11 @@
     applyDynamicFieldsForType('f', ''); // no type picked yet -- no configured fields to show
     el('f-type').addEventListener('change', () => applyDynamicFieldsForType('f', el('f-type').value));
     wireClearButton('f-type', 'f-type-clear');
+    wireClearButton('f-category', 'f-category-clear');
+    wireClearButton('f-subcategory', 'f-subcategory-clear');
+    wireClearButton('f-payment', 'f-payment-clear');
+    wireClearButton('f-amount', 'f-amount-clear');
+    wireClearButton('f-tags', 'f-tags-clear');
 
     // The date field is preset to today as a starting guess, not a real value --
     // clear the "please double-check" flag as soon as the person actually looks
