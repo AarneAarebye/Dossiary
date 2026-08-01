@@ -109,7 +109,13 @@ working" problem that motivated this project in the first place.
   scoped to document types already in use (a brand new type comes into
   existence by typing it into the Add/Edit form, not from this dialog),
   and to toggling/reordering *existing* custom fields — it doesn't create
-  new ones from scratch.
+  new ones from scratch. **Payment method and Amount are configurable
+  here too**, alongside People and every other custom field — despite
+  being mandatory, always-shown fields in Mariner itself, Document Studio
+  lets you turn either off per document type if it's not relevant there.
+  Reclassifying a document to a type where one of these isn't configured
+  never discards the value already saved — it's just not shown until you
+  either add the field back for that type or reclassify again.
 
 ## Getting started
 

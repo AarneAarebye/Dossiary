@@ -225,6 +225,29 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   and immediately shows that type's configured fields when "Add document"
   opens (`applyDynamicFieldsForType('f', defaultDocumentType || '')`
   instead of always starting blank).
+- **Amount and Payment method are sentinel dynamic fields, exactly like
+  People** (`renderAmountFieldHtml()`, `renderPaymentFieldHtml()`) —
+  toggleable/reorderable per type via `document_type_fields` the same as
+  any generic field or People, but their values still live in
+  `documents.amount`/`documents.payment_method` (the typed columns they
+  already had — `amount` is `REAL`), **not** in the generic
+  `document_field_values` table. There was no reason to move that storage
+  just to make them configurable; only the *visibility* needed to become
+  dynamic. Mariner itself treated both as mandatory, always-shown fields
+  with no per-type on/off signal to migrate (they're built into `ZRECEIPT`
+  directly, not part of the `ZCUSTOMITEM`/`ZFIELDORDERARRAY` system the
+  way named custom fields are) — `migrate_to_new_library.py` compensates
+  by enabling both for every document type actually used by a migrated
+  document, so nothing goes missing on migration; a person can then turn
+  either off per type via this dialog if some type genuinely doesn't need
+  it. **Critical correctness property, tested explicitly**: reclassifying
+  a document to a type where Amount/Payment aren't configured must not
+  discard the value already saved just because the input isn't currently
+  rendered — `saveEditedDocument()` falls back to the document's existing
+  `d.amount`/`d.payment_method` when `el('e-amount')`/`el('e-payment')`
+  return `null` (field not in the DOM), rather than defaulting to blank/
+  null the way a genuinely-cleared field would. Don't simplify this to
+  "missing field means null" without preserving that distinction.
 - **A real debugging lesson from building this feature, worth remembering
   for future large refactors**: an earlier, incomplete attempt at this
   exact feature had left dead scaffolding in the file (a duplicate

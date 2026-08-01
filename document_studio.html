@@ -908,6 +908,39 @@
     `;
   }
 
+  // Amount and Payment method are, like People, "sentinel" dynamic fields --
+  // toggleable/reorderable per document type via document_type_fields the same way
+  // any generic custom field is, but their values still live in documents.amount /
+  // documents.payment_method (dedicated typed columns Amount already had, e.g. REAL
+  // for amount), not in the generic document_field_values table. There was no
+  // reason to migrate that storage just to make them configurable.
+  function renderAmountFieldHtml(prefix, existingAmount){
+    const inputId = `${prefix}-amount`;
+    const value = existingAmount != null ? existingAmount : '';
+    return `
+      <div class="field" data-dynamic-field="Amount">
+        <label for="${inputId}">Amount</label>
+        <div class="field-with-clear">
+          <input type="number" step="0.01" id="${inputId}" value="${value}" />
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear amount">✕</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPaymentFieldHtml(prefix, existingPayment){
+    const inputId = `${prefix}-payment`;
+    return `
+      <div class="field" data-dynamic-field="Payment method">
+        <label for="${inputId}">Payment method</label>
+        <div class="field-with-clear">
+          <input type="text" id="${inputId}" list="payment-list" value="${escapeHtml(existingPayment || '')}" />
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear payment method">✕</button>
+        </div>
+      </div>
+    `;
+  }
+
   function renderGenericFieldHtml(prefix, field, existingValue){
     const inputId = `${prefix}-field-${field.id}`;
     if(field.type === 'checkbox'){
@@ -940,7 +973,7 @@
   // already typed into fields that get removed -- a known, accepted limitation
   // given the field set is now fully dynamic rather than a fixed handful of
   // always-present elements.
-  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople){
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, existingAmount, existingPayment){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
     const entry = typeFieldOrder[(typeName || '').trim()];
@@ -950,6 +983,8 @@
     }
     container.innerHTML = entry.map(({ field: fieldName }) => {
       if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople);
+      if(fieldName === 'Amount') return renderAmountFieldHtml(prefix, existingAmount);
+      if(fieldName === 'Payment method') return renderPaymentFieldHtml(prefix, existingPayment);
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
       if(!fieldDef) return '';
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
@@ -957,6 +992,12 @@
     }).join('');
     if(container.querySelector(`#${prefix}-person`)){
       wireClearButton(`${prefix}-person`, `${prefix}-person-clear`);
+    }
+    if(container.querySelector(`#${prefix}-amount`)){
+      wireClearButton(`${prefix}-amount`, `${prefix}-amount-clear`);
+    }
+    if(container.querySelector(`#${prefix}-payment`)){
+      wireClearButton(`${prefix}-payment`, `${prefix}-payment-clear`);
     }
   }
 
@@ -1299,22 +1340,6 @@
               </div>
             </div>
           </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="e-payment">Payment method</label>
-              <div class="field-with-clear">
-                <input type="text" id="e-payment" list="payment-list" value="${escapeHtml(d.payment_method || '')}" />
-                <button type="button" class="clear-btn" id="e-payment-clear" title="Clear" aria-label="Clear payment method">✕</button>
-              </div>
-            </div>
-            <div class="field">
-              <label for="e-amount">Amount</label>
-              <div class="field-with-clear">
-                <input type="number" step="0.01" id="e-amount" value="${d.amount != null ? d.amount : ''}" />
-                <button type="button" class="clear-btn" id="e-amount-clear" title="Clear" aria-label="Clear amount">✕</button>
-              </div>
-            </div>
-          </div>
           <div id="dynamic-fields-e"></div>
           <div class="field">
             <label for="e-tags">Tags (comma-separated)</label>
@@ -1355,8 +1380,8 @@
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
-    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people);
-    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people));
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.payment_method);
+    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.payment_method));
     wireClearButton('e-type', 'e-type-clear');
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');
@@ -1383,13 +1408,18 @@
     editStatus.innerHTML = '<span class="spinner"></span> Saving…';
 
     try{
+      const d = allDocs.find(x => x.id === id);
       const title = el('e-title').value.trim() || null;
       const category = el('e-category').value.trim() || null;
       const subcategory = el('e-subcategory').value.trim() || null;
       const documentType = el('e-type').value.trim() || null;
-      const paymentMethod = el('e-payment').value.trim() || null;
-      const amountRaw = el('e-amount').value.trim();
-      const amount = amountRaw === '' ? null : parseFloat(amountRaw);
+      // Amount/Payment method are dynamic fields now -- if the current document type
+      // doesn't have them configured, the inputs simply aren't in the DOM. Preserve
+      // the document's existing value in that case rather than clearing it; only a
+      // value actually entered through a rendered field should change anything.
+      const paymentMethod = el('e-payment') ? (el('e-payment').value.trim() || null) : d.payment_method;
+      const amountRaw = el('e-amount') ? el('e-amount').value.trim() : null;
+      const amount = el('e-amount') ? (amountRaw === '' ? null : parseFloat(amountRaw)) : d.amount;
       const date = el('e-date').value || null;
       const notes = el('e-notes').value.trim() || null;
       const ocrText = el('e-ocr-text').value.trim() || null;
@@ -1436,7 +1466,6 @@
       // present in the DOM at all right now -- their prior values remain in the
       // database, associated with the field by id, and will reappear if the document
       // is later reclassified back to a type that shows that field again.
-      const d = allDocs.find(x => x.id === id);
       const shownFieldIds = getShownFieldIds('e');
       for(const fieldId of shownFieldIds){
         db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [id, fieldId]);
@@ -1559,7 +1588,7 @@
       return;
     }
 
-    const allFieldNames = ['People', ...fieldDefs.map(f => f.name)];
+    const allFieldNames = ['People', 'Amount', 'Payment method', ...fieldDefs.map(f => f.name)];
     const currentEntries = (typeFieldOrder[fsSelectedType] || []).slice().sort((a, b) => a.position - b.position);
     const shownNames = new Set(currentEntries.map(e => e.field));
     const availableNames = allFieldNames.filter(n => !shownNames.has(n));
@@ -1693,22 +1722,6 @@
               <div class="field-with-clear">
                 <input type="text" id="f-subcategory" list="subcategory-list" placeholder="Independent of category, not a child of it" />
                 <button type="button" class="clear-btn" id="f-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
-              </div>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="f-payment">Payment method</label>
-              <div class="field-with-clear">
-                <input type="text" id="f-payment" list="payment-list" />
-                <button type="button" class="clear-btn" id="f-payment-clear" title="Clear" aria-label="Clear payment method">✕</button>
-              </div>
-            </div>
-            <div class="field">
-              <label for="f-amount">Amount</label>
-              <div class="field-with-clear">
-                <input type="number" step="0.01" id="f-amount" />
-                <button type="button" class="clear-btn" id="f-amount-clear" title="Clear" aria-label="Clear amount">✕</button>
               </div>
             </div>
           </div>
@@ -1950,8 +1963,10 @@
       const category = el('f-category').value.trim() || null;
       const subcategory = el('f-subcategory').value.trim() || null;
       const documentType = el('f-type').value.trim() || null;
-      const paymentMethod = el('f-payment').value.trim() || null;
-      const amountRaw = el('f-amount').value.trim();
+      // Amount/Payment method are dynamic fields now -- may not be in the DOM at all
+      // if not configured for the currently selected document type.
+      const paymentMethod = el('f-payment') ? (el('f-payment').value.trim() || null) : null;
+      const amountRaw = el('f-amount') ? el('f-amount').value.trim() : '';
       const amount = amountRaw === '' ? null : parseFloat(amountRaw);
       const date = el('f-date').value || null;
       const notes = el('f-notes').value.trim() || null;
