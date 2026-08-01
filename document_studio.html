@@ -1259,6 +1259,15 @@
           </div>
           <div class="field">
             <label for="e-ocr-text">OCR / extracted text</label>
+            <div class="ocr-row">
+              <select id="e-ocr-lang">
+                <option value="eng+deu">Auto (German + English)</option>
+                <option value="deu">German only</option>
+                <option value="eng">English only</option>
+              </select>
+              <button type="button" id="e-run-ocr-btn">Run OCR</button>
+              <span id="e-ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
+            </div>
             <textarea id="e-ocr-text" rows="5">${escapeHtml(d.ocr_text || '')}</textarea>
           </div>
 
@@ -1279,6 +1288,7 @@
     applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people);
     el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people));
     wireClearButton('e-type', 'e-type-clear');
+    el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
   }
 
   // Recovers the base filename (no extension) a document's files were saved under,
@@ -1548,6 +1558,67 @@
       ocrStatusEl.textContent = 'OCR failed: ' + e.message;
     }finally{
       el('run-ocr-btn').disabled = false;
+    }
+  }
+
+  // Renders a PDF's first page to a canvas at a resolution suitable for OCR (higher
+  // than the small preview used for thumbnails -- OCR accuracy suffers badly at low
+  // resolution). Separate from generateThumbnail()'s PDF path deliberately: that one
+  // caps at THUMB_MAX_DIM for a small preview image, this one needs real resolution.
+  async function renderPdfFirstPageToCanvas(file, scale){
+    const pdfjsLib = await ensurePdfJs();
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    return canvas;
+  }
+
+  // Runs OCR against an EXISTING document's saved file (unlike runOcr(), which works
+  // on a not-yet-saved pendingFile during capture). Only refreshes the OCR text field
+  // -- unlike capture, this never rebuilds a searchable PDF or touches file_path,
+  // consistent with editing being metadata-only (see saveEditedDocument() notes).
+  // Handles PDFs (the majority of saved documents) by rendering the first page via
+  // pdf.js first, not just raw images the way the capture form's OCR is limited to.
+  async function runOcrForEdit(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!d || !d.file_path) return;
+    const lang = el('e-ocr-lang').value;
+    const statusEl = el('e-ocr-status');
+    const btn = el('e-run-ocr-btn');
+    btn.disabled = true;
+    statusEl.innerHTML = '<span class="spinner"></span> Loading OCR engine…';
+    try{
+      const fh = await resolveFileHandle(d.file_path, false);
+      const file = await fh.getFile();
+
+      let imageSource;
+      if(file.type.startsWith('image/')){
+        imageSource = file;
+      }else if(file.type === 'application/pdf'){
+        statusEl.innerHTML = '<span class="spinner"></span> Rendering page for OCR…';
+        imageSource = await renderPdfFirstPageToCanvas(file, 2);
+      }else{
+        statusEl.textContent = `Can't run OCR on this file type (${file.type || 'unknown'}).`;
+        btn.disabled = false;
+        return;
+      }
+
+      const Tesseract = await ensureTesseract();
+      statusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
+      const worker = await Tesseract.createWorker(lang.split('+'));
+      const { data } = await worker.recognize(imageSource);
+      await worker.terminate();
+      el('e-ocr-text').value = data.text || '';
+      statusEl.textContent = 'Done.';
+    }catch(e){
+      statusEl.textContent = 'OCR failed: ' + e.message;
+    }finally{
+      btn.disabled = false;
     }
   }
 

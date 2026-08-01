@@ -88,6 +88,11 @@ working" problem that motivated this project in the first place.
   the full datalist of existing types pops back up instead of staying
   filtered to whatever was typed before — handy when you want to pick a
   different type from the list rather than retype one.
+- **Re-run OCR on an existing document** — the Edit dialog has its own
+  "Run OCR" button, refreshing just the OCR text field against the
+  document's actual saved file. Unlike the capture form (images only),
+  this works on PDFs too — the majority of saved documents — by rendering
+  the first page to an image first.
 
 ## Getting started
 

@@ -193,6 +193,25 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   other datalist fields (Category, Organization, etc.), reuse this
   function rather than duplicating the clear-and-refocus logic — it's
   deliberately not hardcoded to Document Type specifically.
+- **`runOcrForEdit()` is deliberately separate from `runOcr()`, not a
+  shared function with a flag.** `runOcr()` (capture) operates on
+  `pendingFile`, a not-yet-saved in-memory File, and requests
+  `{blocks:true}` output because its result may get baked into a
+  searchable PDF on save (see `buildSearchablePdf()`). `runOcrForEdit()`
+  operates on a document's actual saved file (resolved fresh via
+  `resolveFileHandle(d.file_path)`), only refreshes `e-ocr-text`, and
+  deliberately does **not** request word-position data or touch
+  `file_path`/rebuild any PDF — consistent with editing being
+  metadata-only (see the "Editing" note above). **`runOcrForEdit()`
+  handles PDFs, `runOcr()` doesn't** — it renders the first page via
+  `renderPdfFirstPageToCanvas()` (a higher-resolution sibling of
+  `generateThumbnail()`'s PDF path; OCR accuracy degrades badly at
+  thumbnail resolution, so this is intentionally a separate function
+  with its own `scale` parameter, not a shared one with a size flag) and
+  passes the resulting canvas straight to Tesseract, which accepts canvas
+  elements directly as an image source. If capture-mode OCR is ever
+  extended to support PDFs too, reuse `renderPdfFirstPageToCanvas()`
+  rather than duplicating the pdf.js rendering logic a third time.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
