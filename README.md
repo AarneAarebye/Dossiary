@@ -95,6 +95,11 @@ working" problem that motivated this project in the first place.
   document's actual saved file. Unlike the capture form (images only),
   this works on PDFs too — the majority of saved documents — by rendering
   the first page to an image first.
+- **Document Type is placed prominently, near the top of both forms** —
+  since it's the one field that determines whether Organization, People,
+  or any custom fields show up at all (see "Dynamic fields per document
+  type"), it's deliberately not just another field in the middle of the
+  form. Pick it first, then everything below reflects that choice.
 
 ## Getting started
 

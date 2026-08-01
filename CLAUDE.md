@@ -201,6 +201,15 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   isn't configured for the current type). If more dynamic per-type
   fields ever get clear buttons too, follow that same re-wire-after-rebuild
   pattern rather than assuming a one-time wire-up at form-open is enough.
+- **Document Type is deliberately positioned right after the file/OCR
+  section, styled via `.field-prominent`, in both forms** — not with
+  Category, and not further down the form. This is intentional: it's the
+  one field `applyDynamicFieldsForType()` actually depends on, so putting
+  it early means the form's shape (which custom fields appear) is
+  established before someone's deep into filling out the rest, rather
+  than fields suddenly appearing below content they've already entered.
+  If you reorder the form again, keep Document Type near the top — this
+  was a deliberate UX fix, not an arbitrary ordering.
 - **`runOcrForEdit()` is deliberately separate from `runOcr()`, not a
   shared function with a flag.** `runOcr()` (capture) operates on
   `pendingFile`, a not-yet-saved in-memory File, and requests
