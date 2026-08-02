@@ -107,7 +107,9 @@ working" problem that motivated this project in the first place.
   "Run OCR" button, refreshing just the OCR text field against the
   document's actual saved file. Unlike the capture form (images only),
   this works on PDFs too — the majority of saved documents — by rendering
-  the first page to an image first.
+  every page to an image and recognizing each in turn, concatenating the
+  results, so a multi-page scan gets its full text extracted, not just
+  page one.
 - **Document Type is placed prominently, near the top of both forms** —
   since it's the one field that determines whether Organization, People,
   or any custom fields show up at all (see "Dynamic fields per document
@@ -371,6 +373,6 @@ your own browser.
 | [sql.js](https://github.com/sql-js/sql.js) | Reading/writing `library.sqlite` (SQLite compiled to WebAssembly) | MIT |
 | [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR text extraction | Apache-2.0 |
 | [jsPDF](https://github.com/parallax/jsPDF) | Building the searchable PDF layer for captured images | MIT |
-| [pdf.js](https://github.com/mozilla/pdf.js) | Rendering a PDF's first page (for previews and OCR) | Apache-2.0 |
+| [pdf.js](https://github.com/mozilla/pdf.js) | Rendering PDF pages (first page for previews, every page for edit-time OCR) | Apache-2.0 |
 
 Same in-app, via the "Libraries" link in the footer.

@@ -367,15 +367,26 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   deliberately does **not** request word-position data or touch
   `file_path`/rebuild any PDF — consistent with editing being
   metadata-only (see the "Editing" note above). **`runOcrForEdit()`
-  handles PDFs, `runOcr()` doesn't** — it renders the first page via
-  `renderPdfFirstPageToCanvas()` (a higher-resolution sibling of
-  `generateThumbnail()`'s PDF path; OCR accuracy degrades badly at
-  thumbnail resolution, so this is intentionally a separate function
-  with its own `scale` parameter, not a shared one with a size flag) and
-  passes the resulting canvas straight to Tesseract, which accepts canvas
-  elements directly as an image source. If capture-mode OCR is ever
-  extended to support PDFs too, reuse `renderPdfFirstPageToCanvas()`
-  rather than duplicating the pdf.js rendering logic a third time.
+  handles PDFs, `runOcr()` doesn't** — it renders **every** page via
+  `renderPdfPageToCanvas()` (a higher-resolution sibling of
+  `generateThumbnail()`'s single-first-page PDF path; OCR accuracy
+  degrades badly at thumbnail resolution, so this is intentionally a
+  separate function with its own `scale` parameter, not a shared one
+  with a size flag) and passes each page's canvas straight to Tesseract
+  in turn, which accepts canvas elements directly as an image source.
+  **This used to only OCR the first page** — a real bug reported against
+  a genuine multi-page scanned PDF, where everything past page 1 was
+  silently dropped from the extracted text with no error or indication
+  anything was missing. Fixed by loading the PDF once via `pdfjsLib`,
+  looping `pageNum` from 1 to `pdf.numPages`, reusing a single Tesseract
+  worker across all pages (created once, `recognize()`d per page,
+  terminated after the loop — not one worker per page), and joining each
+  page's `data.text` with a blank line between pages. The status line
+  during the loop reads "Recognizing page N of M…" so a long multi-page
+  scan doesn't look hung. If capture-mode OCR is ever extended to support
+  PDFs too, reuse `renderPdfPageToCanvas()` and this same per-page-loop
+  pattern rather than duplicating the pdf.js rendering logic a third time
+  or reintroducing the first-page-only bug.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
@@ -507,7 +518,8 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
 There's a real, runnable Playwright regression suite in `tests/` — **27
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
-(images and PDFs, both capture-time and edit-time), searchable PDF
+(images and PDFs — including multi-page PDFs, all pages recognized and
+concatenated — both capture-time and edit-time), searchable PDF
 generation, thumbnails/previews (generation and regeneration), generic
 custom fields (all four types), dynamic per-type field show/hide/reorder,
 Field Settings (add/remove/reorder fields per type, default document
