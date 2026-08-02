@@ -162,10 +162,13 @@ Studio expects. Point Document Studio at that output folder afterward.
 - **[`migrate_gui.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_guipy-desktop-app)** —
   a small native desktop app (tkinter) if you'd rather not use the
   Terminal: choose the folder your libraries live in, select which ones
-  to migrate, pick an output folder, click Migrate.
+  to migrate, pick an output folder, click Migrate. (This app also has
+  an Export mode for a separate, lossless-copy use case — see its own
+  repo — but Migrate is what you want for Document Studio.)
 - **[`migrate_web.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_webpy-browser-based-alternative)** —
-  the same thing as a local web page instead of a native window, for
-  anyone who'd rather use a browser tab.
+  the same thing, including the same Migrate/Export mode choice, as a
+  local web page instead of a native window, for anyone who'd rather use
+  a browser tab.
 
 If you have several libraries to migrate, either GUI is likely more
 convenient than running the script by hand once per library.
