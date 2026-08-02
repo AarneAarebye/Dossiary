@@ -269,6 +269,7 @@
 <datalist id="subcategory-list"></datalist>
 <datalist id="type-list"></datalist>
 <datalist id="payment-list"></datalist>
+<datalist id="currency-list"></datalist>
 <datalist id="person-list"></datalist>
 <datalist id="tag-list"></datalist>
 
@@ -278,7 +279,7 @@
   const SCHEMA = `
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY, title TEXT, category TEXT, subcategory TEXT, document_type TEXT,
-      payment_method TEXT, amount REAL, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
+      payment_method TEXT, amount REAL, currency TEXT, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT
     );
@@ -310,6 +311,7 @@
     'ALTER TABLE documents ADD COLUMN subcategory TEXT',
     'ALTER TABLE documents ADD COLUMN thumbnail_path TEXT',
     'ALTER TABLE document_type_fields ADD COLUMN field_name TEXT',
+    'ALTER TABLE documents ADD COLUMN currency TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -360,6 +362,7 @@
   let nextFieldId = 1;
   let fieldValuesByDocId = {}; // { docId: { fieldName: valueString, ... } }
   let defaultDocumentType = null; // prefills Document Type when opening "Add document"
+  let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
 
   let sortKey = 'date';
@@ -597,7 +600,7 @@
       `Subcategory: ${opts.subcategory || ''}`,
       `Document type: ${opts.documentType || ''}`,
       `Payment method: ${opts.paymentMethod || ''}`,
-      `Amount: ${opts.amount != null ? opts.amount : ''}`,
+      `Amount: ${opts.amount != null ? opts.amount : ''}${(opts.amount != null && opts.currency) ? ' ' + opts.currency : ''}`,
       `Date: ${opts.date || ''}`,
       `Imported: ${opts.importDate || ''}`,
     ];
@@ -705,7 +708,7 @@
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
-    defaultDocumentType = null; fsSelectedType = null;
+    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
@@ -723,7 +726,7 @@
 
   function loadDocumentsFromDb(){
     const { columns, rows } = queryAll(`
-      SELECT id, title, category, subcategory, document_type, payment_method, amount, date, import_date, notes,
+      SELECT id, title, category, subcategory, document_type, payment_method, amount, currency, date, import_date, notes,
              ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path
       FROM documents
     `);
@@ -773,7 +776,7 @@
       maxDocId = Math.max(maxDocId, id);
       allDocs.push({
         id, title: row[idx.title], category: row[idx.category], subcategory: row[idx.subcategory], document_type: row[idx.document_type],
-        payment_method: row[idx.payment_method], amount: row[idx.amount], date: row[idx.date],
+        payment_method: row[idx.payment_method], amount: row[idx.amount], currency: row[idx.currency], date: row[idx.date],
         import_date: row[idx.import_date],
         notes: row[idx.notes], ocr_text: row[idx.ocr_text], ocr_language: row[idx.ocr_language],
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
@@ -791,6 +794,7 @@
     subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
     loadColumnSettings();
     loadDefaultDocumentType();
+    loadDefaultCurrency();
     loadTypeFieldOrder();
     renderColumnsMenu();
     applyColumnVisibility();
@@ -832,6 +836,22 @@
   async function saveDefaultDocumentType(value){
     defaultDocumentType = value || null;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('default_document_type', ?)", [defaultDocumentType || '']);
+    await persistDb();
+  }
+
+  // Same pattern as default_document_type -- stays unset (no guess shown at all,
+  // see renderAmountFieldHtml()) until someone configures one. Deliberately not
+  // hardcoded to any single currency: this is a general-purpose, single-file,
+  // downloadable tool, not code scoped to one person's library, so a fixed default
+  // would silently be wrong for anyone outside whatever currency was assumed.
+  function loadDefaultCurrency(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'default_currency'").rows;
+    defaultCurrency = rows.length ? rows[0][0] : null;
+  }
+
+  async function saveDefaultCurrency(value){
+    defaultCurrency = value.trim() || null;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('default_currency', ?)", [defaultCurrency || '']);
     await persistDb();
   }
 
@@ -946,15 +966,48 @@
   // documents.payment_method (dedicated typed columns Amount already had, e.g. REAL
   // for amount), not in the generic document_field_values table. There was no
   // reason to migrate that storage just to make them configurable.
-  function renderAmountFieldHtml(prefix, existingAmount, orphaned){
+  //
+  // Currency (documents.currency, also a dedicated typed column) rides along with
+  // Amount rather than being its own separately-configurable sentinel field --
+  // there's no case for showing a currency without an amount, so it isn't a
+  // document_type_fields entry at all and can't be toggled independently in Field
+  // Settings; it just always renders next to Amount, sharing Amount's own show/hide
+  // and orphaned state. Free text with a datalist (like Payment method), not a
+  // fixed dropdown -- real libraries mix symbols ("€", "$") and ISO codes ("USD",
+  // "CHF") depending on the document, and a fixed enum would force a choice that
+  // doesn't always fit either style.
+  function renderAmountFieldHtml(prefix, existingAmount, existingCurrency, orphaned){
     const inputId = `${prefix}-amount`;
+    const currencyId = `${prefix}-currency`;
     const value = existingAmount != null ? existingAmount : '';
+    // Capture only: pre-fill the library's configured default_currency (Field
+    // Settings) as a starting guess, since there's no saved value yet to respect --
+    // visually flagged exactly like the Date field's today-default (amber + a
+    // "double-check this" hint, cleared on first touch) so an unreviewed guess
+    // doesn't quietly pass as real data. No guess at all if no default_currency is
+    // configured -- nothing to default to. Edit never guesses regardless: a blank
+    // currency there means the document genuinely has none saved, which is real
+    // information, not something to paper over with a default.
+    const isGuess = prefix === 'f' && !existingCurrency && !!defaultCurrency;
+    const currencyValue = existingCurrency || (isGuess ? defaultCurrency : '');
     return `
       <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="Amount">
-        <label for="${inputId}">Amount</label>
-        <div class="field-with-clear">
-          <input type="number" step="0.01" id="${inputId}" value="${value}" />
-          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear amount">✕</button>
+        <div class="field-row">
+          <div class="field" style="margin-bottom:0; flex:2;">
+            <label for="${inputId}">Amount</label>
+            <div class="field-with-clear">
+              <input type="number" step="0.01" id="${inputId}" value="${value}" />
+              <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear amount">✕</button>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0; flex:1;">
+            <label for="${currencyId}">Currency</label>
+            <div class="field-with-clear">
+              <input type="text" id="${currencyId}" list="currency-list" class="${isGuess ? 'field-guess' : ''}" value="${escapeHtml(currencyValue)}" placeholder="e.g. EUR, $" />
+              <button type="button" class="clear-btn" id="${currencyId}-clear" title="Clear" aria-label="Clear currency">✕</button>
+            </div>
+            ${isGuess ? `<div class="field-guess-hint" id="${currencyId}-hint">Defaulted to ${escapeHtml(defaultCurrency)} — change if this document uses a different currency</div>` : ''}
+          </div>
         </div>
         ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
       </div>
@@ -1011,7 +1064,7 @@
   // already typed into fields that get removed -- a known, accepted limitation
   // given the field set is now fully dynamic rather than a fixed handful of
   // always-present elements.
-  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, existingAmount, existingPayment, isEdit){
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, existingAmount, existingCurrency, existingPayment, isEdit){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
     const entry = typeFieldOrder[(typeName || '').trim()] || [];
@@ -1019,7 +1072,7 @@
 
     let html = entry.map(({ field: fieldName }) => {
       if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople, false);
-      if(fieldName === 'Amount') return renderAmountFieldHtml(prefix, existingAmount, false);
+      if(fieldName === 'Amount') return renderAmountFieldHtml(prefix, existingAmount, existingCurrency, false);
       if(fieldName === 'Payment method') return renderPaymentFieldHtml(prefix, existingPayment, false);
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
       if(!fieldDef) return '';
@@ -1041,7 +1094,7 @@
         orphanedHtml.push(renderPeopleFieldHtml(prefix, existingPeople, true));
       }
       if(existingAmount != null && existingAmount !== 0 && !configuredNames.has('Amount')){
-        orphanedHtml.push(renderAmountFieldHtml(prefix, existingAmount, true));
+        orphanedHtml.push(renderAmountFieldHtml(prefix, existingAmount, existingCurrency, true));
       }
       if(existingPayment && !configuredNames.has('Payment method')){
         orphanedHtml.push(renderPaymentFieldHtml(prefix, existingPayment, true));
@@ -1063,6 +1116,22 @@
     }
     if(container.querySelector(`#${prefix}-amount`)){
       wireClearButton(`${prefix}-amount`, `${prefix}-amount-clear`);
+    }
+    if(container.querySelector(`#${prefix}-currency`)){
+      wireClearButton(`${prefix}-currency`, `${prefix}-currency-clear`);
+      const currencyInput = el(`${prefix}-currency`);
+      if(currencyInput.classList.contains('field-guess')){
+        // Same "clear the guess flag on first touch" treatment as the Date field --
+        // listens for both 'input' (typing) and 'change' (the clear button's
+        // dispatched event, since Date has no clear button to account for).
+        const clearGuess = () => {
+          currencyInput.classList.remove('field-guess');
+          const hint = el(`${prefix}-currency-hint`);
+          if(hint) hint.style.display = 'none';
+        };
+        currencyInput.addEventListener('input', clearGuess, { once: true });
+        currencyInput.addEventListener('change', clearGuess, { once: true });
+      }
     }
     if(container.querySelector(`#${prefix}-payment`)){
       wireClearButton(`${prefix}-payment`, `${prefix}-payment-clear`);
@@ -1141,12 +1210,14 @@
     const subcategories = [...new Set(allDocs.map(d => d.subcategory).filter(Boolean))].sort();
     const types = getUsedDocumentTypes();
     const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
+    const currencies = [...new Set(allDocs.map(d => d.currency).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('subcategory-list').innerHTML = subcategories.map(s => `<option value="${escapeHtml(s)}">`).join('');
     el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
     el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
+    el('currency-list').innerHTML = currencies.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('person-list').innerHTML = people.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('tag-list').innerHTML = tagNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
   }
@@ -1157,9 +1228,14 @@
     if(isNaN(d.getTime())) return '—';
     return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
   }
+  // Currency is appended after the number ("45.00 EUR", "45.00 $") rather than
+  // guessing symbol-prefix vs. code-suffix placement per currency -- it's free text
+  // (see renderAmountFieldHtml()'s note), so there's no reliable way to know which
+  // convention a given value expects.
   function formatAmount(d){
-    if(typeof d.amount === 'number' && !isNaN(d.amount) && d.amount !== 0) return d.amount.toFixed(2);
-    return '—';
+    if(typeof d.amount !== 'number' || isNaN(d.amount) || d.amount === 0) return '—';
+    const amt = d.amount.toFixed(2);
+    return d.currency ? `${amt} ${escapeHtml(d.currency)}` : amt;
   }
 
   // Formats a raw document_field_values string for display, based on the field's
@@ -1487,8 +1563,8 @@
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
-    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.payment_method, true);
-    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.payment_method, true));
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.currency, d.payment_method, true);
+    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.currency, d.payment_method, true));
     wireClearButton('e-type', 'e-type-clear');
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');
@@ -1527,15 +1603,17 @@
       const paymentMethod = el('e-payment') ? (el('e-payment').value.trim() || null) : d.payment_method;
       const amountRaw = el('e-amount') ? el('e-amount').value.trim() : null;
       const amount = el('e-amount') ? (amountRaw === '' ? null : parseFloat(amountRaw)) : d.amount;
+      // Currency rides along with Amount -- same "preserve if not rendered" fallback.
+      const currency = el('e-currency') ? (el('e-currency').value.trim() || null) : d.currency;
       const date = el('e-date').value || null;
       const notes = el('e-notes').value.trim() || null;
       const ocrText = el('e-ocr-text').value.trim() || null;
 
       db.run(`
         UPDATE documents SET title=?, category=?, subcategory=?, document_type=?, payment_method=?,
-                              amount=?, date=?, notes=?, ocr_text=?
+                              amount=?, currency=?, date=?, notes=?, ocr_text=?
         WHERE id=?
-      `, [title, category, subcategory, documentType, paymentMethod, amount, date, notes, ocrText, id]);
+      `, [title, category, subcategory, documentType, paymentMethod, amount, currency, date, notes, ocrText, id]);
 
       // Re-link tags: drop existing links for this document, then re-add based on
       // the edited comma-separated list (same find-or-create pattern as capture).
@@ -1592,7 +1670,7 @@
       const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
       if(sidecarBaseName){
         await writeSidecarFile(sidecarBaseName, buildSidecarText({
-          title, category, subcategory, documentType, paymentMethod, amount, date,
+          title, category, subcategory, documentType, paymentMethod, amount, currency, date,
           importDate: d.import_date, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
         }));
       }
@@ -1601,7 +1679,7 @@
 
       Object.assign(d, {
         title, category, subcategory, document_type: documentType, payment_method: paymentMethod,
-        amount, date, notes, ocr_text: ocrText, customFields: customFieldsForDoc, tags: tagsForDoc, people: peopleForDoc,
+        amount, currency, date, notes, ocr_text: ocrText, customFields: customFieldsForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
@@ -1630,12 +1708,18 @@
         <div class="modal wide" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
           <h2>Field settings</h2>
-          <div class="field">
-            <label for="fs-default-type">Default document type (pre-fills "Add document")</label>
-            <select id="fs-default-type">
-              <option value="">— None —</option>
-              ${usedTypes.map(t => `<option value="${escapeHtml(t)}" ${t === defaultDocumentType ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
-            </select>
+          <div class="field-row">
+            <div class="field">
+              <label for="fs-default-type">Default document type (pre-fills "Add document")</label>
+              <select id="fs-default-type">
+                <option value="">— None —</option>
+                ${usedTypes.map(t => `<option value="${escapeHtml(t)}" ${t === defaultDocumentType ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field">
+              <label for="fs-default-currency">Default currency (guessed on new captures, e.g. EUR)</label>
+              <input type="text" id="fs-default-currency" list="currency-list" value="${escapeHtml(defaultCurrency || '')}" placeholder="— None —" />
+            </div>
           </div>
           <div class="fs-columns">
             <div class="fs-col">
@@ -1662,6 +1746,7 @@
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
     el('fs-default-type').addEventListener('change', (e) => saveDefaultDocumentType(e.target.value));
+    el('fs-default-currency').addEventListener('change', (e) => saveDefaultCurrency(e.target.value));
 
     renderFieldSettingsTypeList();
     renderFieldSettingsFieldColumns();
@@ -2090,6 +2175,7 @@
       const paymentMethod = el('f-payment') ? (el('f-payment').value.trim() || null) : null;
       const amountRaw = el('f-amount') ? el('f-amount').value.trim() : '';
       const amount = amountRaw === '' ? null : parseFloat(amountRaw);
+      const currency = el('f-currency') ? (el('f-currency').value.trim() || null) : null;
       const date = el('f-date').value || null;
       const notes = el('f-notes').value.trim() || null;
       const ocrText = el('f-ocr-text').value.trim() || null;
@@ -2100,11 +2186,11 @@
       const importDate = createdAt;
 
       db.run(`
-        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, date,
+        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, currency, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
-      `, [id, title, category, subcategory, documentType, paymentMethod, amount, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
+      `, [id, title, category, subcategory, documentType, paymentMethod, amount, currency, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -2141,13 +2227,13 @@
       }
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, subcategory, documentType, paymentMethod, amount, date, importDate, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        title, category, subcategory, documentType, paymentMethod, amount, currency, date, importDate, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
 
       allDocs.push({
-        id, title, category, subcategory, document_type: documentType, payment_method: paymentMethod, amount, date,
+        id, title, category, subcategory, document_type: documentType, payment_method: paymentMethod, amount, currency, date,
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
@@ -2290,10 +2376,10 @@
       const sidecarBaseName = destName.replace(/\.[^.]+$/, '');
 
       db.run(`
-        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, date,
+        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, currency, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, NULL, NULL, ?, NULL, NULL, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?)
+        VALUES (?, ?, NULL, NULL, ?, NULL, NULL, NULL, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?)
       `, [id, title, documentType, createdAt, filePathForDb, createdAt, thumbnailPathForDb]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
@@ -2301,6 +2387,7 @@
 
       allDocs.push({
         id, title, category: null, subcategory: null, document_type: documentType, payment_method: null, amount: null,
+        currency: null,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
         original_file_path: null, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
         thumbnail_path: thumbnailPathForDb, customFields: {}, tags: [], people: [],

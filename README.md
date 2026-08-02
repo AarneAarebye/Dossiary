@@ -107,13 +107,13 @@ working" problem that motivated this project in the first place.
   visually flagged (amber-tinted, with a "double-check this" note) until
   you actually touch the field, so an unreviewed guess doesn't quietly
   pass for a real value.
-- **Clear button on every datalist field, plus Amount** — a small "✕" on
-  Category, Subcategory, Document Type, Payment method, People, Tags, and
-  Amount, in both capture and edit forms, clears that one field and
-  refocuses it — for the datalist-backed fields, this pops the full list
-  of existing values back up instead of staying filtered to whatever was
-  typed before, handy when you want to pick a different value from the
-  list rather than retype one.
+- **Clear button on every datalist field, plus Amount and Currency** — a
+  small "✕" on Category, Subcategory, Document Type, Payment method,
+  People, Tags, Amount, and Currency, in both capture and edit forms,
+  clears that one field and refocuses it — for the datalist-backed fields,
+  this pops the full list of existing values back up instead of staying
+  filtered to whatever was typed before, handy when you want to pick a
+  different value from the list rather than retype one.
 - **Re-run OCR on an existing document** — the Edit dialog has its own
   "Run OCR" button, refreshing just the OCR text field against the
   document's actual saved file. Unlike the capture form (images only),
@@ -126,7 +126,8 @@ working" problem that motivated this project in the first place.
   form. Pick it first, then everything below reflects that choice.
 - **Field settings** — the "⚙ Manage fields" button opens a dialog for
   managing which fields show per document type (and in what order), plus
-  a default document type that pre-fills the Add Document form. Mirrors
+  a default document type and a default currency that pre-fill the Add
+  Document form (see "Amount has a linked Currency field" below). Mirrors
   Mariner Paperless's own Document Types / Fields / Display Fields screen:
   pick a type on the left, add fields to it from the middle column, reorder
   or remove them on the right — changes save immediately. Deliberately
@@ -143,6 +144,27 @@ working" problem that motivated this project in the first place.
   view's header reflects this too: Payment and Amount only appear there
   when a document actually has a value for them, rather than always
   showing an empty placeholder.
+- **Amount has a linked Currency field** — free text, with autocomplete
+  from currencies already used in the library, rather than a fixed
+  dropdown (real documents mix symbols like "€"/"$" and codes like
+  "EUR"/"USD"). It always appears right next to Amount and shares its
+  per-document-type visibility exactly — Currency isn't independently
+  configurable in Field Settings, since a currency without an amount isn't
+  meaningful. Displayed as "123.45 EUR" (amount, then currency,
+  consistently) since free text makes it impossible to know whether a
+  given value is meant as a prefix symbol or a suffix code. Sorting the
+  Amount column sorts by the raw number only — there's no currency
+  conversion, since this is a personal document archive, not an
+  accounting tool. A **default currency**, set once in Field Settings, is
+  optional and unset by default — when configured, it pre-fills new
+  captures' Currency field the same way the Date field pre-fills to today:
+  visually flagged as a guess (amber, with a "double-check this" hint)
+  until you actually touch the field. It's a per-library setting, not a
+  hardcoded assumption, since Document Studio is a general-purpose,
+  single-file, downloadable tool — a fixed default would just be silently
+  wrong for anyone whose library isn't in that one currency. Editing never
+  guesses; a document's Currency there is either its real saved value or
+  genuinely blank.
 - **Editing never hides data behind a configuration change** — if a
   document has a value in a field that isn't (or is no longer) configured
   to display for its current type — reclassified, or the field got
@@ -231,6 +253,8 @@ documents
     document_type       TEXT
     payment_method      TEXT     -- nullable, only meaningful for receipts/invoices
     amount              REAL     -- nullable
+    currency            TEXT     -- nullable free text, e.g. "EUR" / "$" -- always shown
+                                  -- alongside Amount, not independently configurable
     date                TEXT     -- ISO 8601, the document's own date (e.g. invoice date)
     import_date         TEXT     -- ISO 8601, when the document was scanned/captured/imported
                                   -- (for migrated documents, this comes from Mariner's own
@@ -289,8 +313,11 @@ document_type_fields
 `settings` is a small key-value table for app preferences that should
 travel with the library rather than live in browser storage — currently
 `visible_columns` (a JSON array of which table columns and their
-matching filters are shown) and `default_document_type` (pre-fills the
-Add Document form's Document Type field).
+matching filters are shown), `default_document_type` (pre-fills the Add
+Document form's Document Type field), and `default_currency` (pre-fills
+new captures' Currency field as a dismissible guess — see Features above;
+unset by default, since this is a general-purpose tool with no currency
+that's correct to assume for everyone).
 
 **Custom fields are fully generic** (`fields` + `document_field_values`) —
 Organization, Year, Date From, Paid, whatever your library actually uses.
@@ -397,7 +424,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (29
+There's a real, runnable Playwright regression suite in `tests/` (30
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

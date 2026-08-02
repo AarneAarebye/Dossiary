@@ -100,8 +100,14 @@ async def main():
         await page.fill('#e-type', 'Certificate')
         await page.locator('#e-type').blur()
         await page.wait_for_timeout(150)
-        amount_field_gone = await page.locator('[data-dynamic-field="Amount"]').count()
-        print("Amount field removed from edit form after reclassify (expected):", amount_field_gone == 0)
+        # NOT actually removed from the DOM: since this document has a real, non-zero
+        # amount, applyDynamicFieldsForType()'s orphaned-field handling (isEdit=true)
+        # re-appends it marked .field-orphaned instead of dropping it -- see
+        # test_orphaned_fields.py for that behavior in detail. It stays present and
+        # editable here specifically so the value below isn't just preserved blindly
+        # but actually visible for review.
+        amount_block_orphaned = await page.locator('[data-dynamic-field="Amount"].field-orphaned').count()
+        print("Amount field marked orphaned (not removed) after reclassify:", amount_block_orphaned == 1)
 
         # Save WITHOUT amount/payment fields present -- must NOT wipe the stored values
         await page.click('#save-edit-btn')

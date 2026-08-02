@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (29 scripts) + shared
+tests/                   Playwright regression suite (30 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -292,6 +292,48 @@ rather than being folded into it.
   return `null` (field not in the DOM), rather than defaulting to blank/
   null the way a genuinely-cleared field would. Don't simplify this to
   "missing field means null" without preserving that distinction.
+- **Currency (`documents.currency`) is a companion to Amount, not its own
+  sentinel field.** `renderAmountFieldHtml()` renders both the Amount and
+  Currency inputs together, inside one `.field` wrapper carrying a single
+  `data-dynamic-field="Amount"` — so Currency has no independent entry in
+  `document_type_fields` and can't be toggled on/off separately in Field
+  Settings; it always shows/hides in lockstep with Amount, including
+  through the same orphaned-field path (a document with a real, non-zero
+  amount still shows the whole Amount+Currency block, marked
+  `.field-orphaned`, even after being reclassified to a type that doesn't
+  configure Amount — see the orphaned-fields note below; this is why
+  `saveEditedDocument()`'s `el('e-currency') ? ... : d.currency` fallback
+  is a genuine second line of defense, not the only thing keeping the
+  value from being lost). Stored as free text (like Payment method), not a
+  fixed dropdown — real libraries mix symbols ("€", "$") and ISO codes
+  ("USD", "CHF"), and a fixed enum would force an artificial choice.
+  `formatAmount()` displays it suffixed after the number ("123.45 EUR"),
+  uniformly regardless of whether the value is a symbol or a code, since
+  free text gives no reliable signal for prefix-vs-suffix placement per
+  currency — don't try to special-case known symbols to prefix them
+  without a real reason to invest in that. Sorting the Amount table column
+  (`sortDocs()`) still sorts by the raw `amount` number only; there's no
+  currency-aware conversion, which is an accepted simplification for a
+  personal archive rather than an accounting tool.
+- **`default_currency` (a `settings` row, exactly like `default_document_type`
+  — `loadDefaultCurrency()`/`saveDefaultCurrency()`, configured via the same
+  Field Settings modal) pre-fills new captures' Currency field as a
+  dismissible guess, but stays unset until someone configures one.** Don't
+  hardcode a literal currency (e.g. `'€'`) as the fallback instead of this
+  setting, even though it might seem like a harmless convenience default —
+  this app is a general-purpose, single-file, downloadable tool that
+  anyone can grab, not code scoped to one person's library, so a fixed
+  default would be silently wrong for anyone whose library isn't in that
+  one currency, with no way to change it short of editing source. The
+  guess treatment itself (`renderAmountFieldHtml()`'s `isGuess = prefix
+  === 'f' && !existingCurrency && !!defaultCurrency`) mirrors the Date
+  field's today-default exactly: `.field-guess` amber styling + a
+  dismissible `.field-guess-hint`, cleared on the first `input` or
+  `change` event on the currency input (both, since — unlike Date —
+  Currency has its own clear button, whose `wireClearButton()` dispatches
+  a `change` event that must also count as "touched"). Edit never guesses
+  under any circumstances, configured default or not: a blank Currency
+  there is the document's real, saved state, not something to paper over.
 - **The detail view's header (`openDetail()`'s `modal-meta` block) shows
   Payment and Amount conditionally, not as always-present placeholder
   lines.** `<b>Amount</b>` only appends onto the Date line when
@@ -562,7 +604,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **29
+There's a real, runnable Playwright regression suite in `tests/` — **30
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -571,13 +613,15 @@ regeneration), generic custom fields (all four types), dynamic per-type
 field show/hide/reorder, Field Settings (add/remove/reorder fields per
 type, default document type), Amount/Payment as configurable sentinel
 fields (including the value-preservation-when-hidden correctness
-property), Payment Date as a genuine migrated custom field, the detail
-view's conditional header, orphaned-field display and editability in the
-Edit dialog, every clear button, the sticky table header, the scan-hint
-toggle, the Libraries/licenses modal, sidecar file content, the Inbox
-review flow (banner visibility, add-one and add-all-with-defaults, the
-file moving from `inbox/` into `files/`, the banner disappearing once
-empty), and search across all of the above. This list itself can go
+property), Currency as Amount's companion field (shared visibility,
+orphaned-together behavior, display formatting), Payment Date as a
+genuine migrated custom field, the detail view's conditional header,
+orphaned-field display and editability in the Edit dialog, every clear
+button, the sticky table header, the scan-hint toggle, the Libraries/
+licenses modal, sidecar file content, the Inbox review flow (banner
+visibility, add-one and add-all-with-defaults, the file moving from
+`inbox/` into `files/`, the banner disappearing once empty), and search
+across all of the above. This list itself can go
 stale — if you add a test, or a feature loses its test, update this
 paragraph in the same change; don't let this description silently drift
 the way it once did (an earlier version of this section described only
