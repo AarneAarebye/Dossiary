@@ -45,6 +45,15 @@ class FakeDirHandle {
     if (opts && opts.create) { const h = new FakeDirHandle(name); this._children.set(name, h); return h; }
     const err = new Error('Dir not found: ' + name); err.name = 'NotFoundError'; throw err;
   }
+  async *entries() {
+    for (const pair of this._children) yield pair;
+  }
+  async removeEntry(name) {
+    if (!this._children.has(name)) {
+      const err = new Error('Not found: ' + name); err.name = 'NotFoundError'; throw err;
+    }
+    this._children.delete(name);
+  }
 }
 
 window.__makeEmptyRoot = function() { return new FakeDirHandle('EmptyLibrary'); };
@@ -254,4 +263,14 @@ window.__makeSeededRoot = function(seed) {
   root._children.set('library.sqlite', new FakeFileHandle('library.sqlite', dbBytes));
   root._children.set('files', new FakeDirHandle('files'));
   return root;
+};
+
+// Drops a file into a (created-if-needed) 'inbox' child dir of the given root,
+// for exercising the Inbox review feature -- mirrors what a watched-folder helper
+// like scan_watch.py would leave behind. bytes defaults to a tiny non-empty
+// buffer since an empty file is a degenerate case this helper isn't testing.
+window.__addInboxFile = function(root, name, bytes) {
+  if (!root._children.has('inbox')) root._children.set('inbox', new FakeDirHandle('inbox'));
+  const inbox = root._children.get('inbox');
+  inbox._children.set(name, new FakeFileHandle(name, bytes || new Uint8Array([1, 2, 3])));
 };

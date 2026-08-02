@@ -25,18 +25,24 @@ probably belongs in the other repo instead.
 
 ```
 document_studio.html   The entire app (single file: HTML + CSS + JS)
+scan_watch.py            Standalone watched-folder helper -- see its own note below
 README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (27 scripts) + shared
+tests/                   Playwright regression suite (29 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
-There's intentionally no `package.json`, bundler, or build step. Keep it
-that way — the whole point is "download one file, open it, it works."
-External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
-`<script src>`, not vendored or bundled.
+There's intentionally no `package.json`, bundler, or build step for the app
+itself. Keep `document_studio.html` that way — the whole point is "download
+one file, open it, it works." External libraries (sql.js, Tesseract.js) are
+loaded from CDN at runtime via `<script src>`, not vendored or bundled.
+`scan_watch.py` is the one deliberate exception to "single file" in this
+repo: it's a separate, optional, stdlib-only companion script that never
+gets loaded by the app and has no effect if you never run it — see its own
+architecture note below for why it exists outside `document_studio.html`
+rather than being folded into it.
 
 ## Architecture notes
 
@@ -425,6 +431,82 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   via pdf.js) before handing it to Tesseract — not implemented. The UI
   disables the OCR button and explains this for PDF uploads; don't silently
   attempt OCR on a PDF file object, it will not work as expected.
+- **OCR language options** (`#ocr-lang` in capture, `#e-ocr-lang` in edit —
+  kept in sync, same option list in both) are just language codes passed to
+  `Tesseract.createWorker(lang.split('+'))`; Tesseract.js resolves each code
+  to a `.traineddata` file it downloads on demand, so adding a language is
+  purely an `<option>` addition, no worker/recognition logic changes. `Auto`
+  (`eng+deu`) recognizes against both trained models in one pass — deliberately
+  **not** expanded to include French/Spanish/Chinese too, since combining more
+  languages into one `recognize()` call means downloading and running against
+  every model in the combo on every scan; the other languages are
+  single-language-only options instead. `chi_tra` (Traditional Chinese) is
+  labeled "Chinese (Traditional / Cantonese)" — verified directly against the
+  `tesseract-ocr/tessdata`/`tessdata_fast` repos that there is **no** separate
+  Cantonese (`yue`) trained model to add; Cantonese text uses the same
+  traditional-character script `chi_tra` already covers. Don't add a `yue`
+  option from memory/assumption — it would silently fail to download.
+- **No direct scanner integration in the app itself** (`#scan-hint-toggle` /
+  `#scan-hint` in the capture form only, not edit — editing never adds a new
+  source file, see below). A browser has no API to control scanner hardware
+  or launch a native app like Image Capture — this is a hard web-platform
+  boundary, not something to "fix" by trying to shell out or invoke a URL
+  scheme. The toggle only reveals static instructions (use Image Capture or
+  Preview's Import from Scanner, save the result, then use the existing
+  "click to choose a file" control) — it doesn't touch the filesystem itself,
+  so it reuses `handlePickedFile()` with zero new file-handling code. For a
+  more automated path, see the Inbox feature and `scan_watch.py` below — that
+  helper is a separate native process, not something loaded into this page,
+  precisely because a browser tab can't watch a folder in the background the
+  way it does.
+- **Inbox** (`checkInbox()`, `openInboxModal()`, `addInboxFile()`,
+  `addAllInboxFiles()`, the `#inbox-banner` element) reads a library's
+  `inbox/` folder (a sibling of `library.sqlite` and `files/` at the library
+  root) and offers one-click "add with defaults" for whatever's in it —
+  mirroring legacy Mariner Paperless's own ScanSnap watch-folder integration
+  (a scanned file showing up already filed, with the rest of the metadata
+  left for later cleanup), but deliberately split into two pieces rather than
+  a single background auto-import, for two reasons documented in more detail
+  in "Working conventions" below: (1) this app is meant to be the library's
+  sole writer to `library.sqlite` — it loads the whole database into memory
+  and only writes it back out on an explicit save, so a second process
+  inserting rows directly risks silently losing work to whichever side saved
+  last; (2) every write is supposed to come from an explicit click, never
+  from data that just showed up on disk. So `inbox/` is populated by
+  something else entirely outside this file (see `scan_watch.py` below,
+  though nothing stops a person from just dragging a file into that folder
+  by hand) and this app never watches or polls it — `checkInbox()` only runs
+  once, right after `afterDbReady()`, and again when the Inbox modal's
+  "Refresh" button is clicked. Turning a staged file into an actual document
+  always requires a click on "Add" or "Add all with defaults" inside this
+  tab. An inbox-added document gets `source = 'scan-inbox'` (distinct from
+  `'captured'` and `'migrated'`) and only two things set beyond the file
+  itself: a filename-derived title, and `document_type` prefilled from
+  `default_document_type` if one's configured (same intent as the capture
+  form's own default-type prefill) — category, subcategory, payment method,
+  amount, date, and notes are all left `NULL` rather than guessed, and no OCR
+  runs automatically (that stays an explicit action from the Edit dialog's
+  existing `runOcrForEdit()`, so a bulk "Add all" doesn't silently kick off a
+  slow OCR pass per file). This mirrors `saveNewDocument()`'s file-copy/
+  thumbnail/sidecar logic closely but isn't a shared function with it, since
+  the two have different inputs (a form's DOM fields vs. nothing but a
+  filename) and different defaults for nearly every column.
+- **scan_watch.py** is the other half of Inbox, and is intentionally *not*
+  part of `document_studio.html` — a stdlib-only Python script (no
+  dependency to `pip install`), run separately, that watches a folder your
+  scan software saves into (e.g. ScanSnap Home's own "save to folder"
+  destination) and moves each file into a library's `inbox/` folder once its
+  mtime has held steady for `--settle-seconds`, purely as a filesystem move.
+  It never opens `library.sqlite`, assigns a document ID, or sets any
+  metadata — see the Inbox note above for why that split matters. Its
+  "stable" check is deliberately stateless across polls (just `now -
+  mtime >= settle_seconds`, re-checked fresh every pass) rather than
+  comparing against a previous poll's reading — that was a real bug caught
+  while building this: an earlier version tracked "unchanged since last
+  poll" in an in-memory dict, which meant a single `--once` invocation could
+  never stage anything, since every fresh process starts with an empty dict
+  and therefore always treats every file as newly-seen on its first (and
+  only) pass.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.
@@ -480,23 +562,30 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **27
+There's a real, runnable Playwright regression suite in `tests/` — **29
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
-(images and PDFs, both capture-time and edit-time), searchable PDF
-generation, thumbnails/previews (generation and regeneration), generic
-custom fields (all four types), dynamic per-type field show/hide/reorder,
-Field Settings (add/remove/reorder fields per type, default document
-type), Amount/Payment as configurable sentinel fields (including the
-value-preservation-when-hidden correctness property), Payment Date as a
-genuine migrated custom field, the detail view's conditional header,
-orphaned-field display and editability in the Edit dialog, every clear
-button, the sticky table header, the Libraries/licenses modal, sidecar
-file content, and search across all of the above. This list itself can go
+(images and PDFs, both capture-time and edit-time, across every language
+option), searchable PDF generation, thumbnails/previews (generation and
+regeneration), generic custom fields (all four types), dynamic per-type
+field show/hide/reorder, Field Settings (add/remove/reorder fields per
+type, default document type), Amount/Payment as configurable sentinel
+fields (including the value-preservation-when-hidden correctness
+property), Payment Date as a genuine migrated custom field, the detail
+view's conditional header, orphaned-field display and editability in the
+Edit dialog, every clear button, the sticky table header, the scan-hint
+toggle, the Libraries/licenses modal, sidecar file content, the Inbox
+review flow (banner visibility, add-one and add-all-with-defaults, the
+file moving from `inbox/` into `files/`, the banner disappearing once
+empty), and search across all of the above. This list itself can go
 stale — if you add a test, or a feature loses its test, update this
 paragraph in the same change; don't let this description silently drift
 the way it once did (an earlier version of this section described only
-two basic scenarios, long after the suite had grown well past that).
+two basic scenarios, long after the suite had grown well past that — and,
+separately, a stray revert once silently deleted two already-shipped,
+already-documented features — the scan-hint toggle and the extra OCR
+languages — with nothing catching it because neither had a test; that's
+exactly the gap `test_scan_hint_and_ocr_languages.py` closes).
 
 **Running it**: `cd tests && python3 test_<name>.py` (each is a standalone
 script, not a pytest suite — no test runner or config needed beyond

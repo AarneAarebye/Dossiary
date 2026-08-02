@@ -86,6 +86,12 @@
   .status{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:0 32px 10px; min-height:16px; }
   .status.err{ color:var(--red); } .status.ok{ color:var(--phosphor); } .status.busy{ color:var(--amber); }
 
+  .inbox-banner{
+    margin:0 32px 14px; padding:12px 16px; border:1px solid var(--amber-dim); border-radius:var(--radius);
+    background:rgba(217,154,63,0.08); display:flex; align-items:center; justify-content:space-between;
+    gap:12px; font-family:var(--font-mono); font-size:12.5px; color:var(--amber);
+  }
+
   /* modal shared */
   .backdrop{ position:fixed; inset:0; background:rgba(6,9,10,0.75); backdrop-filter:blur(2px); display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; z-index:50; overflow-y:auto; }
   .modal{ background:var(--panel); border:1px solid var(--line); border-radius:6px; max-width:640px; width:100%; padding:26px 28px 28px; position:relative; }
@@ -144,6 +150,15 @@
     font-family:var(--font-mono); font-size:12px; color:var(--text-dim); margin-bottom:14px;
   }
   .file-drop:hover{ border-color:var(--phosphor-dim); color:var(--phosphor); }
+  .scan-toggle{
+    font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-decoration:underline;
+    text-underline-offset:2px; cursor:pointer; background:none; border:none; padding:0; margin:-8px 0 14px;
+  }
+  .scan-toggle:hover{ color:var(--phosphor); }
+  .scan-hint{
+    font-family:var(--font-mono); font-size:11px; color:var(--text-dim); line-height:1.6;
+    margin:-4px 0 14px; padding:10px 12px; border:1px solid var(--line); border-radius:6px;
+  }
   .file-preview{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
   .file-preview img{ width:64px; height:80px; object-fit:cover; border-radius:3px; border:1px solid var(--line); }
   .file-preview .file-icon{ width:64px; height:80px; border-radius:3px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); background:var(--ink-2); text-align:center; padding:4px; }
@@ -161,7 +176,7 @@
   @media (max-width:640px){
     header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
-    footer{ padding:16px 16px 20px; }
+    footer{ padding:16px 16px 20px; } .inbox-banner{ margin:0 16px 14px; flex-direction:column; align-items:flex-start; }
   }
 </style>
 
@@ -191,6 +206,11 @@
     <button id="manage-fields-btn">⚙ Manage fields</button>
     <button class="accent" id="add-btn">＋ Add document</button>
     <button id="reload-btn">Switch library</button>
+  </div>
+
+  <div class="inbox-banner" id="inbox-banner" style="display:none;">
+    <span id="inbox-banner-text"></span>
+    <button class="accent" id="inbox-review-btn">Review</button>
   </div>
 
   <div class="status" id="status"></div>
@@ -305,6 +325,9 @@
   let rootDirHandle = null;
   let filesDirHandle = null;
   let dbFileHandle = null;
+  let inboxDirHandle = null;   // <library>/inbox/ -- files a watched-folder helper (e.g. scan_watch.py) drops
+                                // in for one-click "add with defaults" review; null if that folder doesn't exist
+  let pendingInboxFiles = [];  // [{name, handle}, ...] snapshot from the last checkInbox() call
   let allDocs = [];
   let tagsByDocId = {};
   let tagNameToId = {};
@@ -673,10 +696,12 @@
     initState.style.display = 'none';
     loadDocumentsFromDb();
     setStatus(`Opened ${allDocs.length} documents from ${rootDirHandle.name}.`, 'ok');
+    checkInbox(); // fire-and-forget -- best effort, doesn't block the library from opening
   }
 
   function resetAll(){
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
+    inboxDirHandle = null; pendingInboxFiles = [];
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
@@ -684,6 +709,7 @@
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
+    el('inbox-banner').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
   }
 
@@ -1185,7 +1211,7 @@
       <tr data-id="${d.id}">
         <td>
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
-          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : ''}</div>
+          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : d.source === 'scan-inbox' ? ' · <span class="pill captured">from inbox</span>' : ''}</div>
         </td>
         <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
         <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
@@ -1436,6 +1462,10 @@
                 <option value="eng+deu">Auto (German + English)</option>
                 <option value="deu">German only</option>
                 <option value="eng">English only</option>
+                <option value="fra">French only</option>
+                <option value="spa">Spanish only</option>
+                <option value="chi_sim">Chinese (Simplified) only</option>
+                <option value="chi_tra">Chinese (Traditional / Cantonese) only</option>
               </select>
               <button type="button" id="e-run-ocr-btn">Run OCR</button>
               <span id="e-ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
@@ -1753,6 +1783,13 @@
             Click to choose a file (PDF or image)
             <input type="file" id="file-input" accept="application/pdf,image/*" style="display:none" />
           </div>
+          <button type="button" class="scan-toggle" id="scan-hint-toggle">Need to scan a paper document first?</button>
+          <div class="scan-hint" id="scan-hint" style="display:none;">
+            This app can't open your scanner directly — browsers aren't allowed to control hardware or launch other
+            apps. Instead: open <b>Image Capture</b> (⌘Space, type "Image Capture") or Preview's
+            <b>File → Import from Scanner</b>, scan the document, and save it somewhere you'll find it (e.g. the
+            Desktop). Then come back and use "Click to choose a file" above to pick that scan.
+          </div>
           <div id="file-preview-area"></div>
 
           <div class="ocr-row">
@@ -1760,6 +1797,10 @@
               <option value="eng+deu">Auto (German + English)</option>
               <option value="deu">German only</option>
               <option value="eng">English only</option>
+              <option value="fra">French only</option>
+              <option value="spa">Spanish only</option>
+              <option value="chi_sim">Chinese (Simplified) only</option>
+              <option value="chi_tra">Chinese (Traditional / Cantonese) only</option>
             </select>
             <button id="run-ocr-btn" disabled>Run OCR</button>
             <span id="ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
@@ -1832,6 +1873,10 @@
     el('file-input').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if(file) handlePickedFile(file);
+    });
+    el('scan-hint-toggle').addEventListener('click', () => {
+      const hint = el('scan-hint');
+      hint.style.display = hint.style.display === 'none' ? 'block' : 'none';
     });
     el('run-ocr-btn').addEventListener('click', runOcr);
 
@@ -2121,6 +2166,169 @@
       nextDocId--; // roll back the reservation since the save didn't complete
     }
   }
+
+  // --- Inbox (files dropped into <library>/inbox/ by an outside watched-folder
+  // helper, e.g. scan_watch.py, for one-click "add with defaults" review) ---
+  //
+  // This app never writes to library.sqlite except from an explicit click here --
+  // it deliberately does NOT poll/watch the inbox/ folder itself or auto-add
+  // anything the instant a file appears, matching the "no silent writes" working
+  // convention in CLAUDE.md. The watcher's only job is moving files into inbox/;
+  // turning one into an actual document row always requires a person to click
+  // "Add" (or "Add all with defaults") in this library's own open tab, which also
+  // keeps this app the library's sole writer -- a background process never touches
+  // library.sqlite directly, so there's no risk of it racing this tab's own save.
+
+  async function checkInbox(){
+    pendingInboxFiles = [];
+    try{
+      inboxDirHandle = await rootDirHandle.getDirectoryHandle('inbox', { create: false });
+      for await (const [name, handle] of inboxDirHandle.entries()){
+        if(handle.kind === 'file' && !name.startsWith('.')) pendingInboxFiles.push({ name, handle });
+      }
+      pendingInboxFiles.sort((a, b) => a.name.localeCompare(b.name));
+    }catch(e){
+      inboxDirHandle = null; // no inbox/ folder yet -- nothing to review, not an error
+    }
+    updateInboxBanner();
+  }
+
+  function updateInboxBanner(){
+    const banner = el('inbox-banner');
+    if(pendingInboxFiles.length){
+      banner.style.display = 'flex';
+      el('inbox-banner-text').textContent =
+        `${pendingInboxFiles.length} scan${pendingInboxFiles.length === 1 ? '' : 's'} waiting in the inbox folder.`;
+    }else{
+      banner.style.display = 'none';
+    }
+  }
+
+  function openInboxModal(){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Inbox</h2>
+          <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:-8px;">
+            Files dropped into this library's <code>inbox/</code> folder (e.g. by a watched-folder scan
+            helper) — add each with default values, then fill in the rest from its Edit dialog.
+          </p>
+          <div id="inbox-list"></div>
+          <div class="modal-actions">
+            <button class="accent" id="inbox-add-all-btn">Add all with defaults</button>
+            <button id="inbox-refresh-btn">Refresh</button>
+          </div>
+          <div class="status" id="inbox-status" style="padding:10px 0 0;"></div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    el('inbox-refresh-btn').addEventListener('click', async () => { await checkInbox(); openInboxModal(); });
+    el('inbox-add-all-btn').addEventListener('click', addAllInboxFiles);
+    renderInboxList();
+  }
+
+  function renderInboxList(){
+    const listEl = el('inbox-list');
+    if(!listEl) return;
+    if(!pendingInboxFiles.length){
+      listEl.innerHTML = `<p style="font-family:var(--font-mono); font-size:12px; color:var(--text-dim);">Nothing waiting.</p>`;
+      el('inbox-add-all-btn').disabled = true;
+      return;
+    }
+    el('inbox-add-all-btn').disabled = false;
+    listEl.innerHTML = pendingInboxFiles.map(f => `
+      <div class="file-preview">
+        <div class="file-icon">${escapeHtml((f.name.split('.').pop() || '').toUpperCase())}</div>
+        <div style="flex:1;"><div class="doc-title">${escapeHtml(f.name)}</div></div>
+        <button class="inbox-add-one-btn" data-name="${escapeHtml(f.name)}">Add</button>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.inbox-add-one-btn').forEach(btn => {
+      btn.addEventListener('click', () => addInboxFile(btn.dataset.name));
+    });
+  }
+
+  // Adds one inbox file as a new document with only the file itself and a
+  // filename-derived title set -- category/subcategory/payment/amount/date/notes
+  // are left blank, and document type is prefilled from default_document_type if
+  // one's configured (same intent as the capture form's own default-type prefill),
+  // exactly mirroring the "filed with defaults, cleaned up later" workflow legacy
+  // Mariner Paperless's own ScanSnap watch-folder integration had. No OCR runs here
+  // -- that stays an explicit action from the Edit dialog (runOcrForEdit()), same
+  // as it already is for any other saved document, so a bulk "Add all" doesn't
+  // silently kick off a slow OCR pass per file.
+  async function addInboxFile(name){
+    const entry = pendingInboxFiles.find(f => f.name === name);
+    if(!entry) return;
+    const statusEl = el('inbox-status');
+    if(statusEl){ statusEl.className = 'status busy'; statusEl.innerHTML = `<span class="spinner"></span> Adding "${escapeHtml(name)}"…`; }
+    let id;
+    try{
+      id = nextDocId++;
+      const file = await entry.handle.getFile();
+      const destName = `${id}_${safeFilename(file.name, 'document')}`;
+      const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
+      const writable = await destHandle.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+
+      // Best-effort, same as saveNewDocument() -- a missing preview isn't fatal.
+      let thumbnailPathForDb = null;
+      try{
+        const thumbBytes = await generateThumbnail(file);
+        if(thumbBytes) thumbnailPathForDb = await writeThumbnail(id, thumbBytes);
+      }catch(e){ /* no preview -- not fatal */ }
+
+      const title = file.name.replace(/\.[^.]+$/, '') || null;
+      const documentType = defaultDocumentType || null;
+      const createdAt = nowIso();
+      const filePathForDb = `files/${destName}`;
+      const sidecarBaseName = destName.replace(/\.[^.]+$/, '');
+
+      db.run(`
+        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, date,
+                                import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
+                                created_at, source, source_legacy_id, thumbnail_path)
+        VALUES (?, ?, NULL, NULL, ?, NULL, NULL, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?)
+      `, [id, title, documentType, createdAt, filePathForDb, createdAt, thumbnailPathForDb]);
+
+      await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
+      await persistDb();
+
+      allDocs.push({
+        id, title, category: null, subcategory: null, document_type: documentType, payment_method: null, amount: null,
+        date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
+        original_file_path: null, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
+        thumbnail_path: thumbnailPathForDb, customFields: {}, tags: [], people: [],
+      });
+
+      await inboxDirHandle.removeEntry(name);
+      pendingInboxFiles = pendingInboxFiles.filter(f => f.name !== name);
+
+      renderStats(); populateFilters(); populateDatalists(); render();
+      subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+      updateInboxBanner();
+      renderInboxList();
+      if(statusEl){ statusEl.className = 'status ok'; statusEl.textContent = `Added "${title}" as #${id}.`; }
+      setStatus(`Added "${title || 'Document #' + id}" as #${id} from the inbox.`, 'ok');
+    }catch(e){
+      if(id !== undefined) nextDocId--; // roll back the reservation since the add didn't complete
+      if(statusEl){ statusEl.className = 'status err'; statusEl.textContent = `Failed to add "${name}": ${e.message}`; }
+    }
+  }
+
+  async function addAllInboxFiles(){
+    for(const name of pendingInboxFiles.map(f => f.name)){
+      await addInboxFile(name);
+    }
+    if(!pendingInboxFiles.length) closeModal();
+  }
+
+  el('inbox-review-btn').addEventListener('click', openInboxModal);
 
   resetAll();
 })();

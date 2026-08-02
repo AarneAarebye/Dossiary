@@ -26,14 +26,32 @@ working" problem that motivated this project in the first place.
   the library, with category/type filters. Search matches title, category,
   subcategory, document type, notes, OCR text, tags, people, and every
   custom field's value.
-- **Capture** — add a new document (PDF or image), with client-side OCR
-  (German, English, or both) via [Tesseract.js](https://github.com/naptha/tesseract.js)
-  running entirely in your browser. For JPEG/PNG images, this also builds a
-  **searchable PDF** — the image with an invisible, selectable text layer
-  positioned over each recognized word (the same "sandwich" technique tools
-  like `ocrmypdf` use) — while the original image is preserved untouched in
-  a subfolder next to it, mirroring how Mariner Paperless itself laid out
-  processed vs. original files.
+- **Capture** — add a new document (PDF or image), with client-side OCR via
+  [Tesseract.js](https://github.com/naptha/tesseract.js) running entirely in
+  your browser. Language options: German, English, or both auto-detected
+  together, plus single-language French, Spanish, Chinese (Simplified), and
+  Chinese (Traditional / Cantonese — Tesseract has no separate Cantonese
+  model, since Cantonese text is written with the same traditional-character
+  script). For JPEG/PNG images, this also builds a **searchable PDF** — the
+  image with an invisible, selectable text layer positioned over each
+  recognized word (the same "sandwich" technique tools like `ocrmypdf`
+  use) — while the original image is preserved untouched in a subfolder
+  next to it, mirroring how Mariner Paperless itself laid out processed
+  vs. original files. If you're starting from a paper document, a "Need to
+  scan a paper document first?" toggle in the capture form explains how to
+  scan it with macOS's Image Capture or Preview first, since a browser has
+  no way to drive scanner hardware directly — see Limitations below.
+- **Inbox** — a lightweight amber banner appears on opening a library if its
+  `inbox/` folder (at the library root, alongside `library.sqlite` and
+  `files/`) has any files waiting in it. Click "Review" to see them and add
+  each with default values (just the file, plus a filename-derived title) —
+  the rest of the metadata is left blank for you to fill in from the
+  document's own Edit dialog afterward. This pairs with the standalone
+  [`scan_watch.py`](#scan_watchpy-watched-folder-helper) script below, which
+  moves finished scans from wherever your scan software saves them into that
+  `inbox/` folder — Document Studio itself never watches the filesystem or
+  writes a document automatically; adding one from the inbox always requires
+  this explicit click.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can
@@ -173,6 +191,35 @@ Studio expects. Point Document Studio at that output folder afterward.
 If you have several libraries to migrate, either GUI is likely more
 convenient than running the script by hand once per library.
 
+### scan_watch.py (watched-folder helper)
+
+A small standalone Python script (stdlib only — no `pip install` needed) that
+watches a folder your scan software saves finished scans into (e.g. ScanSnap
+Home's own "save to folder" destination) and moves each stabilized file into
+a Document Studio library's `inbox/` folder, for the in-app Inbox feature
+described above to pick up:
+
+```
+python3 scan_watch.py --drop-folder ~/Scans --library ~/Documents/MyLibrary
+```
+
+It runs continuously by default (checking every `--poll-interval` seconds,
+default 2), or once with `--once`. A file is only moved once it hasn't been
+modified for `--settle-seconds` (default 2), so a scan still being written
+isn't grabbed mid-write.
+
+This is deliberately filesystem-only — it never touches `library.sqlite`
+itself, doesn't assign document IDs, and doesn't set any metadata. Document
+Studio is the library's sole writer to `library.sqlite` (it loads the whole
+database into memory in the browser tab and only writes it back out on an
+explicit save), so a second process inserting rows directly could silently
+lose work to whichever side saved last. Keeping this script to "just move
+the file" sidesteps that risk entirely, and means nothing is ever added to
+your archive without an explicit click inside the app itself, in keeping
+with Document Studio's own "no silent writes" design (documents are only
+ever written from something you clicked, not from data arriving on disk on
+its own).
+
 ## Database schema
 
 ```
@@ -194,7 +241,7 @@ documents
     file_path           TEXT     -- relative to library root, e.g. "files/3_invoice.pdf"
     original_file_path  TEXT     -- relative to library root, nullable
     created_at          TEXT     -- ISO 8601, when the record was created
-    source              TEXT     -- 'migrated' or 'captured'
+    source              TEXT     -- 'migrated', 'captured', or 'scan-inbox'
     source_legacy_id    INTEGER  -- traceability only, for migrated documents
     thumbnail_path      TEXT     -- relative to library root, nullable
 
@@ -294,6 +341,15 @@ separate genuinely distinct values.
   `.txt` sidecar files get *incidental* Spotlight benefit (since Spotlight
   indexes any plain text file's content), but this is a workaround, not a
   true integration, and it doesn't cover PDFs without a text layer.
+- **No direct scanner integration.** A browser has no API to drive scanner
+  hardware or launch a native app like Image Capture — the capture form's
+  "Need to scan a paper document first?" toggle only offers instructions
+  for scanning outside the app and then picking the resulting file with
+  the normal file picker; it can't trigger a scan itself. For a more
+  automated "scan → shows up ready to review" workflow, see the Inbox
+  feature and [`scan_watch.py`](#scan_watchpy-watched-folder-helper) above
+  — that still requires an explicit in-app click to actually add each file
+  as a document, by design.
 - **Re-select the folder each session.** Browsers don't allow persisting
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not
@@ -341,7 +397,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (27
+There's a real, runnable Playwright regression suite in `tests/` (29
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
