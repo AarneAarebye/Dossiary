@@ -13,7 +13,7 @@ to WebAssembly) plus a `files/` folder, both inside the library folder the
 person picks.
 
 This project is a spinoff of
-[`MarinerPaperlessExporter`](https://github.com/AarneAarebye/MarinerPaperlessExporter):
+[`MarinerPaperlessTools`](https://github.com/AarneAarebye/MarinerPaperlessTools):
 that repo's `migrate_to_new_library.py` produces the `library.sqlite` schema
 this app expects, as a one-time conversion from a discontinued Mariner
 Paperless library. But this app itself has no Mariner-specific logic or
@@ -367,54 +367,15 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   deliberately does **not** request word-position data or touch
   `file_path`/rebuild any PDF — consistent with editing being
   metadata-only (see the "Editing" note above). **`runOcrForEdit()`
-  handles PDFs, `runOcr()` doesn't** — it renders **every** page via
-  `renderPdfPageToCanvas()` (a higher-resolution sibling of
-  `generateThumbnail()`'s single-first-page PDF path; OCR accuracy
-  degrades badly at thumbnail resolution, so this is intentionally a
-  separate function with its own `scale` parameter, not a shared one
-  with a size flag) and passes each page's canvas straight to Tesseract
-  in turn, which accepts canvas elements directly as an image source.
-  **This used to only OCR the first page** — a real bug reported against
-  a genuine multi-page scanned PDF, where everything past page 1 was
-  silently dropped from the extracted text with no error or indication
-  anything was missing. Fixed by loading the PDF once via `pdfjsLib`,
-  looping `pageNum` from 1 to `pdf.numPages`, reusing a single Tesseract
-  worker across all pages (created once, `recognize()`d per page,
-  terminated after the loop — not one worker per page), and joining each
-  page's `data.text` with a blank line between pages. The status line
-  during the loop reads "Recognizing page N of M…" so a long multi-page
-  scan doesn't look hung. If capture-mode OCR is ever extended to support
-  PDFs too, reuse `renderPdfPageToCanvas()` and this same per-page-loop
-  pattern rather than duplicating the pdf.js rendering logic a third time
-  or reintroducing the first-page-only bug.
-- **PDF page count** (`getPdfPageCount()`) is shown in three places —
-  `#f-page-count` under the file preview in the capture form
-  (`handlePickedFile()`), `#e-page-count` above the OCR row in the edit
-  form (`openEditForm()`), and a conditional `<b>Pages</b>` line in the
-  detail view's `modal-meta` (`openDetail()`) — and is deliberately
-  **computed on demand every time**, not stored on `documents`. This
-  matches how thumbnails/previews already work here (generate when
-  needed, not eagerly for every document) and sidesteps two real problems
-  a stored column would create: a `SCHEMA_MIGRATIONS` entry plus the
-  question of what a stale stored count would mean if someone edits the
-  underlying file outside the app, versus just always reading the real
-  file. `getPdfPageCount()` only calls `pdfjsLib.getDocument().promise`
-  and reads `.numPages` — it never renders a page, so it's cheap relative
-  to `renderPdfPageToCanvas()`. It returns `null` (never throws) on any
-  failure, matching the existing tolerance pattern right next to it in
-  `openDetail()` for a missing/unreadable thumbnail file — a document
-  whose page count can't be determined just shows no count, not a broken
-  dialog. The capture-form and edit-form call sites are both
-  fire-and-forget (`.then()`/an unawaited async IIFE) against a
-  placeholder element already in the rendered HTML, since blocking dialog
-  open on parsing a PDF isn't worth it; the capture-form callback guards
-  with `pendingFile === file` so a person picking a second file quickly
-  can't have a slow first lookup land its stale count on the new preview.
-  `openDetail()` is the one exception — it `await`s the count before
-  building `modalRoot.innerHTML`, same as it already does for the
-  thumbnail fetch just above it, rather than introducing a second,
-  differently-shaped async-fill-in pattern in a function that already has
-  one.
+  handles PDFs, `runOcr()` doesn't** — it renders the first page via
+  `renderPdfFirstPageToCanvas()` (a higher-resolution sibling of
+  `generateThumbnail()`'s PDF path; OCR accuracy degrades badly at
+  thumbnail resolution, so this is intentionally a separate function
+  with its own `scale` parameter, not a shared one with a size flag) and
+  passes the resulting canvas straight to Tesseract, which accepts canvas
+  elements directly as an image source. If capture-mode OCR is ever
+  extended to support PDFs too, reuse `renderPdfFirstPageToCanvas()`
+  rather than duplicating the pdf.js rendering logic a third time.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
@@ -464,30 +425,6 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   via pdf.js) before handing it to Tesseract — not implemented. The UI
   disables the OCR button and explains this for PDF uploads; don't silently
   attempt OCR on a PDF file object, it will not work as expected.
-- **OCR language options** (`#ocr-lang` in capture, `#e-ocr-lang` in edit —
-  kept in sync, same option list in both) are just language codes passed to
-  `Tesseract.createWorker(lang.split('+'))`; Tesseract.js resolves each code
-  to a `.traineddata` file it downloads on demand, so adding a language is
-  purely an `<option>` addition, no worker/recognition logic changes. `Auto`
-  (`eng+deu`) recognizes against both trained models in one pass — deliberately
-  **not** expanded to include French/Spanish/Chinese too, since combining more
-  languages into one `recognize()` call means downloading and running against
-  every model in the combo on every scan; the other languages are
-  single-language-only options instead. `chi_tra` (Traditional Chinese) is
-  labeled "Chinese (Traditional / Cantonese)" — verified directly against the
-  `tesseract-ocr/tessdata`/`tessdata_fast` repos that there is **no** separate
-  Cantonese (`yue`) trained model to add; Cantonese text uses the same
-  traditional-character script `chi_tra` already covers. Don't add a `yue`
-  option from memory/assumption — it would silently fail to download.
-- **No direct scanner integration** (`#scan-hint-toggle` / `#scan-hint` in
-  the capture form only, not edit — editing never adds a new source file, see
-  below). A browser has no API to control scanner hardware or launch a native
-  app like Image Capture — this is a hard web-platform boundary, not
-  something to "fix" by trying to shell out or invoke a URL scheme. The
-  toggle only reveals static instructions (use Image Capture or Preview's
-  Import from Scanner, save the result, then use the existing "click to
-  choose a file" control) — it doesn't touch the filesystem itself, so it
-  reuses `handlePickedFile()` with zero new file-handling code.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.
@@ -543,22 +480,19 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **28
+There's a real, runnable Playwright regression suite in `tests/` — **27
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
-(images and PDFs — including multi-page PDFs, all pages recognized and
-concatenated — both capture-time and edit-time), searchable PDF
+(images and PDFs, both capture-time and edit-time), searchable PDF
 generation, thumbnails/previews (generation and regeneration), generic
 custom fields (all four types), dynamic per-type field show/hide/reorder,
 Field Settings (add/remove/reorder fields per type, default document
 type), Amount/Payment as configurable sentinel fields (including the
 value-preservation-when-hidden correctness property), Payment Date as a
-genuine migrated custom field, the detail view's conditional header, PDF
-page count display in the capture/edit/detail dialogs (including that it
-correctly shows nothing for image documents), orphaned-field display and
-editability in the Edit dialog, every clear button, the sticky table
-header, the Libraries/licenses modal, sidecar file content, and search
-across all of the above. This list itself can go
+genuine migrated custom field, the detail view's conditional header,
+orphaned-field display and editability in the Edit dialog, every clear
+button, the sticky table header, the Libraries/licenses modal, sidecar
+file content, and search across all of the above. This list itself can go
 stale — if you add a test, or a feature loses its test, update this
 paragraph in the same change; don't let this description silently drift
 the way it once did (an earlier version of this section described only

@@ -26,21 +26,14 @@ working" problem that motivated this project in the first place.
   the library, with category/type filters. Search matches title, category,
   subcategory, document type, notes, OCR text, tags, people, and every
   custom field's value.
-- **Capture** — add a new document (PDF or image), with client-side OCR via
-  [Tesseract.js](https://github.com/naptha/tesseract.js) running entirely in
-  your browser. Language options: German, English, or both auto-detected
-  together, plus single-language French, Spanish, Chinese (Simplified), and
-  Chinese (Traditional / Cantonese — Tesseract has no separate Cantonese
-  model, since Cantonese text is written with the same traditional-character
-  script). For JPEG/PNG images, this also builds a **searchable PDF** — the
-  image with an invisible, selectable text layer positioned over each
-  recognized word (the same "sandwich" technique tools like `ocrmypdf`
-  use) — while the original image is preserved untouched in a subfolder
-  next to it, mirroring how Mariner Paperless itself laid out processed
-  vs. original files. If you're starting from a paper document, a "Need to
-  scan a paper document first?" toggle in the capture form explains how to
-  scan it with macOS's Image Capture or Preview first, since a browser has
-  no way to drive scanner hardware directly — see Limitations below.
+- **Capture** — add a new document (PDF or image), with client-side OCR
+  (German, English, or both) via [Tesseract.js](https://github.com/naptha/tesseract.js)
+  running entirely in your browser. For JPEG/PNG images, this also builds a
+  **searchable PDF** — the image with an invisible, selectable text layer
+  positioned over each recognized word (the same "sandwich" technique tools
+  like `ocrmypdf` use) — while the original image is preserved untouched in
+  a subfolder next to it, mirroring how Mariner Paperless itself laid out
+  processed vs. original files.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can
@@ -107,14 +100,7 @@ working" problem that motivated this project in the first place.
   "Run OCR" button, refreshing just the OCR text field against the
   document's actual saved file. Unlike the capture form (images only),
   this works on PDFs too — the majority of saved documents — by rendering
-  every page to an image and recognizing each in turn, concatenating the
-  results, so a multi-page scan gets its full text extracted, not just
-  page one.
-- **PDF page count shown in the capture, edit, and detail dialogs** — a
-  "Pages" note next to the file preview (capture), the OCR controls (edit),
-  and in the detail view's metadata header, for any PDF document. Computed
-  on demand each time via pdf.js rather than stored, so it's always accurate
-  to the actual file and never needs a database migration or backfill.
+  the first page to an image first.
 - **Document Type is placed prominently, near the top of both forms** —
   since it's the one field that determines whether Organization, People,
   or any custom fields show up at all (see "Dynamic fields per document
@@ -164,20 +150,20 @@ working" problem that motivated this project in the first place.
 
 If you're coming from the discontinued Mariner Paperless app, first
 convert your library using one of the tools in the sibling
-[MarinerPaperlessExporter](https://github.com/AarneAarebye/MarinerPaperlessExporter)
+[MarinerPaperlessTools](https://github.com/AarneAarebye/MarinerPaperlessTools)
 repo — a one-time conversion that reads a `.paperless` library and
 produces a `library.sqlite` + `files/` folder in the schema Document
 Studio expects. Point Document Studio at that output folder afterward.
 
-- **[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter#migrate_to_new_librarypy-migration-to-document-studio)** —
+- **[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_to_new_librarypy-migration-to-document-studio)** —
   the underlying script, run from the Terminal. This is the single source
   of truth for the actual migration logic; both GUIs below are thin
   wrappers around this exact script, not separate implementations.
-- **[`migrate_gui.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter#migrate_guipy-desktop-app)** —
+- **[`migrate_gui.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_guipy-desktop-app)** —
   a small native desktop app (tkinter) if you'd rather not use the
   Terminal: choose the folder your libraries live in, select which ones
   to migrate, pick an output folder, click Migrate.
-- **[`migrate_web.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter#migrate_webpy-browser-based-alternative)** —
+- **[`migrate_web.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_webpy-browser-based-alternative)** —
   the same thing as a local web page instead of a native window, for
   anyone who'd rather use a browser tab.
 
@@ -201,8 +187,7 @@ documents
                                   -- import date; for captured documents, it equals created_at)
     notes               TEXT
     ocr_text            TEXT
-    ocr_language        TEXT     -- 'deu' / 'eng' / 'eng+deu' / 'fra' / 'spa' /
-                                  -- 'chi_sim' / 'chi_tra' / NULL
+    ocr_language        TEXT     -- 'deu' / 'eng' / 'eng+deu' / NULL
     file_path           TEXT     -- relative to library root, e.g. "files/3_invoice.pdf"
     original_file_path  TEXT     -- relative to library root, nullable
     created_at          TEXT     -- ISO 8601, when the record was created
@@ -306,11 +291,6 @@ separate genuinely distinct values.
   `.txt` sidecar files get *incidental* Spotlight benefit (since Spotlight
   indexes any plain text file's content), but this is a workaround, not a
   true integration, and it doesn't cover PDFs without a text layer.
-- **No direct scanner integration.** A browser has no API to drive scanner
-  hardware or launch a native app like Image Capture — the capture form's
-  "Need to scan a paper document first?" toggle only offers instructions
-  for scanning outside the app and then picking the resulting file with
-  the normal file picker; it can't trigger a scan itself.
 - **Re-select the folder each session.** Browsers don't allow persisting
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not
@@ -358,7 +338,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (28
+There's a real, runnable Playwright regression suite in `tests/` (27
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
@@ -378,6 +358,6 @@ your own browser.
 | [sql.js](https://github.com/sql-js/sql.js) | Reading/writing `library.sqlite` (SQLite compiled to WebAssembly) | MIT |
 | [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR text extraction | Apache-2.0 |
 | [jsPDF](https://github.com/parallax/jsPDF) | Building the searchable PDF layer for captured images | MIT |
-| [pdf.js](https://github.com/mozilla/pdf.js) | Rendering PDF pages (first page for previews, every page for edit-time OCR) | Apache-2.0 |
+| [pdf.js](https://github.com/mozilla/pdf.js) | Rendering a PDF's first page (for previews and OCR) | Apache-2.0 |
 
 Same in-app, via the "Libraries" link in the footer.

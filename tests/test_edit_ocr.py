@@ -101,38 +101,6 @@ async def main():
 
         pdfjs_calls = await page.evaluate("window.__STUB_LOG.filter(l => l.includes('pdfjsLib'))")
         print("pdfjsLib was invoked for PDF OCR:", len(pdfjs_calls) > 0)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
-
-        # === Doc 3: a multi-page PDF -- regression test for a real bug report where
-        # edit-time OCR silently only recognized the first page of a scanned PDF ===
-        await page.click('#add-btn')
-        await page.wait_for_timeout(100)
-        with open('editocr_pdf3.pdf', 'wb') as f:
-            f.write(b"%PDF-1.4 editocr multipage")
-        await page.set_input_files('#file-input', 'editocr_pdf3.pdf')
-        await page.wait_for_timeout(100)
-        await page.fill('#f-title', 'Multi-page PDF Doc')
-        await page.click('#save-doc-btn')
-        await page.wait_for_timeout(300)
-
-        await page.evaluate("window.__STUB_PDF_NUM_PAGES = 3;")
-        await page.evaluate("window.__STUB_LOG.length = 0;")
-        await page.click('tr[data-id="3"]')
-        await page.wait_for_timeout(200)
-        await page.click('#edit-doc-btn')
-        await page.wait_for_timeout(200)
-        await page.click('#e-run-ocr-btn')
-        await page.wait_for_timeout(400)
-        ocr_text_3 = await page.locator('#e-ocr-text').input_value()
-        ocr_status_3 = await page.locator('#e-ocr-status').inner_text()
-        recognize_calls = await page.evaluate("window.__STUB_LOG.filter(l => l.startsWith('recognize called')).length")
-        print("OCR text after running on 3-page PDF doc:", repr(ocr_text_3))
-        print("OCR status (multi-page PDF path):", ocr_status_3)
-        print("recognize() call count for 3-page PDF:", recognize_calls)
-        assert ocr_text_3 == 'Hello World\n\nHello World\n\nHello World', f"expected text from all 3 pages, got {ocr_text_3!r}"
-        assert recognize_calls == 3, f"expected recognize() to run once per page (3), got {recognize_calls}"
-        assert '3 page' in ocr_status_3, f"expected status to mention 3 pages, got {ocr_status_3!r}"
 
         print("JS ERRORS:", errors)
         await browser.close()
