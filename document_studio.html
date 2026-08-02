@@ -447,6 +447,25 @@
     return window.pdfjsLib;
   }
 
+  // Reads just the page count from a PDF File, without rendering any page -- used to
+  // display "Pages: N" in the capture/edit/detail dialogs. Computed on demand each
+  // time, not stored in the database: consistent with how thumbnails/previews are
+  // generated on demand rather than eagerly for every document (see the Architecture
+  // notes in CLAUDE.md), and avoids a schema migration plus the question of what a
+  // stored count means once someone's underlying file changes outside the app. Returns
+  // null (not a throw) on any failure -- a document with a page count we can't
+  // determine should just not show a page count, not break the dialog it's shown in.
+  async function getPdfPageCount(file){
+    try{
+      const pdfjsLib = await ensurePdfJs();
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      return pdf.numPages;
+    }catch(e){
+      return null;
+    }
+  }
+
   // Generates a small PNG preview (max dimension THUMB_MAX_DIM) from a File.
   // Images are just downscaled directly; PDFs get their first page rendered via
   // pdf.js. Returns null for anything else (unsupported format), rather than
@@ -1298,6 +1317,18 @@
       }
     }
 
+    // Page count only applies to PDFs, and is computed on demand rather than stored --
+    // see getPdfPageCount()'s own comment for why. A missing/unreadable file just means
+    // no count shows, same tolerance as the thumbnail lookup right above.
+    let pageCount = null;
+    if(d.file_path){
+      try{
+        const fh = await resolveFileHandle(d.file_path, false);
+        const file = await fh.getFile();
+        if(file.type === 'application/pdf') pageCount = await getPdfPageCount(file);
+      }catch(e){ /* leave pageCount null */ }
+    }
+
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -1310,6 +1341,7 @@
                 <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
                 <div><b>Date</b> ${formatDate(d.date)}${(d.amount != null && d.amount !== 0) ? ' · <b>Amount</b> ' + formatAmount(d) : ''}</div>
                 ${d.payment_method ? `<div><b>Payment</b> ${escapeHtml(d.payment_method)}</div>` : ''}
+                ${pageCount != null ? `<div><b>Pages</b> ${pageCount}</div>` : ''}
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
               </div>
@@ -1440,6 +1472,7 @@
           </div>
           <div class="field">
             <label for="e-ocr-text">OCR / extracted text</label>
+            <div class="doc-sub" id="e-page-count"></div>
             <div class="ocr-row">
               <select id="e-ocr-lang">
                 <option value="eng+deu">Auto (German + English)</option>
@@ -1479,6 +1512,19 @@
     wireClearButton('e-amount', 'e-amount-clear');
     wireClearButton('e-tags', 'e-tags-clear');
     el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
+
+    if(d.file_path){
+      (async () => {
+        try{
+          const fh = await resolveFileHandle(d.file_path, false);
+          const file = await fh.getFile();
+          if(file.type !== 'application/pdf') return;
+          const count = await getPdfPageCount(file);
+          const countEl = el('e-page-count');
+          if(countEl && count != null) countEl.textContent = `${count} page${count === 1 ? '' : 's'}`;
+        }catch(e){ /* leave the note blank -- file may have moved, not worth erroring the whole dialog over */ }
+      })();
+    }
   }
 
   // Recovers the base filename (no extension) a document's files were saved under,
@@ -1898,7 +1944,16 @@
         : 'OCR text will be extracted, but a searchable PDF can only be built from JPEG/PNG — this file will be saved as-is.';
       previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB</div><div class="doc-sub">${pdfNote}</div></div></div>`;
     }else{
-      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div></div></div>`;
+      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
+      if(file.type === 'application/pdf'){
+        // Fire-and-forget: don't block showing the rest of the preview on this.
+        // Guarded by pendingFile === file so a fast pick-another-file doesn't let a
+        // stale count land on the new file's preview after this one resolves late.
+        getPdfPageCount(file).then(count => {
+          const countEl = el('f-page-count');
+          if(countEl && count != null && pendingFile === file) countEl.textContent = `${count} page${count === 1 ? '' : 's'}`;
+        });
+      }
     }
     if(!el('f-title').value) el('f-title').value = file.name.replace(/\.[^.]+$/, '');
   }

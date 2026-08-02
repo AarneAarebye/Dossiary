@@ -110,6 +110,11 @@ working" problem that motivated this project in the first place.
   every page to an image and recognizing each in turn, concatenating the
   results, so a multi-page scan gets its full text extracted, not just
   page one.
+- **PDF page count shown in the capture, edit, and detail dialogs** — a
+  "Pages" note next to the file preview (capture), the OCR controls (edit),
+  and in the detail view's metadata header, for any PDF document. Computed
+  on demand each time via pdf.js rather than stored, so it's always accurate
+  to the actual file and never needs a database migration or backfill.
 - **Document Type is placed prominently, near the top of both forms** —
   since it's the one field that determines whether Organization, People,
   or any custom fields show up at all (see "Dynamic fields per document
@@ -353,7 +358,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (27
+There's a real, runnable Playwright regression suite in `tests/` (28
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

@@ -387,6 +387,34 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   PDFs too, reuse `renderPdfPageToCanvas()` and this same per-page-loop
   pattern rather than duplicating the pdf.js rendering logic a third time
   or reintroducing the first-page-only bug.
+- **PDF page count** (`getPdfPageCount()`) is shown in three places —
+  `#f-page-count` under the file preview in the capture form
+  (`handlePickedFile()`), `#e-page-count` above the OCR row in the edit
+  form (`openEditForm()`), and a conditional `<b>Pages</b>` line in the
+  detail view's `modal-meta` (`openDetail()`) — and is deliberately
+  **computed on demand every time**, not stored on `documents`. This
+  matches how thumbnails/previews already work here (generate when
+  needed, not eagerly for every document) and sidesteps two real problems
+  a stored column would create: a `SCHEMA_MIGRATIONS` entry plus the
+  question of what a stale stored count would mean if someone edits the
+  underlying file outside the app, versus just always reading the real
+  file. `getPdfPageCount()` only calls `pdfjsLib.getDocument().promise`
+  and reads `.numPages` — it never renders a page, so it's cheap relative
+  to `renderPdfPageToCanvas()`. It returns `null` (never throws) on any
+  failure, matching the existing tolerance pattern right next to it in
+  `openDetail()` for a missing/unreadable thumbnail file — a document
+  whose page count can't be determined just shows no count, not a broken
+  dialog. The capture-form and edit-form call sites are both
+  fire-and-forget (`.then()`/an unawaited async IIFE) against a
+  placeholder element already in the rendered HTML, since blocking dialog
+  open on parsing a PDF isn't worth it; the capture-form callback guards
+  with `pendingFile === file` so a person picking a second file quickly
+  can't have a slow first lookup land its stale count on the new preview.
+  `openDetail()` is the one exception — it `await`s the count before
+  building `modalRoot.innerHTML`, same as it already does for the
+  thumbnail fetch just above it, rather than introducing a second,
+  differently-shaped async-fill-in pattern in a function that already has
+  one.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
@@ -515,7 +543,7 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **27
+There's a real, runnable Playwright regression suite in `tests/` — **28
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs — including multi-page PDFs, all pages recognized and
@@ -525,10 +553,12 @@ custom fields (all four types), dynamic per-type field show/hide/reorder,
 Field Settings (add/remove/reorder fields per type, default document
 type), Amount/Payment as configurable sentinel fields (including the
 value-preservation-when-hidden correctness property), Payment Date as a
-genuine migrated custom field, the detail view's conditional header,
-orphaned-field display and editability in the Edit dialog, every clear
-button, the sticky table header, the Libraries/licenses modal, sidecar
-file content, and search across all of the above. This list itself can go
+genuine migrated custom field, the detail view's conditional header, PDF
+page count display in the capture/edit/detail dialogs (including that it
+correctly shows nothing for image documents), orphaned-field display and
+editability in the Edit dialog, every clear button, the sticky table
+header, the Libraries/licenses modal, sidecar file content, and search
+across all of the above. This list itself can go
 stale — if you add a test, or a feature loses its test, update this
 paragraph in the same change; don't let this description silently drift
 the way it once did (an earlier version of this section described only
