@@ -464,6 +464,25 @@
     return window.pdfjsLib;
   }
 
+  // Reads just the page count from a PDF File, without rendering any page -- used to
+  // display "Pages: N" in the capture/edit/detail dialogs. Computed on demand each
+  // time, not stored in the database: consistent with how thumbnails/previews are
+  // generated on demand rather than eagerly for every document (see the Architecture
+  // notes in CLAUDE.md), and avoids a schema migration plus the question of what a
+  // stored count means once someone's underlying file changes outside the app. Returns
+  // null (not a throw) on any failure -- a document with a page count we can't
+  // determine should just not show a page count, not break the dialog it's shown in.
+  async function getPdfPageCount(file){
+    try{
+      const pdfjsLib = await ensurePdfJs();
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      return pdf.numPages;
+    }catch(e){
+      return null;
+    }
+  }
+
   // Generates a small PNG preview (max dimension THUMB_MAX_DIM) from a File.
   // Images are just downscaled directly; PDFs get their first page rendered via
   // pdf.js. Returns null for anything else (unsupported format), rather than
@@ -1339,7 +1358,7 @@
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', use: 'Reading/writing library.sqlite (SQLite compiled to WebAssembly)' },
     { name: 'Tesseract.js', url: 'https://github.com/naptha/tesseract.js', license: 'Apache-2.0', use: 'OCR text extraction' },
     { name: 'jsPDF', url: 'https://github.com/parallax/jsPDF', license: 'MIT', use: 'Building the searchable PDF layer for captured images' },
-    { name: 'pdf.js', url: 'https://github.com/mozilla/pdf.js', license: 'Apache-2.0', use: "Rendering a PDF's first page (for previews and OCR)" },
+    { name: 'pdf.js', url: 'https://github.com/mozilla/pdf.js', license: 'Apache-2.0', use: "Rendering PDF pages (first page for previews, every page for edit-time OCR)" },
   ];
 
   function openLibrariesModal(){
@@ -1391,6 +1410,18 @@
       }
     }
 
+    // Page count only applies to PDFs, and is computed on demand rather than stored --
+    // see getPdfPageCount()'s own comment for why. A missing/unreadable file just means
+    // no count shows, same tolerance as the thumbnail lookup right above.
+    let pageCount = null;
+    if(d.file_path){
+      try{
+        const fh = await resolveFileHandle(d.file_path, false);
+        const file = await fh.getFile();
+        if(file.type === 'application/pdf') pageCount = await getPdfPageCount(file);
+      }catch(e){ /* leave pageCount null */ }
+    }
+
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -1403,6 +1434,7 @@
                 <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
                 <div><b>Date</b> ${formatDate(d.date)}${(d.amount != null && d.amount !== 0) ? ' · <b>Amount</b> ' + formatAmount(d) : ''}</div>
                 ${d.payment_method ? `<div><b>Payment</b> ${escapeHtml(d.payment_method)}</div>` : ''}
+                ${pageCount != null ? `<div><b>Pages</b> ${pageCount}</div>` : ''}
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
               </div>
@@ -1533,6 +1565,7 @@
           </div>
           <div class="field">
             <label for="e-ocr-text">OCR / extracted text</label>
+            <div class="doc-sub" id="e-page-count"></div>
             <div class="ocr-row">
               <select id="e-ocr-lang">
                 <option value="eng+deu">Auto (German + English)</option>
@@ -1572,6 +1605,19 @@
     wireClearButton('e-amount', 'e-amount-clear');
     wireClearButton('e-tags', 'e-tags-clear');
     el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
+
+    if(d.file_path){
+      (async () => {
+        try{
+          const fh = await resolveFileHandle(d.file_path, false);
+          const file = await fh.getFile();
+          if(file.type !== 'application/pdf') return;
+          const count = await getPdfPageCount(file);
+          const countEl = el('e-page-count');
+          if(countEl && count != null) countEl.textContent = `${count} page${count === 1 ? '' : 's'}`;
+        }catch(e){ /* leave the note blank -- file may have moved, not worth erroring the whole dialog over */ }
+      })();
+    }
   }
 
   // Recovers the base filename (no extension) a document's files were saved under,
@@ -2000,7 +2046,16 @@
         : 'OCR text will be extracted, but a searchable PDF can only be built from JPEG/PNG — this file will be saved as-is.';
       previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB</div><div class="doc-sub">${pdfNote}</div></div></div>`;
     }else{
-      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div></div></div>`;
+      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
+      if(file.type === 'application/pdf'){
+        // Fire-and-forget: don't block showing the rest of the preview on this.
+        // Guarded by pendingFile === file so a fast pick-another-file doesn't let a
+        // stale count land on the new file's preview after this one resolves late.
+        getPdfPageCount(file).then(count => {
+          const countEl = el('f-page-count');
+          if(countEl && count != null && pendingFile === file) countEl.textContent = `${count} page${count === 1 ? '' : 's'}`;
+        });
+      }
     }
     if(!el('f-title').value) el('f-title').value = file.name.replace(/\.[^.]+$/, '');
   }
@@ -2036,15 +2091,15 @@
     }
   }
 
-  // Renders a PDF's first page to a canvas at a resolution suitable for OCR (higher
-  // than the small preview used for thumbnails -- OCR accuracy suffers badly at low
-  // resolution). Separate from generateThumbnail()'s PDF path deliberately: that one
-  // caps at THUMB_MAX_DIM for a small preview image, this one needs real resolution.
-  async function renderPdfFirstPageToCanvas(file, scale){
-    const pdfjsLib = await ensurePdfJs();
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const page = await pdf.getPage(1);
+  // Renders one page of an already-open pdf.js document to a canvas at a resolution
+  // suitable for OCR (higher than the small preview used for thumbnails -- OCR
+  // accuracy suffers badly at low resolution). Separate from generateThumbnail()'s
+  // PDF path deliberately: that one caps at THUMB_MAX_DIM for a small preview image,
+  // this one needs real resolution. Takes an already-loaded `pdf` (rather than a File)
+  // so runOcrForEdit() can loop over every page of a multi-page PDF without re-parsing
+  // the file's bytes on every page.
+  async function renderPdfPageToCanvas(pdf, pageNum, scale){
+    const page = await pdf.getPage(pageNum);
     const viewport = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(viewport.width));
@@ -2057,8 +2112,11 @@
   // on a not-yet-saved pendingFile during capture). Only refreshes the OCR text field
   // -- unlike capture, this never rebuilds a searchable PDF or touches file_path,
   // consistent with editing being metadata-only (see saveEditedDocument() notes).
-  // Handles PDFs (the majority of saved documents) by rendering the first page via
-  // pdf.js first, not just raw images the way the capture form's OCR is limited to.
+  // Handles PDFs (the majority of saved documents) by rendering EVERY page via pdf.js
+  // and recognizing each in turn, concatenating the results -- not just raw images the
+  // way the capture form's OCR is limited to, and not just the first page either (an
+  // earlier version only did the first page, which silently dropped the rest of the
+  // text for any multi-page scan).
   async function runOcrForEdit(id){
     const d = allDocs.find(x => x.id === id);
     if(!d || !d.file_path) return;
@@ -2071,25 +2129,34 @@
       const fh = await resolveFileHandle(d.file_path, false);
       const file = await fh.getFile();
 
-      let imageSource;
       if(file.type.startsWith('image/')){
-        imageSource = file;
+        const Tesseract = await ensureTesseract();
+        statusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
+        const worker = await Tesseract.createWorker(lang.split('+'));
+        const { data } = await worker.recognize(file);
+        await worker.terminate();
+        el('e-ocr-text').value = data.text || '';
+        statusEl.textContent = 'Done.';
       }else if(file.type === 'application/pdf'){
-        statusEl.innerHTML = '<span class="spinner"></span> Rendering page for OCR…';
-        imageSource = await renderPdfFirstPageToCanvas(file, 2);
+        statusEl.innerHTML = '<span class="spinner"></span> Loading PDF…';
+        const pdfjsLib = await ensurePdfJs();
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        const Tesseract = await ensureTesseract();
+        const worker = await Tesseract.createWorker(lang.split('+'));
+        const pageTexts = [];
+        for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+          statusEl.innerHTML = `<span class="spinner"></span> Recognizing page ${pageNum} of ${pdf.numPages}…`;
+          const canvas = await renderPdfPageToCanvas(pdf, pageNum, 2);
+          const { data } = await worker.recognize(canvas);
+          pageTexts.push(data.text || '');
+        }
+        await worker.terminate();
+        el('e-ocr-text').value = pageTexts.join('\n\n').trim();
+        statusEl.textContent = `Done — ${pdf.numPages} page${pdf.numPages === 1 ? '' : 's'} recognized.`;
       }else{
         statusEl.textContent = `Can't run OCR on this file type (${file.type || 'unknown'}).`;
-        btn.disabled = false;
-        return;
       }
-
-      const Tesseract = await ensureTesseract();
-      statusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
-      const worker = await Tesseract.createWorker(lang.split('+'));
-      const { data } = await worker.recognize(imageSource);
-      await worker.terminate();
-      el('e-ocr-text').value = data.text || '';
-      statusEl.textContent = 'Done.';
     }catch(e){
       statusEl.textContent = 'OCR failed: ' + e.message;
     }finally{

@@ -215,6 +215,7 @@ window.pdfjsLib = {
     window.__STUB_LOG.push('pdfjsLib.getDocument called');
     return {
       promise: Promise.resolve({
+        numPages: (window.__STUB_PDF_NUM_PAGES || 1),
         getPage: async (n) => ({
           getViewport: (opts2) => ({ width: 200 * (opts2.scale || 1), height: 260 * (opts2.scale || 1) }),
           render: (renderCtx) => ({

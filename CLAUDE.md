@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (30 scripts) + shared
+tests/                   Playwright regression suite (31 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -604,18 +604,20 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **30
+There's a real, runnable Playwright regression suite in `tests/` — **31
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
-option), searchable PDF generation, thumbnails/previews (generation and
-regeneration), generic custom fields (all four types), dynamic per-type
-field show/hide/reorder, Field Settings (add/remove/reorder fields per
-type, default document type), Amount/Payment as configurable sentinel
-fields (including the value-preservation-when-hidden correctness
-property), Currency as Amount's companion field (shared visibility,
-orphaned-together behavior, display formatting), Payment Date as a
-genuine migrated custom field, the detail view's conditional header,
+option, including edit-time OCR against every page of a multi-page PDF,
+not just the first), PDF page count display (capture/edit/detail, and its
+correct absence for image documents), searchable PDF generation,
+thumbnails/previews (generation and regeneration), generic custom fields
+(all four types), dynamic per-type field show/hide/reorder, Field Settings
+(add/remove/reorder fields per type, default document type), Amount/Payment
+as configurable sentinel fields (including the value-preservation-when-hidden
+correctness property), Currency as Amount's companion field (shared
+visibility, orphaned-together behavior, display formatting), Payment Date
+as a genuine migrated custom field, the detail view's conditional header,
 orphaned-field display and editability in the Edit dialog, every clear
 button, the sticky table header, the scan-hint toggle, the Libraries/
 licenses modal, sidecar file content, the Inbox review flow (banner
@@ -625,11 +627,22 @@ across all of the above. This list itself can go
 stale — if you add a test, or a feature loses its test, update this
 paragraph in the same change; don't let this description silently drift
 the way it once did (an earlier version of this section described only
-two basic scenarios, long after the suite had grown well past that — and,
-separately, a stray revert once silently deleted two already-shipped,
-already-documented features — the scan-hint toggle and the extra OCR
-languages — with nothing catching it because neither had a test; that's
-exactly the gap `test_scan_hint_and_ocr_languages.py` closes).
+two basic scenarios, long after the suite had grown well past that).
+Separately, and worth remembering: a single commit whose message described
+itself as a trivial doc-only rename ("Update references to renamed
+MarinerPaperlessTools repo") turned out, on closer inspection, to have
+silently reverted **four** already-shipped, already-documented features at
+once — the scan-hint toggle, the extra OCR languages, edit-time OCR's
+multi-page support (back to first-page-only), and the PDF page count
+feature entirely, deleting `tests/test_page_count.py` and 32 lines of
+`tests/test_edit_ocr.py` along with it. It was built from a base that
+predated the commits that added those features, and none of it showed up
+as a conflict. The lesson: a commit message describing a small, obviously-
+safe-sounding change (a rename, a reference update) is not a reliable
+signal of its actual diff size or risk — if something regresses that a
+commit's message gives no reason to suspect it touched, check that commit's
+actual diff rather than trusting the message, especially for any commit
+touching `document_studio.html` alongside doc files.
 
 **Running it**: `cd tests && python3 test_<name>.py` (each is a standalone
 script, not a pytest suite — no test runner or config needed beyond
