@@ -26,14 +26,21 @@ working" problem that motivated this project in the first place.
   the library, with category/type filters. Search matches title, category,
   subcategory, document type, notes, OCR text, tags, people, and every
   custom field's value.
-- **Capture** — add a new document (PDF or image), with client-side OCR
-  (German, English, or both) via [Tesseract.js](https://github.com/naptha/tesseract.js)
-  running entirely in your browser. For JPEG/PNG images, this also builds a
-  **searchable PDF** — the image with an invisible, selectable text layer
-  positioned over each recognized word (the same "sandwich" technique tools
-  like `ocrmypdf` use) — while the original image is preserved untouched in
-  a subfolder next to it, mirroring how Mariner Paperless itself laid out
-  processed vs. original files.
+- **Capture** — add a new document (PDF or image), with client-side OCR via
+  [Tesseract.js](https://github.com/naptha/tesseract.js) running entirely in
+  your browser. Language options: German, English, or both auto-detected
+  together, plus single-language French, Spanish, Chinese (Simplified), and
+  Chinese (Traditional / Cantonese — Tesseract has no separate Cantonese
+  model, since Cantonese text is written with the same traditional-character
+  script). For JPEG/PNG images, this also builds a **searchable PDF** — the
+  image with an invisible, selectable text layer positioned over each
+  recognized word (the same "sandwich" technique tools like `ocrmypdf`
+  use) — while the original image is preserved untouched in a subfolder
+  next to it, mirroring how Mariner Paperless itself laid out processed
+  vs. original files. If you're starting from a paper document, a "Need to
+  scan a paper document first?" toggle in the capture form explains how to
+  scan it with macOS's Image Capture or Preview first, since a browser has
+  no way to drive scanner hardware directly — see Limitations below.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can
@@ -187,7 +194,8 @@ documents
                                   -- import date; for captured documents, it equals created_at)
     notes               TEXT
     ocr_text            TEXT
-    ocr_language        TEXT     -- 'deu' / 'eng' / 'eng+deu' / NULL
+    ocr_language        TEXT     -- 'deu' / 'eng' / 'eng+deu' / 'fra' / 'spa' /
+                                  -- 'chi_sim' / 'chi_tra' / NULL
     file_path           TEXT     -- relative to library root, e.g. "files/3_invoice.pdf"
     original_file_path  TEXT     -- relative to library root, nullable
     created_at          TEXT     -- ISO 8601, when the record was created
@@ -291,6 +299,11 @@ separate genuinely distinct values.
   `.txt` sidecar files get *incidental* Spotlight benefit (since Spotlight
   indexes any plain text file's content), but this is a workaround, not a
   true integration, and it doesn't cover PDFs without a text layer.
+- **No direct scanner integration.** A browser has no API to drive scanner
+  hardware or launch a native app like Image Capture — the capture form's
+  "Need to scan a paper document first?" toggle only offers instructions
+  for scanning outside the app and then picking the resulting file with
+  the normal file picker; it can't trigger a scan itself.
 - **Re-select the folder each session.** Browsers don't allow persisting
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not

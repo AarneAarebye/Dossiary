@@ -425,6 +425,30 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
   via pdf.js) before handing it to Tesseract — not implemented. The UI
   disables the OCR button and explains this for PDF uploads; don't silently
   attempt OCR on a PDF file object, it will not work as expected.
+- **OCR language options** (`#ocr-lang` in capture, `#e-ocr-lang` in edit —
+  kept in sync, same option list in both) are just language codes passed to
+  `Tesseract.createWorker(lang.split('+'))`; Tesseract.js resolves each code
+  to a `.traineddata` file it downloads on demand, so adding a language is
+  purely an `<option>` addition, no worker/recognition logic changes. `Auto`
+  (`eng+deu`) recognizes against both trained models in one pass — deliberately
+  **not** expanded to include French/Spanish/Chinese too, since combining more
+  languages into one `recognize()` call means downloading and running against
+  every model in the combo on every scan; the other languages are
+  single-language-only options instead. `chi_tra` (Traditional Chinese) is
+  labeled "Chinese (Traditional / Cantonese)" — verified directly against the
+  `tesseract-ocr/tessdata`/`tessdata_fast` repos that there is **no** separate
+  Cantonese (`yue`) trained model to add; Cantonese text uses the same
+  traditional-character script `chi_tra` already covers. Don't add a `yue`
+  option from memory/assumption — it would silently fail to download.
+- **No direct scanner integration** (`#scan-hint-toggle` / `#scan-hint` in
+  the capture form only, not edit — editing never adds a new source file, see
+  below). A browser has no API to control scanner hardware or launch a native
+  app like Image Capture — this is a hard web-platform boundary, not
+  something to "fix" by trying to shell out or invoke a URL scheme. The
+  toggle only reveals static instructions (use Image Capture or Preview's
+  Import from Scanner, save the result, then use the existing "click to
+  choose a file" control) — it doesn't touch the filesystem itself, so it
+  reuses `handlePickedFile()` with zero new file-handling code.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.
