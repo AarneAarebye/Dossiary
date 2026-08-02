@@ -24,7 +24,8 @@ working" problem that motivated this project in the first place.
 
 - **Browse** — sortable, searchable, filterable list of every document in
   the library, with category/type filters. Search matches title, category,
-  document type, notes, tags, and OCR text.
+  subcategory, document type, notes, OCR text, tags, people, and every
+  custom field's value.
 - **Capture** — add a new document (PDF or image), with client-side OCR
   (German, English, or both) via [Tesseract.js](https://github.com/naptha/tesseract.js)
   running entirely in your browser. For JPEG/PNG images, this also builds a
@@ -278,14 +279,16 @@ separate genuinely distinct values.
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not
   something Document Studio can work around.
-- **OCR and searchable PDFs work on JPEG/PNG images, not PDF uploads.**
-  Tesseract.js recognizes images directly; turning a PDF into a searchable
-  PDF would require first rendering its pages to images client-side (e.g.
-  via pdf.js), which isn't implemented yet. Uploading a PDF still works —
-  it's just saved as-is, with any OCR text added manually to the notes
-  field instead. Other image formats (WEBP, GIF, TIFF) are OCR'd for
-  extracted text but not turned into a searchable PDF, since jsPDF's image
-  embedding is only used here with JPEG/PNG.
+- **Searchable PDF generation works on JPEG/PNG images captured directly,
+  not PDF uploads.** Building the invisible, selectable text layer
+  requires the *source* to be an image jsPDF can embed; a PDF you upload
+  during capture is saved as-is, with no text layer added at capture
+  time. This is distinct from OCR *text extraction*, which does work on
+  PDFs — see "Re-run OCR" above — it just doesn't turn the PDF itself
+  into a new, searchable one; the extracted text only fills the OCR text
+  field. Other image formats (WEBP, GIF, TIFF) are similarly OCR'd for
+  extracted text but not turned into a searchable PDF, since jsPDF's
+  image embedding is only used here with JPEG/PNG.
 - **Searchable PDF text positioning is best-effort.** Word bounding boxes
   come directly from Tesseract; horizontal stretching to exactly match each
   word's width isn't attempted (only position and approximate font size
@@ -295,13 +298,12 @@ separate genuinely distinct values.
 - **Preview generation only covers images and PDFs.** Other file types
   (if you ever capture something else) won't get a preview — "Generate
   preview" will just report it can't handle that format.
-- **No UI yet for managing document types, fields, or which fields show
-  per type.** `fields` and `document_type_fields` are fully readable and
-  writable by the app when capturing/editing documents, but there's no
-  settings screen (yet) for *defining* a new field, renaming one, or
-  changing which fields a document type shows — that all currently
-  requires editing the database directly, or re-running the migration
-  script. A settings screen mirroring this is planned.
+- **Field Settings doesn't create new custom fields.** The "⚙ Manage
+  fields" dialog lets you toggle/reorder which *existing* fields show per
+  document type, but defining a brand-new field from scratch still
+  requires editing the database directly or re-running the migration
+  script — see the Field Settings feature description above for the
+  reasoning.
 - **Custom fields aren't table columns/filters yet.** They show correctly
   in the capture/edit forms and the detail view, but the main document
   list only has columns for the fixed fields (Category, Type, Payment
@@ -317,6 +319,15 @@ separate genuinely distinct values.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Development
+
+There's a real, runnable Playwright regression suite in `tests/` (27
+scripts, no real user data — every test seeds its own synthetic library
+state). Each is standalone: `cd tests && python3 test_<name>.py`. See
+`CLAUDE.md`'s "How this was tested" section for what's covered and how
+the stubbing approach works, if you're making changes and want to verify
+them the same way.
 
 ## Third-party libraries
 

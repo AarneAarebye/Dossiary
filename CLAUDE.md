@@ -26,8 +26,11 @@ probably belongs in the other repo instead.
 ```
 document_studio.html   The entire app (single file: HTML + CSS + JS)
 README.md               Usage docs, schema, and known limitations
-LICENSE                 MIT
-.gitignore              Excludes personal library data from commits
+CLAUDE.md                This file
+LICENSE                  MIT
+.gitignore               Excludes personal library data from commits
+tests/                   Playwright regression suite (27 scripts) + shared
+                          browser-API stub — see "How this was tested" below
 ```
 
 There's intentionally no `package.json`, bundler, or build step. Keep it
@@ -477,14 +480,46 @@ External libraries (sql.js, Tesseract.js) are loaded from CDN at runtime via
 
 ## How this was tested (useful context for future changes)
 
+There's a real, runnable Playwright regression suite in `tests/` — **27
+scripts covering most of the app's actual functionality**: capture, edit,
+tags, people, subcategory, columns/filters (including persistence), OCR
+(images and PDFs, both capture-time and edit-time), searchable PDF
+generation, thumbnails/previews (generation and regeneration), generic
+custom fields (all four types), dynamic per-type field show/hide/reorder,
+Field Settings (add/remove/reorder fields per type, default document
+type), Amount/Payment as configurable sentinel fields (including the
+value-preservation-when-hidden correctness property), Payment Date as a
+genuine migrated custom field, the detail view's conditional header,
+orphaned-field display and editability in the Edit dialog, every clear
+button, the sticky table header, the Libraries/licenses modal, sidecar
+file content, and search across all of the above. This list itself can go
+stale — if you add a test, or a feature loses its test, update this
+paragraph in the same change; don't let this description silently drift
+the way it once did (an earlier version of this section described only
+two basic scenarios, long after the suite had grown well past that).
+
+**Running it**: `cd tests && python3 test_<name>.py` (each is a standalone
+script, not a pytest suite — no test runner or config needed beyond
+Python 3 and Playwright's Chromium). Ships with **zero real user data** —
+every test seeds its own synthetic library state — deliberately, even
+though a real Mariner-migrated `.paperless` library was used for ad-hoc
+verification during development (e.g. confirming Payment Date's real
+per-type configuration, or running an end-to-end migration through
+`migrate_gui.py`/`migrate_web.py` in the sibling repo); that real data
+was never checked into this suite and shouldn't be — see the `.gitignore`
+entries for `tests/*.sqlite`/`tests/*.documentwalletsql` if a real fixture
+ever gets added locally for similar ad-hoc checks.
+
 Real `sql.js` and `Tesseract.js` can't be fetched in a fully offline/sandboxed
 dev environment, and `showDirectoryPicker` requires a real native OS dialog
-that can't be scripted. The approach used during development:
+that can't be scripted. The approach used throughout:
 
-- Stub `window.initSqlJs` with a small generic `FakeDatabase` class that
-  parses/serializes its whole state as JSON (instead of real SQLite bytes)
-  and implements just enough of `run()`/`exec()`/`export()` — via regex
-  parsing of the actual SQL strings the app sends — to exercise real
+- Stub `window.initSqlJs` with a small generic `FakeDatabase` class
+  (`tests/stub_studio2.js` — shared by every test file; see the note
+  below on why that matters) that parses/serializes its whole state as
+  JSON (instead of real SQLite bytes) and implements just enough of
+  `run()`/`exec()`/`export()` — via regex parsing of the actual SQL
+  strings the app sends — to exercise real
   `INSERT`/`UPDATE`/`DELETE`/`SELECT ... WHERE` logic without a real
   SQLite engine. This needed real extending as the app grew past pure
   inserts: `run()` handles `UPDATE ... SET ... WHERE col = ?` and
@@ -508,10 +543,11 @@ that can't be scripted. The approach used during development:
   invocation, so the searchable-PDF code path's *logic* (correct
   coordinates, correct options, correct call sequencing) can be verified
   without a real PDF renderer.
-- Drive the UI with Playwright: open a seeded "migrated" library, add a new
-  document (verifying OCR-button gating for images vs. PDFs, tag reuse vs.
-  creation, and the persisted `library.sqlite` bytes after save), and
-  initialize a brand-new empty library from scratch.
+- Stub `window.pdfjsLib` similarly, for the PDF-page-rendering path used
+  by both thumbnail generation and edit-time OCR on PDFs.
+- Drive the actual UI with Playwright — real clicks, real form fills, real
+  assertions against rendered DOM state and the persisted (fake) database
+  bytes after save, not just unit-testing isolated functions.
 
 This validates the app's own logic thoroughly but does **not** validate
 that real `sql.js`/`Tesseract.js`/the real browser dialog behave exactly as
@@ -521,6 +557,19 @@ searchable-PDF feature: the stub confirms jsPDF is *called* correctly, but
 not that the resulting PDF actually renders with correctly positioned,
 selectable text in a real PDF viewer — verify that visually after any
 change to `buildSearchablePdf()`.
+
+**Every test file must use `tests/stub_studio2.js`, never its own
+embedded copy.** This bit twice, for real, not hypothetically: two
+different test files independently accumulated their own increasingly
+stale embedded/misnamed stub (one had a fully duplicated, outdated
+`FakeDatabase`; another just pointed at a leftover file with an
+almost-but-not-quite-right name), and both silently kept "passing" while
+testing against weaker, out-of-date behavior instead of the app's actual
+current requirements. If you create a new test file, copy the
+`stub_studio2.js`-loading boilerplate from an existing one rather than
+writing new stub-loading code from scratch, and if you ever see a test
+reading anything other than `stub_studio2.js`, that's a bug to fix, not a
+one-off worth leaving alone.
 
 ## Working conventions
 
