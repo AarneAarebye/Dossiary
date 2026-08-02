@@ -134,7 +134,8 @@ working" problem that motivated this project in the first place.
   scoped to document types already in use (a brand new type comes into
   existence by typing it into the Add/Edit form, not from this dialog),
   and to toggling/reordering *existing* custom fields — it doesn't create
-  new ones from scratch. **Payment method and Amount are configurable
+  new ones from scratch (see below for where that happens instead).
+  **Payment method and Amount are configurable
   here too**, alongside People and every other custom field — despite
   being mandatory, always-shown fields in Mariner itself, Document Studio
   lets you turn either off per document type if it's not relevant there.
@@ -144,6 +145,23 @@ working" problem that motivated this project in the first place.
   view's header reflects this too: Payment and Amount only appear there
   when a document actually has a value for them, rather than always
   showing an empty placeholder.
+- **Add a custom field right from the capture/edit forms** — a
+  "+ Add a custom field" toggle below the custom fields, hidden until you've
+  entered a document type (a field always has to attach to *some* type).
+  Pick a name and a type (Text/Number/Date/Checkbox — no Currency option;
+  for a monetary value use the built-in Amount field instead, which the
+  form reminds you of), and it's created and immediately shown on the
+  document you're filling out — no trip to Field Settings required, and no
+  document type needed there in advance either, which matters for a
+  library that's never had a custom field at all (nothing pre-migrated
+  from Mariner, and nothing created yet). Adding a field this way never
+  disturbs anything already typed into the document's *other* fields — a
+  real risk that was deliberately designed around, not just tested for; a
+  naive implementation that simply re-rendered the whole custom-fields area
+  would have silently discarded whatever was already filled in. A name
+  that's already in use is rejected rather than silently attached to the
+  current type or duplicated — use Field Settings (which already lists
+  every existing field) for that instead.
 - **Amount has a linked Currency field** — free text, with autocomplete
   from currencies already used in the library, rather than a fixed
   dropdown (real documents mix symbols like "€"/"$" and codes like
@@ -400,12 +418,11 @@ separate genuinely distinct values.
 - **Preview generation only covers images and PDFs.** Other file types
   (if you ever capture something else) won't get a preview — "Generate
   preview" will just report it can't handle that format.
-- **Field Settings doesn't create new custom fields.** The "⚙ Manage
-  fields" dialog lets you toggle/reorder which *existing* fields show per
-  document type, but defining a brand-new field from scratch still
-  requires editing the database directly or re-running the migration
-  script — see the Field Settings feature description above for the
-  reasoning.
+- **Field Settings itself still doesn't create new custom fields.** The
+  "⚙ Manage fields" dialog only lets you toggle/reorder which *existing*
+  fields show per document type. Creating a brand-new field from scratch
+  is done from the capture/edit forms instead — see "Add a custom field
+  right from the capture/edit forms" above.
 - **Custom fields aren't table columns/filters yet.** They show correctly
   in the capture/edit forms and the detail view, but the main document
   list only has columns for the fixed fields (Category, Type, Payment
@@ -424,7 +441,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (31
+There's a real, runnable Playwright regression suite in `tests/` (32
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

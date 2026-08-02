@@ -129,6 +129,7 @@
   .field-orphaned{ border-top:1px dashed var(--line); padding-top:14px; margin-top:2px; }
   .field-orphaned input, .field-orphaned .checkbox-label{ border-color:var(--line) !important; opacity:0.9; }
   .field-orphaned-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); margin-top:5px; font-style:italic; }
+  .field-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); margin-top:5px; font-style:italic; }
   .field-prominent{ padding:12px 14px; border:1px solid var(--phosphor-dim); border-radius:6px; background:rgba(79,224,166,0.04); margin-bottom:16px; }
   .field-prominent label{ color:var(--phosphor); font-weight:600; }
   .field-prominent input{ font-size:14px !important; }
@@ -159,6 +160,12 @@
     font-family:var(--font-mono); font-size:11px; color:var(--text-dim); line-height:1.6;
     margin:-4px 0 14px; padding:10px 12px; border:1px solid var(--line); border-radius:6px;
   }
+  .add-field-wrap{ margin:-8px 0 14px; }
+  .add-field-form{ display:flex; gap:6px; margin:6px 0 4px; }
+  .add-field-form input{ flex:1; min-width:0; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:6px 8px; color:var(--text); font-family:var(--font-sans); font-size:12px; }
+  .add-field-form select{ padding:6px 4px; font-size:10.5px; }
+  .add-field-form button{ padding:6px 10px; font-size:11px; white-space:nowrap; }
+  .add-field-status{ font-family:var(--font-mono); font-size:10.5px; color:var(--red); margin:2px 0 0; min-height:13px; }
   .file-preview{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
   .file-preview img{ width:64px; height:80px; object-fit:cover; border-radius:3px; border:1px solid var(--line); }
   .file-preview .file-icon{ width:64px; height:80px; border-radius:3px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); background:var(--ink-2); text-align:center; padding:4px; }
@@ -1157,6 +1164,86 @@
     }
   }
 
+  // "+ Add a custom field" only makes sense once a document type is entered -- a
+  // custom field is always attached to *some* type, same reasoning as every other
+  // dynamic field. Called on modal open and again on every type change/clear.
+  function updateAddFieldVisibility(prefix){
+    const typeInput = el(`${prefix}-type`);
+    const wrap = el(`${prefix}-add-field-wrap`);
+    if(!typeInput || !wrap) return;
+    wrap.style.display = typeInput.value.trim() ? 'block' : 'none';
+  }
+
+  // Wires the toggle + mini-form once per modal open (these elements are part of the
+  // form's static HTML, not rebuilt by applyDynamicFieldsForType() the way the
+  // dynamic fields themselves are).
+  function wireAddFieldControls(prefix){
+    el(`${prefix}-add-field-toggle`).addEventListener('click', () => {
+      const form = el(`${prefix}-new-field-form`);
+      const hint = el(`${prefix}-new-field-currency-hint`);
+      const show = form.style.display === 'none';
+      form.style.display = show ? 'flex' : 'none';
+      hint.style.display = show ? 'block' : 'none';
+    });
+    el(`${prefix}-new-field-btn`).addEventListener('click', () => addInlineCustomField(prefix));
+    el(`${prefix}-new-field-name`).addEventListener('keydown', (e) => { if(e.key === 'Enter') addInlineCustomField(prefix); });
+  }
+
+  // Creates a brand new `fields` row and immediately attaches it to whichever
+  // document type is currently entered in this form -- unlike Field Settings' own
+  // field management (toggle/reorder/remove *existing* fields for a type someone
+  // already picked there), this is the one place that actually creates a field from
+  // scratch, and it does so in the same motion as "show it on the document I'm
+  // filling out right now" since that's the whole reason to be adding one here
+  // instead of in Field Settings. If the name already exists, this does NOT attach
+  // the existing field for you -- that's still Field Settings' job (its Fields
+  // column already lists every existing field with a "+" to add it to a type);
+  // duplicating that attach logic here wasn't worth it for what should be a rare
+  // collision.
+  //
+  // Deliberately appends just the new field's own input via insertAdjacentHTML
+  // rather than calling applyDynamicFieldsForType() to refresh the whole container:
+  // a full rebuild would wipe out anything already typed into the *other* dynamic
+  // fields on this in-progress document -- capture has no saved values to restore
+  // from at all (they'd just go blank), and edit's rebuild always re-reads the
+  // ORIGINAL persisted d.customFields, not in-session edits, so it would silently
+  // discard whatever was just typed before this field was added.
+  async function addInlineCustomField(prefix){
+    const typeName = (el(`${prefix}-type`).value || '').trim();
+    const nameInput = el(`${prefix}-new-field-name`);
+    const typeSelect = el(`${prefix}-new-field-type`);
+    const statusEl = el(`${prefix}-new-field-status`);
+    const name = nameInput.value.trim();
+    if(!typeName){ statusEl.textContent = 'Pick a document type first.'; return; }
+    if(!name){ statusEl.textContent = 'Enter a field name.'; return; }
+    if(['People', 'Amount', 'Payment method'].includes(name)){
+      statusEl.textContent = `"${name}" is already a built-in field.`;
+      return;
+    }
+    if(fieldNameToId[name] !== undefined){
+      statusEl.textContent = `"${name}" already exists — use ⚙ Manage fields to add it to this type.`;
+      return;
+    }
+
+    const type = typeSelect.value;
+    const id = nextFieldId++;
+    db.run('INSERT INTO fields (id, name, type) VALUES (?, ?, ?)', [id, name, type]);
+    fieldDefs.push({ id, name, type });
+    fieldNameToId[name] = id;
+
+    const entries = (typeFieldOrder[typeName] || []).slice();
+    entries.push({ field: name, position: entries.length });
+    typeFieldOrder[typeName] = entries;
+    await persistTypeFieldOrder(typeName);
+
+    const container = el(`dynamic-fields-${prefix}`);
+    container.insertAdjacentHTML('beforeend', renderGenericFieldHtml(prefix, { id, name, type }, '', false));
+
+    nameInput.value = '';
+    statusEl.textContent = '';
+    nameInput.focus();
+  }
+
   async function saveColumnSettings(){
     const json = JSON.stringify([...visibleColumns]);
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('visible_columns', ?)", [json]);
@@ -1529,6 +1616,7 @@
               <input type="text" id="e-type" list="type-list" value="${escapeHtml(d.document_type || '')}" placeholder="Determines which fields show below" />
               <button type="button" class="clear-btn" id="e-type-clear" title="Clear" aria-label="Clear document type">✕</button>
             </div>
+            <div class="field-hint">Not in the list? Type a new one — it'll be created.</div>
           </div>
 
           <div class="field-row">
@@ -1552,6 +1640,21 @@
             </div>
           </div>
           <div id="dynamic-fields-e"></div>
+          <div class="add-field-wrap" id="e-add-field-wrap" style="display:none;">
+            <button type="button" class="scan-toggle" id="e-add-field-toggle">+ Add a custom field</button>
+            <div class="add-field-form" id="e-new-field-form" style="display:none;">
+              <input type="text" id="e-new-field-name" placeholder="Field name" />
+              <select id="e-new-field-type">
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="checkbox">Checkbox</option>
+              </select>
+              <button type="button" id="e-new-field-btn">Add</button>
+            </div>
+            <div class="field-hint" id="e-new-field-currency-hint" style="display:none;">Need a monetary value? Use the built-in Amount field (with its own Currency) instead.</div>
+            <div class="add-field-status" id="e-new-field-status"></div>
+          </div>
           <div class="field">
             <label for="e-tags">Tags (comma-separated)</label>
             <div class="field-with-clear">
@@ -1597,7 +1700,12 @@
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
     applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.currency, d.payment_method, true);
-    el('e-type').addEventListener('change', () => applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.currency, d.payment_method, true));
+    updateAddFieldVisibility('e');
+    el('e-type').addEventListener('change', () => {
+      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.currency, d.payment_method, true);
+      updateAddFieldVisibility('e');
+    });
+    wireAddFieldControls('e');
     wireClearButton('e-type', 'e-type-clear');
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');
@@ -1948,6 +2056,7 @@
               <input type="text" id="f-type" list="type-list" value="${escapeHtml(defaultDocumentType || '')}" placeholder="Pick this first — it determines which fields show below" />
               <button type="button" class="clear-btn" id="f-type-clear" title="Clear" aria-label="Clear document type">✕</button>
             </div>
+            <div class="field-hint">Not in the list? Type a new one — it'll be created.</div>
           </div>
 
           <div class="field-row">
@@ -1975,6 +2084,21 @@
             </div>
           </div>
           <div id="dynamic-fields-f"></div>
+          <div class="add-field-wrap" id="f-add-field-wrap" style="display:none;">
+            <button type="button" class="scan-toggle" id="f-add-field-toggle">+ Add a custom field</button>
+            <div class="add-field-form" id="f-new-field-form" style="display:none;">
+              <input type="text" id="f-new-field-name" placeholder="Field name" />
+              <select id="f-new-field-type">
+                <option value="text">Text</option>
+                <option value="number">Number</option>
+                <option value="date">Date</option>
+                <option value="checkbox">Checkbox</option>
+              </select>
+              <button type="button" id="f-new-field-btn">Add</button>
+            </div>
+            <div class="field-hint" id="f-new-field-currency-hint" style="display:none;">Need a monetary value? Use the built-in Amount field (with its own Currency) instead.</div>
+            <div class="add-field-status" id="f-new-field-status"></div>
+          </div>
           <div class="field">
             <label for="f-tags">Tags (comma-separated)</label>
             <div class="field-with-clear">
@@ -2012,7 +2136,12 @@
     el('run-ocr-btn').addEventListener('click', runOcr);
 
     applyDynamicFieldsForType('f', defaultDocumentType || ''); // pre-filled default type's fields show immediately, if one is set
-    el('f-type').addEventListener('change', () => applyDynamicFieldsForType('f', el('f-type').value));
+    updateAddFieldVisibility('f');
+    el('f-type').addEventListener('change', () => {
+      applyDynamicFieldsForType('f', el('f-type').value);
+      updateAddFieldVisibility('f');
+    });
+    wireAddFieldControls('f');
     wireClearButton('f-type', 'f-type-clear');
     wireClearButton('f-category', 'f-category-clear');
     wireClearButton('f-subcategory', 'f-subcategory-clear');

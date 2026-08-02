@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (31 scripts) + shared
+tests/                   Playwright regression suite (32 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -262,13 +262,50 @@ rather than being folded into it.
   that could theoretically exist), add/remove/reorder its fields
   (`addFieldToType()`/`removeFieldFromType()`/`moveFieldInType()`, each
   saving immediately via `persistTypeFieldOrder()` — delete-then-reinsert
-  for that type, not a diff). **Deliberately doesn't create new custom
-  fields** — only toggles/reorders existing `fields` rows; if that's ever
-  wanted, it's new scope, not an extension of this dialog's existing
-  behavior. `default_document_type` (in `settings`) pre-fills `f-type`
-  and immediately shows that type's configured fields when "Add document"
-  opens (`applyDynamicFieldsForType('f', defaultDocumentType || '')`
-  instead of always starting blank).
+  for that type, not a diff). **Still deliberately doesn't create new
+  custom fields itself** — only toggles/reorders existing `fields` rows.
+  Field *creation* lives in the capture/edit forms instead (see
+  `addInlineCustomField()` below) — a version that created fields here
+  too was tried and deliberately reverted in favor of that, since it
+  didn't fix the actual reported gap (an empty library has no document
+  type to select here either, so this dialog's Fields column is stuck
+  behind the same "select a type" gate no matter what). `default_document_type`
+  (in `settings`) pre-fills `f-type` and immediately shows that type's
+  configured fields when "Add document" opens
+  (`applyDynamicFieldsForType('f', defaultDocumentType || '')` instead of
+  always starting blank).
+- **Creating a brand new custom field happens inline in the capture/edit
+  forms** (`addInlineCustomField()`, `updateAddFieldVisibility()`,
+  `wireAddFieldControls()`) — a "+ Add a custom field" toggle below the
+  dynamic-fields container, hidden until a document type is entered (same
+  gating as every other dynamic field: a custom field is always attached
+  to *some* type). This is the one place in the app that creates a
+  `fields` row from scratch outside of `migrate_to_new_library.py`, and it
+  does so in the same motion as attaching it to whichever type is
+  currently entered — unlike Field Settings' add-to-type flow (which
+  operates on fields that already exist), creating and attaching aren't
+  separate steps here, since the whole reason to reach for this instead
+  of Field Settings is "I'm filling out this type right now and need a
+  field for it." Type choices are Text/Number/Date/Checkbox only —
+  deliberately no "Currency" option; a field needing a monetary value
+  should use the built-in Amount field (with its own linked Currency, see
+  below) instead of a second, disconnected custom field, and the mini-form
+  shows a hint saying exactly that. A name collision with an existing
+  field (or one of the built-in sentinel names) is rejected with a message
+  pointing at Field Settings rather than silently attaching the existing
+  field or creating a confusing duplicate — Field Settings' own Fields
+  column already lists every existing field with a "+" for exactly that
+  case, so duplicating that logic here wasn't worth it for what should be
+  a rare collision. **Critical correctness property, tested explicitly**:
+  adding a field appends only the new field's own input via
+  `insertAdjacentHTML` — it deliberately does NOT call
+  `applyDynamicFieldsForType()` to refresh the whole container, which
+  would wipe out anything already typed into the *other* dynamic fields on
+  the same in-progress document (capture has no saved values to fall back
+  to at all; edit's rebuild always re-reads the original persisted
+  `d.customFields`, discarding in-session edits, not what's currently on
+  screen). Don't "simplify" this back to a full re-render without
+  preserving that distinction.
 - **Amount and Payment method are sentinel dynamic fields, exactly like
   People** (`renderAmountFieldHtml()`, `renderPaymentFieldHtml()`) —
   toggleable/reorderable per type via `document_type_fields` the same as
@@ -604,7 +641,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **31
+There's a real, runnable Playwright regression suite in `tests/` — **32
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -613,17 +650,21 @@ not just the first), PDF page count display (capture/edit/detail, and its
 correct absence for image documents), searchable PDF generation,
 thumbnails/previews (generation and regeneration), generic custom fields
 (all four types), dynamic per-type field show/hide/reorder, Field Settings
-(add/remove/reorder fields per type, default document type), Amount/Payment
-as configurable sentinel fields (including the value-preservation-when-hidden
-correctness property), Currency as Amount's companion field (shared
-visibility, orphaned-together behavior, display formatting), Payment Date
-as a genuine migrated custom field, the detail view's conditional header,
-orphaned-field display and editability in the Edit dialog, every clear
-button, the sticky table header, the scan-hint toggle, the Libraries/
-licenses modal, sidecar file content, the Inbox review flow (banner
-visibility, add-one and add-all-with-defaults, the file moving from
-`inbox/` into `files/`, the banner disappearing once empty), and search
-across all of the above. This list itself can go
+(add/remove/reorder fields per type, default document type), creating a
+brand new custom field inline from the capture/edit forms (visibility
+gating, reserved-name and duplicate-name rejection, attaching to the
+current type, and — the critical property — that it doesn't disturb
+values already typed into other fields on the same in-progress document),
+Amount/Payment as configurable sentinel fields (including the
+value-preservation-when-hidden correctness property), Currency as
+Amount's companion field (shared visibility, orphaned-together behavior,
+display formatting), Payment Date as a genuine migrated custom field, the
+detail view's conditional header, orphaned-field display and editability
+in the Edit dialog, every clear button, the sticky table header, the
+scan-hint toggle, the Libraries/licenses modal, sidecar file content, the
+Inbox review flow (banner visibility, add-one and add-all-with-defaults,
+the file moving from `inbox/` into `files/`, the banner disappearing once
+empty), and search across all of the above. This list itself can go
 stale — if you add a test, or a feature loses its test, update this
 paragraph in the same change; don't let this description silently drift
 the way it once did (an earlier version of this section described only
