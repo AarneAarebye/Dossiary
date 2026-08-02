@@ -1178,12 +1178,14 @@
   // form's static HTML, not rebuilt by applyDynamicFieldsForType() the way the
   // dynamic fields themselves are).
   function wireAddFieldControls(prefix){
-    el(`${prefix}-add-field-toggle`).addEventListener('click', () => {
+    const toggleBtn = el(`${prefix}-add-field-toggle`);
+    toggleBtn.addEventListener('click', () => {
       const form = el(`${prefix}-new-field-form`);
       const hint = el(`${prefix}-new-field-currency-hint`);
       const show = form.style.display === 'none';
       form.style.display = show ? 'flex' : 'none';
       hint.style.display = show ? 'block' : 'none';
+      toggleBtn.textContent = show ? '− Add a custom field' : '+ Add a custom field';
     });
     el(`${prefix}-new-field-btn`).addEventListener('click', () => addInlineCustomField(prefix));
     el(`${prefix}-new-field-name`).addEventListener('keydown', (e) => { if(e.key === 'Enter') addInlineCustomField(prefix); });

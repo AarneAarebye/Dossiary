@@ -52,12 +52,26 @@ async def main():
         wrap_visible_new_type = await page.locator('#f-add-field-wrap').is_visible()
         print("add-field control visible once a type is entered:", wrap_visible_new_type)
 
+        toggle_label_before = await page.locator('#f-add-field-toggle').inner_text()
         await page.click('#f-add-field-toggle')
         await page.wait_for_timeout(100)
         form_visible = await page.locator('#f-new-field-form').is_visible()
         currency_hint_visible = await page.locator('#f-new-field-currency-hint').is_visible()
+        toggle_label_after = await page.locator('#f-add-field-toggle').inner_text()
         print("mini-form visible after clicking toggle:", form_visible)
         print("currency hint visible pointing at built-in Amount:", currency_hint_visible)
+        print("toggle label before/after (should switch + to −):", toggle_label_before, '/', toggle_label_after)
+
+        # Clicking again collapses it back, restoring the "+" label.
+        await page.click('#f-add-field-toggle')
+        await page.wait_for_timeout(100)
+        form_visible_after_collapse = await page.locator('#f-new-field-form').is_visible()
+        toggle_label_collapsed = await page.locator('#f-add-field-toggle').inner_text()
+        print("mini-form hidden after clicking toggle again:", not form_visible_after_collapse)
+        print("toggle label back to +:", toggle_label_collapsed)
+
+        await page.click('#f-add-field-toggle')  # re-open for the rest of the scenario
+        await page.wait_for_timeout(100)
 
         # Reserved/built-in name is rejected.
         await page.fill('#f-new-field-name', 'Amount')
