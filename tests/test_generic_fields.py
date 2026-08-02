@@ -86,9 +86,11 @@ async def main():
         org_value = next(r['value'] for r in dfv if fields_by_id[r['field_id']] == 'Organization')
         print("Organization value NOT split (should contain full name with &):", org_value)
 
-        # table row shows the values
+        # Table rows never show generic custom field values unless the field is
+        # flagged show_as_column=1 in Field Settings (Organization here isn't) --
+        # only the detail view (checked below) shows every custom field.
         row_text = await page.locator('tr[data-id="1"]').inner_text()
-        print("row shows organization name:", 'Dres. Ernestus & Cop, Sandhausen' in row_text)
+        print("row shows organization name (should be False -- not flagged as a column):", 'Dres. Ernestus & Cop, Sandhausen' in row_text)
 
         # detail modal shows formatted values (checkbox -> Yes, date -> readable)
         await page.click('tr[data-id="1"]')

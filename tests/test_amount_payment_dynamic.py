@@ -13,6 +13,16 @@ TYPE_FIELD_ROWS = [
     {"document_type": "Certificate", "field_name": "People", "position": 0},
 ]
 
+# Payment method/Amount are plain generic fields now (see
+# migrateSentinelFieldsToGeneric()) -- their values live in document_field_values,
+# joined against `fields` by name, not documents.amount/payment_method directly.
+def get_field_value(persisted, doc_id, field_name):
+    field = next((f for f in persisted['fields'] if f['name'] == field_name), None)
+    if not field:
+        return None
+    row = next((v for v in persisted['document_field_values'] if v['document_id'] == doc_id and v['field_id'] == field['id']), None)
+    return row['value'] if row else None
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -60,14 +70,14 @@ async def main():
         await page.fill('#f-type', 'Invoice')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        amount_input_type = await page.locator('#f-amount').get_attribute('type')
-        payment_input_type = await page.locator('#f-payment').get_attribute('type')
+        amount_input_type = await page.locator('[data-dynamic-field="Amount"] input').get_attribute('type')
+        payment_input_type = await page.locator('[data-dynamic-field="Payment method"] input').get_attribute('type')
         print("--- Type = Invoice ---")
-        print("f-amount type attribute:", amount_input_type)
-        print("f-payment type attribute:", payment_input_type)
+        print("Amount input type attribute:", amount_input_type)
+        print("Payment method input type attribute:", payment_input_type)
 
-        await page.fill('#f-amount', '150.75')
-        await page.fill('#f-payment', 'Bank Transfer')
+        await page.fill('[data-dynamic-field="Amount"] input', '150.75')
+        await page.fill('[data-dynamic-field="Payment method"] input', 'Bank Transfer')
         await page.fill('#f-title', 'Invoice Doc')
         with open('apdoc.pdf', 'wb') as f:
             f.write(b"%PDF-1.4 apdoc")
@@ -84,8 +94,8 @@ async def main():
             })()
         """)
         doc1 = persisted['documents'][0]
-        print("saved amount:", doc1['amount'])
-        print("saved payment_method:", doc1['payment_method'])
+        print("saved amount:", get_field_value(persisted, doc1['id'], 'Amount'))
+        print("saved payment_method:", get_field_value(persisted, doc1['id'], 'Payment method'))
 
         # === CRITICAL: editing and reclassifying to a type WITHOUT Amount/Payment
         # should PRESERVE the existing values, not clear them ===
@@ -93,7 +103,7 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click('#edit-doc-btn')
         await page.wait_for_timeout(200)
-        amount_prefill = await page.locator('#e-amount').input_value()
+        amount_prefill = await page.locator('[data-dynamic-field="Amount"] input').input_value()
         print("edit form amount pre-filled:", amount_prefill)
 
         # reclassify to Certificate (no Amount/Payment configured)
@@ -121,8 +131,8 @@ async def main():
             })()
         """)
         doc1_after = persisted2['documents'][0]
-        print("amount PRESERVED after reclassify+save (should still be 150.75):", doc1_after['amount'])
-        print("payment_method PRESERVED after reclassify+save (should still be Bank Transfer):", doc1_after['payment_method'])
+        print("amount PRESERVED after reclassify+save (should still be 150.75):", get_field_value(persisted2, doc1_after['id'], 'Amount'))
+        print("payment_method PRESERVED after reclassify+save (should still be Bank Transfer):", get_field_value(persisted2, doc1_after['id'], 'Payment method'))
         print("document_type correctly changed:", doc1_after['document_type'])
 
         print("JS ERRORS:", errors)

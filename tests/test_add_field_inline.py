@@ -87,7 +87,10 @@ async def main():
         await page.wait_for_timeout(150)
         new_field_present = await page.locator('[data-dynamic-field="Warranty Expiry"]').count()
         print("new field appears in the form immediately:", new_field_present == 1)
-        new_field_input_type = await page.locator('#f-field-2').get_attribute('type')
+        # Payment method/Amount/Currency are pre-seeded fields now (see
+        # migrateSentinelFieldsToGeneric()), so a freshly-created field's id isn't
+        # a small fixed number anymore -- located by data-dynamic-field instead.
+        new_field_input_type = await page.locator('[data-dynamic-field="Warranty Expiry"] input').get_attribute('type')
         print("new field rendered with the chosen type (date):", new_field_input_type)
 
         # Duplicate-name collision points at Field Settings instead of silently
@@ -98,7 +101,7 @@ async def main():
         dup_status = await page.locator('#f-new-field-status').inner_text()
         print("duplicate name points at Field Settings:", 'Manage fields' in dup_status)
 
-        await page.fill('#f-field-2', '2027-01-01')
+        await page.fill('[data-dynamic-field="Warranty Expiry"] input', '2027-01-01')
         await page.fill('#f-title', 'Warranty Doc')
         with open('inlinefield.pdf', 'wb') as f:
             f.write(b"%PDF-1.4 inlinefield")
@@ -114,9 +117,10 @@ async def main():
                 return JSON.parse(await f.text());
             })()
         """)
-        print("fields table has the new field:", [f for f in persisted['fields'] if f['name'] == 'Warranty Expiry'])
+        warranty_field = next(f for f in persisted['fields'] if f['name'] == 'Warranty Expiry')
+        print("fields table has the new field:", warranty_field)
         print("document_type_fields attaches it to Warranty:", [r for r in persisted['document_type_fields'] if r['document_type'] == 'Warranty'])
-        print("saved value:", [v for v in persisted['document_field_values'] if v['field_id'] == 2])
+        print("saved value:", [v for v in persisted['document_field_values'] if v['field_id'] == warranty_field['id']])
 
         # === Adding an inline field does NOT wipe out values already typed into
         # other, pre-existing dynamic fields on the same in-progress document ===
@@ -142,13 +146,13 @@ async def main():
         await page.wait_for_timeout(200)
         edit_wrap_visible = await page.locator('#e-add-field-wrap').is_visible()
         print("edit form shows add-field control for a document with a type:", edit_wrap_visible)
-        await page.fill('#e-field-2', '2028-06-15')  # change the existing Warranty Expiry value in-session
+        await page.fill('[data-dynamic-field="Warranty Expiry"] input', '2028-06-15')  # change the existing Warranty Expiry value in-session
         await page.click('#e-add-field-toggle')
         await page.fill('#e-new-field-name', 'Notes Detail')
         await page.click('#e-new-field-btn')
         await page.wait_for_timeout(150)
         edit_new_field_present = await page.locator('[data-dynamic-field="Notes Detail"]').count()
-        edit_preserved_value = await page.locator('#e-field-2').input_value()
+        edit_preserved_value = await page.locator('[data-dynamic-field="Warranty Expiry"] input').input_value()
         print("new field appears in edit form:", edit_new_field_present == 1)
         print("in-session edit to existing field survives adding a new field:", edit_preserved_value == '2028-06-15')
 

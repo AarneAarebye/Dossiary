@@ -52,6 +52,11 @@
   .fs-item-actions button{ padding:2px 6px; font-size:10px; border:none; background:transparent; color:var(--text-dim); }
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
   .fs-item-actions button.fs-remove:hover{ color:var(--red); }
+  .fs-field-item{ display:block; cursor:default; }
+  .fs-field-row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .fs-field-capabilities{ display:flex; gap:10px; margin-top:4px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
+  .fs-field-capabilities label{ display:flex; align-items:center; gap:3px; cursor:pointer; }
+  .fs-field-capabilities input{ accent-color:var(--phosphor); cursor:pointer; }
   button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
   button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
   button.primary{ background:var(--phosphor); color:var(--text-ink); border-color:var(--phosphor); font-weight:600; }
@@ -205,7 +210,7 @@
     <span class="filter-wrap" data-field="category"><select id="category-filter"><option value="">All categories</option></select></span>
     <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
     <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
-    <span class="filter-wrap" data-field="payment_method"><select id="payment-filter"><option value="">All payment methods</option></select></span>
+    <span id="dynamic-filters"></span>
     <div class="columns-menu-wrap">
       <button id="columns-btn">⚙ Columns</button>
       <div class="columns-menu" id="columns-menu" style="display:none;"></div>
@@ -247,11 +252,10 @@
   <div class="table-wrap" id="table-wrap" style="display:none;">
     <table id="doc-table">
       <thead>
-        <tr>
+        <tr id="doc-thead-row">
           <th data-key="title">Document</th>
           <th data-key="category" data-field="category">Category</th>
           <th data-key="document_type" data-field="document_type">Type</th>
-          <th data-key="payment_method" data-field="payment_method">Payment</th>
           <th data-field="people">People</th>
           <th data-key="date" data-field="date">Date</th>
           <th data-key="import_date" data-field="import_date">Imported</th>
@@ -275,10 +279,10 @@
 <datalist id="category-list"></datalist>
 <datalist id="subcategory-list"></datalist>
 <datalist id="type-list"></datalist>
-<datalist id="payment-list"></datalist>
 <datalist id="currency-list"></datalist>
 <datalist id="person-list"></datalist>
 <datalist id="tag-list"></datalist>
+<div id="dynamic-datalists"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
@@ -302,7 +306,10 @@
     CREATE TABLE IF NOT EXISTS document_type_fields (
       document_type TEXT, field_name TEXT, position INTEGER, PRIMARY KEY (document_type, field_name)
     );
-    CREATE TABLE IF NOT EXISTS fields ( id INTEGER PRIMARY KEY, name TEXT UNIQUE, type TEXT );
+    CREATE TABLE IF NOT EXISTS fields (
+      id INTEGER PRIMARY KEY, name TEXT UNIQUE, type TEXT,
+      show_as_column INTEGER DEFAULT 0, autocomplete INTEGER DEFAULT 0
+    );
     CREATE TABLE IF NOT EXISTS document_field_values (
       document_id INTEGER, field_id INTEGER, value TEXT, PRIMARY KEY (document_id, field_id)
     );
@@ -319,6 +326,8 @@
     'ALTER TABLE documents ADD COLUMN thumbnail_path TEXT',
     'ALTER TABLE document_type_fields ADD COLUMN field_name TEXT',
     'ALTER TABLE documents ADD COLUMN currency TEXT',
+    'ALTER TABLE fields ADD COLUMN show_as_column INTEGER DEFAULT 0',
+    'ALTER TABLE fields ADD COLUMN autocomplete INTEGER DEFAULT 0',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -348,16 +357,33 @@
   // Configurable columns/filters. 'title' isn't here -- it's always shown, it's the
   // primary identifier for a row. hasFilter marks fields that get a toolbar dropdown
   // in addition to being a table column.
+  // Payment method used to be listed here too, as a hardcoded sentinel column --
+  // it's now a plain `fields` row with show_as_column=1, flowing through the
+  // generic dynamic-column system instead (see dynamicColumnDefs(), renderColumnsMenu(),
+  // populateFilters()). Amount stays here deliberately: its column keeps combining
+  // Amount+Currency into one "123.45 EUR" display, a narrow exception to the
+  // generic system (see formatAmount()), so it isn't itself show-as-column-flagged.
   const FIELD_DEFS = [
     { id: 'category', label: 'Category', hasFilter: true, defaultVisible: true },
     { id: 'document_type', label: 'Type', hasFilter: true, defaultVisible: true },
-    { id: 'payment_method', label: 'Payment method', hasFilter: true, defaultVisible: false },
     { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
     { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
     { id: 'import_date', label: 'Imported', hasFilter: false, defaultVisible: false },
     { id: 'amount', label: 'Amount', hasFilter: false, defaultVisible: true },
     { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
   ];
+  // Any field flagged show_as_column=1 (toggled per-field in Field Settings) becomes
+  // a dynamic table column/filter/sort target, appended after the fixed ones above.
+  // Filter dropdowns only get built for text/checkbox fields -- a dropdown listing
+  // every distinct number/date value wouldn't be useful, matching how Date/Imported/
+  // Amount already have no filter dropdown among the built-ins.
+  function dynamicColumnDefs(){
+    return fieldDefs.filter(f => f.showAsColumn).map(f => ({
+      id: `field-${f.id}`, label: f.name,
+      hasFilter: f.type === 'text' || f.type === 'checkbox', defaultVisible: false,
+    }));
+  }
+
   let visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
   let typeFieldOrder = {}; // { "Medical Referral": [{field:"Organization To",position:0}, {field:"People",position:1}], ... }
                             // absence of a key means "no configured display fields for this type" --
@@ -393,7 +419,6 @@
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
-  const paymentFilter = el('payment-filter');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -619,18 +644,27 @@
   // Spotlight/Finder search on macOS being the main one -- can find documents by those
   // fields. This isn't a "real" Spotlight integration (impossible from a browser -- see
   // CLAUDE.md), just a plain-text file that happens to get indexed like any other .txt.
+  // Payment method/Amount/Currency arrive as ordinary entries in opts.customFields
+  // now (see migrateSentinelFieldsToGeneric()) -- pulled out and kept as their own
+  // prominent lines near the top, exactly as before, rather than left to fall into
+  // the generic per-field loop below in whatever order they happen to iterate.
   function buildSidecarText(opts){
+    const customFields = opts.customFields || {};
+    const paymentMethod = customFields['Payment method'];
+    const amount = customFields['Amount'];
+    const currency = customFields['Currency'];
     const lines = [
       `Title: ${opts.title || ''}`,
       `Category: ${opts.category || ''}`,
       `Subcategory: ${opts.subcategory || ''}`,
       `Document type: ${opts.documentType || ''}`,
-      `Payment method: ${opts.paymentMethod || ''}`,
-      `Amount: ${opts.amount != null ? opts.amount : ''}${(opts.amount != null && opts.currency) ? ' ' + opts.currency : ''}`,
+      `Payment method: ${paymentMethod || ''}`,
+      `Amount: ${amount != null && amount !== '' ? amount : ''}${(amount != null && amount !== '' && currency) ? ' ' + currency : ''}`,
       `Date: ${opts.date || ''}`,
       `Imported: ${opts.importDate || ''}`,
     ];
-    for(const [name, value] of Object.entries(opts.customFields || {})){
+    for(const [name, value] of Object.entries(customFields)){
+      if(name === 'Payment method' || name === 'Amount' || name === 'Currency') continue; // already shown above, prominently
       lines.push(`${name}: ${value}`);
     }
     lines.push(
@@ -690,15 +724,12 @@
     try{
       setStatus('Setting up SQLite engine…');
       await ensureSqlJs();
-      const newDb = new SQL.Database();
-      newDb.run(SCHEMA);
-      const bytes = newDb.export();
+      db = new SQL.Database();
+      db.run(SCHEMA);
+      migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
-      const writable = await dbFileHandle.createWritable();
-      await writable.write(bytes);
-      await writable.close();
+      await persistDb();
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
-      db = newDb;
       initState.style.display = 'none';
       setStatus('Initialized a new empty library.', 'ok');
       afterDbReady();
@@ -716,6 +747,7 @@
     db = new SQL.Database(new Uint8Array(buf));
     db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
     applySchemaMigrations(); // adds any columns introduced after this library was created
+    migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
     await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
   }
@@ -751,8 +783,11 @@
   }
 
   function loadDocumentsFromDb(){
+    // payment_method/amount/currency are deliberately NOT selected here -- they're
+    // vestigial columns (see migrateSentinelFieldsToGeneric()); their real values
+    // live in customFields (via document_field_values) like any other custom field.
     const { columns, rows } = queryAll(`
-      SELECT id, title, category, subcategory, document_type, payment_method, amount, currency, date, import_date, notes,
+      SELECT id, title, category, subcategory, document_type, date, import_date, notes,
              ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path
       FROM documents
     `);
@@ -802,7 +837,7 @@
       maxDocId = Math.max(maxDocId, id);
       allDocs.push({
         id, title: row[idx.title], category: row[idx.category], subcategory: row[idx.subcategory], document_type: row[idx.document_type],
-        payment_method: row[idx.payment_method], amount: row[idx.amount], currency: row[idx.currency], date: row[idx.date],
+        date: row[idx.date],
         import_date: row[idx.import_date],
         notes: row[idx.notes], ocr_text: row[idx.ocr_text], ocr_language: row[idx.ocr_language],
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
@@ -841,17 +876,21 @@
   // preference travels with the library rather than being tied to one browser) ---
 
   function loadColumnSettings(){
+    const allDefs = [...FIELD_DEFS, ...dynamicColumnDefs()];
     const rows = queryAll("SELECT value FROM settings WHERE key = 'visible_columns'").rows;
     if(rows.length){
       try{
         const ids = JSON.parse(rows[0][0]);
         if(Array.isArray(ids)){
-          visibleColumns = new Set(ids.filter(id => FIELD_DEFS.some(f => f.id === id)));
+          // Stale ids (a field that's since been un-flagged or removed) are silently
+          // dropped, same as always -- the person just re-toggles it if they want it
+          // back, no different from any other removed column.
+          visibleColumns = new Set(ids.filter(id => allDefs.some(f => f.id === id)));
           return;
         }
       }catch(e){ /* fall through to defaults below */ }
     }
-    visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+    visibleColumns = new Set(allDefs.filter(f => f.defaultVisible).map(f => f.id));
   }
 
   function loadDefaultDocumentType(){
@@ -906,8 +945,10 @@
   }
 
   function loadFieldDefs(){
-    const { rows } = queryAll('SELECT id, name, type FROM fields');
-    fieldDefs = rows.map(([id, name, type]) => ({ id, name, type }));
+    const { rows } = queryAll('SELECT id, name, type, show_as_column, autocomplete FROM fields');
+    fieldDefs = rows.map(([id, name, type, showAsColumn, autocomplete]) => ({
+      id, name, type, showAsColumn: !!showAsColumn, autocomplete: !!autocomplete,
+    }));
     fieldNameToId = {};
     let maxFieldId = 0;
     for(const f of fieldDefs){
@@ -915,6 +956,83 @@
       maxFieldId = Math.max(maxFieldId, f.id);
     }
     nextFieldId = maxFieldId + 1;
+  }
+
+  // One-time-per-library promotion of Payment method, Amount, and Currency from
+  // dedicated `documents` columns (payment_method/amount/currency) with bespoke
+  // rendering into plain `fields` rows, exactly like any other custom field --
+  // Payment method then participates fully in the generic column/filter/
+  // autocomplete/sort system (see FIELD_DEFS below and renderColumnsMenu()),
+  // while Amount/Currency keep their existing paired table/detail-view display via
+  // a small deliberate exception (see formatAmount()) even though their storage is
+  // now fully generic too. Idempotent: skips entirely once a 'Payment method'
+  // fields row already exists, so it's safe to call unconditionally on every
+  // library open. Called from both initNewLibrary() (a brand new library starts
+  // with these three pre-defined, exactly as they were always implicitly
+  // available before -- nothing to backfill, just the field definitions) and
+  // loadDb() (an existing library's real documents.payment_method/amount/currency
+  // values get copied into document_field_values, and document_type_fields gets a
+  // Currency row wherever Amount was already configured -- Currency previously had
+  // no independent per-type configuration at all, it rode along with Amount
+  // implicitly, so this preserves "could already edit Currency here" for every
+  // type that could before). Does not persist to disk itself -- callers already
+  // do that immediately after (via persistDb()), same write covers this.
+  function migrateSentinelFieldsToGeneric(){
+    loadFieldDefs(); // ensure fieldDefs/fieldNameToId/nextFieldId reflect the DB before we touch either
+    if(fieldNameToId['Payment method'] !== undefined) return; // already migrated
+
+    const sentinelDefs = [
+      { name: 'Payment method', type: 'text', showAsColumn: 1, autocomplete: 1 },
+      { name: 'Amount', type: 'number', showAsColumn: 0, autocomplete: 0 },
+      { name: 'Currency', type: 'text', showAsColumn: 0, autocomplete: 0 },
+    ];
+    for(const def of sentinelDefs){
+      if(fieldNameToId[def.name] !== undefined) continue; // e.g. a library that already had a custom field literally named "Amount"
+      const id = nextFieldId++;
+      db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)',
+        [id, def.name, def.type, def.showAsColumn, def.autocomplete]);
+      fieldNameToId[def.name] = id;
+    }
+
+    const paymentFieldId = fieldNameToId['Payment method'];
+    const amountFieldId = fieldNameToId['Amount'];
+    const currencyFieldId = fieldNameToId['Currency'];
+
+    // Backfill document_field_values from the old dedicated columns -- a harmless
+    // no-op for a brand new library, since `documents` is empty. The old columns
+    // are deliberately left in place afterward, unused (see CLAUDE.md) -- this app
+    // only ever adds columns, never drops them.
+    const { columns, rows } = queryAll('SELECT id, payment_method, amount, currency FROM documents');
+    const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
+    for(const row of rows){
+      const docId = row[idx.id];
+      const oldPayment = row[idx.payment_method];
+      const oldAmount = row[idx.amount];
+      const oldCurrency = row[idx.currency];
+      if(oldPayment != null && oldPayment !== ''){
+        db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [docId, paymentFieldId, oldPayment]);
+      }
+      if(oldAmount != null){
+        db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [docId, amountFieldId, String(oldAmount)]);
+      }
+      if(oldCurrency != null && oldCurrency !== ''){
+        db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [docId, currencyFieldId, oldCurrency]);
+      }
+    }
+
+    // Preserve Currency's old "always available wherever Amount is" behavior as an
+    // explicit document_type_fields row, since generic fields only render for a
+    // type they're explicitly configured for.
+    const dtf = queryAll('SELECT document_type, field_name, position FROM document_type_fields');
+    const dtfIdx = Object.fromEntries(dtf.columns.map((c, i) => [c, i]));
+    const typesWithAmount = dtf.rows.filter(r => r[dtfIdx.field_name] === 'Amount').map(r => r[dtfIdx.document_type]);
+    const typesWithCurrency = new Set(dtf.rows.filter(r => r[dtfIdx.field_name] === 'Currency').map(r => r[dtfIdx.document_type]));
+    for(const typeName of typesWithAmount){
+      if(typesWithCurrency.has(typeName)) continue;
+      const positionsForType = dtf.rows.filter(r => r[dtfIdx.document_type] === typeName).map(r => r[dtfIdx.position]);
+      const nextPosition = Math.max(-1, ...positionsForType) + 1;
+      db.run('INSERT INTO document_type_fields (document_type, field_name, position) VALUES (?, ?, ?)', [typeName, 'Currency', nextPosition]);
+    }
   }
 
   function loadFieldValues(){
@@ -986,74 +1104,25 @@
     `;
   }
 
-  // Amount and Payment method are, like People, "sentinel" dynamic fields --
-  // toggleable/reorderable per document type via document_type_fields the same way
-  // any generic custom field is, but their values still live in documents.amount /
-  // documents.payment_method (dedicated typed columns Amount already had, e.g. REAL
-  // for amount), not in the generic document_field_values table. There was no
-  // reason to migrate that storage just to make them configurable.
+  // Amount, Payment method, and Currency all used to be "sentinel" dynamic fields
+  // with their own dedicated documents columns and bespoke rendering (Payment
+  // method, Amount) or implicit Amount-pairing (Currency, which had no
+  // document_type_fields entry of its own at all). migrateSentinelFieldsToGeneric()
+  // promotes all three to plain `fields` rows, so this is now the ONLY rendering
+  // function for generic dynamic fields -- People remains the one true sentinel
+  // (a many-to-many relationship, not a `fields`-table concept), handled separately
+  // by renderPeopleFieldHtml() above.
   //
-  // Currency (documents.currency, also a dedicated typed column) rides along with
-  // Amount rather than being its own separately-configurable sentinel field --
-  // there's no case for showing a currency without an amount, so it isn't a
-  // document_type_fields entry at all and can't be toggled independently in Field
-  // Settings; it just always renders next to Amount, sharing Amount's own show/hide
-  // and orphaned state. Free text with a datalist (like Payment method), not a
-  // fixed dropdown -- real libraries mix symbols ("€", "$") and ISO codes ("USD",
-  // "CHF") depending on the document, and a fixed enum would force a choice that
-  // doesn't always fit either style.
-  function renderAmountFieldHtml(prefix, existingAmount, existingCurrency, orphaned){
-    const inputId = `${prefix}-amount`;
-    const currencyId = `${prefix}-currency`;
-    const value = existingAmount != null ? existingAmount : '';
-    // Capture only: pre-fill the library's configured default_currency (Field
-    // Settings) as a starting guess, since there's no saved value yet to respect --
-    // visually flagged exactly like the Date field's today-default (amber + a
-    // "double-check this" hint, cleared on first touch) so an unreviewed guess
-    // doesn't quietly pass as real data. No guess at all if no default_currency is
-    // configured -- nothing to default to. Edit never guesses regardless: a blank
-    // currency there means the document genuinely has none saved, which is real
-    // information, not something to paper over with a default.
-    const isGuess = prefix === 'f' && !existingCurrency && !!defaultCurrency;
-    const currencyValue = existingCurrency || (isGuess ? defaultCurrency : '');
-    return `
-      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="Amount">
-        <div class="field-row">
-          <div class="field" style="margin-bottom:0; flex:2;">
-            <label for="${inputId}">Amount</label>
-            <div class="field-with-clear">
-              <input type="number" step="0.01" id="${inputId}" value="${value}" />
-              <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear amount">✕</button>
-            </div>
-          </div>
-          <div class="field" style="margin-bottom:0; flex:1;">
-            <label for="${currencyId}">Currency</label>
-            <div class="field-with-clear">
-              <input type="text" id="${currencyId}" list="currency-list" class="${isGuess ? 'field-guess' : ''}" value="${escapeHtml(currencyValue)}" placeholder="e.g. EUR, $" />
-              <button type="button" class="clear-btn" id="${currencyId}-clear" title="Clear" aria-label="Clear currency">✕</button>
-            </div>
-            ${isGuess ? `<div class="field-guess-hint" id="${currencyId}-hint">Defaulted to ${escapeHtml(defaultCurrency)} — change if this document uses a different currency</div>` : ''}
-          </div>
-        </div>
-        ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
-      </div>
-    `;
-  }
-
-  function renderPaymentFieldHtml(prefix, existingPayment, orphaned){
-    const inputId = `${prefix}-payment`;
-    return `
-      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="Payment method">
-        <label for="${inputId}">Payment method</label>
-        <div class="field-with-clear">
-          <input type="text" id="${inputId}" list="payment-list" value="${escapeHtml(existingPayment || '')}" />
-          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear payment method">✕</button>
-        </div>
-        ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
-      </div>
-    `;
-  }
-
+  // Two small, deliberate exceptions remain for the field literally named
+  // "Currency", per the decision to keep Amount+Currency's *display* paired even
+  // though their storage is now fully generic (see formatAmount() and
+  // migrateSentinelFieldsToGeneric()'s comment): it reuses the long-standing
+  // "currency-list" datalist rather than the generic per-field autocomplete
+  // mechanism below, and it pre-fills from the library's default_currency setting
+  // as a dismissible guess when capturing -- exactly like the Date field's
+  // today-default (amber flag + "double-check this" hint, cleared on first touch).
+  // Edit never guesses: a blank Currency there means the document genuinely has
+  // none saved. Neither exception is available to any other field.
   function renderGenericFieldHtml(prefix, field, existingValue, orphaned){
     const inputId = `${prefix}-field-${field.id}`;
     const orphanedClass = orphaned ? ' field-orphaned' : '';
@@ -1070,11 +1139,28 @@
     let inputType = 'text', extra = '';
     if(field.type === 'number'){ inputType = 'number'; extra = 'step="any"'; }
     else if(field.type === 'date'){ inputType = 'date'; }
-    const value = field.type === 'date' ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
+
+    const isCurrency = field.name === 'Currency';
+    const isCurrencyGuess = isCurrency && prefix === 'f' && !existingValue && !!defaultCurrency;
+    let value = field.type === 'date' ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
+    if(isCurrencyGuess) value = defaultCurrency;
+
+    let listAttr = '';
+    if(isCurrency) listAttr = 'list="currency-list"';
+    else if(field.autocomplete && field.type === 'text') listAttr = `list="field-${field.id}-list"`;
+
+    const guessHint = isCurrencyGuess
+      ? `<div class="field-guess-hint" id="${inputId}-hint">Defaulted to ${escapeHtml(defaultCurrency)} — change if this document uses a different currency</div>`
+      : '';
+
     return `
       <div class="field${orphanedClass}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
         <label for="${inputId}">${escapeHtml(field.name)}</label>
-        <input type="${inputType}" id="${inputId}" ${extra} value="${escapeHtml(value)}" />
+        <div class="field-with-clear">
+          <input type="${inputType}" id="${inputId}" ${extra} ${listAttr} class="${isCurrencyGuess ? 'field-guess' : ''}" value="${escapeHtml(String(value))}" />
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear ${escapeHtml(field.name)}">✕</button>
+        </div>
+        ${guessHint}
         ${orphanedHint}
       </div>
     `;
@@ -1089,8 +1175,11 @@
   // from scratch, switching document types mid-capture does NOT preserve anything
   // already typed into fields that get removed -- a known, accepted limitation
   // given the field set is now fully dynamic rather than a fixed handful of
-  // always-present elements.
-  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, existingAmount, existingCurrency, existingPayment, isEdit){
+  // always-present elements. People is the only remaining true sentinel (a
+  // many-to-many relationship, not a `fields`-table row) -- Amount, Currency, and
+  // Payment method all flow through the same generic `existingValues`/
+  // renderGenericFieldHtml() path as any other custom field now.
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, isEdit){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
     const entry = typeFieldOrder[(typeName || '').trim()] || [];
@@ -1098,8 +1187,6 @@
 
     let html = entry.map(({ field: fieldName }) => {
       if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople, false);
-      if(fieldName === 'Amount') return renderAmountFieldHtml(prefix, existingAmount, existingCurrency, false);
-      if(fieldName === 'Payment method') return renderPaymentFieldHtml(prefix, existingPayment, false);
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
       if(!fieldDef) return '';
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
@@ -1119,12 +1206,6 @@
       if(existingPeople && existingPeople.length && !configuredNames.has('People')){
         orphanedHtml.push(renderPeopleFieldHtml(prefix, existingPeople, true));
       }
-      if(existingAmount != null && existingAmount !== 0 && !configuredNames.has('Amount')){
-        orphanedHtml.push(renderAmountFieldHtml(prefix, existingAmount, existingCurrency, true));
-      }
-      if(existingPayment && !configuredNames.has('Payment method')){
-        orphanedHtml.push(renderPaymentFieldHtml(prefix, existingPayment, true));
-      }
       if(existingValues){
         for(const fieldName of Object.keys(existingValues)){
           if(configuredNames.has(fieldName)) continue;
@@ -1137,31 +1218,24 @@
     }
 
     container.innerHTML = html;
-    if(container.querySelector(`#${prefix}-person`)){
-      wireClearButton(`${prefix}-person`, `${prefix}-person-clear`);
-    }
-    if(container.querySelector(`#${prefix}-amount`)){
-      wireClearButton(`${prefix}-amount`, `${prefix}-amount-clear`);
-    }
-    if(container.querySelector(`#${prefix}-currency`)){
-      wireClearButton(`${prefix}-currency`, `${prefix}-currency-clear`);
-      const currencyInput = el(`${prefix}-currency`);
-      if(currencyInput.classList.contains('field-guess')){
-        // Same "clear the guess flag on first touch" treatment as the Date field --
-        // listens for both 'input' (typing) and 'change' (the clear button's
-        // dispatched event, since Date has no clear button to account for).
+    // One generic pass wires every field's clear button (People included -- it has
+    // the exact same .field-with-clear/clear-btn structure as any other field),
+    // plus the guess-flag dismissal for whichever field (currently only Currency,
+    // see renderGenericFieldHtml()) was rendered with the .field-guess class.
+    container.querySelectorAll('.clear-btn').forEach(btn => {
+      const inputId = btn.id.replace(/-clear$/, '');
+      wireClearButton(inputId, btn.id);
+      const input = el(inputId);
+      if(input && input.classList.contains('field-guess')){
+        const hint = el(`${inputId}-hint`);
         const clearGuess = () => {
-          currencyInput.classList.remove('field-guess');
-          const hint = el(`${prefix}-currency-hint`);
+          input.classList.remove('field-guess');
           if(hint) hint.style.display = 'none';
         };
-        currencyInput.addEventListener('input', clearGuess, { once: true });
-        currencyInput.addEventListener('change', clearGuess, { once: true });
+        input.addEventListener('input', clearGuess, { once: true });
+        input.addEventListener('change', clearGuess, { once: true });
       }
-    }
-    if(container.querySelector(`#${prefix}-payment`)){
-      wireClearButton(`${prefix}-payment`, `${prefix}-payment-clear`);
-    }
+    });
   }
 
   // "+ Add a custom field" only makes sense once a document type is entered -- a
@@ -1219,7 +1293,7 @@
     if(!typeName){ statusEl.textContent = 'Pick a document type first.'; return; }
     if(!name){ statusEl.textContent = 'Enter a field name.'; return; }
     if(['People', 'Amount', 'Payment method'].includes(name)){
-      statusEl.textContent = `"${name}" is already a built-in field.`;
+      statusEl.textContent = `"${name}" is a built-in field — use ⚙ Manage fields to add it for this type.`;
       return;
     }
     if(fieldNameToId[name] !== undefined){
@@ -1260,15 +1334,36 @@
     });
   }
 
+  // Rebuilds the dynamically-appended <th> tail for show_as_column custom fields,
+  // after the fixed built-in columns. Existing dynamic headers are removed and
+  // rebuilt from scratch each call. No click-to-sort wiring needed here -- the
+  // thead's click listener is delegated (see the single addEventListener on
+  // #doc-thead-row below), so it works for these the same as the fixed <th>s
+  // without needing to know about them individually.
+  function renderDynamicTableHead(){
+    const row = el('doc-thead-row');
+    row.querySelectorAll('th[data-dynamic-column]').forEach(th => th.remove());
+    for(const f of dynamicColumnDefs()){
+      const th = document.createElement('th');
+      th.dataset.key = f.id;
+      th.dataset.field = f.id;
+      th.dataset.dynamicColumn = '1';
+      th.textContent = f.label;
+      row.appendChild(th);
+    }
+  }
+
   function renderColumnsMenu(){
+    renderDynamicTableHead();
     const menu = el('columns-menu');
-    menu.innerHTML = FIELD_DEFS.map(f => `
+    const allDefs = [...FIELD_DEFS, ...dynamicColumnDefs()];
+    menu.innerHTML = allDefs.map(f => `
       <div class="columns-menu-item">
         <input type="checkbox" id="col-toggle-${f.id}" ${visibleColumns.has(f.id) ? 'checked' : ''} />
         <label for="col-toggle-${f.id}">${escapeHtml(f.label)}</label>
       </div>
     `).join('');
-    FIELD_DEFS.forEach(f => {
+    allDefs.forEach(f => {
       el(`col-toggle-${f.id}`).addEventListener('change', async (e) => {
         if(e.target.checked) visibleColumns.add(f.id);
         else visibleColumns.delete(f.id);
@@ -1302,32 +1397,51 @@
     `;
   }
 
+  // Category/Type/People stay fixed, hardcoded filters -- they're core document
+  // attributes, not `fields`-table concepts. Any field flagged show_as_column with
+  // a text/checkbox type (see dynamicColumnDefs()) gets its own filter dropdown
+  // dynamically appended after them, rebuilt on every call same as the fixed ones.
   function populateFilters(){
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
     const types = [...new Set(allDocs.map(d => d.document_type).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
-    const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
     categoryFilter.innerHTML = '<option value="">All categories</option>' + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     typeFilter.innerHTML = '<option value="">All types</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
     personFilter.innerHTML = '<option value="">All people</option>' + people.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
-    paymentFilter.innerHTML = '<option value="">All payment methods</option>' + payments.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+
+    const dynamicFiltersEl = el('dynamic-filters');
+    dynamicFiltersEl.innerHTML = dynamicColumnDefs().filter(f => f.hasFilter).map(f => {
+      const values = [...new Set(allDocs.map(d => (d.customFields || {})[f.label]).filter(Boolean))].sort();
+      return `<span class="filter-wrap" data-field="${f.id}"><select id="dyn-filter-${f.id}" data-field-label="${escapeHtml(f.label)}">
+        <option value="">All ${escapeHtml(f.label.toLowerCase())}</option>
+        ${values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
+      </select></span>`;
+    }).join('');
+    dynamicFiltersEl.querySelectorAll('select').forEach(sel => sel.addEventListener('change', render));
   }
 
+  // Category/Subcategory/Document Type/Currency/People/Tags stay fixed, hardcoded
+  // datalists -- Currency keeps its own even though it's a plain generic field now
+  // (see renderGenericFieldHtml()'s note on why). Any field flagged autocomplete=1
+  // (text type only, see Field Settings) gets its own generated datalist here.
   function populateDatalists(){
     const categories = [...new Set(allDocs.map(d => d.category).filter(Boolean))].sort();
     const subcategories = [...new Set(allDocs.map(d => d.subcategory).filter(Boolean))].sort();
     const types = getUsedDocumentTypes();
-    const payments = [...new Set(allDocs.map(d => d.payment_method).filter(Boolean))].sort();
-    const currencies = [...new Set(allDocs.map(d => d.currency).filter(Boolean))].sort();
+    const currencies = [...new Set(allDocs.map(d => (d.customFields || {})['Currency']).filter(Boolean))].sort();
     const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('subcategory-list').innerHTML = subcategories.map(s => `<option value="${escapeHtml(s)}">`).join('');
     el('type-list').innerHTML = types.map(t => `<option value="${escapeHtml(t)}">`).join('');
-    el('payment-list').innerHTML = payments.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('currency-list').innerHTML = currencies.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('person-list').innerHTML = people.map(p => `<option value="${escapeHtml(p)}">`).join('');
     el('tag-list').innerHTML = tagNames.map(t => `<option value="${escapeHtml(t)}">`).join('');
+
+    el('dynamic-datalists').innerHTML = fieldDefs.filter(f => f.autocomplete && f.type === 'text').map(f => {
+      const values = [...new Set(allDocs.map(d => (d.customFields || {})[f.name]).filter(Boolean))].sort();
+      return `<datalist id="field-${f.id}-list">${values.map(v => `<option value="${escapeHtml(v)}">`).join('')}</datalist>`;
+    }).join('');
   }
 
   function formatDate(iso){
@@ -1337,13 +1451,22 @@
     return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
   }
   // Currency is appended after the number ("45.00 EUR", "45.00 $") rather than
-  // guessing symbol-prefix vs. code-suffix placement per currency -- it's free text
-  // (see renderAmountFieldHtml()'s note), so there's no reliable way to know which
-  // convention a given value expects.
+  // guessing symbol-prefix vs. code-suffix placement per currency -- it's free
+  // text, so there's no reliable way to know which convention a given value
+  // expects.
+  // Amount and Currency are plain generic fields now (see
+  // migrateSentinelFieldsToGeneric()), so their values live in d.customFields like
+  // any other custom field -- document_field_values.value is always TEXT, hence
+  // the parseFloat. Combining them into one "123.45 EUR" display is a deliberate,
+  // narrow exception kept for this one dedicated table column/detail-view line;
+  // neither field participates in the generic show-as-column system.
   function formatAmount(d){
-    if(typeof d.amount !== 'number' || isNaN(d.amount) || d.amount === 0) return '—';
-    const amt = d.amount.toFixed(2);
-    return d.currency ? `${amt} ${escapeHtml(d.currency)}` : amt;
+    const raw = (d.customFields || {})['Amount'];
+    const amount = raw != null && raw !== '' ? parseFloat(raw) : NaN;
+    if(isNaN(amount) || amount === 0) return '—';
+    const amt = amount.toFixed(2);
+    const currency = (d.customFields || {})['Currency'];
+    return currency ? `${amt} ${escapeHtml(currency)}` : amt;
   }
 
   // Formats a raw document_field_values string for display, based on the field's
@@ -1357,16 +1480,24 @@
     return rawValue;
   }
 
+  // Dynamic filters (any show_as_column text/checkbox field, see populateFilters())
+  // are read straight from whatever <select>s currently exist in #dynamic-filters,
+  // keyed by the field's name via data-field-label -- not hardcoded per field.
   function currentFilters(){
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, payment: paymentFilter.value };
+    const dynamic = [...document.querySelectorAll('#dynamic-filters select')]
+      .map(sel => ({ label: sel.dataset.fieldLabel, value: sel.value }))
+      .filter(f => f.value);
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, dynamic };
   }
   function applyFilters(docs){
-    const { q, category, type, person, payment } = currentFilters();
+    const { q, category, type, person, dynamic } = currentFilters();
     return docs.filter(d => {
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
-      if(payment && d.payment_method !== payment) return false;
+      for(const f of dynamic){
+        if((d.customFields || {})[f.label] !== f.value) return false;
+      }
       if(q){
         const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
@@ -1377,9 +1508,32 @@
   function sortDocs(docs){
     const dir = sortDir === 'asc' ? 1 : -1;
     return [...docs].sort((a, b) => {
+      // Amount is a plain generic field now (see migrateSentinelFieldsToGeneric()),
+      // stored as text in customFields -- still sorted numerically, same as before.
+      if(sortKey === 'amount'){
+        const av = parseFloat((a.customFields || {})['Amount']) || 0;
+        const bv = parseFloat((b.customFields || {})['Amount']) || 0;
+        return (av - bv) * dir;
+      }
+      if(sortKey === 'date'){
+        const av = a.date || '', bv = b.date || '';
+        return av.localeCompare(bv) * dir;
+      }
+      // Any show_as_column custom field (see dynamicColumnDefs()) -- numeric compare
+      // for number-typed fields, case-insensitive string compare otherwise (ISO
+      // dates already sort correctly as strings).
+      if(sortKey.startsWith('field-')){
+        const fieldId = Number(sortKey.slice('field-'.length));
+        const fieldDef = fieldDefs.find(f => f.id === fieldId);
+        const aRaw = fieldDef ? (a.customFields || {})[fieldDef.name] : undefined;
+        const bRaw = fieldDef ? (b.customFields || {})[fieldDef.name] : undefined;
+        if(fieldDef && fieldDef.type === 'number'){
+          return ((parseFloat(aRaw) || 0) - (parseFloat(bRaw) || 0)) * dir;
+        }
+        const av = (aRaw || '').toString().toLowerCase(), bv = (bRaw || '').toString().toLowerCase();
+        return av.localeCompare(bv) * dir;
+      }
       let av = a[sortKey], bv = b[sortKey];
-      if(sortKey === 'amount'){ av = av || 0; bv = bv || 0; return (av - bv) * dir; }
-      if(sortKey === 'date'){ av = av || ''; bv = bv || ''; return av.localeCompare(bv) * dir; }
       av = (av || '').toString().toLowerCase(); bv = (bv || '').toString().toLowerCase();
       return av.localeCompare(bv) * dir;
     });
@@ -1391,6 +1545,7 @@
     countLine.style.display = 'block';
     countLine.textContent = `Showing ${sorted.length} of ${allDocs.length} documents`;
 
+    const dynDefs = dynamicColumnDefs();
     tbody.innerHTML = sorted.map(d => `
       <tr data-id="${d.id}">
         <td>
@@ -1399,12 +1554,15 @@
         </td>
         <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
         <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
-        <td data-field="payment_method">${d.payment_method ? escapeHtml(d.payment_method) : '<span class="doc-sub">—</span>'}</td>
         <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
         <td class="date" data-field="date">${formatDate(d.date)}</td>
         <td class="date" data-field="import_date">${formatDate(d.import_date)}</td>
         <td class="amount" data-field="amount">${formatAmount(d)}</td>
         <td data-field="tags">${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
+        ${dynDefs.map(f => {
+          const raw = (d.customFields || {})[f.label];
+          return `<td data-field="${f.id}">${raw != null && raw !== '' ? escapeHtml(formatCustomFieldValue(f.label, raw)) : '<span class="doc-sub">—</span>'}</td>`;
+        }).join('')}
       </tr>
     `).join('');
 
@@ -1417,7 +1575,6 @@
   categoryFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
-  paymentFilter.addEventListener('change', render);
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1429,13 +1586,16 @@
     if(wrap && !wrap.contains(e.target)) el('columns-menu').style.display = 'none';
   });
 
-  document.querySelectorAll('thead th[data-key]').forEach(th => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.key;
-      if(sortKey === key){ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
-      else{ sortKey = key; sortDir = key === 'date' ? 'desc' : 'asc'; }
-      render();
-    });
+  // Delegated (not per-<th>) so dynamically-appended headers for show_as_column
+  // custom fields (see renderDynamicTableHead()) sort correctly without needing
+  // their own click wiring at creation time.
+  el('doc-thead-row').addEventListener('click', (e) => {
+    const th = e.target.closest('th[data-key]');
+    if(!th) return;
+    const key = th.dataset.key;
+    if(sortKey === key){ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+    else{ sortKey = key; sortDir = key === 'date' ? 'desc' : 'asc'; }
+    render();
   });
 
   // --- detail modal (view existing document) ---
@@ -1511,6 +1671,13 @@
       }catch(e){ /* leave pageCount null */ }
     }
 
+    // Amount/Payment method are plain custom fields now (see
+    // migrateSentinelFieldsToGeneric()); document_field_values.value is always
+    // TEXT, hence the parseFloat.
+    const amountForHeader = parseFloat((d.customFields || {})['Amount']);
+    const hasAmountForHeader = !isNaN(amountForHeader) && amountForHeader !== 0;
+    const paymentMethodForHeader = (d.customFields || {})['Payment method'];
+
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -1521,8 +1688,8 @@
               <h2 style="margin:0 0 12px;">${escapeHtml(displayName(d))}</h2>
               <div class="modal-meta">
                 <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
-                <div><b>Date</b> ${formatDate(d.date)}${(d.amount != null && d.amount !== 0) ? ' · <b>Amount</b> ' + formatAmount(d) : ''}</div>
-                ${d.payment_method ? `<div><b>Payment</b> ${escapeHtml(d.payment_method)}</div>` : ''}
+                <div><b>Date</b> ${formatDate(d.date)}${hasAmountForHeader ? ' · <b>Amount</b> ' + formatAmount(d) : ''}</div>
+                ${paymentMethodForHeader ? `<div><b>Payment</b> ${escapeHtml(paymentMethodForHeader)}</div>` : ''}
                 ${pageCount != null ? `<div><b>Pages</b> ${pageCount}</div>` : ''}
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
@@ -1531,7 +1698,14 @@
           </div>
           <div class="modal-actions">${actions.join('')}${(!d.file_path && !d.original_file_path) ? '<span class="doc-sub" style="align-self:center;">No file recorded for this document</span>' : ''}</div>
           <div class="status" id="thumb-status" style="padding:8px 0 0;"></div>
-          ${Object.keys(d.customFields || {}).length ? `<div class="modal-section"><h3>Fields</h3><div class="modal-meta">${Object.entries(d.customFields).map(([name, value]) => `<div><b>${escapeHtml(name)}</b> ${escapeHtml(formatCustomFieldValue(name, value))}</div>`).join('')}</div></div>` : ''}
+          ${(() => {
+            // Amount/Currency/Payment method already have their own dedicated
+            // display above (the header line, or -- for Payment method -- its own
+            // <b>Payment</b> line) even though they're stored in customFields like
+            // any other field now; exclude them here so they don't show twice.
+            const entries = Object.entries(d.customFields || {}).filter(([name]) => name !== 'Amount' && name !== 'Currency' && name !== 'Payment method');
+            return entries.length ? `<div class="modal-section"><h3>Fields</h3><div class="modal-meta">${entries.map(([name, value]) => `<div><b>${escapeHtml(name)}</b> ${escapeHtml(formatCustomFieldValue(name, value))}</div>`).join('')}</div></div>` : '';
+          })()}
           <div class="modal-section"><h3>People</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || '—'}</p></div>
           <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
           ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
@@ -1701,18 +1875,16 @@
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
-    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, d.amount, d.currency, d.payment_method, true);
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, true);
     updateAddFieldVisibility('e');
     el('e-type').addEventListener('change', () => {
-      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, d.amount, d.currency, d.payment_method, true);
+      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, true);
       updateAddFieldVisibility('e');
     });
     wireAddFieldControls('e');
     wireClearButton('e-type', 'e-type-clear');
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');
-    wireClearButton('e-payment', 'e-payment-clear');
-    wireClearButton('e-amount', 'e-amount-clear');
     wireClearButton('e-tags', 'e-tags-clear');
     el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
 
@@ -1752,24 +1924,22 @@
       const category = el('e-category').value.trim() || null;
       const subcategory = el('e-subcategory').value.trim() || null;
       const documentType = el('e-type').value.trim() || null;
-      // Amount/Payment method are dynamic fields now -- if the current document type
-      // doesn't have them configured, the inputs simply aren't in the DOM. Preserve
-      // the document's existing value in that case rather than clearing it; only a
-      // value actually entered through a rendered field should change anything.
-      const paymentMethod = el('e-payment') ? (el('e-payment').value.trim() || null) : d.payment_method;
-      const amountRaw = el('e-amount') ? el('e-amount').value.trim() : null;
-      const amount = el('e-amount') ? (amountRaw === '' ? null : parseFloat(amountRaw)) : d.amount;
-      // Currency rides along with Amount -- same "preserve if not rendered" fallback.
-      const currency = el('e-currency') ? (el('e-currency').value.trim() || null) : d.currency;
       const date = el('e-date').value || null;
       const notes = el('e-notes').value.trim() || null;
       const ocrText = el('e-ocr-text').value.trim() || null;
 
+      // Payment method/Amount/Currency are plain generic fields now (see
+      // migrateSentinelFieldsToGeneric()) -- their "preserve the existing value if
+      // the field isn't currently rendered for this type" guarantee comes for free
+      // from the generic custom-field save loop below (shownFieldIds only touches
+      // document_field_values rows for fields actually in the DOM right now), the
+      // same way it already worked for every other custom field. No special
+      // reading/writing needed here anymore.
       db.run(`
-        UPDATE documents SET title=?, category=?, subcategory=?, document_type=?, payment_method=?,
-                              amount=?, currency=?, date=?, notes=?, ocr_text=?
+        UPDATE documents SET title=?, category=?, subcategory=?, document_type=?,
+                              date=?, notes=?, ocr_text=?
         WHERE id=?
-      `, [title, category, subcategory, documentType, paymentMethod, amount, currency, date, notes, ocrText, id]);
+      `, [title, category, subcategory, documentType, date, notes, ocrText, id]);
 
       // Re-link tags: drop existing links for this document, then re-add based on
       // the edited comma-separated list (same find-or-create pattern as capture).
@@ -1826,7 +1996,7 @@
       const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
       if(sidecarBaseName){
         await writeSidecarFile(sidecarBaseName, buildSidecarText({
-          title, category, subcategory, documentType, paymentMethod, amount, currency, date,
+          title, category, subcategory, documentType, date,
           importDate: d.import_date, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
         }));
       }
@@ -1834,8 +2004,8 @@
       await persistDb();
 
       Object.assign(d, {
-        title, category, subcategory, document_type: documentType, payment_method: paymentMethod,
-        amount, currency, date, notes, ocr_text: ocrText, customFields: customFieldsForDoc, tags: tagsForDoc, people: peopleForDoc,
+        title, category, subcategory, document_type: documentType,
+        date, notes, ocr_text: ocrText, customFields: customFieldsForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
@@ -1936,27 +2106,71 @@
       return;
     }
 
-    const allFieldNames = ['People', 'Amount', 'Payment method', ...fieldDefs.map(f => f.name)];
+    // People, Amount, and Currency all appear in fieldDefs/here now too (Amount and
+    // Currency as real `fields` rows since migrateSentinelFieldsToGeneric() -- only
+    // People stays outside `fields` entirely, as the one true sentinel), so they're
+    // no longer hardcoded into this list separately.
+    const allFieldNames = ['People', ...fieldDefs.map(f => f.name)];
     const currentEntries = (typeFieldOrder[fsSelectedType] || []).slice().sort((a, b) => a.position - b.position);
     const shownNames = new Set(currentEntries.map(e => e.field));
     const availableNames = allFieldNames.filter(n => !shownNames.has(n));
 
+    // Column/Autocomplete toggles are offered for real generic fields only -- not
+    // People (not a `fields` row, no such concept applies), and not Amount/Currency
+    // specifically: their show_as_column/autocomplete flags are deliberately inert
+    // (see formatAmount()'s note on why their display stays paired and hardcoded),
+    // so a checkbox that visibly did nothing would just be confusing. Shared between
+    // both columns below -- show_as_column/autocomplete are properties of the field
+    // itself, not of its relationship to fsSelectedType, so they need to stay
+    // reachable whether or not the field happens to already be attached to whichever
+    // type is currently selected (a field attached to every type would otherwise
+    // have no way to ever reach its own checkboxes).
+    function capabilitiesHtml(fieldName){
+      const fieldDef = fieldDefs.find(f => f.name === fieldName);
+      if(!fieldDef || fieldName === 'Amount' || fieldName === 'Currency') return '';
+      return `
+        <div class="fs-field-capabilities">
+          <label><input type="checkbox" class="fs-col-toggle" ${fieldDef.showAsColumn ? 'checked' : ''} /> Column</label>
+          ${fieldDef.type === 'text' ? `<label><input type="checkbox" class="fs-autocomplete-toggle" ${fieldDef.autocomplete ? 'checked' : ''} /> Autocomplete</label>` : ''}
+        </div>
+      `;
+    }
+    function wireCapabilities(itemEl, fieldName){
+      const colToggle = itemEl.querySelector('.fs-col-toggle');
+      if(colToggle) colToggle.addEventListener('change', (e) => toggleFieldCapability(fieldName, 'show_as_column', e.target.checked));
+      const acToggle = itemEl.querySelector('.fs-autocomplete-toggle');
+      if(acToggle) acToggle.addEventListener('change', (e) => toggleFieldCapability(fieldName, 'autocomplete', e.target.checked));
+    }
+
     availableEl.innerHTML = availableNames.length
-      ? availableNames.map(n => `<div class="fs-list-item" data-field="${escapeHtml(n)}"><span>${escapeHtml(n)}</span><span class="fs-item-actions"><button type="button" class="fs-add" title="Add to Display Fields">+</button></span></div>`).join('')
+      ? availableNames.map(n => `
+          <div class="fs-list-item fs-field-item" data-field="${escapeHtml(n)}">
+            <div class="fs-field-row">
+              <span>${escapeHtml(n)}</span>
+              <span class="fs-item-actions"><button type="button" class="fs-add" title="Add to Display Fields">+</button></span>
+            </div>
+            ${capabilitiesHtml(n)}
+          </div>
+        `).join('')
       : `<div class="fs-list-empty">All fields are already shown for this type.</div>`;
     availableEl.querySelectorAll('.fs-list-item').forEach(itemEl => {
-      itemEl.querySelector('.fs-add').addEventListener('click', () => addFieldToType(itemEl.dataset.field));
+      const fieldName = itemEl.dataset.field;
+      itemEl.querySelector('.fs-add').addEventListener('click', () => addFieldToType(fieldName));
+      wireCapabilities(itemEl, fieldName);
     });
 
     displayEl.innerHTML = currentEntries.length
       ? currentEntries.map((entry, i) => `
-          <div class="fs-list-item" data-field="${escapeHtml(entry.field)}">
-            <span>${escapeHtml(entry.field)}</span>
-            <span class="fs-item-actions">
-              <button type="button" class="fs-up" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
-              <button type="button" class="fs-down" title="Move down" ${i === currentEntries.length - 1 ? 'disabled' : ''}>↓</button>
-              <button type="button" class="fs-remove" title="Remove">✕</button>
-            </span>
+          <div class="fs-list-item fs-field-item" data-field="${escapeHtml(entry.field)}">
+            <div class="fs-field-row">
+              <span>${escapeHtml(entry.field)}</span>
+              <span class="fs-item-actions">
+                <button type="button" class="fs-up" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
+                <button type="button" class="fs-down" title="Move down" ${i === currentEntries.length - 1 ? 'disabled' : ''}>↓</button>
+                <button type="button" class="fs-remove" title="Remove">✕</button>
+              </span>
+            </div>
+            ${capabilitiesHtml(entry.field)}
           </div>
         `).join('')
       : `<div class="fs-list-empty">No fields shown for this type yet — add some from the left.</div>`;
@@ -1967,7 +2181,23 @@
       const downBtn = itemEl.querySelector('.fs-down');
       if(!upBtn.disabled) upBtn.addEventListener('click', () => moveFieldInType(fieldName, -1));
       if(!downBtn.disabled) downBtn.addEventListener('click', () => moveFieldInType(fieldName, 1));
+      wireCapabilities(itemEl, fieldName);
     });
+  }
+
+  // Flips a field's show_as_column or autocomplete flag (the two capabilities
+  // generalized from what used to be Payment method-only special casing -- see
+  // FIELD_DEFS/dynamicColumnDefs()). Affects every document type at once (these
+  // are properties of the field itself, not of a particular type's configuration),
+  // so the table/toolbar/datalists need a full refresh, not just this modal.
+  async function toggleFieldCapability(fieldName, key, value){
+    const fieldDef = fieldDefs.find(f => f.name === fieldName);
+    if(!fieldDef) return;
+    db.run(`UPDATE fields SET ${key}=? WHERE id=?`, [value ? 1 : 0, fieldDef.id]);
+    fieldDef[key === 'show_as_column' ? 'showAsColumn' : 'autocomplete'] = value;
+    await persistDb();
+    renderColumnsMenu(); applyColumnVisibility(); populateFilters(); populateDatalists(); render();
+    renderFieldSettingsFieldColumns();
   }
 
   async function addFieldToType(fieldName){
@@ -2147,8 +2377,6 @@
     wireClearButton('f-type', 'f-type-clear');
     wireClearButton('f-category', 'f-category-clear');
     wireClearButton('f-subcategory', 'f-subcategory-clear');
-    wireClearButton('f-payment', 'f-payment-clear');
-    wireClearButton('f-amount', 'f-amount-clear');
     wireClearButton('f-tags', 'f-tags-clear');
 
     // The date field is preset to today as a starting guess, not a real value --
@@ -2368,12 +2596,6 @@
       const category = el('f-category').value.trim() || null;
       const subcategory = el('f-subcategory').value.trim() || null;
       const documentType = el('f-type').value.trim() || null;
-      // Amount/Payment method are dynamic fields now -- may not be in the DOM at all
-      // if not configured for the currently selected document type.
-      const paymentMethod = el('f-payment') ? (el('f-payment').value.trim() || null) : null;
-      const amountRaw = el('f-amount') ? el('f-amount').value.trim() : '';
-      const amount = amountRaw === '' ? null : parseFloat(amountRaw);
-      const currency = el('f-currency') ? (el('f-currency').value.trim() || null) : null;
       const date = el('f-date').value || null;
       const notes = el('f-notes').value.trim() || null;
       const ocrText = el('f-ocr-text').value.trim() || null;
@@ -2383,12 +2605,17 @@
       // capturing it here IS the import moment, so import_date == created_at.
       const importDate = createdAt;
 
+      // Payment method/Amount/Currency are plain generic fields now (see
+      // migrateSentinelFieldsToGeneric()) -- their values flow through the same
+      // readDynamicFieldValues()/document_field_values loop below as any other
+      // custom field, not a dedicated documents column, so there's no special
+      // reading/writing for them here anymore.
       db.run(`
-        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, currency, date,
+        INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
-      `, [id, title, category, subcategory, documentType, paymentMethod, amount, currency, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
+      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -2425,13 +2652,13 @@
       }
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, subcategory, documentType, paymentMethod, amount, currency, date, importDate, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        title, category, subcategory, documentType, date, importDate, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
 
       allDocs.push({
-        id, title, category, subcategory, document_type: documentType, payment_method: paymentMethod, amount, currency, date,
+        id, title, category, subcategory, document_type: documentType, date,
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
@@ -2574,18 +2801,17 @@
       const sidecarBaseName = destName.replace(/\.[^.]+$/, '');
 
       db.run(`
-        INSERT INTO documents (id, title, category, subcategory, document_type, payment_method, amount, currency, date,
+        INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, NULL, NULL, ?, NULL, NULL, NULL, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?)
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?)
       `, [id, title, documentType, createdAt, filePathForDb, createdAt, thumbnailPathForDb]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
       await persistDb();
 
       allDocs.push({
-        id, title, category: null, subcategory: null, document_type: documentType, payment_method: null, amount: null,
-        currency: null,
+        id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
         original_file_path: null, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
         thumbnail_path: thumbnailPathForDb, customFields: {}, tags: [], people: [],

@@ -31,10 +31,24 @@ async def main():
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
 
-        # Toggle payment_method ON, tags OFF
+        # Payment method is a plain generic field now (see
+        # migrateSentinelFieldsToGeneric()), pre-seeded on every library -- its
+        # column id is dynamic ("field-<id>"), not the fixed "payment_method" this
+        # test used to assume.
+        persisted0 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        payment_field_id = next(f['id'] for f in persisted0['fields'] if f['name'] == 'Payment method')
+        col_id = f'field-{payment_field_id}'
+
+        # Toggle Payment method ON, tags OFF
         await page.click('#columns-btn')
         await page.wait_for_timeout(150)
-        await page.check('#col-toggle-payment_method')
+        await page.check(f'#col-toggle-{col_id}')
         await page.wait_for_timeout(150)
         await page.uncheck('#col-toggle-tags')
         await page.wait_for_timeout(150)
@@ -44,17 +58,17 @@ async def main():
         await page.click('#reload-btn')
         await page.wait_for_timeout(400)
 
-        payment_visible = await page.locator('th[data-field="payment_method"]').is_visible()
+        payment_visible = await page.locator(f'th[data-field="{col_id}"]').is_visible()
         tags_visible = await page.locator('th[data-field="tags"]').is_visible()
-        print("payment_method column visible after reopen (should be True):", payment_visible)
+        print("Payment method column visible after reopen (should be True):", payment_visible)
         print("tags column visible after reopen (should be False):", tags_visible)
 
         # also check the columns menu checkboxes themselves reflect restored state
         await page.click('#columns-btn')
         await page.wait_for_timeout(150)
-        payment_checked = await page.locator('#col-toggle-payment_method').is_checked()
+        payment_checked = await page.locator(f'#col-toggle-{col_id}').is_checked()
         tags_checked = await page.locator('#col-toggle-tags').is_checked()
-        print("payment_method checkbox checked:", payment_checked)
+        print("Payment method checkbox checked:", payment_checked)
         print("tags checkbox checked (should be False):", tags_checked)
 
         print("JS ERRORS:", errors)

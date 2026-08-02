@@ -127,24 +127,41 @@ working" problem that motivated this project in the first place.
 - **Field settings** — the "⚙ Manage fields" button opens a dialog for
   managing which fields show per document type (and in what order), plus
   a default document type and a default currency that pre-fill the Add
-  Document form (see "Amount has a linked Currency field" below). Mirrors
-  Mariner Paperless's own Document Types / Fields / Display Fields screen:
-  pick a type on the left, add fields to it from the middle column, reorder
-  or remove them on the right — changes save immediately. Deliberately
-  scoped to document types already in use (a brand new type comes into
-  existence by typing it into the Add/Edit form, not from this dialog),
-  and to toggling/reordering *existing* custom fields — it doesn't create
-  new ones from scratch (see below for where that happens instead).
-  **Payment method and Amount are configurable
-  here too**, alongside People and every other custom field — despite
-  being mandatory, always-shown fields in Mariner itself, Document Studio
-  lets you turn either off per document type if it's not relevant there.
-  Reclassifying a document to a type where one of these isn't configured
-  never discards the value already saved — it's just not shown until you
-  either add the field back for that type or reclassify again. The detail
-  view's header reflects this too: Payment and Amount only appear there
-  when a document actually has a value for them, rather than always
-  showing an empty placeholder.
+  Document form (see "Amount has a linked Currency field" below), plus two
+  per-field checkboxes — **Column** and **Autocomplete** (see below) —
+  available for any real custom field. Mirrors Mariner Paperless's own
+  Document Types / Fields / Display Fields screen: pick a type on the
+  left, add fields to it from the middle column, reorder or remove them on
+  the right — changes save immediately. Deliberately scoped to document
+  types already in use (a brand new type comes into existence by typing it
+  into the Add/Edit form, not from this dialog), and to toggling/reordering
+  *existing* custom fields — it doesn't create new ones from scratch (see
+  below for where that happens instead). **Payment method is a completely
+  ordinary custom field** — despite being a mandatory, always-present field
+  in Mariner itself, there's no reason for a general-purpose tool to keep
+  it as a hardcoded special case, so it's just one more row in the Fields
+  list: toggleable per document type, reorderable, and (see below)
+  column/filter/autocomplete-able exactly like anything else. Amount keeps
+  a small, deliberate exception — see "Amount has a linked Currency field."
+  Reclassifying a document to a type where a field isn't configured never
+  discards the value already saved — it's just not shown until you either
+  add the field back for that type or reclassify again. The detail view's
+  header reflects this too: Payment and Amount only appear there when a
+  document actually has a value for them, rather than always showing an
+  empty placeholder.
+- **Any custom field can become a table column, a filter, and offer
+  autocomplete** — two checkboxes next to each field in Field Settings'
+  Fields list. **Column** adds a sortable table column (click its header
+  to sort, numerically for Number-type fields) and, for Text/Checkbox
+  fields, a toolbar filter dropdown built from the real distinct values
+  already in your library — Number/Date fields get the column without a
+  filter dropdown, the same way the built-in Date and Amount columns
+  already work, since a dropdown listing every distinct number or date
+  isn't useful. **Autocomplete** (Text fields only) offers previously-used
+  values while typing — the same underlying mechanism Payment method
+  itself now uses. Both start off for a newly created field, so a fresh
+  custom field doesn't clutter the table or toolbar until you decide it's
+  worth surfacing there.
 - **Add a custom field right from the capture/edit forms** — a
   "+ Add a custom field" toggle below the custom fields, hidden until you've
   entered a document type (a field always has to attach to *some* type).
@@ -162,15 +179,18 @@ working" problem that motivated this project in the first place.
   that's already in use is rejected rather than silently attached to the
   current type or duplicated — use Field Settings (which already lists
   every existing field) for that instead.
-- **Amount has a linked Currency field** — free text, with autocomplete
-  from currencies already used in the library, rather than a fixed
-  dropdown (real documents mix symbols like "€"/"$" and codes like
-  "EUR"/"USD"). It always appears right next to Amount and shares its
-  per-document-type visibility exactly — Currency isn't independently
-  configurable in Field Settings, since a currency without an amount isn't
-  meaningful. Displayed as "123.45 EUR" (amount, then currency,
-  consistently) since free text makes it impossible to know whether a
-  given value is meant as a prefix symbol or a suffix code. Sorting the
+- **Amount has a linked Currency field** — both are ordinary custom fields
+  under the hood now (their capture/edit form inputs are two normal,
+  independently-positioned fields, each with its own clear button), but
+  they deliberately keep one exception from the fully generic system
+  above: neither gets Column/Autocomplete checkboxes in Field Settings.
+  Currency is free text, with its own autocomplete from currencies already
+  used in the library, rather than a fixed dropdown (real documents mix
+  symbols like "€"/"$" and codes like "EUR"/"USD"). Their *table column and
+  detail-view line* always stay combined into one "123.45 EUR" display
+  (amount, then currency, consistently) rather than becoming two separate
+  columns, since free text makes it impossible to know whether a given
+  value is meant as a prefix symbol or a suffix code. Sorting the
   Amount column sorts by the raw number only — there's no currency
   conversion, since this is a personal document archive, not an
   accounting tool. A **default currency**, set once in Field Settings, is
@@ -269,10 +289,9 @@ documents
     category            TEXT
     subcategory         TEXT     -- independent of category, NOT a child of it (see note below)
     document_type       TEXT
-    payment_method      TEXT     -- nullable, only meaningful for receipts/invoices
-    amount              REAL     -- nullable
-    currency            TEXT     -- nullable free text, e.g. "EUR" / "$" -- always shown
-                                  -- alongside Amount, not independently configurable
+    payment_method      TEXT     -- VESTIGIAL -- see "fields"/"document_field_values"
+    amount              REAL     -- below. Neither read nor written anymore; kept
+    currency            TEXT     -- (never dropped) so old bytes aren't destroyed.
     date                TEXT     -- ISO 8601, the document's own date (e.g. invoice date)
     import_date         TEXT     -- ISO 8601, when the document was scanned/captured/imported
                                   -- (for migrated documents, this comes from Mariner's own
@@ -310,9 +329,13 @@ settings
     value  TEXT
 
 fields
-    id    INTEGER PRIMARY KEY
-    name  TEXT UNIQUE
-    type  TEXT      -- 'text', 'number', 'date', or 'checkbox'
+    id                INTEGER PRIMARY KEY
+    name              TEXT UNIQUE
+    type              TEXT      -- 'text', 'number', 'date', or 'checkbox'
+    show_as_column    INTEGER   -- 0/1; adds a sortable table column, and (text/
+                                  -- checkbox types only) a toolbar filter dropdown
+    autocomplete      INTEGER   -- 0/1; text-type fields only -- offers previously-
+                                  -- used values while typing
 
 document_field_values
     document_id  INTEGER
@@ -338,13 +361,19 @@ unset by default, since this is a general-purpose tool with no currency
 that's correct to assume for everyone).
 
 **Custom fields are fully generic** (`fields` + `document_field_values`) —
-Organization, Year, Date From, Paid, whatever your library actually uses.
-Each field has a type (`text`/`number`/`date`/`checkbox`) that determines
-how it's rendered and how its stored (always-text) value gets interpreted.
+Organization, Year, Date From, Paid, Payment method, Amount, Currency,
+whatever your library actually uses. Each field has a type
+(`text`/`number`/`date`/`checkbox`) that determines how it's rendered and
+how its stored (always-text) value gets interpreted, plus the
+`show_as_column`/`autocomplete` capability flags described above.
 Populated by `migrate_to_new_library.py` from Mariner's own field
-definitions and real values; Document Studio reads and writes this table
-as documents are captured/edited, but doesn't yet have a UI for *defining*
-new fields itself — see Limitations.
+definitions and real values for migrated libraries, and by
+`migrateSentinelFieldsToGeneric()` (a one-time, idempotent step run on
+every library open) for Payment method/Amount/Currency specifically —
+promoting them from the dedicated `documents` columns they used to have
+into ordinary rows here, and copying across any value already saved in
+those old columns. New fields can also be created directly from the
+capture/edit forms (a "+ Add a custom field" toggle) — see Features above.
 
 `document_type_fields` drives the capture/edit forms' dynamic field
 behavior (see "Dynamic fields per document type" above): for a document
@@ -423,11 +452,6 @@ separate genuinely distinct values.
   fields show per document type. Creating a brand-new field from scratch
   is done from the capture/edit forms instead — see "Add a custom field
   right from the capture/edit forms" above.
-- **Custom fields aren't table columns/filters yet.** They show correctly
-  in the capture/edit forms and the detail view, but the main document
-  list only has columns for the fixed fields (Category, Type, Payment
-  method, People, Date, Amount, Tags) — not yet for arbitrary custom
-  fields like Organization or Year. They are, however, included in search.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
 - **Needs network on first load** (to fetch the sql.js, Tesseract.js,
@@ -441,7 +465,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (32
+There's a real, runnable Playwright regression suite in `tests/` (34
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

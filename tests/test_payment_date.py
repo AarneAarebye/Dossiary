@@ -14,6 +14,16 @@ TYPE_FIELD_ROWS = [
     {"document_type": "Invoice", "field_name": "Amount", "position": 2},
 ]
 
+# Payment method/Amount are plain generic fields now (see
+# migrateSentinelFieldsToGeneric()) -- their values live in document_field_values,
+# joined against `fields` by name, not documents.amount/payment_method directly.
+def get_field_value(persisted, doc_id, field_name):
+    field = next((f for f in persisted['fields'] if f['name'] == field_name), None)
+    if not field:
+        return None
+    row = next((v for v in persisted['document_field_values'] if v['document_id'] == doc_id and v['field_id'] == field['id']), None)
+    return row['value'] if row else None
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -47,11 +57,18 @@ async def main():
         pd_type = await page.locator('#f-field-1').get_attribute('type')
         print("Payment Date input type:", pd_type)
         order = await page.evaluate("Array.from(document.getElementById('dynamic-fields-f').children).map(el => el.dataset.dynamicField)")
-        print("Field order in form (should be Payment Date, Payment method, Amount):", order)
+        # Currency shows up too even though this seed's TYPE_FIELD_ROWS never
+        # mentions it: migrateSentinelFieldsToGeneric() treats any pre-existing
+        # "Amount" document_type_fields row (real library or, as here, a synthetic
+        # seed shaped like one) as needing a Currency row added alongside it, to
+        # preserve the old implicit "Currency always rides along with Amount"
+        # behavior for libraries that already had Amount configured before this field
+        # existed independently.
+        print("Field order in form (should be Payment Date, Payment method, Amount, Currency):", order)
 
         await page.fill('#f-field-1', '2024-03-15')
-        await page.fill('#f-payment', 'Credit Card')
-        await page.fill('#f-amount', '89.00')
+        await page.fill('[data-dynamic-field="Payment method"] input', 'Credit Card')
+        await page.fill('[data-dynamic-field="Amount"] input', '89.00')
         await page.fill('#f-title', 'Payment Date Test')
         with open('pdtest.pdf', 'wb') as f:
             f.write(b"%PDF-1.4 pdtest")
@@ -70,8 +87,8 @@ async def main():
         dfv = persisted['document_field_values']
         pd_value = next((r['value'] for r in dfv if r['field_id'] == 1), None)
         print("saved Payment Date value:", pd_value)
-        print("saved amount:", persisted['documents'][0]['amount'])
-        print("saved payment_method:", persisted['documents'][0]['payment_method'])
+        print("saved amount:", get_field_value(persisted, persisted['documents'][0]['id'], 'Amount'))
+        print("saved payment_method:", get_field_value(persisted, persisted['documents'][0]['id'], 'Payment method'))
 
         # Detail view: formatted date, not raw
         await page.click('tr[data-id="1"]')

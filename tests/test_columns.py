@@ -43,12 +43,27 @@ async def main():
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
-        # Default state: payment_method column and filter should be HIDDEN (defaultVisible: false)
-        payment_th_visible = await page.locator('th[data-field="payment_method"]').is_visible()
-        payment_filter_visible = await page.locator('span[data-field="payment_method"]').is_visible()
+        # Payment method is a plain generic field now (see
+        # migrateSentinelFieldsToGeneric()), pre-seeded with show_as_column=1/
+        # autocomplete=1 on every library -- its column/filter id is dynamic
+        # ("field-<id>"), not the fixed "payment_method" this test used to assume.
+        persisted0 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        payment_field_id = next(f['id'] for f in persisted0['fields'] if f['name'] == 'Payment method')
+        col_id = f'field-{payment_field_id}'
+
+        # Default state: Payment method column and filter should be HIDDEN
+        # (dynamicColumnDefs() gives every show_as_column field defaultVisible: false)
+        payment_th_visible = await page.locator(f'th[data-field="{col_id}"]').is_visible()
+        payment_filter_visible = await page.locator(f'span[data-field="{col_id}"]').count() > 0 and await page.locator(f'span[data-field="{col_id}"]').is_visible()
         category_th_visible = await page.locator('th[data-field="category"]').is_visible()
-        print("payment_method column visible by default (should be False):", payment_th_visible)
-        print("payment_method filter visible by default (should be False):", payment_filter_visible)
+        print("Payment method column visible by default (should be False):", payment_th_visible)
+        print("Payment method filter visible by default (should be False):", payment_filter_visible)
         print("category column visible by default (should be True):", category_th_visible)
 
         # Open columns menu, toggle Payment method ON, Category OFF
@@ -57,20 +72,20 @@ async def main():
         menu_visible = await page.locator('#columns-menu').is_visible()
         print("columns menu opens:", menu_visible)
 
-        await page.check('#col-toggle-payment_method')
+        await page.check(f'#col-toggle-{col_id}')
         await page.wait_for_timeout(150)
         await page.uncheck('#col-toggle-category')
         await page.wait_for_timeout(150)
 
-        payment_th_visible2 = await page.locator('th[data-field="payment_method"]').is_visible()
-        payment_filter_visible2 = await page.locator('span[data-field="payment_method"]').is_visible()
+        payment_th_visible2 = await page.locator(f'th[data-field="{col_id}"]').is_visible()
+        payment_filter_visible2 = await page.locator(f'span[data-field="{col_id}"]').is_visible()
         category_th_visible2 = await page.locator('th[data-field="category"]').is_visible()
-        print("payment_method column visible after toggle ON:", payment_th_visible2)
-        print("payment_method filter visible after toggle ON:", payment_filter_visible2)
+        print("Payment method column visible after toggle ON:", payment_th_visible2)
+        print("Payment method filter visible after toggle ON:", payment_filter_visible2)
         print("category column visible after toggle OFF:", category_th_visible2)
 
-        # check payment filter dropdown actually has the real value and works
-        payment_options = await page.locator('#payment-filter option').all_inner_texts()
+        # check payment filter dropdown exists and works
+        payment_options = await page.locator(f'#dyn-filter-{col_id} option').all_inner_texts()
         print("payment filter options:", payment_options)
 
         # Verify persisted to settings table

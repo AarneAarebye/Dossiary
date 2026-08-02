@@ -7,10 +7,26 @@ APP_PATH = _os2.path.abspath(_os2.path.join('..', 'document_studio.html'))  # te
 import asyncio, json
 from playwright.async_api import async_playwright
 
+# Currency needs its own document_type_fields entry now, same as any other generic
+# field (see migrateSentinelFieldsToGeneric()'s note) -- it no longer rides along
+# with Amount implicitly. Only the table/detail-view *display* stays paired.
 TYPE_FIELD_ROWS = [
     {"document_type": "Invoice", "field_name": "Amount", "position": 0},
+    {"document_type": "Invoice", "field_name": "Currency", "position": 1},
     {"document_type": "Certificate", "field_name": "People", "position": 0},
 ]
+
+def get_field_value(persisted, doc_id, field_name):
+    field = next((f for f in persisted['fields'] if f['name'] == field_name), None)
+    if not field:
+        return None
+    row = next((v for v in persisted['document_field_values'] if v['document_id'] == doc_id and v['field_id'] == field['id']), None)
+    return row['value'] if row else None
+
+CUR_INPUT = '[data-dynamic-field="Currency"] input'
+CUR_CLEAR = '[data-dynamic-field="Currency"] .clear-btn'
+CUR_HINT = '[data-dynamic-field="Currency"] .field-guess-hint'
+AMT_INPUT = '[data-dynamic-field="Amount"] input'
 
 async def main():
     async with async_playwright() as p:
@@ -35,21 +51,21 @@ async def main():
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
 
-        # === Currency renders alongside Amount, sharing its per-type visibility ===
+        # === Currency renders alongside Amount for a type that configures both ===
         await page.click('#add-btn')
         await page.wait_for_timeout(100)
-        currency_count_none = await page.locator('#f-currency').count()
+        currency_count_none = await page.locator(CUR_INPUT).count()
         print("currency input present with no type selected (should be 0):", currency_count_none)
 
         await page.fill('#f-type', 'Invoice')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        currency_count_invoice = await page.locator('#f-currency').count()
+        currency_count_invoice = await page.locator(CUR_INPUT).count()
         print("currency input present for Invoice type (should be 1):", currency_count_invoice)
 
         # === No default_currency configured yet -- no guess, plain blank field ===
-        currency_value_no_default = await page.locator('#f-currency').input_value()
-        currency_is_guess_no_default = 'field-guess' in (await page.locator('#f-currency').get_attribute('class') or '')
+        currency_value_no_default = await page.locator(CUR_INPUT).input_value()
+        currency_is_guess_no_default = 'field-guess' in (await page.locator(CUR_INPUT).get_attribute('class') or '')
         print("currency blank with no default_currency configured:", currency_value_no_default == '')
         print("currency NOT flagged as a guess with no default_currency configured:", not currency_is_guess_no_default)
         await page.click('#modal-close-btn')
@@ -81,17 +97,17 @@ async def main():
         await page.fill('#f-type', 'Invoice')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        currency_prefill_value = await page.locator('#f-currency').input_value()
-        currency_prefill_is_guess = 'field-guess' in (await page.locator('#f-currency').get_attribute('class') or '')
-        hint_visible = await page.locator('#f-currency-hint').is_visible()
+        currency_prefill_value = await page.locator(CUR_INPUT).input_value()
+        currency_prefill_is_guess = 'field-guess' in (await page.locator(CUR_INPUT).get_attribute('class') or '')
+        hint_visible = await page.locator(CUR_HINT).is_visible()
         print("currency pre-filled from default_currency setting:", currency_prefill_value)
         print("currency flagged as a guess:", currency_prefill_is_guess)
         print("guess hint visible:", hint_visible)
 
         # Touching the field (typing) clears the guess flag, same as Date's pattern.
-        await page.locator('#f-currency').type('X')
-        guess_cleared = 'field-guess' in (await page.locator('#f-currency').get_attribute('class') or '')
-        hint_hidden_after_touch = await page.locator('#f-currency-hint').is_visible()
+        await page.locator(CUR_INPUT).type('X')
+        guess_cleared = 'field-guess' in (await page.locator(CUR_INPUT).get_attribute('class') or '')
+        hint_hidden_after_touch = await page.locator(CUR_HINT).is_visible()
         print("guess flag cleared after typing:", not guess_cleared)
         print("hint hidden after typing:", not hint_hidden_after_touch)
         await page.click('#modal-close-btn')
@@ -103,8 +119,8 @@ async def main():
         await page.fill('#f-type', 'Invoice')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        await page.fill('#f-amount', '75.00')
-        await page.fill('#f-currency', 'EUR')
+        await page.fill(AMT_INPUT, '75.00')
+        await page.fill(CUR_INPUT, 'EUR')
         await page.fill('#f-title', 'Currency Doc')
         with open('curdoc.pdf', 'wb') as f:
             f.write(b"%PDF-1.4 curdoc")
@@ -121,8 +137,8 @@ async def main():
             })()
         """)
         doc1 = persisted['documents'][0]
-        print("saved amount:", doc1['amount'])
-        print("saved currency:", doc1['currency'])
+        print("saved amount:", get_field_value(persisted, doc1['id'], 'Amount'))
+        print("saved currency:", get_field_value(persisted, doc1['id'], 'Currency'))
 
         # === Table and detail view show amount + currency together ===
         table_amount_cell = await page.locator('tr[data-id="1"] td.amount').inner_text()
@@ -143,19 +159,22 @@ async def main():
                 return await f.text();
             })()
         """)
-        print("sidecar mentions 'Amount: 75 EUR':", 'Amount: 75 EUR' in sidecar_text)
+        # Amount is stored as raw text now (whatever was typed, "75.00"), not a
+        # parsed JS number the way documents.amount used to be -- so the sidecar
+        # shows exactly what was typed, no more/less precision than that.
+        print("sidecar mentions 'Amount: 75.00 EUR':", 'Amount: 75.00 EUR' in sidecar_text)
 
         # === Edit: change currency via clear button + retype ===
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
         await page.click('#edit-doc-btn')
         await page.wait_for_timeout(200)
-        currency_prefill = await page.locator('#e-currency').input_value()
+        currency_prefill = await page.locator(CUR_INPUT).input_value()
         print("edit form currency pre-filled:", currency_prefill)
-        await page.click('#e-currency-clear')
-        currency_after_clear = await page.locator('#e-currency').input_value()
+        await page.click(CUR_CLEAR)
+        currency_after_clear = await page.locator(CUR_INPUT).input_value()
         print("currency cleared via clear button:", currency_after_clear == '')
-        await page.fill('#e-currency', 'USD')
+        await page.fill(CUR_INPUT, 'USD')
         await page.click('#save-edit-btn')
         await page.wait_for_timeout(300)
 
@@ -166,16 +185,17 @@ async def main():
                 return JSON.parse(await f.text());
             })()
         """)
-        print("currency updated to USD:", persisted2['documents'][0]['currency'])
+        print("currency updated to USD:", get_field_value(persisted2, doc1['id'], 'Currency'))
         # saveEditedDocument() ends by opening the detail view, not closing the modal.
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
-        # === CRITICAL: reclassifying to a type without Amount configured doesn't
-        # remove the field outright while it still holds real data -- it becomes
-        # "orphaned" (per CLAUDE.md: shown, marked, still editable) rather than
-        # silently disappearing. This is the same orphaned-field treatment Amount
-        # already had; Currency rides along with it since they share one block. ===
+        # === CRITICAL: reclassifying to a type without Amount/Currency configured
+        # doesn't remove either field outright while it still holds real data -- each
+        # independently becomes "orphaned" (per CLAUDE.md: shown, marked, still
+        # editable) rather than silently disappearing. Amount and Currency are two
+        # separate generic fields now, so this is checked for each independently
+        # (only their table/detail-view *display* stays paired). ===
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
         await page.click('#edit-doc-btn')
@@ -183,9 +203,11 @@ async def main():
         await page.fill('#e-type', 'Certificate')
         await page.locator('#e-type').blur()
         await page.wait_for_timeout(150)
-        amount_block_orphaned = await page.locator('[data-dynamic-field="Amount"].field-orphaned').count()
-        currency_still_editable = await page.locator('#e-currency').input_value()
-        print("Amount+Currency block marked orphaned after reclassify to Certificate:", amount_block_orphaned == 1)
+        amount_orphaned = await page.locator('[data-dynamic-field="Amount"].field-orphaned').count()
+        currency_orphaned = await page.locator('[data-dynamic-field="Currency"].field-orphaned').count()
+        currency_still_editable = await page.locator(CUR_INPUT).input_value()
+        print("Amount marked orphaned after reclassify to Certificate:", amount_orphaned == 1)
+        print("Currency marked orphaned after reclassify to Certificate:", currency_orphaned == 1)
         print("currency still editable in the orphaned block:", currency_still_editable)
         await page.click('#save-edit-btn')
         await page.wait_for_timeout(300)
@@ -198,8 +220,8 @@ async def main():
             })()
         """)
         doc1_after = persisted3['documents'][0]
-        print("amount PRESERVED after reclassify+save (should still be 75.0):", doc1_after['amount'])
-        print("currency PRESERVED after reclassify+save (should still be USD):", doc1_after['currency'])
+        print("amount PRESERVED after reclassify+save (should still be 75.0):", get_field_value(persisted3, doc1_after['id'], 'Amount'))
+        print("currency PRESERVED after reclassify+save (should still be USD):", get_field_value(persisted3, doc1_after['id'], 'Currency'))
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
@@ -211,8 +233,8 @@ async def main():
         await page.fill('#e-type', 'Invoice')
         await page.locator('#e-type').blur()
         await page.wait_for_timeout(150)
-        currency_reappeared = await page.locator('#e-currency').input_value()
-        no_longer_orphaned = await page.locator('[data-dynamic-field="Amount"].field-orphaned').count()
+        currency_reappeared = await page.locator(CUR_INPUT).input_value()
+        no_longer_orphaned = await page.locator('[data-dynamic-field="Currency"].field-orphaned').count()
         print("currency reappears after reclassifying back to Invoice:", currency_reappeared)
         print("no longer marked orphaned once Invoice is selected again:", no_longer_orphaned == 0)
 

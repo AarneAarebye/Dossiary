@@ -248,7 +248,7 @@ async def run_test():
         await page.fill('#f-type', 'Note')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        await page.fill('#f-amount', '12.50')
+        await page.fill('[data-dynamic-field="Amount"] input', '12.50')
         await page.fill('#f-date', '2026-07-28')
         await page.fill('#f-tags', 'Haus, NewTag')  # 'Haus' already exists in seed -> should be reused, not duplicated
         await page.fill('#f-notes', 'a test note')

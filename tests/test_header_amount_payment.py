@@ -66,8 +66,8 @@ async def main():
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
         await page.fill('#f-title', 'With Payment Doc')
-        await page.fill('#f-payment', 'PayPal')
-        await page.fill('#f-amount', '75.00')
+        await page.fill('[data-dynamic-field="Payment method"] input', 'PayPal')
+        await page.fill('[data-dynamic-field="Amount"] input', '75.00')
         with open('haspay.pdf', 'wb') as f:
             f.write(b"%PDF-1.4 haspay")
         await page.set_input_files('#file-input', 'haspay.pdf')

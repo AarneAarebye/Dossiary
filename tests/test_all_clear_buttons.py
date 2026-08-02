@@ -13,6 +13,26 @@ TYPE_FIELD_ROWS = [
     {"document_type": "Invoice", "field_name": "Amount", "position": 2},
 ]
 
+# Payment method/Amount are plain generic fields now (see
+# migrateSentinelFieldsToGeneric()), so they no longer have fixed #f-payment/
+# #f-amount ids -- located by their data-dynamic-field attribute instead, same as
+# any other custom field.
+FIELDS = [
+    ('category', '#f-category', '#f-category-clear'),
+    ('subcategory', '#f-subcategory', '#f-subcategory-clear'),
+    ('payment', '[data-dynamic-field="Payment method"] input', '[data-dynamic-field="Payment method"] .clear-btn'),
+    ('amount', '[data-dynamic-field="Amount"] input', '[data-dynamic-field="Amount"] .clear-btn'),
+    ('tags', '#f-tags', '#f-tags-clear'),
+    ('person', '#f-person', '#f-person-clear'),
+]
+EDIT_FIELDS = [
+    ('category', '#e-category', '#e-category-clear'),
+    ('subcategory', '#e-subcategory', '#e-subcategory-clear'),
+    ('payment', '[data-dynamic-field="Payment method"] input', '[data-dynamic-field="Payment method"] .clear-btn'),
+    ('amount', '[data-dynamic-field="Amount"] input', '[data-dynamic-field="Amount"] .clear-btn'),
+    ('tags', '#e-tags', '#e-tags-clear'),
+]
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -44,22 +64,20 @@ async def main():
         await page.wait_for_timeout(150)
         await page.fill('#f-category', 'Medical')
         await page.fill('#f-subcategory', 'Dentist')
-        await page.fill('#f-payment', 'Credit Card')
-        await page.fill('#f-amount', '42.50')
+        await page.fill('[data-dynamic-field="Payment method"] input', 'Credit Card')
+        await page.fill('[data-dynamic-field="Amount"] input', '42.50')
         await page.fill('#f-tags', 'urgent, receipt')
         await page.fill('#f-person', 'Arne, Jana')
 
-        fields = ['category', 'subcategory', 'payment', 'amount', 'tags', 'person']
-        for field in fields:
-            btn_id = f'#f-{field}-clear'
-            visible = await page.locator(btn_id).is_visible()
-            print(f"f-{field}-clear visible before clearing:", visible)
+        for name, input_sel, clear_sel in FIELDS:
+            visible = await page.locator(clear_sel).is_visible()
+            print(f"f-{name}-clear visible before clearing:", visible)
 
-        for field in fields:
-            await page.click(f'#f-{field}-clear')
+        for name, input_sel, clear_sel in FIELDS:
+            await page.click(clear_sel)
             await page.wait_for_timeout(80)
-            value = await page.locator(f'#f-{field}').input_value()
-            print(f"f-{field} value after clear (should be empty):", repr(value))
+            value = await page.locator(input_sel).input_value()
+            print(f"f-{name} value after clear (should be empty):", repr(value))
 
         print("JS ERRORS so far:", errors)
 
@@ -73,7 +91,7 @@ async def main():
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
         await page.fill('#f-category', 'Medical')
-        await page.fill('#f-amount', '99.99')
+        await page.fill('[data-dynamic-field="Amount"] input', '99.99')
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
@@ -82,15 +100,13 @@ async def main():
         await page.click('#edit-doc-btn')
         await page.wait_for_timeout(200)
 
-        edit_fields = ['category', 'subcategory', 'payment', 'amount', 'tags']
-        for field in edit_fields:
-            btn_id = f'#e-{field}-clear'
-            visible = await page.locator(btn_id).is_visible()
-            print(f"e-{field}-clear visible:", visible)
-            await page.click(btn_id)
+        for name, input_sel, clear_sel in EDIT_FIELDS:
+            visible = await page.locator(clear_sel).is_visible()
+            print(f"e-{name}-clear visible:", visible)
+            await page.click(clear_sel)
             await page.wait_for_timeout(80)
-            value = await page.locator(f'#e-{field}').input_value()
-            print(f"e-{field} value after clear (should be empty):", repr(value))
+            value = await page.locator(input_sel).input_value()
+            print(f"e-{name} value after clear (should be empty):", repr(value))
 
         print("JS ERRORS:", errors)
         await browser.close()

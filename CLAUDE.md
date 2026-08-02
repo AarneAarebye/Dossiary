@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (32 scripts) + shared
+tests/                   Playwright regression suite (34 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -148,7 +148,10 @@ rather than being folded into it.
   own notes for how) — `renderGenericFieldHtml()` picks the input type
   from this, and `formatCustomFieldValue()` formats stored values for
   display accordingly (checkbox `'1'`/`'0'` → `Yes`/`No`, date → a
-  readable date rather than the raw ISO string).
+  readable date rather than the raw ISO string). `fields` also has
+  `show_as_column`/`autocomplete` capability flags (0/1) — see the
+  generalized column/filter/sort/autocomplete system and per-field
+  capability checkboxes described further below.
   **Do not apply people-style `&`-splitting to generic field values.**
   `people` is genuinely multi-valued in Mariner's own data (`"Arne &
   Jana"` means two people); most other fields aren't — real values like
@@ -306,52 +309,75 @@ rather than being folded into it.
   `d.customFields`, discarding in-session edits, not what's currently on
   screen). Don't "simplify" this back to a full re-render without
   preserving that distinction.
-- **Amount and Payment method are sentinel dynamic fields, exactly like
-  People** (`renderAmountFieldHtml()`, `renderPaymentFieldHtml()`) —
-  toggleable/reorderable per type via `document_type_fields` the same as
-  any generic field or People, but their values still live in
-  `documents.amount`/`documents.payment_method` (the typed columns they
-  already had — `amount` is `REAL`), **not** in the generic
-  `document_field_values` table. There was no reason to move that storage
-  just to make them configurable; only the *visibility* needed to become
-  dynamic. Mariner itself treated both as mandatory, always-shown fields
-  with no per-type on/off signal to migrate (they're built into `ZRECEIPT`
-  directly, not part of the `ZCUSTOMITEM`/`ZFIELDORDERARRAY` system the
-  way named custom fields are) — `migrate_to_new_library.py` compensates
-  by enabling both for every document type actually used by a migrated
-  document, so nothing goes missing on migration; a person can then turn
-  either off per type via this dialog if some type genuinely doesn't need
-  it. **Critical correctness property, tested explicitly**: reclassifying
-  a document to a type where Amount/Payment aren't configured must not
-  discard the value already saved just because the input isn't currently
-  rendered — `saveEditedDocument()` falls back to the document's existing
-  `d.amount`/`d.payment_method` when `el('e-amount')`/`el('e-payment')`
-  return `null` (field not in the DOM), rather than defaulting to blank/
-  null the way a genuinely-cleared field would. Don't simplify this to
-  "missing field means null" without preserving that distinction.
-- **Currency (`documents.currency`) is a companion to Amount, not its own
-  sentinel field.** `renderAmountFieldHtml()` renders both the Amount and
-  Currency inputs together, inside one `.field` wrapper carrying a single
-  `data-dynamic-field="Amount"` — so Currency has no independent entry in
-  `document_type_fields` and can't be toggled on/off separately in Field
-  Settings; it always shows/hides in lockstep with Amount, including
-  through the same orphaned-field path (a document with a real, non-zero
-  amount still shows the whole Amount+Currency block, marked
-  `.field-orphaned`, even after being reclassified to a type that doesn't
-  configure Amount — see the orphaned-fields note below; this is why
-  `saveEditedDocument()`'s `el('e-currency') ? ... : d.currency` fallback
-  is a genuine second line of defense, not the only thing keeping the
-  value from being lost). Stored as free text (like Payment method), not a
-  fixed dropdown — real libraries mix symbols ("€", "$") and ISO codes
-  ("USD", "CHF"), and a fixed enum would force an artificial choice.
-  `formatAmount()` displays it suffixed after the number ("123.45 EUR"),
-  uniformly regardless of whether the value is a symbol or a code, since
-  free text gives no reliable signal for prefix-vs-suffix placement per
-  currency — don't try to special-case known symbols to prefix them
-  without a real reason to invest in that. Sorting the Amount table column
-  (`sortDocs()`) still sorts by the raw `amount` number only; there's no
-  currency-aware conversion, which is an accepted simplification for a
-  personal archive rather than an accounting tool.
+- **Amount, Currency, and Payment method used to be "sentinel" dynamic
+  fields with dedicated `documents` columns (`amount`/`currency`/
+  `payment_method`) and bespoke rendering — they're all plain rows in
+  `fields` now** (`migrateSentinelFieldsToGeneric()`, run once per library
+  open, idempotent by checking whether a `'Payment method'` row already
+  exists). This was a real architectural shift, not just a rename: the old
+  design made sense when this schema descended from Mariner's own
+  receipt-centric `ZRECEIPT` table (`payment_method`/`amount` came straight
+  from `ZRECEIPT.ZPAYMENTMETHOD`/`ZAMOUNT`, never through Mariner's generic
+  `ZCUSTOMITEM` system — confirmed directly in `migrate_to_new_library.py`),
+  but Document Studio itself isn't receipt-specific, so hardcoding them
+  stopped making sense. **Payment method is now a completely ordinary
+  field** — `renderPaymentFieldHtml()` is gone; it flows through
+  `renderGenericFieldHtml()` and `applyDynamicFieldsForType()`'s generic
+  per-field loop exactly like "Organization" would, with `show_as_column:1,
+  autocomplete:1` set by the migration so it keeps its table column/filter/
+  autocomplete (see the generalized column system below) without any
+  Payment-method-specific code anywhere. **Amount and Currency keep one
+  deliberate, narrow exception**: `show_as_column:0, autocomplete:0` (they
+  opt OUT of the generic column system), because their *table column and
+  detail-view line* stay intentionally combined into one "123.45 EUR"
+  display (`formatAmount()`, reading `d.customFields['Amount']`/`['Currency']`,
+  `parseFloat`'d since `document_field_values.value` is always text) rather
+  than becoming two independent columns. Their capture/edit form inputs,
+  however, are NOT specially paired anymore — each is a normal, independently-
+  positioned `renderGenericFieldHtml()` field with its own clear button;
+  the old side-by-side `.field-row` layout from `renderAmountFieldHtml()`
+  is gone. Two narrow exceptions specifically for the field named
+  `'Currency'` remain inside `renderGenericFieldHtml()` itself: it reuses
+  the long-standing `currency-list` datalist (rather than the generic
+  per-field `field-${id}-list` mechanism), and it still pre-fills from
+  `defaultCurrency` as a dismissible guess on capture (amber `.field-guess`
+  + hint, cleared on first `input`/`change`) — both are single `field.name
+  === 'Currency'` checks, not the general mechanism. **The value-preservation
+  correctness property is now free**: since all three fields flow through
+  the same `readDynamicFieldValues()`/`document_field_values` save loop and
+  `applyDynamicFieldsForType()`'s generic orphaned-field handling as any
+  other custom field, "reclassifying to a type where a field isn't
+  configured doesn't discard its value" falls out of existing, already-
+  tested generic-field code — no more `el('e-amount') ? ... : d.amount`-
+  style fallback needed anywhere.
+- **The one-time backfill (`migrateSentinelFieldsToGeneric()`) is the
+  first in-app data migration this codebase has ever had** (every prior
+  `SCHEMA_MIGRATIONS` entry was purely additive — `ALTER TABLE ... ADD
+  COLUMN`, no data movement). Called from both `initNewLibrary()` (so a
+  brand new library starts with Payment method/Amount/Currency pre-defined,
+  exactly as they were always implicitly available before — nothing to
+  backfill, just the field definitions) and `loadDb()` (so an existing
+  library's real `documents.payment_method`/`amount`/`currency` values get
+  copied into `document_field_values`). **Critical backward-compatibility
+  step**: for every existing `document_type_fields` row where `field_name
+  = 'Amount'`, it also inserts one for `field_name = 'Currency'` at the
+  same type if not already present — Currency previously had no
+  independent per-type configuration at all (it rode along with Amount
+  implicitly), so without this, every already-migrated library would
+  suddenly lose the ability to *edit* Currency for types that could edit
+  it before (display would still work, since display doesn't consult
+  `document_type_fields` — only the edit/capture forms do). The old
+  `documents.payment_method`/`amount`/`currency` columns are deliberately
+  **never dropped or cleared** after backfilling — left as permanently
+  unused, vestigial columns, matching this app's additive-only migration
+  philosophy and avoiding any risk of silent data loss if a backfill step
+  ever no-ops on some edge case. The sibling `migrate_to_new_library.py`
+  was deliberately left untouched (still writes directly to the old
+  columns) — this backfill runs on every library open regardless of how
+  the old-shape data got there, so a fresh Mariner migration gets promoted
+  to the generic system on first open in Document Studio exactly the same
+  as a library that's had Document Studio's own old sentinel-field code
+  write to it directly.
 - **`default_currency` (a `settings` row, exactly like `default_document_type`
   — `loadDefaultCurrency()`/`saveDefaultCurrency()`, configured via the same
   Field Settings modal) pre-fills new captures' Currency field as a
@@ -362,8 +388,9 @@ rather than being folded into it.
   anyone can grab, not code scoped to one person's library, so a fixed
   default would be silently wrong for anyone whose library isn't in that
   one currency, with no way to change it short of editing source. The
-  guess treatment itself (`renderAmountFieldHtml()`'s `isGuess = prefix
-  === 'f' && !existingCurrency && !!defaultCurrency`) mirrors the Date
+  guess treatment itself (`renderGenericFieldHtml()`'s `isCurrencyGuess =
+  isCurrency && prefix === 'f' && !existingValue && !!defaultCurrency`,
+  where `isCurrency = field.name === 'Currency'`) mirrors the Date
   field's today-default exactly: `.field-guess` amber styling + a
   dismissible `.field-guess-hint`, cleared on the first `input` or
   `change` event on the currency input (both, since — unlike Date —
@@ -373,43 +400,47 @@ rather than being folded into it.
   there is the document's real, saved state, not something to paper over.
 - **The detail view's header (`openDetail()`'s `modal-meta` block) shows
   Payment and Amount conditionally, not as always-present placeholder
-  lines.** `<b>Amount</b>` only appends onto the Date line when
-  `d.amount != null && d.amount !== 0`; the whole `<b>Payment</b>` line
-  only renders when `d.payment_method` is truthy. This intentionally
+  lines.** Computed just before the template string
+  (`amountForHeader`/`hasAmountForHeader`/`paymentMethodForHeader`, read
+  from `d.customFields` since both are plain generic fields now — see the
+  sentinel-fields note above): `<b>Amount</b>` only appends onto the Date
+  line when `hasAmountForHeader` is true; the whole `<b>Payment</b>` line
+  only renders when `paymentMethodForHeader` is truthy. This intentionally
   differs from Category/Type/Date/Imported/ID, which always show (with a
   `—` placeholder when empty) — those aren't newly-optional per-type
   fields the way Amount/Payment are, so an empty placeholder there is
   still informative, whereas an empty Payment/Amount line would just be
-  noise for a document whose type doesn't use them. If more fields
-  become sentinel/configurable like these two, apply the same
-  has-a-value-or-don't-show-it treatment rather than defaulting to an
-  always-shown placeholder line.
+  noise for a document whose type doesn't use them. The generic "Fields"
+  section further down explicitly excludes `'Amount'`/`'Currency'`/
+  `'Payment method'` from its own `Object.entries(d.customFields)` loop
+  (they'd otherwise now show up there too, duplicating the header line).
 - **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
   "orphaned" fields render** — a field with a real value in
-  `d.customFields`/`d.people`/`d.amount`/`d.payment_method` that isn't in
-  the current type's `document_type_fields` configuration (removed from
-  that type's setup after the fact, or the document was reclassified to a
-  type that never had it). Only the edit form passes `isEdit=true`;
-  capture never has pre-existing values to orphan in the first place, so
-  passing it there would be a no-op at best and confusing if it weren't.
-  Orphaned fields are appended after the normally-configured ones and
-  rendered with the same functions (`renderPeopleFieldHtml()` /
-  `renderAmountFieldHtml()` / `renderPaymentFieldHtml()` /
-  `renderGenericFieldHtml()`, each now taking a trailing `orphaned`
-  boolean) so they behave identically once on screen — same input types,
-  same `data-field-id`/`data-dynamic-field` attributes, same save-time
-  handling — the only difference is the `.field-orphaned` class and the
-  `.field-orphaned-hint` note. **This is deliberate: an orphaned field
-  needs to be exactly as editable/clearable as a configured one**, not a
-  special read-only or half-functional state, since the entire point is
-  giving someone the chance to actually fix or clear the data, not just
-  see that it exists. This falls out of the existing save logic
-  (`getShownFieldIds()`, the `d.amount`/`d.payment_method` fallback in
-  `saveEditedDocument()`) for free, precisely because orphaned fields use
-  the same rendering and the same DOM attributes as configured ones —
-  don't add separate handling for them in the save path; if saving ever
-  needs to special-case orphaned fields, something about this design has
-  gone wrong. Re-selecting a type mid-edit re-evaluates which fields are
+  `d.customFields`/`d.people` that isn't in the current type's
+  `document_type_fields` configuration (removed from that type's setup
+  after the fact, or the document was reclassified to a type that never
+  had it). Only the edit form passes `isEdit=true`; capture never has
+  pre-existing values to orphan in the first place, so passing it there
+  would be a no-op at best and confusing if it weren't. Orphaned fields
+  are appended after the normally-configured ones and rendered with the
+  same functions (`renderPeopleFieldHtml()` / `renderGenericFieldHtml()`,
+  each now taking a trailing `orphaned` boolean — Payment method, Amount,
+  and Currency are just entries in `d.customFields` now, so they fall into
+  this one generic loop automatically rather than needing their own
+  dedicated branches the way they used to) so they behave identically once
+  on screen — same input types, same `data-field-id`/`data-dynamic-field`
+  attributes, same save-time handling — the only difference is the
+  `.field-orphaned` class and the `.field-orphaned-hint` note. **This is
+  deliberate: an orphaned field needs to be exactly as editable/clearable
+  as a configured one**, not a special read-only or half-functional
+  state, since the entire point is giving someone the chance to actually
+  fix or clear the data, not just see that it exists. This falls out of
+  the existing save logic (`getShownFieldIds()`'s generic `[data-field-id]`
+  query) for free, precisely because orphaned fields use the same
+  rendering and the same DOM attributes as configured ones — don't add
+  separate handling for them in the save path; if saving ever needs to
+  special-case orphaned fields, something about this design has gone
+  wrong. Re-selecting a type mid-edit re-evaluates which fields are
   orphaned against the *original* document's persisted values (`d.*`),
   not whatever's currently typed into the form — switching types back
   and forth during a single edit session doesn't lose track of what the
@@ -482,17 +513,66 @@ rather than being folded into it.
   attribute — table headers, table cells (added fresh in every `render()`
   call, so `applyColumnVisibility()` runs again at the end of `render()`
   to reapply to the new cells), and the `<span class="filter-wrap">`
-  wrapping each filter `<select>`. If you add a new configurable field,
-  you need **all three**: an entry in `FIELD_DEFS`, a `data-field` on the
-  `<th>` (and matching `<td>` in `render()`'s row template), and — if it
-  has a filter — a `data-field`-wrapped `<span>` around its `<select>` in
-  the toolbar. Missing any one of these means the toggle silently does
+  wrapping each filter `<select>`. `FIELD_DEFS` only holds the fixed,
+  built-in columns (Category, Type, People, Date, Imported, Amount, Tags)
+  now — Payment method was removed from it and, since it's a plain
+  `fields` row with `show_as_column:1`, flows through `dynamicColumnDefs()`
+  instead: any field with `show_as_column` set gets appended as a dynamic
+  tail after the fixed ones, id `field-${id}`, everywhere `FIELD_DEFS` is
+  consulted (`[...FIELD_DEFS, ...dynamicColumnDefs()]` in
+  `loadColumnSettings()`/`renderColumnsMenu()`). `applyColumnVisibility()`
+  needed **no changes** to support this — it was already fully generic
+  (`[data-field]` query), which is exactly why the split works. Dynamic
+  `<th>`s are (re)built by `renderDynamicTableHead()` (called from
+  `renderColumnsMenu()`) by removing any previous `[data-dynamic-column]`
+  headers and appending fresh ones; there's deliberately **no per-header
+  click wiring** for these — sort-on-click is delegated once, on
+  `#doc-thead-row` itself (`e.target.closest('th[data-key]')`), specifically
+  so newly-appended dynamic headers sort correctly without needing to be
+  individually wired at creation time. `populateFilters()` similarly
+  rebuilds an entire `<span id="dynamic-filters">` container every call
+  (dynamic filters only for `show_as_column` fields where `hasFilter` is
+  true — i.e. `type === 'text' || type === 'checkbox'`; Number/Date fields
+  get a column but no filter dropdown, same reasoning as Date/Amount never
+  having had one: a dropdown listing every distinct number/date isn't
+  useful), and `currentFilters()`/`applyFilters()` read whatever dynamic
+  `<select>`s currently exist via `document.querySelectorAll('#dynamic-filters select')`
+  rather than named consts, so no code changes are needed as fields are
+  flagged/unflagged. `sortDocs()` has a `sortKey.startsWith('field-')`
+  branch: numeric compare for `type==='number'` fields, case-insensitive
+  string compare otherwise. `populateDatalists()` follows the identical
+  pattern for `autocomplete:1` text fields, rebuilding
+  `<div id="dynamic-datalists">` with one `<datalist id="field-${id}-list">`
+  per field; `renderGenericFieldHtml()` adds the matching `list=` attribute
+  when `field.autocomplete` is set. If you add a new *fixed* (non-field-
+  table) configurable column, you still need all three pieces the old note
+  described: an entry in `FIELD_DEFS`, a `data-field` on the `<th>` (and
+  matching `<td>`), and — if it has a filter — a `data-field`-wrapped
+  `<span>` in the toolbar; missing any one means the toggle silently does
   nothing for that piece. The preference itself is stored in
   `library.sqlite`'s `settings` table (`INSERT OR REPLACE`, not the
   `ON CONFLICT ... DO UPDATE` upsert syntax — deliberately, since upsert
   support depends on the SQLite version sql.js happens to bundle, and
   `INSERT OR REPLACE` has been supported forever), not browser storage —
   keep it that way so the preference travels with the library folder.
+- **Per-field capability checkboxes** (`toggleFieldCapability()`,
+  `capabilitiesHtml()`/`wireCapabilities()` shared helpers inside
+  `renderFieldSettingsFieldColumns()`) let a person flip a field's
+  `show_as_column`/`autocomplete` flags directly in Field Settings — two
+  small checkboxes ("Column", and "Autocomplete" for text-type fields
+  only) rendered next to the field's name. **Deliberately shown in BOTH
+  the Fields (available) and Display Fields (already-attached-to-this-type)
+  columns**, via the same shared `capabilitiesHtml()`/`wireCapabilities()`
+  helpers rather than only the Fields column — `show_as_column`/
+  `autocomplete` are properties of the field itself, independent of
+  `fsSelectedType`, so a field already attached to whichever type happens
+  to be selected still needs a reachable way to toggle its own flags; the
+  first version of this only rendered checkboxes in the Fields column and
+  a field attached to every type in the library would have had no way to
+  ever reach them. Not offered for `'People'` (not a `fields` row) or for
+  `'Amount'`/`'Currency'` by name (their flags are deliberately kept off —
+  see the sentinel-fields note above — so an editable checkbox that
+  visibly did nothing would just be confusing).
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's
@@ -641,7 +721,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **32
+There's a real, runnable Playwright regression suite in `tests/` — **34
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -650,25 +730,33 @@ not just the first), PDF page count display (capture/edit/detail, and its
 correct absence for image documents), searchable PDF generation,
 thumbnails/previews (generation and regeneration), generic custom fields
 (all four types), dynamic per-type field show/hide/reorder, Field Settings
-(add/remove/reorder fields per type, default document type), creating a
-brand new custom field inline from the capture/edit forms (visibility
-gating, reserved-name and duplicate-name rejection, attaching to the
-current type, and — the critical property — that it doesn't disturb
-values already typed into other fields on the same in-progress document),
-Amount/Payment as configurable sentinel fields (including the
-value-preservation-when-hidden correctness property), Currency as
-Amount's companion field (shared visibility, orphaned-together behavior,
-display formatting), Payment Date as a genuine migrated custom field, the
-detail view's conditional header, orphaned-field display and editability
-in the Edit dialog, every clear button, the sticky table header, the
-scan-hint toggle, the Libraries/licenses modal, sidecar file content, the
-Inbox review flow (banner visibility, add-one and add-all-with-defaults,
-the file moving from `inbox/` into `files/`, the banner disappearing once
-empty), and search across all of the above. This list itself can go
-stale — if you add a test, or a feature loses its test, update this
-paragraph in the same change; don't let this description silently drift
-the way it once did (an earlier version of this section described only
-two basic scenarios, long after the suite had grown well past that).
+(add/remove/reorder fields per type, default document type, the per-field
+Column/Autocomplete capability checkboxes), creating a brand new custom
+field inline from the capture/edit forms (visibility gating, reserved-name
+and duplicate-name rejection, attaching to the current type, and — the
+critical property — that it doesn't disturb values already typed into
+other fields on the same in-progress document), the generalized custom-
+field column/filter/sort/autocomplete system end-to-end on a fresh field
+(not just Payment method), the `migrateSentinelFieldsToGeneric()` backfill
+itself (an old-shape seeded library — `documents.payment_method`/`amount`/
+`currency` populated, no `fields` rows for any of the three — correctly
+promoted on open, including the `document_type_fields` Currency backfill
+and idempotency across a reopen), Payment method/Amount/Currency now
+flowing through the same generic-field machinery as any custom field
+(including the value-preservation-when-hidden correctness property, which
+now comes for free from the pre-existing generic mechanism rather than
+needing its own fallback code), Payment Date as a genuine migrated custom
+field, the detail view's conditional header, orphaned-field display and
+editability in the Edit dialog, every clear button, the sticky table
+header, the scan-hint toggle, the Libraries/licenses modal, sidecar file
+content, the Inbox review flow (banner visibility, add-one and
+add-all-with-defaults, the file moving from `inbox/` into `files/`, the
+banner disappearing once empty), and search across all of the above. This
+list itself can go stale — if you add a test, or a feature loses its test,
+update this paragraph in the same change; don't let this description
+silently drift the way it once did (an earlier version of this section
+described only two basic scenarios, long after the suite had grown well
+past that).
 Separately, and worth remembering: a single commit whose message described
 itself as a trivial doc-only rename ("Update references to renamed
 MarinerPaperlessTools repo") turned out, on closer inspection, to have
@@ -770,4 +858,4 @@ one-off worth leaving alone.
   file" promise this app is built around.
 - Preserve the visual language (dark "ink" background, phosphor-green
   accents, amber for capture/new-document actions) for consistency with the
-  sibling repo's `document_archive.html`, since people may use both.
+  sibling repo's `document_ledger.html`, since people may use both.
