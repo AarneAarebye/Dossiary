@@ -148,11 +148,27 @@ working" problem that motivated this project in the first place.
 
 ### Migrating from Mariner Paperless
 
-If you're coming from the discontinued Mariner Paperless app, use
-[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter)
-first — it's a one-time conversion script that reads a `.paperless` library
-and produces a `library.sqlite` + `files/` folder in the schema Document
+If you're coming from the discontinued Mariner Paperless app, first
+convert your library using one of the tools in the sibling
+[MarinerPaperlessExporter](https://github.com/AarneAarebye/MarinerPaperlessExporter)
+repo — a one-time conversion that reads a `.paperless` library and
+produces a `library.sqlite` + `files/` folder in the schema Document
 Studio expects. Point Document Studio at that output folder afterward.
+
+- **[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter#migrate_to_new_librarypy-migration-to-document-studio)** —
+  the underlying script, run from the Terminal. This is the single source
+  of truth for the actual migration logic; both GUIs below are thin
+  wrappers around this exact script, not separate implementations.
+- **[`migrate_gui.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter#migrate_guipy-desktop-app)** —
+  a small native desktop app (tkinter) if you'd rather not use the
+  Terminal: choose the folder your libraries live in, select which ones
+  to migrate, pick an output folder, click Migrate.
+- **[`migrate_web.py`](https://github.com/AarneAarebye/MarinerPaperlessExporter#migrate_webpy-browser-based-alternative)** —
+  the same thing as a local web page instead of a native window, for
+  anyone who'd rather use a browser tab.
+
+If you have several libraries to migrate, either GUI is likely more
+convenient than running the script by hand once per library.
 
 ## Database schema
 
