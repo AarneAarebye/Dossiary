@@ -12,6 +12,11 @@ test_output/
 *.documentwalletsql
 export.json
 
+# Playwright test fixtures generated at runtime by tests/*.py — regenerated
+# on every run, not meant to be committed
+tests/*.pdf
+tests/*.png
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
