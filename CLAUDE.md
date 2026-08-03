@@ -683,7 +683,20 @@ rather than being folded into it.
   though nothing stops a person from just dragging a file into that folder
   by hand) and this app never watches or polls it — `checkInbox()` only runs
   once, right after `afterDbReady()`, and again when the Inbox modal's
-  "Refresh" button is clicked. Turning a staged file into an actual document
+  "Refresh" button is clicked, or the toolbar's always-visible **"📥 Check
+  inbox" button** (`#inbox-check-btn`) is clicked, which calls `checkInbox()`
+  then immediately opens the modal. That toolbar button exists specifically
+  because the "Refresh" button and the banner's own "Review" button are only
+  reachable from inside/via the banner — which only reflects whatever
+  `checkInbox()` found the one time it runs automatically, at library-open.
+  Without a toolbar entry point, a file a watched-folder helper (e.g.
+  `scan_watch.py`) stages *after* someone already has the library open in
+  their browser (the normal way people actually use it — leaving the tab
+  open while scanning throughout the day) would have no visible way to be
+  noticed short of fully reopening the library. This is still a single
+  explicit click, not automatic polling — same "no silent writes" principle
+  as everything else in this section, just a second, always-available door
+  to the same `checkInbox()` call the banner already made once. Turning a staged file into an actual document
   always requires a click on "Add" or "Add all with defaults" inside this
   tab. An inbox-added document gets `source = 'scan-inbox'` (distinct from
   `'captured'` and `'migrated'`) and only two things set beyond the file
@@ -798,7 +811,10 @@ editability in the Edit dialog, every clear button, the sticky table
 header, the scan-hint toggle, the Libraries/licenses modal, sidecar file
 content, the Inbox review flow (banner visibility, add-one and
 add-all-with-defaults, the file moving from `inbox/` into `files/`, the
-banner disappearing once empty), `migrateTextFieldsAutocompleteDefault()`
+banner disappearing once empty, and the toolbar's "Check inbox" button
+surfacing a file staged after the library was already open, which the
+automatic once-at-open `checkInbox()` call alone would miss),
+`migrateTextFieldsAutocompleteDefault()`
 (a pre-existing text field's autocomplete flipped on by the one-time
 backfill, a newly-created inline text field defaulting to it immediately
 with no backfill needed, a newly-created inline number field correctly

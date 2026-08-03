@@ -127,6 +127,24 @@ async def main():
         banner_on_reopen = await page.locator('#inbox-banner').is_visible()
         print("banner visible on reopening an already-emptied library:", banner_on_reopen)
 
+        # === Scenario 5: a file staged (e.g. by scan_watch.py) *after* the library was
+        # already open doesn't show up on its own -- checkInbox() only runs once, right
+        # after the library opens (see afterDbReady()) -- but the always-visible
+        # "Check inbox" toolbar button lets someone notice it without fully reopening
+        # the library ===
+        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'late_arrival.pdf');")
+        banner_still_hidden = await page.locator('#inbox-banner').is_visible()
+        print("banner still hidden right after a late file is staged (no auto-poll):", not banner_still_hidden)
+
+        await page.click('#inbox-check-btn')
+        await page.wait_for_timeout(200)
+        late_row_count = await page.locator('#inbox-list .file-preview').count()
+        print("'Check inbox' opens the modal showing the late-arriving file:", late_row_count)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        banner_visible_after_check = await page.locator('#inbox-banner').is_visible()
+        print("banner now reflects it too, after the manual check:", banner_visible_after_check)
+
         print("JS errors:", errors)
         await browser.close()
 

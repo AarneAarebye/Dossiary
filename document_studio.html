@@ -222,6 +222,7 @@
       <div class="columns-menu" id="columns-menu" style="display:none;"></div>
     </div>
     <button id="manage-fields-btn">⚙ Manage fields</button>
+    <button id="inbox-check-btn">📥 Check inbox</button>
     <button class="accent" id="add-btn">＋ Add document</button>
     <button id="reload-btn">Switch library</button>
   </div>
@@ -2908,6 +2909,15 @@
   }
 
   el('inbox-review-btn').addEventListener('click', openInboxModal);
+  // Always-visible toolbar entry point to checkInbox() -- the banner above only
+  // reflects whatever checkInbox() found the one time it runs automatically
+  // (right after a library opens, see afterDbReady()), and the Inbox modal's own
+  // "Refresh" button is only reachable through that same banner. Without this,
+  // there was no way to notice files a watched-folder helper (e.g. scan_watch.py)
+  // staged *after* the library was already open, short of fully reopening it.
+  // Still a single explicit click, not automatic polling -- keeps the same
+  // "no silent writes" principle as everything else in this app.
+  el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); openInboxModal(); });
 
   resetAll();
 })();
