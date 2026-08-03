@@ -17,6 +17,7 @@ export.json
 # on every run, not meant to be committed
 tests/*.pdf
 tests/*.png
+tests/*.bin
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
