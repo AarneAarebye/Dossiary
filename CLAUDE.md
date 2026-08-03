@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (34 scripts) + shared
+tests/                   Playwright regression suite (35 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -308,7 +308,34 @@ rather than being folded into it.
   to at all; edit's rebuild always re-reads the original persisted
   `d.customFields`, discarding in-session edits, not what's currently on
   screen). Don't "simplify" this back to a full re-render without
-  preserving that distinction.
+  preserving that distinction. **A new Text-type field created this way
+  defaults to `autocomplete: 1`** (`const autocomplete = type === 'text' ? 1
+  : 0;` right before the `INSERT`) — it immediately gets the same
+  suggestions-dropdown behavior Category/Type/Payment method already have
+  (see `renderGenericFieldHtml()`/`populateDatalists()`), matching the
+  built-in fields' UX without an extra trip to Field Settings. Number/Date/
+  Checkbox fields get no such default — see
+  `migrateTextFieldsAutocompleteDefault()` below for why a distinct-values
+  dropdown doesn't suit those types.
+- **`migrateTextFieldsAutocompleteDefault()`** (called from both
+  `initNewLibrary()` and `loadDb()`, right after
+  `migrateSentinelFieldsToGeneric()`) is a one-time-per-library backfill
+  that flips `autocomplete` on for every already-existing Text-type field,
+  so a library created before this default existed gets the same
+  suggestions-dropdown UX a brand new custom text field gets automatically
+  now (see the note above). Deliberately Text-only, for the same reason
+  Amount/Date table columns never got filter dropdowns — a dropdown of
+  distinct values doesn't suit Number/Date, and Checkbox is already a
+  plain yes/no. **Tracked via an explicit `settings` row**
+  (`text_autocomplete_default_migrated`), not an implicit data-shape check
+  like `migrateSentinelFieldsToGeneric()` uses (`fieldNameToId['Payment
+  method'] !== undefined`) — unlike that migration, there's no reliable way
+  to tell "this field's autocomplete was never touched" apart from "a
+  person deliberately switched it back off in Field Settings" just by
+  looking at the `fields` table, since both look identical (`autocomplete =
+  0`). Running this unconditionally on every open would silently re-enable
+  a field someone had intentionally turned off; the explicit marker is what
+  makes it safe to call unconditionally instead.
 - **Amount, Currency, and Payment method used to be "sentinel" dynamic
   fields with dedicated `documents` columns (`amount`/`currency`/
   `payment_method`) and bespoke rendering — they're all plain rows in
@@ -751,7 +778,14 @@ editability in the Edit dialog, every clear button, the sticky table
 header, the scan-hint toggle, the Libraries/licenses modal, sidecar file
 content, the Inbox review flow (banner visibility, add-one and
 add-all-with-defaults, the file moving from `inbox/` into `files/`, the
-banner disappearing once empty), and search across all of the above. This
+banner disappearing once empty), `migrateTextFieldsAutocompleteDefault()`
+(a pre-existing text field's autocomplete flipped on by the one-time
+backfill, a newly-created inline text field defaulting to it immediately
+with no backfill needed, a newly-created inline number field correctly
+*not* getting it, and — the critical idempotency property — a field
+someone manually switches back off in Field Settings staying off across a
+reopen of the same already-migrated library), and search across all of the
+above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

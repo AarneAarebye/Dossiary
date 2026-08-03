@@ -727,6 +727,7 @@
       db = new SQL.Database();
       db.run(SCHEMA);
       migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
+      migrateTextFieldsAutocompleteDefault(); // no-op here (no text fields exist yet beyond the sentinels above), but marks this library as migrated
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
       await persistDb();
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
@@ -748,6 +749,7 @@
     db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
     applySchemaMigrations(); // adds any columns introduced after this library was created
     migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
+    migrateTextFieldsAutocompleteDefault(); // one-time; no-op if this library was already migrated
     await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
   }
@@ -1035,6 +1037,30 @@
     }
   }
 
+  // One-time-per-library switch: every text-type custom field gets Autocomplete
+  // turned on by default, the same suggestions-dropdown behavior Category/Type/
+  // Payment method already have (see renderGenericFieldHtml()/populateDatalists()).
+  // Previously this required an explicit trip to Field Settings' per-field
+  // checkbox, off by default -- new custom text fields created inline (see
+  // addInlineCustomField()) now default to it directly, and this backfills the
+  // same default for text fields that already existed before this change.
+  // Deliberately Text-only, matching every other autocomplete field in the app --
+  // a dropdown of distinct values doesn't suit Number/Date (no built-in field
+  // does this for them either, same reasoning Amount/Date table columns never
+  // got filter dropdowns) or Checkbox (already a plain yes/no).
+  // Runs only once, tracked via a dedicated settings row rather than an implicit
+  // data-shape check like migrateSentinelFieldsToGeneric() uses -- unlike that
+  // migration's "does a 'Payment method' row exist yet" test, there's no reliable
+  // way to tell "never touched" apart from "a person deliberately turned this
+  // field's Autocomplete back off" just by looking at the fields table, so running
+  // this more than once would silently undo that choice on every reopen.
+  function migrateTextFieldsAutocompleteDefault(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'text_autocomplete_default_migrated'").rows;
+    if(rows.length) return; // already run once for this library
+    db.run("UPDATE fields SET autocomplete = ? WHERE type = ?", [1, 'text']);
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('text_autocomplete_default_migrated', ?)", ['1']);
+  }
+
   function loadFieldValues(){
     fieldValuesByDocId = {};
     const idToField = Object.fromEntries(fieldDefs.map(f => [f.id, f]));
@@ -1303,8 +1329,16 @@
 
     const type = typeSelect.value;
     const id = nextFieldId++;
-    db.run('INSERT INTO fields (id, name, type) VALUES (?, ?, ?)', [id, name, type]);
-    fieldDefs.push({ id, name, type });
+    // Text fields default to Autocomplete on, same as Category/Type/Payment method --
+    // matches migrateTextFieldsAutocompleteDefault()'s "new custom text fields behave
+    // like the built-in ones" intent. Number/Date/Checkbox get no such default; a
+    // dropdown of distinct values doesn't make sense for them (see that function's
+    // own comment for why -- same reasoning Amount/Date table columns never got
+    // filter dropdowns either).
+    const autocomplete = type === 'text' ? 1 : 0;
+    db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)',
+      [id, name, type, 0, autocomplete]);
+    fieldDefs.push({ id, name, type, showAsColumn: false, autocomplete: !!autocomplete });
     fieldNameToId[name] = id;
 
     const entries = (typeFieldOrder[typeName] || []).slice();

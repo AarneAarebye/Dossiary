@@ -104,7 +104,7 @@ class FakeDatabase {
       const table = updateMatch[1];
       const assignments = updateMatch[2].split(',').map(s => s.trim());
       const whereCol = updateMatch[3];
-      // last param is the WHERE id; the rest are the SET values in order
+      // last param is the WHERE value; the rest are the SET values in order
       const whereVal = params[params.length - 1];
       const setParams = params.slice(0, params.length - 1);
       let paramIdx = 0;
@@ -113,8 +113,12 @@ class FakeDatabase {
         const col = assignment.split('=')[0].trim();
         updates[col] = setParams[paramIdx++];
       }
-      const row = this.tables[table].find(r => r[whereCol] === whereVal);
-      if (row) Object.assign(row, updates);
+      // Real SQL updates every matching row, not just the first -- e.g.
+      // "UPDATE fields SET autocomplete = ? WHERE type = ?" is expected to touch
+      // every text-type field, not just whichever one happens to be first in the
+      // table, so this matches all rows rather than .find()-ing a single one.
+      const rows = this.tables[table].filter(r => r[whereCol] === whereVal);
+      for (const row of rows) Object.assign(row, updates);
       return;
     }
 
