@@ -96,6 +96,20 @@ def main():
     inbox_dir = args.library / 'inbox'
     inbox_dir.mkdir(parents=True, exist_ok=True)
 
+    # If --drop-folder and the library's own inbox/ are the same directory,
+    # stage_stable_files() would move each file "into" the folder it's already
+    # in, see it there again on the very next poll, and stage it again --
+    # forever, piling up _1_1_1... collision suffixes on the same file. resolve()
+    # first so this catches the mistake even via a relative path, a trailing
+    # slash, or a symlink, not just a literal identical string.
+    if args.drop_folder.resolve() == inbox_dir.resolve():
+        sys.exit(
+            f"--drop-folder and the library's inbox/ folder are the same directory ({inbox_dir}).\n"
+            "Point --drop-folder at wherever your scan software saves finished files "
+            "(e.g. ScanSnap Home's save-to-folder destination) -- not at the library "
+            "folder or its inbox/ subfolder itself."
+        )
+
     log(f"Watching {args.drop_folder} -> {inbox_dir}")
     try:
         while True:
