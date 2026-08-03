@@ -233,13 +233,24 @@ rather than being folded into it.
   a right one, for anyone working through a backlog of older documents.
 - **`wireClearButton(inputId, clearBtnId)`** is a small, generic helper,
   wired to Category, Subcategory, Document Type, Payment method, People,
-  Tags, and Amount in both forms (`f-*`/`e-*` + matching `*-clear`
-  button) — clears an input and refocuses it, dispatching a real `change`
-  event so whatever listener is already on the input (Document Type's
-  `applyDynamicFieldsForType()` being the one that actually depends on
-  this) fires exactly as it would from a manual edit. Works the same for
-  plain fields with no such listener (Amount, Category) — the dispatched
-  event is just a no-op there. **The People field is a special case**:
+  Tags, Amount, and the toolbar's own search box in both forms (`f-*`/`e-*`
+  + matching `*-clear` button) — clears an input and refocuses it,
+  dispatching both a real `input` **and** `change` event, so whatever
+  listener is already on the input fires exactly as it would from a manual
+  edit regardless of which of the two it happens to listen for (Document
+  Type's `applyDynamicFieldsForType()` listens for `change`; the search box
+  listens for `input`, so results update live while typing, not just on
+  blur — dispatching only one or the other would leave one of these two
+  silently stale after a clear). Works the same for plain fields with no
+  such listener (Amount, Category) — the dispatched events are just a
+  no-op there. The search box's clear button (`#search-clear`, wrapped in
+  the same `.field-with-clear`/`.clear-btn` markup as any other field, via
+  a dedicated `.search-wrap` class carrying the toolbar's own
+  `flex:1 1 240px` sizing since `.field-with-clear` itself has none) is
+  wired with a plain one-off `wireClearButton('search', 'search-clear')`
+  call — unlike the per-document-field ones, it isn't rebuilt per type
+  change, so it doesn't need the People field's re-wire-after-rebuild
+  treatment. **The People field is a special case**:
   since it's rendered dynamically inside `renderPeopleFieldHtml()`
   (rebuilt from scratch on every document-type change, not a fixed DOM
   element), its clear button has to be re-wired every time that HTML is

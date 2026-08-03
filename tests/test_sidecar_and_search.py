@@ -76,6 +76,18 @@ async def main():
         rows_no_match = await page.locator('#doc-tbody tr').count()
         print("rows found searching gibberish (should be 0):", rows_no_match)
 
+        # === Search box's own clear ("x") button empties it AND re-filters
+        # immediately -- wireClearButton() dispatches 'input' now (not just
+        # 'change'), since that's the event the search box's own listener uses ===
+        await page.click('#search-clear')
+        await page.wait_for_timeout(150)
+        search_value_after_clear = await page.input_value('#search')
+        rows_after_clear = await page.locator('#doc-tbody tr').count()
+        focused_after_clear = await page.evaluate('document.activeElement.id')
+        print("search value after clicking clear (should be empty):", repr(search_value_after_clear))
+        print("rows restored after clearing search (should be 1):", rows_after_clear)
+        print("focus returned to the search input:", focused_after_clear == 'search')
+
         print("JS ERRORS:", errors)
         await browser.close()
 

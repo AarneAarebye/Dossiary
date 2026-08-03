@@ -29,7 +29,8 @@
   .stat b{ color:var(--phosphor); font-size:15px; display:block; font-weight:600; }
 
   .toolbar{ padding:16px 32px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  .search{ flex:1 1 240px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
+  .search-wrap{ flex:1 1 240px; }
+  .search{ width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
   .search:focus{ border-color:var(--phosphor-dim); box-shadow:0 0 0 3px rgba(79,224,166,0.08); }
   select{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 10px; border-radius:var(--radius); outline:none; }
   .show-archived-toggle{ display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); cursor:pointer; user-select:none; white-space:nowrap; }
@@ -209,7 +210,10 @@
   </header>
 
   <div class="toolbar" id="toolbar" style="display:none;">
-    <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
+    <div class="search-wrap field-with-clear">
+      <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
+      <button type="button" class="clear-btn" id="search-clear" title="Clear" aria-label="Clear search">✕</button>
+    </div>
     <span class="filter-wrap" data-field="category"><select id="category-filter"><option value="">All categories</option></select></span>
     <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
     <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
@@ -447,6 +451,11 @@
     if(!btn || !input) return;
     btn.addEventListener('click', () => {
       input.value = '';
+      // Dispatch both -- every other field this is wired to listens on 'change'
+      // (e.g. Document Type's applyDynamicFieldsForType()), but the search box
+      // listens on 'input' (so results update as you type, not just on blur), so
+      // both need to fire for this one generic helper to correctly cover either.
+      input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
       input.focus();
     });
@@ -1623,6 +1632,7 @@
   }
 
   searchInput.addEventListener('input', render);
+  wireClearButton('search', 'search-clear');
   categoryFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
