@@ -91,42 +91,6 @@
   .status{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:0 32px 10px; min-height:16px; }
   .status.err{ color:var(--red); } .status.ok{ color:var(--phosphor); } .status.busy{ color:var(--amber); }
 
-  /* carousel preview -- a Cover Flow-style 3D strip mirroring the table's current
-     filter/sort/search, sitting above it. Only the thumbnail (.cf-thumb-wrap) gets
-     the 3D rotateY/scale transform; .cf-meta is a plain sibling next to it so text
-     always stays flat and legible, never skewed by the perspective. */
-  .carousel-wrap{ padding:20px 32px 4px; border-bottom:1px solid var(--line); }
-  .carousel-stage{
-    position:relative; height:220px; perspective:1100px; overflow:hidden;
-  }
-  .carousel-track{ position:relative; width:100%; height:100%; }
-  .cf-card{
-    position:absolute; top:50%; display:flex; align-items:center; gap:10px;
-    transform:translate(-50%,-50%); transition:left .35s ease, opacity .35s ease; cursor:pointer;
-  }
-  .cf-thumb-wrap{
-    width:92px; height:120px; flex-shrink:0; border-radius:var(--radius); border:1px solid var(--line);
-    background:var(--ink-2); overflow:hidden; transition:transform .35s ease; box-shadow:0 10px 22px rgba(0,0,0,0.45);
-  }
-  .cf-thumb-wrap img{ width:100%; height:100%; object-fit:cover; display:block; }
-  .cf-thumb-empty{
-    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-mono); font-size:9px; color:var(--text-dim); text-align:center; padding:6px;
-  }
-  .cf-card.cf-center .cf-thumb-wrap{ box-shadow:0 14px 30px rgba(0,0,0,0.55), 0 0 0 1px var(--phosphor-dim); }
-  .cf-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); line-height:1.65; white-space:nowrap; }
-  .cf-meta b{ color:var(--text); font-weight:500; }
-  .cf-card.cf-center .cf-meta{ font-size:13px; color:var(--text); }
-  .cf-card.cf-center .cf-meta b{ color:var(--phosphor); }
-  .carousel-caption{ text-align:center; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); margin-top:6px; min-height:16px; }
-  .carousel-nav{
-    position:absolute; top:50%; transform:translateY(-50%); z-index:20; width:32px; height:32px;
-    border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; font-size:13px;
-  }
-  .carousel-prev{ left:6px; } .carousel-next{ right:6px; }
-  .carousel-scrubber{ width:100%; margin:8px 0 2px; accent-color:var(--phosphor); background:transparent; cursor:pointer; }
-  @media (max-width:640px){ .carousel-wrap{ padding:16px 16px 4px; } .carousel-stage{ height:170px; } }
-
   .inbox-banner{
     margin:0 32px 14px; padding:12px 16px; border:1px solid var(--amber-dim); border-radius:var(--radius);
     background:rgba(217,154,63,0.08); display:flex; align-items:center; justify-content:space-between;
@@ -285,16 +249,6 @@
 
   <div class="count-line" id="count-line" style="display:none;"></div>
 
-  <div class="carousel-wrap" id="carousel-wrap" style="display:none;">
-    <div class="carousel-stage" id="carousel-stage">
-      <button class="carousel-nav carousel-prev" id="carousel-prev" aria-label="Previous document">&#10094;</button>
-      <div class="carousel-track" id="carousel-track"></div>
-      <button class="carousel-nav carousel-next" id="carousel-next" aria-label="Next document">&#10095;</button>
-    </div>
-    <div class="carousel-caption" id="carousel-caption"></div>
-    <input type="range" class="carousel-scrubber" id="carousel-scrubber" min="0" max="0" value="0" aria-label="Scrub through documents" />
-  </div>
-
   <div class="table-wrap" id="table-wrap" style="display:none;">
     <table id="doc-table">
       <thead>
@@ -451,15 +405,6 @@
   let pendingOcrWords = null;      // flat array of {text, bbox:{x0,y0,x1,y1}} from Tesseract, or null if no OCR run
   let pendingImageDims = null;     // {width, height} in pixels of the picked image, or null for non-images
 
-  // Cover Flow-style carousel above the table (see renderCarousel()). Mirrors
-  // whatever render() currently has filtered/sorted, but navigating it (prev/next,
-  // scrubbing, clicking a side card) only re-renders the carousel itself, not the
-  // whole table -- important since a library can have thousands of documents.
-  let carouselCenterDocId = null; // doc id currently centered; null until the first render
-  let lastSortedDocs = [];        // the filtered+sorted list from the last render(), reused by carousel nav
-  let carouselObjectUrls = [];    // thumbnail object URLs currently shown, revoked on every rebuild
-  let carouselRenderGen = 0;      // guards a slow async thumbnail load from clobbering a newer render
-
   const el = (id) => document.getElementById(id);
   const statusEl = el('status');
   const subLabel = el('sub-label');
@@ -474,12 +419,6 @@
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
-  const carouselWrap = el('carousel-wrap');
-  const carouselTrack = el('carousel-track');
-  const carouselCaption = el('carousel-caption');
-  const carouselScrubber = el('carousel-scrubber');
-  const carouselPrevBtn = el('carousel-prev');
-  const carouselNextBtn = el('carousel-next');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -829,11 +768,8 @@
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
-    carouselCenterDocId = null; lastSortedDocs = [];
-    carouselObjectUrls.forEach(u => URL.revokeObjectURL(u)); carouselObjectUrls = [];
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
-    carouselWrap.style.display = 'none';
     el('inbox-banner').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
   }
@@ -916,7 +852,6 @@
 
     toolbar.style.display = 'flex';
     tableWrap.style.display = 'block';
-    carouselWrap.style.display = 'block';
     subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
     loadColumnSettings();
     loadDefaultDocumentType();
@@ -1634,153 +1569,7 @@
     document.querySelectorAll('thead th[data-key]').forEach(th => th.classList.toggle('active', th.dataset.key === sortKey));
     tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openDetail(Number(tr.dataset.id))));
     applyColumnVisibility();
-
-    lastSortedDocs = sorted;
-    renderCarousel(sorted);
   }
-
-  // --- carousel preview (Cover Flow-style strip above the table) ---
-
-  // Builds one card's markup for a given horizontal offset from the centered
-  // document (0 = center). Only .cf-thumb-wrap gets the 3D transform (see
-  // cfThumbTransform()) -- .cf-meta is a plain flex sibling, so its text is never
-  // rotated/skewed, just positioned next to the thumbnail.
-  function cfCardHtml(doc, offset){
-    const dist = Math.abs(offset);
-    const isCenter = offset === 0;
-
-    // Meta detail scales down with distance so text from one card never collides
-    // with a neighbor's thumbnail: full detail at center, just title+date one card
-    // out, and no text at all (thumbnail only) two cards out.
-    let rows = [];
-    if(dist <= 1){
-      const amountVal = parseFloat((doc.customFields || {})['Amount']);
-      const hasAmount = !isNaN(amountVal) && amountVal !== 0;
-      rows = [['Title', displayName(doc)], ['Date', formatDate(doc.date)]];
-      if(isCenter){
-        if(doc.category) rows.push(['Category', doc.category]);
-        if(doc.subcategory) rows.push(['Sub Category', doc.subcategory]);
-        if(doc.document_type) rows.push(['Type', doc.document_type]);
-        if(hasAmount) rows.push(['Amount', formatAmount(doc)]);
-        if((doc.people || []).length) rows.push(['Person', doc.people.join(', ')]);
-        const paymentMethod = (doc.customFields || {})['Payment method'];
-        if(paymentMethod) rows.push(['Payment', paymentMethod]);
-        // A couple of the document's own generic custom fields, opportunistically --
-        // deliberately not a hardcoded field name (e.g. "Organization"), since custom
-        // fields are fully generic and library-specific (see CLAUDE.md).
-        const extra = Object.entries(doc.customFields || {})
-          .filter(([name]) => !['Amount', 'Currency', 'Payment method'].includes(name))
-          .slice(0, 2);
-        for(const [name, value] of extra){
-          if(value != null && value !== '') rows.push([name, formatCustomFieldValue(name, value)]);
-        }
-      }
-    }
-
-    return `
-      <div class="cf-card${isCenter ? ' cf-center' : ''}" data-doc-id="${doc.id}" style="left:calc(50% + ${cfOffsetPx(offset)}px); z-index:${10 - dist * 2}; opacity:${cfOpacity(dist)};">
-        <div class="cf-thumb-wrap" data-doc-id="${doc.id}" style="transform:${cfThumbTransform(offset)};">
-          <div class="cf-thumb-empty">${doc.thumbnail_path ? 'Loading…' : 'No preview'}</div>
-        </div>
-        ${rows.length ? `<div class="cf-meta">${rows.map(([label, value]) => `<div><b>${escapeHtml(label)}</b> ${escapeHtml(String(value))}</div>`).join('')}</div>` : ''}
-      </div>
-    `;
-  }
-
-  function cfOffsetPx(offset){
-    if(offset === 0) return 0;
-    const sign = offset < 0 ? -1 : 1;
-    const dist = Math.abs(offset);
-    return sign * (150 + (dist - 1) * 120);
-  }
-  function cfThumbTransform(offset){
-    if(offset === 0) return 'rotateY(0deg) scale(1)';
-    const angle = offset < 0 ? 38 : -38;
-    const scale = 1 - Math.abs(offset) * 0.16;
-    return `rotateY(${angle}deg) scale(${scale})`;
-  }
-  function cfOpacity(dist){ return dist === 0 ? 1 : dist === 1 ? 0.75 : 0.4; }
-
-  // Only re-renders the carousel strip itself, not the table -- called both from
-  // render() (filters/search/sort changed) and directly from the carousel's own
-  // nav/scrubber/card-click handlers, so browsing the carousel on a library with
-  // thousands of documents never re-renders the whole table for nothing.
-  async function renderCarousel(docs){
-    if(!docs.length){
-      carouselCenterDocId = null;
-      carouselTrack.innerHTML = '';
-      carouselCaption.textContent = 'No documents match the current filters.';
-      carouselScrubber.min = 0; carouselScrubber.max = 0; carouselScrubber.value = 0;
-      carouselPrevBtn.disabled = true; carouselNextBtn.disabled = true;
-      return;
-    }
-
-    let idx = docs.findIndex(d => d.id === carouselCenterDocId);
-    if(idx === -1) idx = 0;
-    carouselCenterDocId = docs[idx].id;
-
-    const myGen = ++carouselRenderGen;
-
-    carouselObjectUrls.forEach(u => URL.revokeObjectURL(u));
-    carouselObjectUrls = [];
-
-    const WINDOW = 2;
-    const visible = [];
-    for(let o = -WINDOW; o <= WINDOW; o++){
-      const doc = docs[idx + o];
-      if(doc) visible.push({ doc, offset: o });
-    }
-
-    carouselTrack.innerHTML = visible.map(({ doc, offset }) => cfCardHtml(doc, offset)).join('');
-    carouselTrack.querySelectorAll('.cf-card').forEach(cardEl => {
-      cardEl.addEventListener('click', () => {
-        const docId = Number(cardEl.dataset.docId);
-        if(docId === carouselCenterDocId) openDetail(docId);
-        else{ carouselCenterDocId = docId; renderCarousel(lastSortedDocs); }
-      });
-    });
-
-    carouselScrubber.min = 0;
-    carouselScrubber.max = docs.length - 1;
-    carouselScrubber.value = idx;
-    carouselPrevBtn.disabled = idx <= 0;
-    carouselNextBtn.disabled = idx >= docs.length - 1;
-    carouselCaption.textContent = `${displayName(docs[idx])} — ${formatDate(docs[idx].date)} (${idx + 1} of ${docs.length})`;
-
-    for(const { doc } of visible){
-      if(!doc.thumbnail_path) continue;
-      try{
-        const fh = await resolveFileHandle(doc.thumbnail_path, false);
-        const file = await fh.getFile();
-        if(myGen !== carouselRenderGen) return; // a newer render superseded this one -- discard
-        const url = URL.createObjectURL(file);
-        carouselObjectUrls.push(url);
-        const slot = carouselTrack.querySelector(`.cf-thumb-wrap[data-doc-id="${doc.id}"]`);
-        if(slot) slot.innerHTML = `<img src="${url}" alt="Document preview" />`;
-      }catch(e){
-        if(myGen !== carouselRenderGen) return;
-        const slot = carouselTrack.querySelector(`.cf-thumb-wrap[data-doc-id="${doc.id}"]`);
-        if(slot) slot.innerHTML = `<div class="cf-thumb-empty">Preview missing</div>`;
-      }
-    }
-  }
-
-  function cfStep(delta){
-    if(!lastSortedDocs.length) return;
-    let idx = lastSortedDocs.findIndex(d => d.id === carouselCenterDocId);
-    if(idx === -1) idx = 0;
-    idx = Math.max(0, Math.min(lastSortedDocs.length - 1, idx + delta));
-    carouselCenterDocId = lastSortedDocs[idx].id;
-    renderCarousel(lastSortedDocs);
-  }
-  carouselPrevBtn.addEventListener('click', () => cfStep(-1));
-  carouselNextBtn.addEventListener('click', () => cfStep(1));
-  carouselScrubber.addEventListener('input', () => {
-    const idx = Number(carouselScrubber.value);
-    if(!lastSortedDocs[idx]) return;
-    carouselCenterDocId = lastSortedDocs[idx].id;
-    renderCarousel(lastSortedDocs);
-  });
 
   searchInput.addEventListener('input', render);
   categoryFilter.addEventListener('change', render);

@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (35 scripts) + shared
+tests/                   Playwright regression suite (34 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -178,42 +178,6 @@ rather than being folded into it.
   library and its worker script **must be the exact same pinned CDN
   version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
   mismatch, so don't update one without the other.
-- **The Cover Flow-style carousel** (`renderCarousel()`, `#carousel-wrap`,
-  `cfCardHtml()`/`cfOffsetPx()`/`cfThumbTransform()`/`cfOpacity()`) sits above
-  the table and always mirrors whatever `render()` currently has
-  filtered/sorted/searched — it reads the same `sorted` array `render()`
-  already computed (cached in `lastSortedDocs`), it doesn't run its own
-  independent query. **Deliberately only mounts a small window of DOM nodes
-  (2 cards either side of center, 5 total) rather than every filtered
-  document** — this app explicitly has to work for libraries with thousands
-  of documents (see the Document previews note above), so a real Cover Flow
-  that mounts one element per document was never on the table. Navigating it
-  (prev/next buttons, dragging the scrubber, clicking a side card to bring it
-  to center) calls `renderCarousel(lastSortedDocs)` directly, **not** the
-  full `render()`, specifically so browsing the carousel never re-renders
-  the whole table. Only `.cf-thumb-wrap` gets the 3D `rotateY`/`scale`
-  transform (`cfThumbTransform()`); `.cf-meta` is a plain flex sibling next
-  to it, deliberately never rotated, so metadata text always stays flat and
-  legible — an earlier version rotated the whole card as one unit and the
-  text became hard to read at an angle. Metadata detail is scaled back with
-  distance from center (full detail at center, title+date one card out, no
-  text at all two cards out, thumbnail only) — an earlier version showed the
-  same detail at every distance and adjacent cards' text visibly collided
-  with the next card's thumbnail. Center-card metadata opportunistically
-  includes up to two of the document's own custom fields (via
-  `Object.entries(doc.customFields)`, excluding Amount/Currency/Payment
-  method) — deliberately not a hardcoded field name like `'Organization'`,
-  since custom fields are fully generic and library-specific (see the
-  generic custom fields note below); don't add a specific field name here
-  from assumption. A document with no `thumbnail_path` shows a plain "No
-  preview" placeholder card, exactly like `render()`'s table row would —
-  this never triggers `generateThumbnail()` itself, consistent with the
-  "no automatic bulk preview generation" rule above. Async thumbnail loads
-  (`resolveFileHandle()` + `URL.createObjectURL()`) are guarded by a
-  `carouselRenderGen` counter so a slow load from a superseded render can't
-  clobber a newer one's DOM after the user has already navigated on.
-  Clicking the center card opens the same `openDetail()` modal a table row
-  click does; clicking a side card recenters the carousel on it instead.
 - **Dynamic per-type fields** (`typeFieldOrder`, `loadTypeFieldOrder()`,
   `applyDynamicFieldsForType()`, `renderGenericFieldHtml()`,
   `renderPeopleFieldHtml()`) fully rebuild the capture/edit forms'
@@ -787,11 +751,7 @@ editability in the Edit dialog, every clear button, the sticky table
 header, the scan-hint toggle, the Libraries/licenses modal, sidecar file
 content, the Inbox review flow (banner visibility, add-one and
 add-all-with-defaults, the file moving from `inbox/` into `files/`, the
-banner disappearing once empty), the Cover Flow-style carousel above the
-table (mirroring the table's own filter/search, prev/next/scrubber/side-card
-navigation without re-rendering the table, the no-thumbnail placeholder
-card, and clicking the center card opening the same detail modal as a table
-row), and search across all of the above. This
+banner disappearing once empty), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
