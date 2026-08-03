@@ -28,6 +28,7 @@ document_studio.html   The entire app (single file: HTML + CSS + JS)
 scan_watch.py            Standalone watched-folder helper -- see its own note below
 README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
+CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
 tests/                   Playwright regression suite (36 scripts) + shared

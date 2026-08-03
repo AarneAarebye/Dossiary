@@ -465,12 +465,12 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (34
+There's a real, runnable Playwright regression suite in `tests/` (36
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
 the stubbing approach works, if you're making changes and want to verify
-them the same way.
+them the same way. See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
 
 ## Third-party libraries
 
