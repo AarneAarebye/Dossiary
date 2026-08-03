@@ -10,6 +10,7 @@ output/
 test_output/
 *.paperless/
 *.documentwalletsql
+tests/*.sqlite
 export.json
 
 # Playwright test fixtures generated at runtime by tests/*.py — regenerated
