@@ -32,6 +32,8 @@
   .search{ flex:1 1 240px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
   .search:focus{ border-color:var(--phosphor-dim); box-shadow:0 0 0 3px rgba(79,224,166,0.08); }
   select{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 10px; border-radius:var(--radius); outline:none; }
+  .show-archived-toggle{ display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); cursor:pointer; user-select:none; white-space:nowrap; }
+  .show-archived-toggle input{ accent-color:var(--phosphor); cursor:pointer; }
   .columns-menu-wrap{ position:relative; }
   .columns-menu{
     position:absolute; top:calc(100% + 6px); right:0; background:var(--panel); border:1px solid var(--line);
@@ -84,6 +86,7 @@
   .pill{ display:inline-block; font-family:var(--font-mono); font-size:10.5px; padding:2px 8px; border-radius:20px; border:1px solid var(--line); color:var(--text-dim); margin:1px 4px 1px 0; }
   .pill.type{ border-color:var(--phosphor-dim); color:var(--phosphor); }
   .pill.captured{ border-color:var(--amber-dim); color:var(--amber); }
+  .pill.archived{ border-color:var(--red); color:var(--red); }
   .amount{ font-family:var(--font-mono); color:var(--amber); }
   .date{ font-family:var(--font-mono); color:var(--text-dim); font-size:12px; white-space:nowrap; }
   .id{ font-family:var(--font-mono); color:var(--text-dim); font-size:11px; }
@@ -211,6 +214,9 @@
     <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
     <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
     <span id="dynamic-filters"></span>
+    <label class="show-archived-toggle" id="show-archived-wrap">
+      <input type="checkbox" id="show-archived-toggle" /> Show archived
+    </label>
     <div class="columns-menu-wrap">
       <button id="columns-btn">⚙ Columns</button>
       <div class="columns-menu" id="columns-menu" style="display:none;"></div>
@@ -292,7 +298,8 @@
       id INTEGER PRIMARY KEY, title TEXT, category TEXT, subcategory TEXT, document_type TEXT,
       payment_method TEXT, amount REAL, currency TEXT, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
-      created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT
+      created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
+      archived INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -328,6 +335,7 @@
     'ALTER TABLE documents ADD COLUMN currency TEXT',
     'ALTER TABLE fields ADD COLUMN show_as_column INTEGER DEFAULT 0',
     'ALTER TABLE fields ADD COLUMN autocomplete INTEGER DEFAULT 0',
+    'ALTER TABLE documents ADD COLUMN archived INTEGER DEFAULT 0',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -419,6 +427,7 @@
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
+  const showArchivedToggle = el('show-archived-toggle');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -790,7 +799,7 @@
     // live in customFields (via document_field_values) like any other custom field.
     const { columns, rows } = queryAll(`
       SELECT id, title, category, subcategory, document_type, date, import_date, notes,
-             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived
       FROM documents
     `);
     const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -845,6 +854,7 @@
         file_path: row[idx.file_path], original_file_path: row[idx.original_file_path],
         created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
         thumbnail_path: row[idx.thumbnail_path],
+        archived: !!row[idx.archived],
         customFields: fieldValuesByDocId[id] || {}, // { "Organization": "Dr. Schröter", "Paid": "1", ... }
         tags: tagsByDocId[id] || [],
         people: peopleByDocId[id] || [],
@@ -1521,11 +1531,17 @@
     const dynamic = [...document.querySelectorAll('#dynamic-filters select')]
       .map(sel => ({ label: sel.dataset.fieldLabel, value: sel.value }))
       .filter(f => f.value);
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, dynamic };
+    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, showArchived: showArchivedToggle.checked, dynamic };
   }
   function applyFilters(docs){
-    const { q, category, type, person, dynamic } = currentFilters();
+    const { q, category, type, person, showArchived, dynamic } = currentFilters();
     return docs.filter(d => {
+      // Archived documents are hidden from the default view -- "no longer needed"
+      // but not deleted, so they don't clutter the table/search until someone
+      // deliberately checks "Show archived". Checked first, before every other
+      // filter, so an archived document never leaks into a category/search match
+      // by accident.
+      if(d.archived && !showArchived) return false;
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
@@ -1584,7 +1600,7 @@
       <tr data-id="${d.id}">
         <td>
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
-          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : d.source === 'scan-inbox' ? ' · <span class="pill captured">from inbox</span>' : ''}</div>
+          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : d.source === 'scan-inbox' ? ' · <span class="pill captured">from inbox</span>' : ''}${d.archived ? ' · <span class="pill archived">archived</span>' : ''}</div>
         </td>
         <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
         <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
@@ -1609,6 +1625,7 @@
   categoryFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
+  showArchivedToggle.addEventListener('change', render);
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1681,6 +1698,7 @@
     if(d.original_file_path) actions.push(`<button id="open-original-btn">Open original file</button>`);
     actions.push(`<button id="edit-doc-btn">Edit</button>`);
     actions.push(`<button id="regen-thumb-btn">${d.thumbnail_path ? 'Regenerate' : 'Generate'} preview</button>`);
+    actions.push(`<button id="archive-toggle-btn">${d.archived ? 'Unarchive' : 'Archive'}</button>`);
 
     let thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">No preview yet</div>`;
     if(d.thumbnail_path){
@@ -1771,6 +1789,22 @@
     }
     el('edit-doc-btn').addEventListener('click', () => openEditForm(id));
     el('regen-thumb-btn').addEventListener('click', () => regenerateThumbnail(id));
+    el('archive-toggle-btn').addEventListener('click', () => toggleArchived(id));
+  }
+
+  // Archiving is a reversible "no longer needed" flag, not deletion -- there is no
+  // delete feature in this app at all. An archived document is simply hidden from
+  // the default table/search view (see applyFilters()'s showArchived check) until
+  // someone checks "Show archived" in the toolbar; nothing about the document's
+  // own data changes.
+  async function toggleArchived(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!d) return;
+    d.archived = !d.archived;
+    db.run('UPDATE documents SET archived = ? WHERE id = ?', [d.archived ? 1 : 0, id]);
+    await persistDb();
+    render();
+    openDetail(id); // refresh the modal so the button now reads Archive/Unarchive correctly
   }
 
   async function regenerateThumbnail(id){

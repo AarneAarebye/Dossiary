@@ -30,7 +30,7 @@ README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (35 scripts) + shared
+tests/                   Playwright regression suite (36 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -534,6 +534,26 @@ rather than being folded into it.
   removed from every document that used it) are left in place rather than
   pruned — they're harmless unused lookup entries and still useful for
   datalist autocomplete; don't add cleanup logic for this without a reason.
+- **Archiving** (`documents.archived`, `toggleArchived()`, the "Show
+  archived" toolbar checkbox) is a reversible "no longer needed" flag, not
+  deletion — **this app has no delete feature at all**, and archiving isn't
+  a step toward adding one; it exists specifically so a document a person
+  doesn't want cluttering their view anymore doesn't have to be destroyed to
+  get out of the way. An archived document is hidden from the default
+  table/search view — `applyFilters()` checks `d.archived && !showArchived`
+  first, before every other filter, so an archived document can't leak into
+  a category/search match by accident — until someone checks "Show
+  archived" in the toolbar, at which point it reappears with a small
+  `archived` pill next to its title (same spot as the existing "new"/"from
+  inbox" pills). Nothing else about the document changes; toggling it is a
+  single `UPDATE documents SET archived = ?` from the detail modal's
+  Archive/Unarchive button, mirroring `regenerateThumbnail()`'s own
+  update-in-memory → persist → `render()` → re-open-the-modal pattern.
+  Deliberately a dedicated `documents` column, not a generic custom
+  checkbox field — the generic fields system (see below) has no concept of
+  "hidden from the view by default," only optional columns/filters that are
+  always visible once configured, which doesn't fit what an archive needs
+  to do.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
@@ -784,8 +804,11 @@ backfill, a newly-created inline text field defaulting to it immediately
 with no backfill needed, a newly-created inline number field correctly
 *not* getting it, and — the critical idempotency property — a field
 someone manually switches back off in Field Settings staying off across a
-reopen of the same already-migrated library), and search across all of the
-above. This
+reopen of the same already-migrated library), archiving (hidden from the
+default table/search view, reappearing with its pill once "Show archived"
+is checked, a pre-`archived`-column document reading back as not-archived
+rather than erroring, and archiving/unarchiving actually persisting), and
+search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
