@@ -31,7 +31,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (36 scripts) + shared
+tests/                   Playwright regression suite (37 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -232,6 +232,25 @@ rather than being folded into it.
   one) or remove the visual flag thinking it's unnecessary friction — an
   unflagged default here would be a silently wrong date more often than
   a right one, for anyone working through a backlog of older documents.
+- **`.field input[type=date]{ color-scheme:dark; }`** exists for the same
+  reason the DOCTYPE/quirks-mode note above does — an obscure default that
+  "works fine" until someone actually looks closely. Without it, Chrome/
+  Edge render the native calendar-picker icon (and the picker popup itself)
+  using their light-mode default styling, since the browser has no way to
+  know this page is dark themed otherwise — nothing else in this file sets
+  `color-scheme` anywhere. The result is a dark-gray icon sitting directly
+  on the date field's own dark `--ink-2` background: technically present,
+  but close to invisible, reported as "the Date pickers are barely
+  visible." `color-scheme: dark` tells the browser to draw its native
+  form-control chrome (this icon, and the day-grid/month/year picker that
+  opens from it) in dark mode instead, which is enough on its own — no
+  `::-webkit-calendar-picker-indicator` filter hack needed. Scoped to
+  `input[type=date]` specifically, not applied page-wide via `:root`; this
+  app's dark theme is already handled by explicit CSS custom properties
+  everywhere else, so a global `color-scheme: dark` would only be doing
+  something for the handful of native browser controls (this icon, plus
+  scrollbars) that don't already read from `--ink`/`--text` — narrower is
+  safer than reaching for a page-wide flip that has no other purpose here.
 - **`wireClearButton(inputId, clearBtnId)`** is a small, generic helper,
   wired to Category, Subcategory, Document Type, Payment method, People,
   Tags, Amount, and the toolbar's own search box in both forms (`f-*`/`e-*`
@@ -793,7 +812,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **34
+There's a real, runnable Playwright regression suite in `tests/` — **37
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -835,7 +854,9 @@ someone manually switches back off in Field Settings staying off across a
 reopen of the same already-migrated library), archiving (hidden from the
 default table/search view, reappearing with its pill once "Show archived"
 is checked, a pre-`archived`-column document reading back as not-archived
-rather than erroring, and archiving/unarchiving actually persisting), and
+rather than erroring, and archiving/unarchiving actually persisting), the
+Date field's `color-scheme: dark` fix (asserted via `getComputedStyle` in
+both the capture and edit forms, not just eyeballed), and
 search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
