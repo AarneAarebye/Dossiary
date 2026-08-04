@@ -41,8 +41,9 @@ working" problem that motivated this project in the first place.
   next to it, mirroring how Mariner Paperless itself laid out processed
   vs. original files. If you're starting from a paper document, a "Need to
   scan a paper document first?" toggle in the capture form explains how to
-  scan it with macOS's Image Capture or Preview first, since a browser has
-  no way to drive scanner hardware directly — see Limitations below.
+  scan it first — Image Capture or Preview on macOS, the Windows Scan app
+  on Windows, detected automatically — since a browser has no way to drive
+  scanner hardware directly — see Limitations below.
 - **Inbox** — a lightweight amber banner appears on opening a library if its
   `inbox/` folder (at the library root, alongside `library.sqlite` and
   `files/`, and created automatically the same way `files/` is — no manual
@@ -424,10 +425,12 @@ separate genuinely distinct values.
   indexes any plain text file's content), but this is a workaround, not a
   true integration, and it doesn't cover PDFs without a text layer.
 - **No direct scanner integration.** A browser has no API to drive scanner
-  hardware or launch a native app like Image Capture — the capture form's
-  "Need to scan a paper document first?" toggle only offers instructions
-  for scanning outside the app and then picking the resulting file with
-  the normal file picker; it can't trigger a scan itself. For a more
+  hardware or launch a native app like Image Capture or Windows Scan — the
+  capture form's "Need to scan a paper document first?" toggle only offers
+  instructions (tailored to your OS — Image Capture/Preview on macOS,
+  Windows Scan on Windows, a generic pointer elsewhere) for scanning outside
+  the app and then picking the resulting file with the normal file picker;
+  it can't trigger a scan itself. For a more
   automated "scan → shows up ready to review" workflow, see the Inbox
   feature and [`scan_watch.py`](#scan_watchpy-watched-folder-helper) above
   — that still requires an explicit in-app click to actually add each file
@@ -473,7 +476,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (39
+There's a real, runnable Playwright regression suite in `tests/` (40
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

@@ -31,7 +31,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (39 scripts) + shared
+tests/                   Playwright regression suite (40 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -713,6 +713,26 @@ rather than being folded into it.
   helper is a separate native process, not something loaded into this page,
   precisely because a browser tab can't watch a folder in the background the
   way it does.
+- **The scan-hint text is OS-aware** (`detectOS()`, `scanHintHtml()`) —
+  it used to hardcode macOS instructions (Image Capture / Preview)
+  unconditionally, which is simply wrong advice for anyone running Chrome or
+  Edge on Windows, even though the app itself works there just as well (no
+  native-code dependency at all — see "What this project is" above).
+  `detectOS()` checks `navigator.userAgentData.platform` first (a clean,
+  non-deprecated string on every Chromium build, and this app already
+  requires Chrome/Edge), falling back to `navigator.platform`/
+  `navigator.userAgent` substring matching for any Chromium build that
+  hasn't rolled that API out yet. Returns `'macOS'`/`'Windows'`/`'Linux'`,
+  or `''` if neither signal says anything recognizable — `scanHintHtml()`
+  treats `''` and `'Linux'` the same way, a generic "use your scanner's own
+  software" fallback, deliberately **not** guessing at a specific Linux
+  scanning app (e.g. `simple-scan`) by name, since which one (if any) is
+  installed varies far more on Linux than the reliably-present Image
+  Capture/Windows Scan on their respective platforms. Computed once per
+  `openCaptureModal()` call (OS doesn't change mid-session, so there's no
+  need for this to be reactive) and interpolated directly into the
+  `#scan-hint` template — the toggle-visibility wiring itself
+  (`#scan-hint-toggle`'s click listener) is unchanged.
 - **Inbox** (`checkInbox()`, `openInboxModal()`, `addInboxFile()`,
   `addAllInboxFiles()`, the `#inbox-banner` element) reads a library's
   `inbox/` folder (a sibling of `library.sqlite` and `files/` at the library
@@ -841,7 +861,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **39
+There's a real, runnable Playwright regression suite in `tests/` — **40
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -894,7 +914,11 @@ accepted and saved, the real value is never re-flagged as a guess on
 reopen), `inbox/` actually getting created (for a brand new library, and
 for an existing library that predates this fix, with the inbox banner
 correctly staying hidden for the freshly-created, still-empty folder),
-and search across all of the above. This
+the scan-hint text's OS-specific wording (macOS, Windows, Linux, and the
+no-signal-at-all fallback, each verified via an overridden
+`navigator.userAgentData`/`navigator.platform` rather than trusting
+whatever OS the test happens to run on), and search across all of the
+above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
