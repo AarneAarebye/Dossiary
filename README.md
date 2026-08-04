@@ -43,7 +43,9 @@ working" problem that motivated this project in the first place.
   no way to drive scanner hardware directly — see Limitations below.
 - **Inbox** — a lightweight amber banner appears on opening a library if its
   `inbox/` folder (at the library root, alongside `library.sqlite` and
-  `files/`) has any files waiting in it. Click "Review" to see them and add
+  `files/`, and created automatically the same way `files/` is — no manual
+  setup needed before dropping a file in by hand or pointing `scan_watch.py`
+  at it) has any files waiting in it. Click "Review" to see them and add
   each with default values (just the file, plus a filename-derived title) —
   the rest of the metadata is left blank for you to fill in from the
   document's own Edit dialog afterward. This pairs with the standalone
@@ -469,7 +471,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (38
+There's a real, runnable Playwright regression suite in `tests/` (39
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

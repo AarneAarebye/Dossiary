@@ -31,7 +31,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (38 scripts) + shared
+tests/                   Playwright regression suite (39 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -729,7 +729,19 @@ rather than being folded into it.
   from data that just showed up on disk. So `inbox/` is populated by
   something else entirely outside this file (see `scan_watch.py` below,
   though nothing stops a person from just dragging a file into that folder
-  by hand) and this app never watches or polls it — `checkInbox()` only runs
+  by hand — **the folder itself is created for you** by both
+  `initNewLibrary()` and `openLibrary()`'s existing-library path, right
+  alongside the equivalent `files/` call; a real gap reported against an
+  earlier version of this app, since `checkInbox()`'s own `getDirectoryHandle('inbox',
+  { create: false })` deliberately never creates it — that's correct for
+  *checking* (a missing folder just means "nothing to review, not an
+  error"), but nothing else ever brought it into existence either, so a
+  person couldn't actually drag a file in by hand, or point
+  `scan_watch.py`'s `--drop-folder` at it directly, without first manually
+  creating it in Finder. Creating an empty folder here doesn't conflict
+  with the "no silent writes" principle below — no data is written, it's
+  the same "ensure the expected structure exists" role `files/`'s own
+  `{ create: true }` already plays) and this app never watches or polls it — `checkInbox()` only runs
   once, right after `afterDbReady()`, and again when the Inbox modal's
   "Refresh" button is clicked, or the toolbar's always-visible **"📥 Check
   inbox" button** (`#inbox-check-btn`) is clicked, which calls `checkInbox()`
@@ -829,7 +841,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **38
+There's a real, runnable Playwright regression suite in `tests/` — **39
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -879,7 +891,10 @@ Currency saved gets guessed and flagged once a default currency is
 configured; a document with no Amount, or Amount explicitly `0`, does
 not; the guess is dismissed on touch same as everywhere else; and once
 accepted and saved, the real value is never re-flagged as a guess on
-reopen), and search across all of the above. This
+reopen), `inbox/` actually getting created (for a brand new library, and
+for an existing library that predates this fix, with the inbox banner
+correctly staying hidden for the freshly-created, still-empty folder),
+and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

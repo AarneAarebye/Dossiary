@@ -729,6 +729,7 @@
       try{
         dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
         filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
+        await rootDirHandle.getDirectoryHandle('inbox', { create: true }); // ensure it exists so a person can drop a file in by hand, or scan_watch.py's --drop-folder can be pointed here directly, without a manual mkdir first
         await loadDb();
       }catch(e){
         emptyState.style.display = 'none';
@@ -753,6 +754,7 @@
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
       await persistDb();
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
+      await rootDirHandle.getDirectoryHandle('inbox', { create: true }); // see openLibrary()'s matching call for why
       initState.style.display = 'none';
       setStatus('Initialized a new empty library.', 'ok');
       afterDbReady();
