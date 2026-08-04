@@ -237,7 +237,7 @@ repo — a one-time conversion that reads a `.paperless` library and
 produces a `library.sqlite` + `files/` folder in the schema Dossiary
 expects. Point Dossiary at that output folder afterward.
 
-- **[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_to_new_librarypy-migration-to-document-studio)** —
+- **[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_to_new_librarypy-migration-to-dossiary)** —
   the underlying script, run from the Terminal. This is the single source
   of truth for the actual migration logic; both GUIs below are thin
   wrappers around this exact script, not separate implementations.
