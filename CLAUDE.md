@@ -789,7 +789,15 @@ rather than being folded into it.
   slow OCR pass per file). This mirrors `saveNewDocument()`'s file-copy/
   thumbnail/sidecar logic closely but isn't a shared function with it, since
   the two have different inputs (a form's DOM fields vs. nothing but a
-  filename) and different defaults for nearly every column.
+  filename) and different defaults for nearly every column. **`openInboxModal()`
+  shows which folder it's actually reading from** (`Folder:
+  ${rootDirHandle.name}/inbox/`, plain text, not a link) — the File System
+  Access API exposes no absolute filesystem path for a `FileSystemDirectoryHandle`
+  (only its own name) and there's no API to launch a native file manager
+  from a browser tab, so this is deliberately as far as it can go; still
+  useful to confirm at a glance that `scan_watch.py --library` is pointed
+  at the folder you expect, especially with more than one library folder
+  in play.
 - **scan_watch.py** is the other half of Inbox, and is intentionally *not*
   part of `dossiary.html` — a stdlib-only Python script (no
   dependency to `pip install`), run separately, that watches a folder your
@@ -891,9 +899,10 @@ editability in the Edit dialog, every clear button, the sticky table
 header, the scan-hint toggle, the Libraries/licenses modal, sidecar file
 content, the Inbox review flow (banner visibility, add-one and
 add-all-with-defaults, the file moving from `inbox/` into `files/`, the
-banner disappearing once empty, and the toolbar's "Check inbox" button
+banner disappearing once empty, the toolbar's "Check inbox" button
 surfacing a file staged after the library was already open, which the
-automatic once-at-open `checkInbox()` call alone would miss),
+automatic once-at-open `checkInbox()` call alone would miss, and the
+modal showing which folder it's actually reading from),
 `migrateTextFieldsAutocompleteDefault()`
 (a pre-existing text field's autocomplete flipped on by the one-time
 backfill, a newly-created inline text field defaulting to it immediately

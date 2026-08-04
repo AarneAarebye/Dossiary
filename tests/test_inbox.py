@@ -54,6 +54,12 @@ async def main():
         row_count = await page.locator('#inbox-list .file-preview').count()
         print("inbox modal row count:", row_count)
 
+        # The modal shows which folder it's actually reading from -- plain text, not a
+        # link, since the File System Access API exposes no absolute path and there's
+        # no way to open a native file manager from a browser tab.
+        modal_text = await page.locator('.modal').inner_text()
+        print("modal shows the library's folder name:", 'EmptyLibrary/inbox/' in modal_text)
+
         await page.click('.inbox-add-one-btn[data-name="scan001.pdf"]')
         await page.wait_for_timeout(300)
         row_count_after = await page.locator('#inbox-list .file-preview').count()
