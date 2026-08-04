@@ -5,7 +5,7 @@ Guidance for Claude (or Claude Code) when working in this repository.
 ## What this project is
 
 A single-file, local-first, browser-based document archive app
-(`document_studio.html`). No server, no backend, no build step, no
+(`dossiary.html`). No server, no backend, no build step, no
 third-party install — open the file in Chrome or Edge and it reads/writes a
 folder you choose directly, via the File System Access API. Data lives in a
 SQLite database (`library.sqlite`, read/written via sql.js — SQLite compiled
@@ -24,7 +24,7 @@ probably belongs in the other repo instead.
 ## Repository layout
 
 ```
-document_studio.html   The entire app (single file: HTML + CSS + JS)
+dossiary.html            The entire app (single file: HTML + CSS + JS)
 scan_watch.py            Standalone watched-folder helper -- see its own note below
 README.md               Usage docs, schema, and known limitations
 CLAUDE.md                This file
@@ -36,13 +36,13 @@ tests/                   Playwright regression suite (38 scripts) + shared
 ```
 
 There's intentionally no `package.json`, bundler, or build step for the app
-itself. Keep `document_studio.html` that way — the whole point is "download
+itself. Keep `dossiary.html` that way — the whole point is "download
 one file, open it, it works." External libraries (sql.js, Tesseract.js) are
 loaded from CDN at runtime via `<script src>`, not vendored or bundled.
 `scan_watch.py` is the one deliberate exception to "single file" in this
 repo: it's a separate, optional, stdlib-only companion script that never
 gets loaded by the app and has no effect if you never run it — see its own
-architecture note below for why it exists outside `document_studio.html`
+architecture note below for why it exists outside `dossiary.html`
 rather than being folded into it.
 
 ## Architecture notes
@@ -377,7 +377,7 @@ rather than being folded into it.
   receipt-centric `ZRECEIPT` table (`payment_method`/`amount` came straight
   from `ZRECEIPT.ZPAYMENTMETHOD`/`ZAMOUNT`, never through Mariner's generic
   `ZCUSTOMITEM` system — confirmed directly in `migrate_to_new_library.py`),
-  but Document Studio itself isn't receipt-specific, so hardcoding them
+  but Dossiary itself isn't receipt-specific, so hardcoding them
   stopped making sense. **Payment method is now a completely ordinary
   field** — `renderPaymentFieldHtml()` is gone; it flows through
   `renderGenericFieldHtml()` and `applyDynamicFieldsForType()`'s generic
@@ -433,8 +433,8 @@ rather than being folded into it.
   was deliberately left untouched (still writes directly to the old
   columns) — this backfill runs on every library open regardless of how
   the old-shape data got there, so a fresh Mariner migration gets promoted
-  to the generic system on first open in Document Studio exactly the same
-  as a library that's had Document Studio's own old sentinel-field code
+  to the generic system on first open in Dossiary exactly the same
+  as a library that's had Dossiary's own old sentinel-field code
   write to it directly.
 - **`default_currency` (a `settings` row, exactly like `default_document_type`
   — `loadDefaultCurrency()`/`saveDefaultCurrency()`, configured via the same
@@ -759,7 +759,7 @@ rather than being folded into it.
   the two have different inputs (a form's DOM fields vs. nothing but a
   filename) and different defaults for nearly every column.
 - **scan_watch.py** is the other half of Inbox, and is intentionally *not*
-  part of `document_studio.html` — a stdlib-only Python script (no
+  part of `dossiary.html` — a stdlib-only Python script (no
   dependency to `pip install`), run separately, that watches a folder your
   scan software saves into (e.g. ScanSnap Home's own "save to folder"
   destination) and moves each file into a library's `inbox/` folder once its
@@ -899,7 +899,7 @@ safe-sounding change (a rename, a reference update) is not a reliable
 signal of its actual diff size or risk — if something regresses that a
 commit's message gives no reason to suspect it touched, check that commit's
 actual diff rather than trusting the message, especially for any commit
-touching `document_studio.html` alongside doc files.
+touching `dossiary.html` alongside doc files.
 
 **Running it**: `cd tests && python3 test_<name>.py` (each is a standalone
 script, not a pytest suite — no test runner or config needed beyond

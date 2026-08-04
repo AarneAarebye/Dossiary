@@ -1,11 +1,11 @@
-# Contributing to Document Studio
+# Contributing to Dossiary
 
 Thanks for considering a contribution. A few things specific to how this
 project works before you dive in.
 
 ## The one big constraint
 
-`document_studio.html` is a single, dependency-free file on purpose —
+`dossiary.html` is a single, dependency-free file on purpose —
 "download it, open it, it works," no build step, no `npm install`. Keep it
 that way. If a change would need a bundler, a build step, or splitting the
 file up, please open an issue to discuss first rather than sending a PR
@@ -60,7 +60,7 @@ generated fixture file, rather than working around it.
   caught real regressions before precisely because it was kept current.
 - **Don't add a new runtime dependency** without discussing it first.
   Everything the app needs is loaded from a CDN at runtime (see
-  `OPEN_SOURCE_LIBRARIES` in `document_studio.html` and the "Third-party
+  `OPEN_SOURCE_LIBRARIES` in `dossiary.html` and the "Third-party
   libraries" table in `README.md`), and each one's license was verified
   directly against its own upstream repo, not assumed from memory.
 - Match the existing visual language (dark "ink" background, phosphor-green

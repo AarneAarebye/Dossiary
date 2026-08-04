@@ -1,8 +1,8 @@
 import os as _os
-_os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (document_studio.html, stub_studio2.js, fake_folder/...) work regardless of the CWD this test is invoked from
+_os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (dossiary.html, stub_studio2.js, fake_folder/...) work regardless of the CWD this test is invoked from
 
 import os as _os2
-APP_PATH = _os2.path.abspath(_os2.path.join('..', 'document_studio.html'))  # tests/ sits alongside document_studio.html at the repo root
+APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
 import asyncio, json
 from playwright.async_api import async_playwright
@@ -10,7 +10,7 @@ from playwright.async_api import async_playwright
 # An "old-shape" library, exactly what a library predating
 # migrateSentinelFieldsToGeneric() looks like: documents.payment_method/amount/
 # currency populated directly (as migrate_to_new_library.py itself still does, and
-# as document_studio.html itself used to before this app-side migration existed),
+# as dossiary.html itself used to before this app-side migration existed),
 # no `fields` rows for any of the three, and Amount configured for the type but
 # Currency not (Currency never had an independent document_type_fields entry).
 SEED = {

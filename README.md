@@ -1,4 +1,4 @@
-# Document Studio
+# Dossiary
 
 A local-first, browser-based document archive: capture, OCR, tag, and browse
 your own documents — no server, no account, no upload. Everything lives in
@@ -7,8 +7,8 @@ written directly by the browser.
 
 ## Why
 
-Most document-management tools want your files in their cloud. Document
-Studio is the opposite: it's a single HTML file that reads and writes a
+Most document-management tools want your files in their cloud. Dossiary
+is the opposite: it's a single HTML file that reads and writes a
 folder you choose, using the browser's
 [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API)
 and [sql.js](https://github.com/sql-js/sql.js) (SQLite compiled to
@@ -49,7 +49,7 @@ working" problem that motivated this project in the first place.
   document's own Edit dialog afterward. This pairs with the standalone
   [`scan_watch.py`](#scan_watchpy-watched-folder-helper) script below, which
   moves finished scans from wherever your scan software saves them into that
-  `inbox/` folder — Document Studio itself never watches the filesystem or
+  `inbox/` folder — Dossiary itself never watches the filesystem or
   writes a document automatically; adding one from the inbox always requires
   this explicit click.
 - **Spotlight/Finder search** — every captured document also gets a plain
@@ -198,7 +198,7 @@ working" problem that motivated this project in the first place.
   captures' Currency field the same way the Date field pre-fills to today:
   visually flagged as a guess (amber, with a "double-check this" hint)
   until you actually touch the field. It's a per-library setting, not a
-  hardcoded assumption, since Document Studio is a general-purpose,
+  hardcoded assumption, since Dossiary is a general-purpose,
   single-file, downloadable tool — a fixed default would just be silently
   wrong for anyone whose library isn't in that one currency. Editing guesses
   too, but only for a document that already has a real amount and no
@@ -219,7 +219,7 @@ working" problem that motivated this project in the first place.
 
 ## Getting started
 
-1. Open `document_studio.html` directly in **Chrome or Edge** (double-click
+1. Open `dossiary.html` directly in **Chrome or Edge** (double-click
    it, or drag it into a browser window — don't use an embedded preview
    pane; folder write access requires a real top-level page).
 2. Click **"Open library folder"** and choose a folder. If it's empty,
@@ -234,8 +234,8 @@ If you're coming from the discontinued Mariner Paperless app, first
 convert your library using one of the tools in the sibling
 [MarinerPaperlessTools](https://github.com/AarneAarebye/MarinerPaperlessTools)
 repo — a one-time conversion that reads a `.paperless` library and
-produces a `library.sqlite` + `files/` folder in the schema Document
-Studio expects. Point Document Studio at that output folder afterward.
+produces a `library.sqlite` + `files/` folder in the schema Dossiary
+expects. Point Dossiary at that output folder afterward.
 
 - **[`migrate_to_new_library.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_to_new_librarypy-migration-to-document-studio)** —
   the underlying script, run from the Terminal. This is the single source
@@ -246,7 +246,7 @@ Studio expects. Point Document Studio at that output folder afterward.
   Terminal: choose the folder your libraries live in, select which ones
   to migrate, pick an output folder, click Migrate. (This app also has
   an Export mode for a separate, lossless-copy use case — see its own
-  repo — but Migrate is what you want for Document Studio.)
+  repo — but Migrate is what you want for Dossiary.)
 - **[`migrate_web.py`](https://github.com/AarneAarebye/MarinerPaperlessTools#migrate_webpy-browser-based-alternative)** —
   the same thing, including the same Migrate/Export mode choice, as a
   local web page instead of a native window, for anyone who'd rather use
@@ -260,7 +260,7 @@ convenient than running the script by hand once per library.
 A small standalone Python script (stdlib only — no `pip install` needed) that
 watches a folder your scan software saves finished scans into (e.g. ScanSnap
 Home's own "save to folder" destination) and moves each stabilized file into
-a Document Studio library's `inbox/` folder, for the in-app Inbox feature
+a Dossiary library's `inbox/` folder, for the in-app Inbox feature
 described above to pick up:
 
 ```
@@ -273,14 +273,14 @@ modified for `--settle-seconds` (default 2), so a scan still being written
 isn't grabbed mid-write.
 
 This is deliberately filesystem-only — it never touches `library.sqlite`
-itself, doesn't assign document IDs, and doesn't set any metadata. Document
-Studio is the library's sole writer to `library.sqlite` (it loads the whole
+itself, doesn't assign document IDs, and doesn't set any metadata. Dossiary
+is the library's sole writer to `library.sqlite` (it loads the whole
 database into memory in the browser tab and only writes it back out on an
 explicit save), so a second process inserting rows directly could silently
 lose work to whichever side saved last. Keeping this script to "just move
 the file" sidesteps that risk entirely, and means nothing is ever added to
 your archive without an explicit click inside the app itself, in keeping
-with Document Studio's own "no silent writes" design (documents are only
+with Dossiary's own "no silent writes" design (documents are only
 ever written from something you clicked, not from data arriving on disk on
 its own).
 
@@ -431,7 +431,7 @@ separate genuinely distinct values.
 - **Re-select the folder each session.** Browsers don't allow persisting
   direct file-system access across page reloads, so you'll pick the folder
   again each time you open the app. This is a browser constraint, not
-  something Document Studio can work around.
+  something Dossiary can work around.
 - **Searchable PDF generation works on JPEG/PNG images captured directly,
   not PDF uploads.** Building the invisible, selectable text layer
   requires the *source* to be an image jsPDF can embed; a PDF you upload
@@ -478,7 +478,7 @@ them the same way. See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
 
 ## Third-party libraries
 
-Document Studio itself has no dependencies to install — everything below is
+Dossiary itself has no dependencies to install — everything below is
 loaded from a CDN at runtime, only when a feature that needs it is actually
 used (OCR, generating a searchable PDF, or rendering a PDF page for a
 preview/OCR). None of it ever touches your documents except locally, in

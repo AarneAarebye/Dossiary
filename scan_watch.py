@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Watches a folder for finished scans and stages them for Document Studio's Inbox.
+"""Watches a folder for finished scans and stages them for Dossiary's Inbox.
 
-Standalone companion to document_studio.html -- not loaded by the app itself, and
+Standalone companion to dossiary.html -- not loaded by the app itself, and
 deliberately has no dependency on it beyond agreeing on one folder name ("inbox").
 Run this pointed at wherever your scan software (e.g. ScanSnap Home's "save to
-folder" destination) drops finished files, and at the Document Studio library
+folder" destination) drops finished files, and at the Dossiary library
 folder you want them to end up in:
 
     python3 scan_watch.py --drop-folder ~/Scans --library ~/Documents/MyLibrary
 
 Every stabilized file in --drop-folder is moved into <library>/inbox/. That's the
-entire job: no SQLite, no metadata, no document IDs. Document Studio itself reads
+entire job: no SQLite, no metadata, no document IDs. Dossiary itself reads
 that inbox/ folder on library open and shows a "Review" banner; turning a staged
 file into an actual document (with defaults you then clean up, same idea as legacy
 Mariner Paperless's own ScanSnap watch-folder integration) always requires an
-explicit click inside the app. That split exists on purpose: Document Studio is the
+explicit click inside the app. That split exists on purpose: Dossiary is the
 library's sole writer to library.sqlite (it loads the whole database into memory
 and only writes it back out on an explicit save), so a second process writing rows
 into it directly could silently lose work to whichever side saved last. Keeping
 this script filesystem-only sidesteps that entirely, and also means it never adds
 a document to your archive without you clicking to do so, in keeping with
-Document Studio's "no silent writes" design (see CLAUDE.md).
+Dossiary's "no silent writes" design (see CLAUDE.md).
 """
 
 import argparse
@@ -82,7 +82,7 @@ def stage_stable_files(drop_dir, inbox_dir, settle_seconds):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--drop-folder', required=True, type=Path, help='Folder your scan software saves finished files into.')
-    parser.add_argument('--library', required=True, type=Path, help="A Document Studio library folder (containing library.sqlite); files are staged into its inbox/ subfolder.")
+    parser.add_argument('--library', required=True, type=Path, help="A Dossiary library folder (containing library.sqlite); files are staged into its inbox/ subfolder.")
     parser.add_argument('--poll-interval', type=float, default=2.0, help='Seconds between checks of the drop folder (default: 2).')
     parser.add_argument('--settle-seconds', type=float, default=2.0, help='How long a file must stop changing before it is considered fully written (default: 2).')
     parser.add_argument('--once', action='store_true', help='Do a single pass (useful for testing or a cron-style invocation) instead of watching continuously.')
@@ -91,7 +91,7 @@ def main():
     if not args.drop_folder.is_dir():
         sys.exit(f"--drop-folder does not exist or is not a directory: {args.drop_folder}")
     if not (args.library / 'library.sqlite').is_file():
-        log(f"Warning: no library.sqlite found in {args.library} -- is this really a Document Studio library folder?")
+        log(f"Warning: no library.sqlite found in {args.library} -- is this really a Dossiary library folder?")
 
     inbox_dir = args.library / 'inbox'
     inbox_dir.mkdir(parents=True, exist_ok=True)
