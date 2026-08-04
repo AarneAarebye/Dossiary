@@ -1,5 +1,7 @@
 # Dossiary
 
+*[Diese Anleitung auf Deutsch lesen](README.de.md)*
+
 A local-first, browser-based document archive: capture, OCR, tag, and browse
 your own documents — no server, no account, no upload. Everything lives in
 one SQLite database and a folder of files on your own disk, opened and
