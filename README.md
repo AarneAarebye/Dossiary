@@ -200,9 +200,13 @@ working" problem that motivated this project in the first place.
   until you actually touch the field. It's a per-library setting, not a
   hardcoded assumption, since Document Studio is a general-purpose,
   single-file, downloadable tool — a fixed default would just be silently
-  wrong for anyone whose library isn't in that one currency. Editing never
-  guesses; a document's Currency there is either its real saved value or
-  genuinely blank.
+  wrong for anyone whose library isn't in that one currency. Editing guesses
+  too, but only for a document that already has a real amount and no
+  currency saved — e.g. one captured before a default currency was ever
+  set — so that gap can actually be closed rather than requiring the
+  Currency to be retyped from scratch. Any other blank Currency in Edit
+  (no amount, or an amount of zero) is left alone: that's the document's
+  real, saved state, not something to guess at.
 - **Editing never hides data behind a configuration change** — if a
   document has a value in a field that isn't (or is no longer) configured
   to display for its current type — reclassified, or the field got
@@ -465,7 +469,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (37
+There's a real, runnable Playwright regression suite in `tests/` (38
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

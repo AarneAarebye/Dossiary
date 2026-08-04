@@ -1168,9 +1168,15 @@
   // mechanism below, and it pre-fills from the library's default_currency setting
   // as a dismissible guess when capturing -- exactly like the Date field's
   // today-default (amber flag + "double-check this" hint, cleared on first touch).
-  // Edit never guesses: a blank Currency there means the document genuinely has
-  // none saved. Neither exception is available to any other field.
-  function renderGenericFieldHtml(prefix, field, existingValue, orphaned){
+  // Edit guesses too, but only in the one narrow case where it's clearly useful:
+  // an existing document has a real, non-zero Amount but no Currency saved (e.g.
+  // captured before a default currency was ever configured, or the capture-time
+  // guess got cleared) -- `amountFilled` (computed by the caller from the
+  // document's own Amount value, mirroring formatAmount()'s "amount != 0" check)
+  // gates this. Any other blank Currency in edit -- no Amount at all -- still
+  // means the document genuinely has none saved, not something to guess at.
+  // Neither exception is available to any other field.
+  function renderGenericFieldHtml(prefix, field, existingValue, orphaned, amountFilled){
     const inputId = `${prefix}-field-${field.id}`;
     const orphanedClass = orphaned ? ' field-orphaned' : '';
     const orphanedHint = orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : '';
@@ -1188,7 +1194,8 @@
     else if(field.type === 'date'){ inputType = 'date'; }
 
     const isCurrency = field.name === 'Currency';
-    const isCurrencyGuess = isCurrency && prefix === 'f' && !existingValue && !!defaultCurrency;
+    const isCurrencyGuess = isCurrency && !existingValue && !!defaultCurrency
+      && (prefix === 'f' || (prefix === 'e' && amountFilled));
     let value = field.type === 'date' ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
     if(isCurrencyGuess) value = defaultCurrency;
 
@@ -1232,12 +1239,20 @@
     const entry = typeFieldOrder[(typeName || '').trim()] || [];
     const configuredNames = new Set(entry.map(e => e.field));
 
+    // Drives the Edit-only Currency guess in renderGenericFieldHtml() -- mirrors
+    // formatAmount()'s own "amount != 0" check, read from the document's real
+    // saved Amount regardless of whether Amount itself is configured/orphaned
+    // for the current type.
+    const rawAmount = existingValues ? existingValues['Amount'] : undefined;
+    const parsedAmount = rawAmount != null && rawAmount !== '' ? parseFloat(rawAmount) : NaN;
+    const amountFilled = !isNaN(parsedAmount) && parsedAmount !== 0;
+
     let html = entry.map(({ field: fieldName }) => {
       if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople, false);
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
       if(!fieldDef) return '';
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
-      return renderGenericFieldHtml(prefix, fieldDef, existingValue, false);
+      return renderGenericFieldHtml(prefix, fieldDef, existingValue, false, amountFilled);
     }).join('');
 
     // When editing, a document can have real data in a field that isn't (or is no
@@ -1258,7 +1273,7 @@
           if(configuredNames.has(fieldName)) continue;
           const fieldDef = fieldDefs.find(f => f.name === fieldName);
           if(!fieldDef) continue;
-          orphanedHtml.push(renderGenericFieldHtml(prefix, fieldDef, existingValues[fieldName], true));
+          orphanedHtml.push(renderGenericFieldHtml(prefix, fieldDef, existingValues[fieldName], true, amountFilled));
         }
       }
       html += orphanedHtml.join('');

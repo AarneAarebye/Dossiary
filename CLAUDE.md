@@ -31,7 +31,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (37 scripts) + shared
+tests/                   Playwright regression suite (38 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -447,15 +447,32 @@ rather than being folded into it.
   default would be silently wrong for anyone whose library isn't in that
   one currency, with no way to change it short of editing source. The
   guess treatment itself (`renderGenericFieldHtml()`'s `isCurrencyGuess =
-  isCurrency && prefix === 'f' && !existingValue && !!defaultCurrency`,
-  where `isCurrency = field.name === 'Currency'`) mirrors the Date
-  field's today-default exactly: `.field-guess` amber styling + a
-  dismissible `.field-guess-hint`, cleared on the first `input` or
-  `change` event on the currency input (both, since — unlike Date —
-  Currency has its own clear button, whose `wireClearButton()` dispatches
-  a `change` event that must also count as "touched"). Edit never guesses
-  under any circumstances, configured default or not: a blank Currency
-  there is the document's real, saved state, not something to paper over.
+  isCurrency && !existingValue && !!defaultCurrency && (prefix === 'f' ||
+  (prefix === 'e' && amountFilled))`, where `isCurrency = field.name ===
+  'Currency'`) mirrors the Date field's today-default exactly: `.field-guess`
+  amber styling + a dismissible `.field-guess-hint`, cleared on the first
+  `input` or `change` event on the currency input (both, since — unlike Date —
+  Currency has its own clear button, whose `wireClearButton()` dispatches a
+  `change` event that must also count as "touched"). **Edit guesses too, but
+  only in one narrow case**: the document has a real, non-zero Amount already
+  saved and no Currency saved — typically a document captured before a
+  default currency was ever configured, or whose capture-time guess got
+  cleared. `amountFilled` is computed once per `applyDynamicFieldsForType()`
+  call from the document's own persisted `Amount` value (`existingValues['Amount']`,
+  mirroring `formatAmount()`'s own `amount != 0` check almost exactly — `'0'`
+  typed explicitly counts as "no real amount," same as blank), independent of
+  whether Amount itself is currently configured/orphaned for the type being
+  edited, and threaded through to both the normally-configured and orphaned
+  `renderGenericFieldHtml()` call sites so an orphaned Currency field can
+  still guess correctly. **Any other blank Currency in edit — no Amount
+  saved at all, or Amount is `0`/blank — still never guesses**: that blank
+  is the document's real, saved state, not something to paper over. This was
+  a deliberate, explicit reversal of an earlier version of this same note
+  ("Edit never guesses under any circumstances") — the earlier blanket rule
+  turned out to be stricter than actually useful once real usage surfaced
+  amount-only documents predating `default_currency`'s existence; the
+  amount-gated version keeps the original "don't paper over real blank
+  state" intent while actually closing that gap.
 - **The detail view's header (`openDetail()`'s `modal-meta` block) shows
   Payment and Amount conditionally, not as always-present placeholder
   lines.** Computed just before the template string
@@ -812,7 +829,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **37
+There's a real, runnable Playwright regression suite in `tests/` — **38
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -856,8 +873,13 @@ default table/search view, reappearing with its pill once "Show archived"
 is checked, a pre-`archived`-column document reading back as not-archived
 rather than erroring, and archiving/unarchiving actually persisting), the
 Date field's `color-scheme: dark` fix (asserted via `getComputedStyle` in
-both the capture and edit forms, not just eyeballed), and
-search across all of the above. This
+both the capture and edit forms, not just eyeballed), the Edit-form
+Currency guess (an existing document with a real non-zero Amount and no
+Currency saved gets guessed and flagged once a default currency is
+configured; a document with no Amount, or Amount explicitly `0`, does
+not; the guess is dismissed on touch same as everywhere else; and once
+accepted and saved, the real value is never re-flagged as a guess on
+reopen), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
