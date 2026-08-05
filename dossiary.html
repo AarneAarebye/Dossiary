@@ -284,7 +284,7 @@
   <div id="modal-root"></div>
 
   <footer>
-    © 2026 Aarne Aarebye · MIT License ·
+    © 2026 Aarne Aarebye · <span id="app-version-label"></span> · MIT License ·
     <a href="https://github.com/AarneAarebye/Dossiary" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/Dossiary</a> ·
     <a href="#" id="libraries-link">Libraries</a>
   </footer>
@@ -301,6 +301,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
+  const APP_VERSION = '1.0.0'; // shown in the footer; bump alongside the matching git tag on release
+
   const SCHEMA = `
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY, title TEXT, category TEXT, subcategory TEXT, document_type TEXT,
@@ -716,6 +718,7 @@
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
   el('init-btn').addEventListener('click', initNewLibrary);
   el('libraries-link').addEventListener('click', (e) => { e.preventDefault(); openLibrariesModal(); });
+  el('app-version-label').textContent = `v${APP_VERSION}`;
 
   async function openLibrary(){
     if(typeof window.showDirectoryPicker !== 'function'){

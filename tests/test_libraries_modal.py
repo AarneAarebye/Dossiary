@@ -31,6 +31,11 @@ async def main():
         link_visible = await page.locator('#libraries-link').is_visible()
         print("Libraries link visible with no library open:", link_visible)
 
+        version_text = await page.locator('#app-version-label').inner_text()
+        print("footer shows app version:", version_text)
+        assert version_text.startswith('v') and version_text[1:2].isdigit(), \
+            f"expected something like 'v1.0.0', got {version_text!r}"
+
         await page.click('#libraries-link')
         await page.wait_for_timeout(150)
         modal_text = await page.locator('.modal').inner_text()

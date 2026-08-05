@@ -30,6 +30,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+__version__ = '1.0.0'  # kept in sync with Dossiary's own APP_VERSION and this repo's git tag
+
 
 def log(msg):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
@@ -81,6 +83,7 @@ def stage_stable_files(drop_dir, inbox_dir, settle_seconds):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--version', action='version', version=f'%(prog)s {__version__}')
     parser.add_argument('--drop-folder', required=True, type=Path, help='Folder your scan software saves finished files into.')
     parser.add_argument('--library', required=True, type=Path, help="A Dossiary library folder (containing library.sqlite); files are staged into its inbox/ subfolder.")
     parser.add_argument('--poll-interval', type=float, default=2.0, help='Seconds between checks of the drop folder (default: 2).')

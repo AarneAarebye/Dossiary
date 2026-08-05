@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (40 scripts) + shared
+tests/                   Playwright regression suite (41 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -48,6 +48,25 @@ repo: it's a separate, optional, stdlib-only companion script that never
 gets loaded by the app and has no effect if you never run it — see its own
 architecture note below for why it exists outside `dossiary.html`
 rather than being folded into it.
+
+## Versioning
+
+`dossiary.html` and `scan_watch.py` share one version number (`1.0.0` as of
+this writing), kept manually in sync with this repo's git tag on each
+release — no build step or shared version file to do this automatically.
+`dossiary.html` has its own `APP_VERSION` constant (the very first line
+inside the top-level IIFE), shown in the footer next to the copyright line
+via `#app-version-label`, set once during the same static-wiring pass as
+the Libraries-link click handler — deliberately not gated behind a library
+being open, since the version should be visible regardless of app state.
+`scan_watch.py` has its own separate `__version__`, exposed the standard
+way via `argparse`'s `--version` flag. When cutting a release, bump both
+constants together with the tag — nothing currently checks that they agree
+with each other or with the tag, or with `LibraryLifeboat`'s own version
+(the sibling repo's `migrate_to_new_library.py` produces the schema this
+app expects, so a large version skew between the two is worth noticing,
+though the two repos don't currently enforce or check compatibility by
+version number — only by the schema itself matching).
 
 ## Architecture notes
 
@@ -873,7 +892,7 @@ rather than being folded into it.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **40
+There's a real, runnable Playwright regression suite in `tests/` — **41
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -930,8 +949,11 @@ correctly staying hidden for the freshly-created, still-empty folder),
 the scan-hint text's OS-specific wording (macOS, Windows, Linux, and the
 no-signal-at-all fallback, each verified via an overridden
 `navigator.userAgentData`/`navigator.platform` rather than trusting
-whatever OS the test happens to run on), and search across all of the
-above. This
+whatever OS the test happens to run on), the footer's app-version label
+(folded into `test_libraries_modal.py`, which already exercises that
+part of the page) and `scan_watch.py --version`'s output (its own
+standalone, non-Playwright script since it's a plain subprocess check),
+and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
