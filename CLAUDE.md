@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (41 scripts) + shared
+tests/                   Playwright regression suite (42 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -523,7 +523,17 @@ version number — only by the schema itself matching).
   which — see the searchable-PDF note below — is only true for a captured
   JPEG/PNG that got OCR'd into a searchable PDF; every other case (PDF
   uploads, images without OCR, migrated documents without a separate
-  original) has no distinct original to show.
+  original) has no distinct original to show. Each line also gets a small
+  **"Copy" button** (`copyPathToClipboard()`) next to the path, wired only
+  when that path exists — unlike revealing a file in Finder or reading an
+  absolute filesystem path (impossible from a browser tab, see above), the
+  Clipboard API (`navigator.clipboard.writeText()`) has no such
+  restriction from a regular page context, so this is a real, working
+  affordance rather than another "as far as it can go" compromise.
+  `fileFullPath`/`originalFullPath` are computed once and used for both
+  the displayed text and the copied value, so they can't drift apart. The
+  button shows "Copied!" for 1.5s (`.copy-path-btn.copied`, phosphor-green)
+  before reverting to "Copy" — purely a UI nicety, not persisted anywhere.
 - **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
   "orphaned" fields render** — a field with a real value in
   `d.customFields`/`d.people` that isn't in the current type's
@@ -904,7 +914,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **41
+There's a real, runnable Playwright regression suite in `tests/` — **42
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -967,8 +977,11 @@ part of the page), `scan_watch.py --version`'s output (its own
 standalone, non-Playwright script since it's a plain subprocess check),
 the detail view's `File`/`Original` path lines (folded into
 `test_searchable_pdf.py`, since that's the one scenario that produces
-both a processed file and a separate original to show), and search
-across all of the above. This
+both a processed file and a separate original to show), the path lines'
+"Copy" buttons (`test_copy_path.py` — button presence per doc type, the
+"Copied!"/reset label cycle, and that each button copies its own path
+independently rather than a stale or shared value), and search across
+all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
