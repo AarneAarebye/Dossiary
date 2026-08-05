@@ -13,7 +13,8 @@ to WebAssembly) plus a `files/` folder, both inside the library folder the
 person picks.
 
 This project is a spinoff of
-[`MarinerPaperlessTools`](https://github.com/AarneAarebye/MarinerPaperlessTools):
+[`LibraryLifeboat`](https://github.com/AarneAarebye/LibraryLifeboat)
+(formerly MarinerPaperlessTools):
 that repo's `migrate_to_new_library.py` produces the `library.sqlite` schema
 this app expects, as a one-time conversion from a discontinued Mariner
 Paperless library. But this app itself has no Mariner-specific logic or
