@@ -26,7 +26,10 @@ probably belongs in the other repo instead.
 ```
 dossiary.html            The entire app (single file: HTML + CSS + JS)
 scan_watch.py            Standalone watched-folder helper -- see its own note below
-README.md               Usage docs, schema, and known limitations
+README.md                Usage docs, schema, and known limitations
+README.de.md             German translation of README.md
+MIGRATION.md             Migrating from Mariner Paperless, linked from README.md
+MIGRATION.de.md          German translation of MIGRATION.md
 CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
