@@ -68,7 +68,7 @@ async def main():
         await page.fill('#f-field-2', '2018')
         await page.fill('#f-field-3', '2018-05-01')
         await page.check('#f-field-4')
-        await page.fill('#f-person', 'Arne')
+        await page.fill('[data-dynamic-field="People"] input', 'Arne')
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 

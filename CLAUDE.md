@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (42 scripts) + shared
+tests/                   Playwright regression suite (44 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -143,16 +143,47 @@ version number — only by the schema itself matching).
   name = ?` round-trip per tag. This assumes single-writer, single-tab
   usage (true for this app's design); don't add multi-tab sync assumptions
   without addressing that this map can go stale across tabs.
-- **People are structured exactly like tags** (`people` + `document_people`
-  many-to-many, `personNameToId` map, comma-separated input in the capture
-  form) — a document can relate to more than one person. Don't regress this
-  to a single `person TEXT` column on `documents`; an earlier version of
-  this app did that, and it was wrong: Mariner's own source data has
-  multi-person values (e.g. "Arne & Jana"), and a single string field makes
-  "find everything about Arne" impossible for any document he shares with
-  someone else. If touching this, keep `migrate_to_new_library.py` in the
-  sibling repo in sync — it does the equivalent split-on-`&` migration in
-  Python.
+- **People is a real, generic `fields` row now (`type: 'person'`), not a
+  hardcoded sentinel** — `migratePeopleToGenericField()` promoted it the
+  same way `migrateSentinelFieldsToGeneric()` promoted Payment method/
+  Amount/Currency (see that note below), and for the same underlying
+  reason: what used to be a special case turned out to generalize cleanly
+  once there was a real second use for it — specifically, wanting
+  independent multi-valued person-list fields beyond just "People" (e.g.
+  "Author", "Collaborator"). A document can relate to more than one person
+  **per person-type field**, backed by `document_field_people
+  (document_id, field_id, person_id)` — a per-field generalization of the
+  old singleton `document_people (document_id, person_id)`, which is now
+  vestigial (see the migration note below for why it's kept, never
+  dropped). `personNameToId`/the `people` table itself are unchanged and
+  still shared globally across every person-type field — "Arne" as an
+  Author and "Arne" in People are the same person, so autocomplete and
+  search both work across all of them, not just whichever field a name
+  first appeared in. Comma-separated input, found-or-created by name on
+  save, same as it always worked for the one People field — multi-valued
+  "&"-splitting (e.g. "Arne & Jana") only ever happened once, historically,
+  in `migrate_to_new_library.py`'s own Python-side migration; this app's UI
+  has only ever used commas. Don't regress any of this to a single
+  `person TEXT` column on `documents`; an earlier version of this app did
+  that for People specifically, and it was wrong for the same reason it
+  would be wrong for Author or Collaborator now: Mariner's own source data
+  has multi-person values, and a single string field makes "find every
+  document Arne is part of" impossible for anything he shares with someone
+  else. `renderPersonFieldHtml()` (generalized from a People-only
+  `renderPeopleFieldHtml()`) follows `renderGenericFieldHtml()`'s id/
+  data-attribute conventions exactly (`${prefix}-field-${field.id}`,
+  `data-field-id`), so the generic clear-button wiring, `getShownFieldIds()`,
+  and orphaned-field marking in `applyDynamicFieldsForType()` all apply to
+  a person-type field automatically, with zero special-casing needed
+  anywhere else in the form-handling code. Person-type fields deliberately
+  don't participate in the `show_as_column`/`autocomplete` capability
+  system (Field Settings' checkboxes exclude `type === 'person'`, same
+  spirit as the narrow Amount/Currency exception below) — People keeps its
+  own permanently-fixed table column and filter dropdown exactly as
+  before, and giving a multi-valued field a single-string table cell or a
+  useful filter dropdown is a real, separate feature that wasn't in scope
+  when this generalization landed; a new person-type field like Author
+  simply doesn't get a column or filter yet.
 - **`subcategory` is a flat, independent field, not nested under
   `category`** — despite the name, and despite what a naive redesign might
   assume. This matches Mariner's own schema (`ZSUBCATEGORY` has no foreign
@@ -204,7 +235,7 @@ version number — only by the schema itself matching).
   mismatch, so don't update one without the other.
 - **Dynamic per-type fields** (`typeFieldOrder`, `loadTypeFieldOrder()`,
   `applyDynamicFieldsForType()`, `renderGenericFieldHtml()`,
-  `renderPeopleFieldHtml()`) fully rebuild the capture/edit forms'
+  `renderPersonFieldHtml()`) fully rebuild the capture/edit forms'
   `dynamic-fields-f`/`dynamic-fields-e` container's HTML from scratch
   whenever the document type changes, based on `document_type_fields` — a
   table this app only *reads*, never writes; `migrate_to_new_library.py`
@@ -212,7 +243,8 @@ version number — only by the schema itself matching).
   `ZDATATYPE.ZFIELDORDERARRAY` (see that script's own notes for the
   decoding details). A document type **absent** from `document_type_fields`
   (a brand new type, or one from a library where this wasn't tracked)
-  shows **none** of its custom fields or People — this deliberately
+  shows **none** of its custom fields, People included (People is a
+  plain custom field now — see its own note above) — this deliberately
   matches Mariner's own behavior (a type shows nothing until fields are
   explicitly assigned to it), and is not a bug to "fix" with a
   show-everything fallback; an earlier version of this feature did exactly
@@ -235,13 +267,19 @@ version number — only by the schema itself matching).
   previously-saved values for fields that reappear.
   Saving reads the rendered form via `readDynamicFieldValues()` (skips
   blank text/number/date fields, but always includes checkboxes — an
-  unchecked box is meaningful data, not "empty") and `getShownFieldIds()`
-  (every field currently rendered, regardless of value, needed so editing
-  correctly clears a field the person emptied out — `readDynamicFieldValues()`
-  alone can't tell "never had a value" apart from "just cleared it").
-  `readDynamicPeopleValue()` reads the People input specifically, which —
-  like every other dynamic field — may not exist in the DOM at all if
-  'People' isn't configured for the current type.
+  unchecked box is meaningful data, not "empty"; also skips any
+  person-type field, deferring to `readPersonFieldValues()` instead, since
+  those are multi-valued rather than a single string) and `getShownFieldIds()`
+  (every field currently rendered, regardless of value or type, needed so
+  editing correctly clears a field the person emptied out —
+  `readDynamicFieldValues()` alone can't tell "never had a value" apart
+  from "just cleared it", and person-type fields need the same treatment).
+  `readPersonFieldValues()` reads every rendered person-type field (People,
+  Author, Collaborator, ...) as `[{fieldId, names}]` — generalized from a
+  People-only `readDynamicPeopleValue()` the same way `renderPersonFieldHtml()`
+  generalized from `renderPeopleFieldHtml()`. Like any other dynamic field,
+  a given person-type field may not exist in the DOM at all if it isn't
+  configured for the current type.
 - **The capture form's date field is preset to today (`todayIsoDate()`),
   but only in the capture form** — not the edit form, which correctly
   pre-fills with the document's own existing date, a real value, not a
@@ -292,16 +330,22 @@ version number — only by the schema itself matching).
   `flex:1 1 240px` sizing since `.field-with-clear` itself has none) is
   wired with a plain one-off `wireClearButton('search', 'search-clear')`
   call — unlike the per-document-field ones, it isn't rebuilt per type
-  change, so it doesn't need the People field's re-wire-after-rebuild
-  treatment. **The People field is a special case**:
-  since it's rendered dynamically inside `renderPeopleFieldHtml()`
-  (rebuilt from scratch on every document-type change, not a fixed DOM
-  element), its clear button has to be re-wired every time that HTML is
-  rebuilt — done at the end of `applyDynamicFieldsForType()`, guarded by
-  checking the People input actually exists first (it may not, if People
-  isn't configured for the current type). If more dynamic per-type
-  fields ever get clear buttons too, follow that same re-wire-after-rebuild
-  pattern rather than assuming a one-time wire-up at form-open is enough.
+  change, so it doesn't need the re-wire-after-rebuild treatment every
+  dynamic field does. **Every dynamic per-type field's clear button — text/
+  number/date/checkbox fields and person-type fields (People, Author,
+  Collaborator, ...) alike — gets re-wired the same generic way**: since
+  `dynamic-fields-f`/`dynamic-fields-e`'s whole HTML is rebuilt from
+  scratch on every document-type change (not fixed DOM elements), a single
+  `container.querySelectorAll('.clear-btn')` pass at the end of
+  `applyDynamicFieldsForType()` re-wires whatever's currently rendered,
+  regardless of field type — there's no per-field-type special-casing
+  needed here at all, and in particular no dedicated People-only re-wiring
+  path (an earlier version of this note described one; it was already
+  inaccurate even before People was generalized into a real field — the
+  generic pass has covered People the same as everything else for a
+  while). A field simply isn't in that `querySelectorAll` result at all if
+  it isn't currently rendered (not configured for the selected type), same
+  as any other dynamic field.
 - **Document Type is deliberately positioned right after the file/OCR
   section, styled via `.field-prominent`, in both forms** — not with
   Category, and not further down the form. This is intentional: it's the
@@ -343,17 +387,21 @@ version number — only by the schema itself matching).
   operates on fields that already exist), creating and attaching aren't
   separate steps here, since the whole reason to reach for this instead
   of Field Settings is "I'm filling out this type right now and need a
-  field for it." Type choices are Text/Number/Date/Checkbox only —
+  field for it." Type choices are Text/Number/Date/Checkbox/Person —
   deliberately no "Currency" option; a field needing a monetary value
   should use the built-in Amount field (with its own linked Currency, see
   below) instead of a second, disconnected custom field, and the mini-form
   shows a hint saying exactly that. A name collision with an existing
-  field (or one of the built-in sentinel names) is rejected with a message
-  pointing at Field Settings rather than silently attaching the existing
-  field or creating a confusing duplicate — Field Settings' own Fields
-  column already lists every existing field with a "+" for exactly that
-  case, so duplicating that logic here wasn't worth it for what should be
-  a rare collision. **Critical correctness property, tested explicitly**:
+  field (or one of the built-in field names — People, Amount, Payment
+  method) is rejected with a message pointing at Field Settings rather
+  than silently attaching the existing field or creating a confusing
+  duplicate — Field Settings' own Fields column already lists every
+  existing field with a "+" for exactly that case, so duplicating that
+  logic here wasn't worth it for what should be a rare collision.
+  Dispatches to `renderPersonFieldHtml()` instead of
+  `renderGenericFieldHtml()` when the chosen type is Person, same as
+  `applyDynamicFieldsForType()`'s own dispatch. **Critical correctness
+  property, tested explicitly**:
   adding a field appends only the new field's own input via
   `insertAdjacentHTML` — it deliberately does NOT call
   `applyDynamicFieldsForType()` to refresh the whole container, which
@@ -431,8 +479,8 @@ version number — only by the schema itself matching).
   configured doesn't discard its value" falls out of existing, already-
   tested generic-field code — no more `el('e-amount') ? ... : d.amount`-
   style fallback needed anywhere.
-- **The one-time backfill (`migrateSentinelFieldsToGeneric()`) is the
-  first in-app data migration this codebase has ever had** (every prior
+- **The one-time backfill (`migrateSentinelFieldsToGeneric()`) was the
+  first in-app data migration this codebase ever had** (every prior
   `SCHEMA_MIGRATIONS` entry was purely additive — `ALTER TABLE ... ADD
   COLUMN`, no data movement). Called from both `initNewLibrary()` (so a
   brand new library starts with Payment method/Amount/Currency pre-defined,
@@ -459,6 +507,33 @@ version number — only by the schema itself matching).
   to the generic system on first open in Dossiary exactly the same
   as a library that's had Dossiary's own old sentinel-field code
   write to it directly.
+- **`migratePeopleToGenericField()` followed the same precedent shortly
+  after, promoting the 'People' sentinel into a real `fields` row
+  (`type: 'person'`)** — the second in-app data migration this codebase
+  has had, structured the same way (idempotent, checked via
+  `fieldNameToId['People'] !== undefined`, called from both
+  `initNewLibrary()` and `loadDb()`) but simpler in one respect and
+  trickier in another. Simpler: unlike Amount/Currency, `document_type_fields`
+  needed **no** migration of its own — its `field_name` column already
+  stored the literal string `'People'` as a sentinel even before this
+  change, and that string keeps matching unchanged now that `'People'` is
+  a real field name instead of a special-cased one, so the generic
+  per-field lookup in `applyDynamicFieldsForType()` just starts resolving
+  it correctly the moment the old `if(fieldName === 'People')` branch is
+  gone. Trickier: this promotes a many-to-many relationship, not a
+  single-valued column, so the backfill copies `document_people`'s rows
+  into a new, per-field `document_field_people (document_id, field_id,
+  person_id)` table under the new field's id, rather than copying a
+  scalar value into `document_field_values`. `document_people` itself is
+  left in place afterward, unused — vestigial, same additive-only
+  philosophy as the old `documents.payment_method`/`amount`/`currency`
+  columns, never dropped in case a backfill step ever no-ops on some edge
+  case. Idempotency relies on `'People'` already being a name
+  `addInlineCustomField()` has always refused to let anyone create a
+  same-named custom field with, even before this migration existed — so
+  there's no need to guard against `fieldNameToId['People']` already
+  pointing at some unrelated, wrong-typed field from before this feature
+  existed; that was never possible.
 - **`default_currency` (a `settings` row, exactly like `default_document_type`
   — `loadDefaultCurrency()`/`saveDefaultCurrency()`, configured via the same
   Field Settings modal) pre-fills new captures' Currency field as a
@@ -536,21 +611,24 @@ version number — only by the schema itself matching).
   before reverting to "Copy" — purely a UI nicety, not persisted anywhere.
 - **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
   "orphaned" fields render** — a field with a real value in
-  `d.customFields`/`d.people` that isn't in the current type's
+  `d.customFields`/`d.personFieldValues` that isn't in the current type's
   `document_type_fields` configuration (removed from that type's setup
   after the fact, or the document was reclassified to a type that never
   had it). Only the edit form passes `isEdit=true`; capture never has
   pre-existing values to orphan in the first place, so passing it there
   would be a no-op at best and confusing if it weren't. Orphaned fields
   are appended after the normally-configured ones and rendered with the
-  same functions (`renderPeopleFieldHtml()` / `renderGenericFieldHtml()`,
-  each now taking a trailing `orphaned` boolean — Payment method, Amount,
-  and Currency are just entries in `d.customFields` now, so they fall into
-  this one generic loop automatically rather than needing their own
-  dedicated branches the way they used to) so they behave identically once
-  on screen — same input types, same `data-field-id`/`data-dynamic-field`
+  same functions (`renderPersonFieldHtml()` / `renderGenericFieldHtml()`,
+  each now taking a trailing `orphaned` boolean) so they behave identically
+  once on screen — same input types, same `data-field-id`/`data-dynamic-field`
   attributes, same save-time handling — the only difference is the
-  `.field-orphaned` class and the `.field-orphaned-hint` note. **This is
+  `.field-orphaned` class and the `.field-orphaned-hint` note. Person-type
+  fields (People included, now that it's a real field — see its own note
+  above) get their own orphaned-detection loop over `existingPersonFieldValues`,
+  parallel to but separate from the `existingValues`/`d.customFields` loop
+  every other field type uses, since a person-type field's "does it have
+  real data" check is "does its name array have entries", not "is its
+  string value non-blank." **This is
   deliberate: an orphaned field needs to be exactly as editable/clearable
   as a configured one**, not a special read-only or half-functional
   state, since the entire point is giving someone the chance to actually
@@ -709,10 +787,12 @@ version number — only by the schema itself matching).
   to be selected still needs a reachable way to toggle its own flags; the
   first version of this only rendered checkboxes in the Fields column and
   a field attached to every type in the library would have had no way to
-  ever reach them. Not offered for `'People'` (not a `fields` row) or for
-  `'Amount'`/`'Currency'` by name (their flags are deliberately kept off —
-  see the sentinel-fields note above — so an editable checkbox that
-  visibly did nothing would just be confusing).
+  ever reach them. Not offered for any person-type field (People, Author,
+  Collaborator, ... — `capabilitiesHtml()` excludes `type === 'person'`,
+  see the People note above for why) or for `'Amount'`/`'Currency'` by
+  name (their flags are deliberately kept off — see the sentinel-fields
+  note above — so an editable checkbox that visibly did nothing would just
+  be confusing).
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's
@@ -914,7 +994,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **42
+There's a real, runnable Playwright regression suite in `tests/` — **44
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -980,7 +1060,18 @@ the detail view's `File`/`Original` path lines (folded into
 both a processed file and a separate original to show), the path lines'
 "Copy" buttons (`test_copy_path.py` — button presence per doc type, the
 "Copied!"/reset label cycle, and that each button copies its own path
-independently rather than a stale or shared value), and search across
+independently rather than a stale or shared value), People's generalization
+into a real person-type field (`test_person_type_field.py` — creating a
+brand new "Author" field inline, an existing People field staying present
+and unaffected, independent `document_field_people` links per field rather
+than a merged/shared list, the detail view's own pills section for a
+non-People person-type field, searching by an Author-only name, and the
+`person-list` datalist autocompleting a name that's only ever appeared as
+an Author, never as People; `test_people_migration.py` — an old-shape
+seeded library, `document_people` populated directly with no `fields` row
+for `'People'` yet, correctly promoted on open, its `document_type_fields`
+sentinel row needing no migration of its own, the old `document_people`
+table left untouched, and idempotency across a reopen), and search across
 all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description

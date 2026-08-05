@@ -14,16 +14,17 @@ TYPE_FIELD_ROWS = [
 ]
 
 # Payment method/Amount are plain generic fields now (see
-# migrateSentinelFieldsToGeneric()), so they no longer have fixed #f-payment/
-# #f-amount ids -- located by their data-dynamic-field attribute instead, same as
-# any other custom field.
+# migrateSentinelFieldsToGeneric()), and People is a plain person-type field (see
+# migratePeopleToGenericField()) -- none of them have fixed #f-payment/#f-amount/
+# #f-person ids anymore, located by their data-dynamic-field attribute instead,
+# same as any other custom field.
 FIELDS = [
     ('category', '#f-category', '#f-category-clear'),
     ('subcategory', '#f-subcategory', '#f-subcategory-clear'),
     ('payment', '[data-dynamic-field="Payment method"] input', '[data-dynamic-field="Payment method"] .clear-btn'),
     ('amount', '[data-dynamic-field="Amount"] input', '[data-dynamic-field="Amount"] .clear-btn'),
     ('tags', '#f-tags', '#f-tags-clear'),
-    ('person', '#f-person', '#f-person-clear'),
+    ('person', '[data-dynamic-field="People"] input', '[data-dynamic-field="People"] .clear-btn'),
 ]
 EDIT_FIELDS = [
     ('category', '#e-category', '#e-category-clear'),
@@ -67,7 +68,7 @@ async def main():
         await page.fill('[data-dynamic-field="Payment method"] input', 'Credit Card')
         await page.fill('[data-dynamic-field="Amount"] input', '42.50')
         await page.fill('#f-tags', 'urgent, receipt')
-        await page.fill('#f-person', 'Arne, Jana')
+        await page.fill('[data-dynamic-field="People"] input', 'Arne, Jana')
 
         for name, input_sel, clear_sel in FIELDS:
             visible = await page.locator(clear_sel).is_visible()

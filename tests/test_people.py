@@ -7,6 +7,12 @@ APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ si
 import asyncio
 from playwright.async_api import async_playwright
 
+# People is a plain person-type `fields` row now (see migratePeopleToGenericField()),
+# not a hardcoded sentinel -- its input lives at the same [data-dynamic-field="People"]
+# input selector any other dynamic field would use, not a fixed #f-person/#e-person id.
+PEOPLE_INPUT_F = '[data-dynamic-field="People"] input'
+PEOPLE_INPUT_E = '#dynamic-fields-e [data-dynamic-field="People"] input'
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -42,7 +48,7 @@ async def main():
         await page.fill('#f-type', 'General')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        await page.fill('#f-person', 'Arne, Jana')
+        await page.fill(PEOPLE_INPUT_F, 'Arne, Jana')
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
@@ -57,11 +63,13 @@ async def main():
         await page.fill('#f-type', 'General')
         await page.locator('#f-type').blur()
         await page.wait_for_timeout(150)
-        await page.fill('#f-person', 'Arne')
+        await page.fill(PEOPLE_INPUT_F, 'Arne')
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
-        # check persisted state: exactly 2 people (Arne, Jana), not 3
+        # check persisted state: exactly 2 people (Arne, Jana), not 3, and the People
+        # field's own document_field_people rows (not the vestigial document_people
+        # table -- see CLAUDE.md's migratePeopleToGenericField() note) reflect them.
         persisted = await page.evaluate("""
             (async () => {
                 const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
@@ -70,7 +78,12 @@ async def main():
             })()
         """)
         print("people table:", persisted['people'])
-        print("document_people links:", persisted['document_people'])
+        people_field = next(f for f in persisted['fields'] if f['name'] == 'People')
+        print("People field type (should be person):", people_field['type'])
+        print("document_field_people links:", persisted['document_field_people'])
+        print("document_people is untouched/empty (vestigial, never written by the app):", persisted['document_people'])
+        assert len(persisted['people']) == 2, f"expected 2 people, got {persisted['people']}"
+        assert all(row['field_id'] == people_field['id'] for row in persisted['document_field_people'])
 
         # check table rendering shows pills for both people on row 1
         row1_html = await page.locator('tr[data-id="1"]').inner_html()
@@ -113,8 +126,35 @@ async def main():
         """)
         print("--- sidecar for doc1 ---")
         print(sidecar)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        # === Edit: clear People via the clear button, confirm it saves as empty ===
+        await page.click('tr[data-id="2"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        people_value_before_edit = await page.locator(PEOPLE_INPUT_E).input_value()
+        print("edit form pre-fills People:", people_value_before_edit)
+        await page.click('[data-dynamic-field="People"] .clear-btn')
+        await page.fill(PEOPLE_INPUT_E, 'Arne, Ben')
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(300)
+
+        persisted2 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        print("people table after edit (should now include Ben, still 3 total):", persisted2['people'])
+        assert len(persisted2['people']) == 3, f"expected 3 people after adding Ben, got {persisted2['people']}"
 
         print("JS ERRORS:", errors)
+        for fn in ('doc1.pdf', 'doc2.pdf'):
+            if _os.path.exists(fn):
+                _os.remove(fn)
         await browser.close()
 
 asyncio.run(main())

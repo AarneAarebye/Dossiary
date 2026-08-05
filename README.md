@@ -64,11 +64,15 @@ working" problem that motivated this project in the first place.
   `library.sqlite`. This isn't a real Spotlight *integration* (not
   possible from a browser — see Limitations below); it's just an ordinary
   text file that happens to get indexed like any other.
-- **Custom fields, fully generic** — text, number, date, and checkbox
-  fields (Organization, Year, Date From, Paid, Reimbursable — whatever
-  your library uses) are all modeled the same way, backfilled from
-  Mariner's own field definitions and values. Not a fixed set of
-  hardcoded fields.
+- **Custom fields, fully generic** — text, number, date, checkbox, and
+  person fields (Organization, Year, Date From, Paid, Reimbursable,
+  Author, Collaborator — whatever your library uses) are all modeled the
+  same way, backfilled from Mariner's own field definitions and values.
+  Not a fixed set of hardcoded fields. A person-type field works like
+  People itself (see "Tag & organize" below): comma-separated, a document
+  can relate to more than one person through it, and every person-type
+  field shares the same underlying list of names, so someone typed into
+  Author autocompletes and searches the same as one typed into People.
 - **Tag & organize** — category, subcategory, document type, payment
   method, amount, date, notes, people, custom fields, and free-form tags
   per document — a document can relate to more than one person, filterable
@@ -159,9 +163,11 @@ working" problem that motivated this project in the first place.
   header reflects this too: Payment and Amount only appear there when a
   document actually has a value for them, rather than always showing an
   empty placeholder.
-- **Any custom field can become a table column, a filter, and offer
-  autocomplete** — two checkboxes next to each field in Field Settings'
-  Fields list. **Column** adds a sortable table column (click its header
+- **Any single-valued custom field can become a table column, a filter, and
+  offer autocomplete** — two checkboxes next to each field in Field
+  Settings' Fields list (not offered for person-type fields like People,
+  Author, or Collaborator — see Limitations). **Column** adds a sortable
+  table column (click its header
   to sort, numerically for Number-type fields) and, for Text/Checkbox
   fields, a toolbar filter dropdown built from the real distinct values
   already in your library — Number/Date fields get the column without a
@@ -175,8 +181,8 @@ working" problem that motivated this project in the first place.
 - **Add a custom field right from the capture/edit forms** — a
   "+ Add a custom field" toggle below the custom fields, hidden until you've
   entered a document type (a field always has to attach to *some* type).
-  Pick a name and a type (Text/Number/Date/Checkbox — no Currency option;
-  for a monetary value use the built-in Amount field instead, which the
+  Pick a name and a type (Text/Number/Date/Checkbox/Person — no Currency
+  option; for a monetary value use the built-in Amount field instead, which the
   form reminds you of), and it's created and immediately shown on the
   document you're filling out — no trip to Field Settings required, and no
   document type needed there in advance either, which matters for a
@@ -312,9 +318,9 @@ people
     name  TEXT UNIQUE
 
 document_people
-    document_id  INTEGER
-    person_id    INTEGER
-    PRIMARY KEY (document_id, person_id)
+    document_id  INTEGER      -- VESTIGIAL -- see "fields"/"document_field_people" below.
+    person_id    INTEGER      -- Neither read nor written anymore; kept (never dropped)
+    PRIMARY KEY (document_id, person_id)   -- so old bytes aren't destroyed.
 
 settings
     key    TEXT PRIMARY KEY
@@ -323,22 +329,29 @@ settings
 fields
     id                INTEGER PRIMARY KEY
     name              TEXT UNIQUE
-    type              TEXT      -- 'text', 'number', 'date', or 'checkbox'
+    type              TEXT      -- 'text', 'number', 'date', 'checkbox', or 'person'
     show_as_column    INTEGER   -- 0/1; adds a sortable table column, and (text/
-                                  -- checkbox types only) a toolbar filter dropdown
+                                  -- checkbox types only) a toolbar filter dropdown.
+                                  -- Not offered for 'person'-type fields (see below).
     autocomplete      INTEGER   -- 0/1; text-type fields only -- offers previously-
                                   -- used values while typing
 
 document_field_values
     document_id  INTEGER
     field_id     INTEGER
-    value        TEXT     -- always stored as text; interpreted per fields.type when read
-    PRIMARY KEY (document_id, field_id)
+    value        TEXT     -- always stored as text; interpreted per fields.type when read.
+    PRIMARY KEY (document_id, field_id)   -- Not used for 'person'-type fields -- see below.
+
+document_field_people
+    document_id  INTEGER
+    field_id     INTEGER  -- a `fields` row of type 'person' -- People, Author, Collaborator, ...
+    person_id    INTEGER
+    PRIMARY KEY (document_id, field_id, person_id)
 
 document_type_fields
     document_type  TEXT
-    field_name     TEXT      -- a name from `fields`, OR the literal 'People' as a sentinel
-                              -- for the special multi-valued people/document_people system
+    field_name     TEXT      -- a name from `fields` -- includes 'People' itself now, not
+                              -- just custom fields (see below)
     position       INTEGER   -- display order within this document type
     PRIMARY KEY (document_type, field_name)
 ```
@@ -352,37 +365,54 @@ new captures' Currency field as a dismissible guess — see Features above;
 unset by default, since this is a general-purpose tool with no currency
 that's correct to assume for everyone).
 
-**Custom fields are fully generic** (`fields` + `document_field_values`) —
-Organization, Year, Date From, Paid, Payment method, Amount, Currency,
-whatever your library actually uses. Each field has a type
-(`text`/`number`/`date`/`checkbox`) that determines how it's rendered and
-how its stored (always-text) value gets interpreted, plus the
-`show_as_column`/`autocomplete` capability flags described above.
-Populated by `migrate_to_new_library.py` from Mariner's own field
-definitions and real values for migrated libraries, and by
-`migrateSentinelFieldsToGeneric()` (a one-time, idempotent step run on
-every library open) for Payment method/Amount/Currency specifically —
-promoting them from the dedicated `documents` columns they used to have
-into ordinary rows here, and copying across any value already saved in
-those old columns. New fields can also be created directly from the
-capture/edit forms (a "+ Add a custom field" toggle) — see Features above.
+**Custom fields are fully generic** (`fields` + `document_field_values` for
+single-valued types, `fields` + `document_field_people` for `person`-type
+fields) — Organization, Year, Date From, Paid, Payment method, Amount,
+Currency, People, Author, Collaborator, whatever your library actually
+uses. Each field has a type (`text`/`number`/`date`/`checkbox`/`person`)
+that determines how it's rendered and how its value gets interpreted,
+plus the `show_as_column`/`autocomplete` capability flags described above
+(not offered for `person`-type fields — a multi-valued field doesn't fit
+a single table cell or a useful filter dropdown the way a single-valued
+one does). Populated by `migrate_to_new_library.py` from Mariner's own
+field definitions and real values for migrated libraries, and by two
+one-time, idempotent migrations run on every library open:
+`migrateSentinelFieldsToGeneric()` for Payment method/Amount/Currency,
+and `migratePeopleToGenericField()` for People itself — both promote what
+used to be a hardcoded special case (dedicated `documents` columns for
+the former, the singleton `document_people` table for the latter) into
+ordinary `fields` rows, copying across any value already saved under the
+old shape. New fields, including new `person`-type fields, can also be
+created directly from the capture/edit forms (a "+ Add a custom field"
+toggle) — see Features above.
 
 `document_type_fields` drives the capture/edit forms' dynamic field
 behavior (see "Dynamic fields per document type" above): for a document
-type present in this table, only the listed fields — plus People, via the
-`'People'` sentinel — show, in the given order. A type absent from this
-table shows **none** of its custom fields at all, matching Mariner's own
-behavior (fields must be explicitly assigned to a type before they
-display). Populated by `migrate_to_new_library.py`, which decodes
-Mariner's own per-type display-field configuration.
+type present in this table, only the listed fields — People included,
+since it's an ordinary field name here now, not a special case — show,
+in the given order. A type absent from this table shows **none** of its
+custom fields at all, matching Mariner's own behavior (fields must be
+explicitly assigned to a type before they display). Populated by
+`migrate_to_new_library.py`, which decodes Mariner's own per-type
+display-field configuration; its `'People'` rows needed no migration of
+their own when People was promoted to a real field, since the column
+already stored that literal string and keeps matching unchanged.
 
-"People" works exactly like tags: a document can relate to more than one
-person (a joint bill, a shared appointment, etc.), so it's a many-to-many
-relationship, not a single field. For migrated documents, this is backfilled
-from Mariner's "Person" custom field — which sometimes held multiple names
-joined with "&" (e.g. "Arne & Jana") — split into individual people so that
-filtering by one name finds every document they're part of, not just ones
-where they're the *only* name.
+Any `person`-type field (People, Author, Collaborator, ...) works like
+tags: a document can relate to more than one person through it (a joint
+bill, co-authors, a shared appointment, etc.), so it's a many-to-many
+relationship (`document_field_people`, keyed by which field as well as
+which document), not a single string value — and every person-type field
+shares the same underlying `people` table, so a name typed into Author
+autocompletes and searches the same as one typed into People. For
+migrated documents, People specifically is backfilled from Mariner's
+"Person" custom field — which sometimes held multiple names joined with
+"&" (e.g. "Arne & Jana") — split into individual people so that filtering
+by one name finds every document they're part of, not just ones where
+they're the *only* name. That "&"-splitting only ever happened once,
+historically, in `migrate_to_new_library.py`'s own migration step; within
+the app itself, every person-type field has only ever used comma-separated
+input.
 
 `subcategory` is despite its name **not** nested under `category` — that's
 how Mariner's own schema worked (no foreign key between the two tables),
@@ -446,6 +476,15 @@ separate genuinely distinct values.
   fields show per document type. Creating a brand-new field from scratch
   is done from the capture/edit forms instead — see "Add a custom field
   right from the capture/edit forms" above.
+- **Person-type custom fields (Author, Collaborator, etc.) can't become
+  table columns or filters.** People itself keeps its own permanently-fixed
+  table column and filter dropdown, but that's a separate, older mechanism
+  — the generic `show_as_column`/`autocomplete` system every other custom
+  field can opt into doesn't support multi-valued fields yet (rendering
+  several names in one cell, or building a useful filter from them, is a
+  distinct feature that hasn't been built). A new person-type field is
+  fully usable everywhere else — capture, edit, detail view, search — just
+  not as a column or filter.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
 - **Needs network on first load** (to fetch the sql.js, Tesseract.js,
@@ -459,7 +498,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (42
+There's a real, runnable Playwright regression suite in `tests/` (44
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

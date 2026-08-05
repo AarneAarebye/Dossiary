@@ -70,12 +70,12 @@ class FakeDatabase {
     if (bytes && bytes.length) {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(bytes));
-        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [] };
+        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [] };
       } catch (e) {
-        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [] };
+        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [] };
       }
     } else {
-      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [] };
+      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [] };
     }
   }
   run(sql, params) {
@@ -148,6 +148,9 @@ class FakeDatabase {
     if (table === 'people' && isIgnore) { if (this.tables.people.some(p => p.name === row.name)) return; }
     if (table === 'document_people' && isIgnore) {
       if (this.tables.document_people.some(dp => dp.document_id === row.document_id && dp.person_id === row.person_id)) return;
+    }
+    if (table === 'document_field_people' && isIgnore) {
+      if (this.tables.document_field_people.some(dfp => dfp.document_id === row.document_id && dfp.field_id === row.field_id && dfp.person_id === row.person_id)) return;
     }
     this.tables[table].push(row);
   }
@@ -242,7 +245,7 @@ window.pdfjsLib = {
 window.__makeSeededEmptyRoot = function(typeFieldRows, fieldRows) {
   const root = new FakeDirHandle('TestLib');
   const seed = {
-    documents: [], tags: [], document_tags: [], people: [], document_people: [], settings: [],
+    documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [],
     document_type_fields: typeFieldRows || [],
     fields: fieldRows || [],
     document_field_values: [],
@@ -260,7 +263,8 @@ window.__makeSeededRoot = function(seed) {
   const root = new FakeDirHandle('TestLib');
   const full = {
     documents: seed.documents || [], tags: seed.tags || [], document_tags: seed.document_tags || [],
-    people: seed.people || [], document_people: seed.document_people || [], settings: seed.settings || [],
+    people: seed.people || [], document_people: seed.document_people || [], document_field_people: seed.document_field_people || [],
+    settings: seed.settings || [],
     document_type_fields: seed.document_type_fields || [], fields: seed.fields || [],
     document_field_values: seed.document_field_values || [],
   };

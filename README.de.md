@@ -74,10 +74,17 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   nicht möglich — siehe Einschränkungen unten), sondern lediglich eine
   ganz gewöhnliche Textdatei, die wie jede andere mitindiziert wird.
 - **Vollständig generische benutzerdefinierte Felder** — Text-, Zahlen-,
-  Datums- und Checkbox-Felder (Organisation, Jahr, Datum von, Bezahlt,
-  Erstattungsfähig — was auch immer Ihre Bibliothek nutzt) werden alle
-  auf dieselbe Weise abgebildet, aus Mariners eigenen Felddefinitionen und
-  Werten übernommen. Kein fest vorgegebener Satz an Feldern.
+  Datums-, Checkbox- und Personen-Felder (Organisation, Jahr, Datum von,
+  Bezahlt, Erstattungsfähig, Autor, Mitwirkende — was auch immer Ihre
+  Bibliothek nutzt) werden alle auf dieselbe Weise abgebildet, aus
+  Mariners eigenen Felddefinitionen und Werten übernommen. Kein fest
+  vorgegebener Satz an Feldern. Ein Feld vom Typ „Person" funktioniert wie
+  Personen selbst (siehe „Verschlagworten & organisieren" unten):
+  kommagetrennt, ein Dokument kann sich über dieses Feld auf mehr als eine
+  Person beziehen, und jedes Personen-Feld greift auf dieselbe zugrunde
+  liegende Namensliste zu — ein bei Autor eingetragener Name wird also
+  genauso automatisch vervollständigt und durchsucht wie einer bei
+  Personen.
 - **Verschlagworten & organisieren** — Kategorie, Unterkategorie,
   Dokumenttyp, Zahlungsmethode, Betrag, Datum, Notizen, Personen,
   benutzerdefinierte Felder und freie Tags pro Dokument — ein Dokument
@@ -186,9 +193,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   berücksichtigt das ebenfalls: Zahlungsmethode und Betrag erscheinen dort
   nur, wenn ein Dokument tatsächlich einen Wert dafür hat, statt immer
   einen leeren Platzhalter anzuzeigen.
-- **Jedes benutzerdefinierte Feld kann zu einer Tabellenspalte, einem
-  Filter und Autocomplete werden** — zwei Kontrollkästchen neben jedem
-  Feld in der Feldliste der Feldeinstellungen. **Column** fügt eine
+- **Jedes einwertige benutzerdefinierte Feld kann zu einer Tabellenspalte,
+  einem Filter und Autocomplete werden** — zwei Kontrollkästchen neben
+  jedem Feld in der Feldliste der Feldeinstellungen (nicht verfügbar für
+  Personen-Felder wie Personen, Autor oder Mitwirkende — siehe
+  Einschränkungen). **Column** fügt eine
   sortierbare Tabellenspalte hinzu (auf die Kopfzeile klicken zum
   Sortieren, bei Zahlenfeldern numerisch) und, bei Text-/Checkbox-Feldern,
   ein Filter-Dropdown in der Symbolleiste, gebildet aus den tatsächlichen,
@@ -205,7 +214,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Bearbeitungsformular anlegen** — ein Schalter „+ Add a custom field“
   unterhalb der benutzerdefinierten Felder, verborgen, bis ein
   Dokumenttyp eingetragen ist (ein Feld muss immer zu *irgendeinem* Typ
-  gehören). Namen und Typ wählen (Text/Zahl/Datum/Checkbox — keine
+  gehören). Namen und Typ wählen (Text/Zahl/Datum/Checkbox/Person — keine
   Währungsoption; für einen Geldbetrag stattdessen das eingebaute
   Betrags-Feld verwenden, worauf das Formular hinweist), und es wird
   sofort erstellt und im gerade bearbeiteten Dokument angezeigt — kein
@@ -359,9 +368,9 @@ people
     name  TEXT UNIQUE
 
 document_people
-    document_id  INTEGER
-    person_id    INTEGER
-    PRIMARY KEY (document_id, person_id)
+    document_id  INTEGER      -- VESTIGIAL -- siehe „fields“/„document_field_people“ unten.
+    person_id    INTEGER      -- Wird nicht mehr gelesen oder geschrieben; bleibt (nie gelöscht)
+    PRIMARY KEY (document_id, person_id)   -- erhalten, damit alte Bytes nicht zerstört werden.
 
 settings
     key    TEXT PRIMARY KEY
@@ -370,22 +379,29 @@ settings
 fields
     id                INTEGER PRIMARY KEY
     name              TEXT UNIQUE
-    type              TEXT      -- 'text', 'number', 'date' oder 'checkbox'
+    type              TEXT      -- 'text', 'number', 'date', 'checkbox' oder 'person'
     show_as_column    INTEGER   -- 0/1; fügt eine sortierbare Tabellenspalte hinzu, und (nur bei
-                                  -- text/checkbox) ein Filter-Dropdown in der Symbolleiste
+                                  -- text/checkbox) ein Filter-Dropdown in der Symbolleiste.
+                                  -- Nicht verfügbar für Felder vom Typ 'person' (siehe unten).
     autocomplete      INTEGER   -- 0/1; nur bei text-Feldern -- schlägt beim Tippen bereits
                                   -- verwendete Werte vor
 
 document_field_values
     document_id  INTEGER
     field_id     INTEGER
-    value        TEXT     -- immer als Text gespeichert; wird beim Lesen anhand von fields.type interpretiert
-    PRIMARY KEY (document_id, field_id)
+    value        TEXT     -- immer als Text gespeichert; wird beim Lesen anhand von fields.type interpretiert.
+    PRIMARY KEY (document_id, field_id)   -- Nicht verwendet für Felder vom Typ 'person' -- siehe unten.
+
+document_field_people
+    document_id  INTEGER
+    field_id     INTEGER  -- eine `fields`-Zeile vom Typ 'person' -- Personen, Autor, Mitwirkende, ...
+    person_id    INTEGER
+    PRIMARY KEY (document_id, field_id, person_id)
 
 document_type_fields
     document_type  TEXT
-    field_name     TEXT      -- ein Name aus `fields`, ODER das wörtliche 'People' als Sentinel
-                              -- für das spezielle, mehrwertige Personen-/document_people-System
+    field_name     TEXT      -- ein Name aus `fields` -- schließt jetzt auch 'People' selbst ein,
+                              -- nicht nur benutzerdefinierte Felder (siehe unten)
     position       INTEGER   -- Anzeigereihenfolge innerhalb dieses Dokumenttyps
     PRIMARY KEY (document_type, field_name)
 ```
@@ -401,43 +417,61 @@ gesetzt, da dies ein allgemeines Werkzeug ist, für das keine Währung für
 alle richtig anzunehmen wäre).
 
 **Benutzerdefinierte Felder sind vollständig generisch** (`fields` +
-`document_field_values`) — Organisation, Jahr, Datum von, Bezahlt,
-Zahlungsmethode, Betrag, Währung, was auch immer Ihre Bibliothek tatsächlich
-nutzt. Jedes Feld hat einen Typ (`text`/`number`/`date`/`checkbox`), der
-bestimmt, wie es dargestellt und wie sein gespeicherter (immer als Text
-vorliegender) Wert interpretiert wird, plus die oben beschriebenen
-Fähigkeits-Flags `show_as_column`/`autocomplete`. Wird von
-`migrate_to_new_library.py` aus Mariners eigenen Felddefinitionen und
-echten Werten für migrierte Bibliotheken befüllt, sowie von
-`migrateSentinelFieldsToGeneric()` (ein einmaliger, idempotenter Schritt
-bei jedem Öffnen einer Bibliothek) speziell für Zahlungsmethode/Betrag/
-Währung — sie werden dabei von den eigens dafür vorgesehenen
-`documents`-Spalten, die sie früher hatten, zu gewöhnlichen Zeilen hier
-befördert, samt Übernahme jedes bereits in diesen alten Spalten
-gespeicherten Werts. Neue Felder lassen sich auch direkt aus den
-Erfassungs-/Bearbeitungsformularen anlegen (Schalter „+ Add a custom
-field“) — siehe Funktionen oben.
+`document_field_values` für einwertige Typen, `fields` +
+`document_field_people` für Felder vom Typ `person`) — Organisation, Jahr,
+Datum von, Bezahlt, Zahlungsmethode, Betrag, Währung, Personen, Autor,
+Mitwirkende, was auch immer Ihre Bibliothek tatsächlich nutzt. Jedes Feld
+hat einen Typ (`text`/`number`/`date`/`checkbox`/`person`), der bestimmt,
+wie es dargestellt und wie sein Wert interpretiert wird, plus die oben
+beschriebenen Fähigkeits-Flags `show_as_column`/`autocomplete` (nicht
+verfügbar für Felder vom Typ `person` — ein mehrwertiges Feld passt nicht
+in eine einzelne Tabellenzelle oder ein sinnvolles Filter-Dropdown, so wie
+ein einwertiges Feld das tut). Wird von `migrate_to_new_library.py` aus
+Mariners eigenen Felddefinitionen und echten Werten für migrierte
+Bibliotheken befüllt, sowie von zwei einmaligen, idempotenten Migrationen,
+die bei jedem Öffnen einer Bibliothek laufen: `migrateSentinelFieldsToGeneric()`
+für Zahlungsmethode/Betrag/Währung, und `migratePeopleToGenericField()`
+für Personen selbst — beide befördern, was früher ein fest einprogrammierter
+Sonderfall war (eigens dafür vorgesehene `documents`-Spalten beim einen,
+die einzelne Tabelle `document_people` beim anderen), zu gewöhnlichen
+`fields`-Zeilen, samt Übernahme jedes bereits unter der alten Form
+gespeicherten Werts. Neue Felder, einschließlich neuer Felder vom Typ
+`person`, lassen sich auch direkt aus den Erfassungs-/
+Bearbeitungsformularen anlegen (Schalter „+ Add a custom field“) — siehe
+Funktionen oben.
 
 `document_type_fields` steuert das dynamische Feldverhalten der
 Erfassungs-/Bearbeitungsformulare (siehe „Dynamische Felder pro
 Dokumenttyp“ oben): Für einen in dieser Tabelle vorhandenen Dokumenttyp
-werden nur die aufgeführten Felder angezeigt — plus Personen, über den
-Sentinel `'People'` —, in der angegebenen Reihenfolge. Ein in dieser
-Tabelle fehlender Typ zeigt **überhaupt keine** benutzerdefinierten
-Felder — genau wie bei Mariner müssen Felder einem Typ erst ausdrücklich
-zugewiesen werden, bevor sie erscheinen. Wird von
-`migrate_to_new_library.py` befüllt, das Mariners eigene
-Anzeigefeld-Konfiguration pro Typ dekodiert.
+werden nur die aufgeführten Felder angezeigt — Personen eingeschlossen,
+da es hier jetzt ein ganz gewöhnlicher Feldname ist, kein Sonderfall mehr
+—, in der angegebenen Reihenfolge. Ein in dieser Tabelle fehlender Typ
+zeigt **überhaupt keine** benutzerdefinierten Felder — genau wie bei
+Mariner müssen Felder einem Typ erst ausdrücklich zugewiesen werden,
+bevor sie erscheinen. Wird von `migrate_to_new_library.py` befüllt, das
+Mariners eigene Anzeigefeld-Konfiguration pro Typ dekodiert; dessen
+`'People'`-Zeilen brauchten keine eigene Migration, als Personen zu einem
+echten Feld wurde — die Spalte enthielt bereits genau diese Zeichenkette
+und stimmt weiterhin unverändert überein.
 
-„People“ (Personen) funktioniert genau wie Tags: Ein Dokument kann sich
-auf mehr als eine Person beziehen (eine gemeinsame Rechnung, ein
-gemeinsamer Termin usw.), es handelt sich also um eine
-Mehrfachbeziehung, kein einzelnes Feld. Bei migrierten Dokumenten wird
-dies aus Mariners benutzerdefiniertem Feld „Person“ übernommen — das
-manchmal mehrere, mit „&“ verbundene Namen enthielt (z. B. „Arne & Jana“)
-—, aufgeteilt in einzelne Personen, damit die Suche nach einem Namen
-jedes Dokument findet, an dem diese Person beteiligt ist, nicht nur
-solche, bei denen sie der *einzige* Name ist.
+Jedes Feld vom Typ `person` (Personen, Autor, Mitwirkende, ...)
+funktioniert wie Tags: Ein Dokument kann sich über dieses Feld auf mehr
+als eine Person beziehen (eine gemeinsame Rechnung, gemeinsame Autoren,
+ein gemeinsamer Termin usw.), es handelt sich also um eine
+Mehrfachbeziehung (`document_field_people`, sowohl nach Feld als auch
+nach Dokument geschlüsselt), kein einzelner Textwert — und jedes
+Personen-Feld greift auf dieselbe zugrunde liegende Tabelle `people` zu,
+sodass ein bei Autor eingetragener Name genauso automatisch
+vervollständigt und durchsucht wird wie einer bei Personen. Bei
+migrierten Dokumenten wird Personen speziell aus Mariners
+benutzerdefiniertem Feld „Person“ übernommen — das manchmal mehrere, mit
+„&“ verbundene Namen enthielt (z. B. „Arne & Jana“) —, aufgeteilt in
+einzelne Personen, damit die Suche nach einem Namen jedes Dokument
+findet, an dem diese Person beteiligt ist, nicht nur solche, bei denen
+sie der *einzige* Name ist. Dieses Aufteilen bei „&“ geschah historisch
+nur einmal, in `migrate_to_new_library.py`s eigenem Migrationsschritt —
+innerhalb der App selbst hat jedes Personen-Feld schon immer nur
+kommagetrennte Eingabe verwendet.
 
 `subcategory` ist trotz des Namens **nicht** unter `category`
 verschachtelt — so war es schon in Mariners eigenem Schema (kein
@@ -513,6 +547,17 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   anzulegen geschieht stattdessen über die Erfassungs-/
   Bearbeitungsformulare — siehe „Ein benutzerdefiniertes Feld direkt aus
   dem Erfassungs-/Bearbeitungsformular anlegen“ oben.
+- **Benutzerdefinierte Felder vom Typ Person (Autor, Mitwirkende usw.)
+  können nicht zu Tabellenspalten oder Filtern werden.** Personen behält
+  seine eigene, fest eingebaute Tabellenspalte und Filter-Dropdown, aber
+  das ist ein separater, älterer Mechanismus — das generische
+  `show_as_column`/`autocomplete`-System, das jedes andere
+  benutzerdefinierte Feld nutzen kann, unterstützt bisher keine
+  mehrwertigen Felder (mehrere Namen in einer Zelle darzustellen, oder
+  daraus ein sinnvolles Filter zu bauen, ist eine eigene, noch nicht
+  gebaute Funktion). Ein neues Feld vom Typ Person ist überall sonst voll
+  nutzbar — Erfassung, Bearbeitung, Detailansicht, Suche — nur eben nicht
+  als Spalte oder Filter.
 - **Erfordert Chrome oder Edge.** Safari und Firefox unterstützen zum
   Zeitpunkt der Erstellung die Schreibseite der File System Access API
   nicht.
@@ -527,7 +572,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (39
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (44
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

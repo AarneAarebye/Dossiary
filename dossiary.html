@@ -326,6 +326,10 @@
     CREATE TABLE IF NOT EXISTS document_people (
       document_id INTEGER, person_id INTEGER, PRIMARY KEY (document_id, person_id)
     );
+    CREATE TABLE IF NOT EXISTS document_field_people (
+      document_id INTEGER, field_id INTEGER, person_id INTEGER,
+      PRIMARY KEY (document_id, field_id, person_id)
+    );
     CREATE TABLE IF NOT EXISTS settings ( key TEXT PRIMARY KEY, value TEXT );
     CREATE TABLE IF NOT EXISTS document_type_fields (
       document_type TEXT, field_name TEXT, position INTEGER, PRIMARY KEY (document_type, field_name)
@@ -375,6 +379,7 @@
   let tagsByDocId = {};
   let tagNameToId = {};
   let peopleByDocId = {};
+  let personFieldValuesByDocId = {};
   let personNameToId = {};
   let nextDocId = 1;
   let nextTagId = 1;
@@ -698,8 +703,13 @@
       if(name === 'Payment method' || name === 'Amount' || name === 'Currency') continue; // already shown above, prominently
       lines.push(`${name}: ${value}`);
     }
+    lines.push(`People: ${(opts.people || []).join(', ')}`);
+    // Every other person-type field (Author, Collaborator, ...) -- People itself
+    // keeps the dedicated line just above; callers exclude it from opts.personFields.
+    for(const [name, names] of Object.entries(opts.personFields || {})){
+      lines.push(`${name}: ${(names || []).join(', ')}`);
+    }
     lines.push(
-      `People: ${(opts.people || []).join(', ')}`,
       `Tags: ${(opts.tags || []).join(', ')}`,
       '',
       'Notes:',
@@ -760,6 +770,7 @@
       db = new SQL.Database();
       db.run(SCHEMA);
       migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
+      migratePeopleToGenericField(); // seeds People as an available person-type field from the start
       migrateTextFieldsAutocompleteDefault(); // no-op here (no text fields exist yet beyond the sentinels above), but marks this library as migrated
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
       await persistDb();
@@ -783,6 +794,7 @@
     db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
     applySchemaMigrations(); // adds any columns introduced after this library was created
     migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
+    migratePeopleToGenericField(); // one-time; no-op if this library was already migrated
     migrateTextFieldsAutocompleteDefault(); // one-time; no-op if this library was already migrated
     await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
@@ -799,7 +811,7 @@
   function resetAll(){
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
     inboxDirHandle = null; pendingInboxFiles = [];
-    allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personNameToId = {};
+    allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
@@ -856,15 +868,32 @@
     }
     nextPersonId = maxPersonId + 1;
 
-    const personLinks = queryAll('SELECT document_id, person_id FROM document_people');
-    const personIdToName = Object.fromEntries(Object.entries(personNameToId).map(([n, i]) => [i, n]));
-    peopleByDocId = {};
-    for(const [docId, personId] of personLinks.rows){
-      (peopleByDocId[docId] = peopleByDocId[docId] || []).push(personIdToName[personId] || ('#' + personId));
-    }
-
     loadFieldDefs();
     loadFieldValues();
+
+    // Person-type fields (People, Author, Collaborator, ...) are all backed by the
+    // same document_field_people join table now, keyed by field id -- see
+    // migratePeopleToGenericField() for how 'People' itself got promoted into being
+    // just the first field of this kind, same as Payment method/Amount/Currency
+    // before it. personFieldValuesByDocId mirrors fieldValuesByDocId's shape but with
+    // an array of names per field instead of a single string. peopleByDocId stays a
+    // plain alias to the 'People' field's own values specifically, since the fixed
+    // People table column/filter, detail-view Pills, and search all only ever need
+    // to know about that one field, not the generic set.
+    const personIdToName = Object.fromEntries(Object.entries(personNameToId).map(([n, i]) => [i, n]));
+    const idToPersonField = Object.fromEntries(fieldDefs.filter(f => f.type === 'person').map(f => [f.id, f]));
+    const personFieldLinks = queryAll('SELECT document_id, field_id, person_id FROM document_field_people');
+    personFieldValuesByDocId = {};
+    for(const [docId, fieldId, personId] of personFieldLinks.rows){
+      const field = idToPersonField[fieldId];
+      if(!field) continue;
+      const perDoc = (personFieldValuesByDocId[docId] = personFieldValuesByDocId[docId] || {});
+      (perDoc[field.name] = perDoc[field.name] || []).push(personIdToName[personId] || ('#' + personId));
+    }
+    peopleByDocId = {};
+    for(const [docId, fieldsForDoc] of Object.entries(personFieldValuesByDocId)){
+      if(fieldsForDoc['People']) peopleByDocId[docId] = fieldsForDoc['People'];
+    }
 
     allDocs = [];
     let maxDocId = 0;
@@ -881,6 +910,7 @@
         thumbnail_path: row[idx.thumbnail_path],
         archived: !!row[idx.archived],
         customFields: fieldValuesByDocId[id] || {}, // { "Organization": "Dr. Schröter", "Paid": "1", ... }
+        personFieldValues: personFieldValuesByDocId[id] || {}, // { "People": [...], "Author": [...], ... }
         tags: tagsByDocId[id] || [],
         people: peopleByDocId[id] || [],
       });
@@ -1072,6 +1102,44 @@
     }
   }
 
+  // One-time-per-library promotion of the 'People' sentinel into a real `fields` row
+  // (type: 'person'), same precedent as migrateSentinelFieldsToGeneric() just above
+  // for Payment method/Amount/Currency -- and, like that migration, deliberately run
+  // after it (though the two don't interact) rather than merged into it, since they
+  // promote genuinely different kinds of sentinel (single-valued dedicated columns
+  // vs. a multi-valued many-to-many relationship) and keeping them separate mirrors
+  // how the app already treats People as architecturally distinct from ordinary
+  // custom fields elsewhere. Existing document_people rows are copied into the new,
+  // per-field document_field_people join table under this field's id.
+  // document_type_fields needs no migration at all here: its field_name column
+  // already stored the literal string 'People' as a sentinel even before this
+  // change, and that value keeps matching unchanged now that 'People' is a real
+  // field name instead -- the generic per-field lookup in applyDynamicFieldsForType()
+  // just starts resolving it correctly once the special-case branch there is gone.
+  // The old document_people table is deliberately left in place afterward, unused
+  // (vestigial, same additive-only philosophy as the old documents.payment_method/
+  // amount/currency columns) -- never dropped, in case a backfill step ever no-ops
+  // on some edge case. Idempotency relies on 'People' already being a reserved name
+  // addInlineCustomField() has always refused to let anyone create a same-named
+  // custom field with -- so unlike a few other edge cases in this codebase, there's
+  // no need to guard against fieldNameToId['People'] already pointing at some
+  // unrelated, wrong-typed field from before this feature existed; that was never
+  // possible.
+  function migratePeopleToGenericField(){
+    loadFieldDefs(); // ensure fieldDefs/fieldNameToId/nextFieldId reflect the DB before we touch either
+    if(fieldNameToId['People'] !== undefined) return; // already migrated
+
+    const id = nextFieldId++;
+    db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)',
+      [id, 'People', 'person', 0, 0]);
+    fieldNameToId['People'] = id;
+
+    const { rows } = queryAll('SELECT document_id, person_id FROM document_people');
+    for(const [docId, personId] of rows){
+      db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [docId, id, personId]);
+    }
+  }
+
   // One-time-per-library switch: every text-type custom field gets Autocomplete
   // turned on by default, the same suggestions-dropdown behavior Category/Type/
   // Payment method already have (see renderGenericFieldHtml()/populateDatalists()).
@@ -1118,6 +1186,8 @@
     const values = [];
     container.querySelectorAll('[data-field-id]').forEach(fieldEl => {
       const fieldId = Number(fieldEl.dataset.fieldId);
+      const field = fieldDefs.find(f => f.id === fieldId);
+      if(field && field.type === 'person') return; // multi-valued -- see readPersonFieldValues()
       const input = fieldEl.querySelector('input');
       if(!input) return;
       let value;
@@ -1132,11 +1202,26 @@
     return values;
   }
 
-  // The People input only exists in the DOM when 'People' is a configured field for
-  // the currently selected document type -- may be absent entirely.
-  function readDynamicPeopleValue(prefix){
-    const input = el(`${prefix}-person`);
-    return input ? input.value : '';
+  // Reads every rendered person-type field (People, Author, Collaborator, ...) from
+  // the capture/edit form's dynamic-fields container, as [{fieldId, names}] --
+  // readDynamicFieldValues()'s counterpart for the one field type that's multi-
+  // valued instead of a single string. A person-type field may not be in the DOM at
+  // all if it isn't configured for the currently selected document type, same as any
+  // other dynamic field.
+  function readPersonFieldValues(prefix){
+    const container = el(`dynamic-fields-${prefix}`);
+    if(!container) return [];
+    const results = [];
+    container.querySelectorAll('[data-field-id]').forEach(fieldEl => {
+      const fieldId = Number(fieldEl.dataset.fieldId);
+      const field = fieldDefs.find(f => f.id === fieldId);
+      if(!field || field.type !== 'person') return;
+      const input = fieldEl.querySelector('input');
+      if(!input) return;
+      const names = input.value.split(',').map(s => s.trim()).filter(Boolean);
+      results.push({ fieldId, names });
+    });
+    return results;
   }
 
   // All field IDs currently rendered in the dynamic-fields container, regardless of
@@ -1150,15 +1235,26 @@
     return Array.from(container.querySelectorAll('[data-field-id]')).map(elm => Number(elm.dataset.fieldId));
   }
 
-  function renderPeopleFieldHtml(prefix, existingPeople, orphaned){
+  // Renders any person-type field (People, Author, Collaborator, ...) -- generalized
+  // from a People-only renderPeopleFieldHtml() once People itself became just the
+  // first field of this kind (see migratePeopleToGenericField()). Same comma-
+  // separated, find-or-create-on-save convention for all of them; multi-valued
+  // "&"-splitting only ever happened once, historically, in the sibling repo's
+  // Mariner migration script -- this app's own UI has only ever used commas.
+  // Follows renderGenericFieldHtml()'s id/data-attribute conventions exactly
+  // (${prefix}-field-${field.id}, data-field-id) so the generic clear-button wiring,
+  // getShownFieldIds(), and orphaned-field marking in applyDynamicFieldsForType() all
+  // apply to a person-type field the same way they do to any other field, with no
+  // special-casing needed anywhere else.
+  function renderPersonFieldHtml(prefix, field, existingPeople, orphaned){
     const value = (existingPeople || []).join(', ');
-    const inputId = `${prefix}-person`;
+    const inputId = `${prefix}-field-${field.id}`;
     return `
-      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="People">
-        <label for="${inputId}">People (comma-separated)</label>
+      <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
+        <label for="${inputId}">${escapeHtml(field.name)} (comma-separated)</label>
         <div class="field-with-clear">
-          <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="Who this document relates to, e.g. Arne, Jana" />
-          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear people">✕</button>
+          <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="e.g. Arne, Jana" />
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear ${escapeHtml(field.name)}">✕</button>
         </div>
         ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
       </div>
@@ -1169,10 +1265,12 @@
   // with their own dedicated documents columns and bespoke rendering (Payment
   // method, Amount) or implicit Amount-pairing (Currency, which had no
   // document_type_fields entry of its own at all). migrateSentinelFieldsToGeneric()
-  // promotes all three to plain `fields` rows, so this is now the ONLY rendering
-  // function for generic dynamic fields -- People remains the one true sentinel
-  // (a many-to-many relationship, not a `fields`-table concept), handled separately
-  // by renderPeopleFieldHtml() above.
+  // promotes all three to plain `fields` rows. People used to be the one remaining
+  // true sentinel (a many-to-many relationship, not a `fields`-table concept) --
+  // migratePeopleToGenericField() promoted it the same way, so any field of type
+  // 'person' (People, Author, Collaborator, ...) is a plain `fields` row too now,
+  // just rendered by renderPersonFieldHtml() above instead of this function, since
+  // it's multi-valued rather than a single stored string.
   //
   // Two small, deliberate exceptions remain for the field literally named
   // "Currency", per the decision to keep Amount+Currency's *display* paired even
@@ -1247,7 +1345,7 @@
   // many-to-many relationship, not a `fields`-table row) -- Amount, Currency, and
   // Payment method all flow through the same generic `existingValues`/
   // renderGenericFieldHtml() path as any other custom field now.
-  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPeople, isEdit){
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPersonFieldValues, isEdit){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
     const entry = typeFieldOrder[(typeName || '').trim()] || [];
@@ -1261,10 +1359,18 @@
     const parsedAmount = rawAmount != null && rawAmount !== '' ? parseFloat(rawAmount) : NaN;
     const amountFilled = !isNaN(parsedAmount) && parsedAmount !== 0;
 
+    // 'People' is just an ordinary fields row now (see migratePeopleToGenericField()),
+    // so it needs no special-casing here anymore -- any field of type 'person'
+    // (People, Author, Collaborator, ...) dispatches to renderPersonFieldHtml()
+    // instead of renderGenericFieldHtml() within the same generic loop every other
+    // field type already goes through.
     let html = entry.map(({ field: fieldName }) => {
-      if(fieldName === 'People') return renderPeopleFieldHtml(prefix, existingPeople, false);
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
       if(!fieldDef) return '';
+      if(fieldDef.type === 'person'){
+        const existingPeopleForField = existingPersonFieldValues ? existingPersonFieldValues[fieldName] : undefined;
+        return renderPersonFieldHtml(prefix, fieldDef, existingPeopleForField, false);
+      }
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
       return renderGenericFieldHtml(prefix, fieldDef, existingValue, false, amountFilled);
     }).join('');
@@ -1279,8 +1385,15 @@
     // actually has -- never just capture-only intent.
     if(isEdit){
       const orphanedHtml = [];
-      if(existingPeople && existingPeople.length && !configuredNames.has('People')){
-        orphanedHtml.push(renderPeopleFieldHtml(prefix, existingPeople, true));
+      if(existingPersonFieldValues){
+        for(const fieldName of Object.keys(existingPersonFieldValues)){
+          if(configuredNames.has(fieldName)) continue;
+          const names = existingPersonFieldValues[fieldName];
+          if(!names || !names.length) continue;
+          const fieldDef = fieldDefs.find(f => f.name === fieldName);
+          if(!fieldDef) continue;
+          orphanedHtml.push(renderPersonFieldHtml(prefix, fieldDef, names, true));
+        }
       }
       if(existingValues){
         for(const fieldName of Object.keys(existingValues)){
@@ -1397,7 +1510,10 @@
     await persistTypeFieldOrder(typeName);
 
     const container = el(`dynamic-fields-${prefix}`);
-    container.insertAdjacentHTML('beforeend', renderGenericFieldHtml(prefix, { id, name, type }, '', false));
+    const newFieldHtml = type === 'person'
+      ? renderPersonFieldHtml(prefix, { id, name, type }, [], false)
+      : renderGenericFieldHtml(prefix, { id, name, type }, '', false);
+    container.insertAdjacentHTML('beforeend', newFieldHtml);
 
     nameInput.value = '';
     statusEl.textContent = '';
@@ -1513,7 +1629,12 @@
     const subcategories = [...new Set(allDocs.map(d => d.subcategory).filter(Boolean))].sort();
     const types = getUsedDocumentTypes();
     const currencies = [...new Set(allDocs.map(d => (d.customFields || {})['Currency']).filter(Boolean))].sort();
-    const people = [...new Set(allDocs.flatMap(d => d.people || []))].sort();
+    // Every known person, regardless of which person-type field(s) they're actually
+    // linked to on any document -- personNameToId is the global name registry (from
+    // the `people` table itself), not filtered to the People field specifically, so
+    // a name that's only ever appeared as an Author still autocompletes correctly on
+    // a different document's Author, Collaborator, or People field alike.
+    const people = Object.keys(personNameToId).sort();
     const tagNames = Object.keys(tagNameToId).sort();
     el('category-list').innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">`).join('');
     el('subcategory-list').innerHTML = subcategories.map(s => `<option value="${escapeHtml(s)}">`).join('');
@@ -1589,7 +1710,10 @@
         if((d.customFields || {})[f.label] !== f.value) return false;
       }
       if(q){
-        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), (d.people||[]).join(' '), (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+        // Every person-type field's names are searchable, not just People -- so
+        // finding "Arne" also surfaces a document where he's only listed as Author.
+        const personFieldNames = Object.values(d.personFieldValues || {}).map(names => (names || []).join(' '));
+        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
         if(!hay.includes(q)) return false;
       }
       return true;
@@ -1824,6 +1948,16 @@
             return entries.length ? `<div class="modal-section"><h3>Fields</h3><div class="modal-meta">${entries.map(([name, value]) => `<div><b>${escapeHtml(name)}</b> ${escapeHtml(formatCustomFieldValue(name, value))}</div>`).join('')}</div></div>` : '';
           })()}
           <div class="modal-section"><h3>People</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || '—'}</p></div>
+          ${(() => {
+            // Every other person-type field (Author, Collaborator, ...) gets its own
+            // pills section, same style as People just above -- People keeps its own
+            // dedicated section since it's always shown (even empty), unlike these,
+            // which are optional per-type custom fields and only render when they
+            // actually have a value, matching the generic Fields section's own
+            // only-if-non-empty convention right above.
+            const otherPersonFields = Object.entries(d.personFieldValues || {}).filter(([name, names]) => name !== 'People' && names && names.length);
+            return otherPersonFields.map(([name, names]) => `<div class="modal-section"><h3>${escapeHtml(name)}</h3><p>${names.map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('')}</p></div>`).join('');
+          })()}
           <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
           ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
           ${d.ocr_text ? `<div class="modal-section"><h3>OCR text</h3><div class="ocr-box">${escapeHtml(d.ocr_text)}</div></div>` : ''}
@@ -1960,6 +2094,7 @@
                 <option value="number">Number</option>
                 <option value="date">Date</option>
                 <option value="checkbox">Checkbox</option>
+                <option value="person">Person</option>
               </select>
               <button type="button" id="e-new-field-btn">Add</button>
             </div>
@@ -2010,10 +2145,10 @@
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
 
-    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.people, true);
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.personFieldValues, true);
     updateAddFieldVisibility('e');
     el('e-type').addEventListener('change', () => {
-      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.people, true);
+      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.personFieldValues, true);
       updateAddFieldVisibility('e');
     });
     wireAddFieldControls('e');
@@ -2092,19 +2227,42 @@
         tagsForDoc.push(name);
       }
 
-      db.run('DELETE FROM document_people WHERE document_id = ?', [id]);
-      const personNames = readDynamicPeopleValue('e').split(',').map(p => p.trim()).filter(Boolean);
-      const peopleForDoc = [];
-      for(const name of personNames){
-        let personId = personNameToId[name];
-        if(personId === undefined){
-          personId = nextPersonId++;
-          db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
-          personNameToId[name] = personId;
-        }
-        db.run('INSERT OR IGNORE INTO document_people (document_id, person_id) VALUES (?, ?)', [id, personId]);
-        peopleForDoc.push(name);
+      const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
+
+      // Re-link every person-type field (People, Author, Collaborator, ...) the same
+      // way as generic custom fields below -- drop existing links for fields
+      // currently shown, re-add from what's rendered now. document_people is
+      // vestigial after migratePeopleToGenericField() (see CLAUDE.md): person-type
+      // field values, including 'People' itself, all live in document_field_people
+      // now, keyed by field id exactly like document_field_values.
+      const shownPersonFieldIds = getShownFieldIds('e').filter(fid => {
+        const f = fieldDefs.find(x => x.id === fid);
+        return f && f.type === 'person';
+      });
+      for(const fieldId of shownPersonFieldIds){
+        db.run('DELETE FROM document_field_people WHERE document_id = ? AND field_id = ?', [id, fieldId]);
       }
+      const personFieldValuesForDoc = { ...d.personFieldValues };
+      for(const fieldId of shownPersonFieldIds){
+        const name = idToFieldName[fieldId];
+        if(name) delete personFieldValuesForDoc[name]; // clear first; re-added below if still non-blank
+      }
+      for(const { fieldId, names } of readPersonFieldValues('e')){
+        const namesForField = [];
+        for(const name of names){
+          let personId = personNameToId[name];
+          if(personId === undefined){
+            personId = nextPersonId++;
+            db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+            personNameToId[name] = personId;
+          }
+          db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldId, personId]);
+          namesForField.push(name);
+        }
+        const fieldName = idToFieldName[fieldId];
+        if(fieldName) personFieldValuesForDoc[fieldName] = namesForField;
+      }
+      const peopleForDoc = personFieldValuesForDoc['People'] || [];
 
       // Re-link generic custom field values the same way -- drop, then re-add from
       // whatever's currently rendered. Fields not currently shown for this document's
@@ -2116,7 +2274,6 @@
       for(const fieldId of shownFieldIds){
         db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [id, fieldId]);
       }
-      const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
       const customFieldsForDoc = { ...d.customFields };
       for(const fieldId of shownFieldIds){
         const name = idToFieldName[fieldId];
@@ -2128,11 +2285,15 @@
         if(name) customFieldsForDoc[name] = value;
       }
 
+      const otherPersonFieldsForSidecar = { ...personFieldValuesForDoc };
+      delete otherPersonFieldsForSidecar['People']; // People keeps its own dedicated sidecar line
+
       const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
       if(sidecarBaseName){
         await writeSidecarFile(sidecarBaseName, buildSidecarText({
           title, category, subcategory, documentType, date,
-          importDate: d.import_date, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+          importDate: d.import_date, customFields: customFieldsForDoc, personFields: otherPersonFieldsForSidecar,
+          people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
         }));
       }
 
@@ -2140,7 +2301,8 @@
 
       Object.assign(d, {
         title, category, subcategory, document_type: documentType,
-        date, notes, ocr_text: ocrText, customFields: customFieldsForDoc, tags: tagsForDoc, people: peopleForDoc,
+        date, notes, ocr_text: ocrText, customFields: customFieldsForDoc,
+        personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
@@ -2241,28 +2403,30 @@
       return;
     }
 
-    // People, Amount, and Currency all appear in fieldDefs/here now too (Amount and
-    // Currency as real `fields` rows since migrateSentinelFieldsToGeneric() -- only
-    // People stays outside `fields` entirely, as the one true sentinel), so they're
-    // no longer hardcoded into this list separately.
-    const allFieldNames = ['People', ...fieldDefs.map(f => f.name)];
+    // People, Amount, and Currency all appear in fieldDefs/here now too (real
+    // `fields` rows since migrateSentinelFieldsToGeneric()/migratePeopleToGenericField()),
+    // so none of them need to be hardcoded into this list separately anymore.
+    const allFieldNames = fieldDefs.map(f => f.name);
     const currentEntries = (typeFieldOrder[fsSelectedType] || []).slice().sort((a, b) => a.position - b.position);
     const shownNames = new Set(currentEntries.map(e => e.field));
     const availableNames = allFieldNames.filter(n => !shownNames.has(n));
 
-    // Column/Autocomplete toggles are offered for real generic fields only -- not
-    // People (not a `fields` row, no such concept applies), and not Amount/Currency
-    // specifically: their show_as_column/autocomplete flags are deliberately inert
-    // (see formatAmount()'s note on why their display stays paired and hardcoded),
-    // so a checkbox that visibly did nothing would just be confusing. Shared between
-    // both columns below -- show_as_column/autocomplete are properties of the field
-    // itself, not of its relationship to fsSelectedType, so they need to stay
-    // reachable whether or not the field happens to already be attached to whichever
-    // type is currently selected (a field attached to every type would otherwise
-    // have no way to ever reach its own checkboxes).
+    // Column/Autocomplete toggles are offered for real single-valued generic fields
+    // only -- not person-type fields (People, Author, Collaborator, ...: multi-
+    // valued, no table-column/filter support yet -- out of scope for the pass that
+    // generalized People into a real field, could follow later the same way this
+    // itself followed Amount/Currency/Payment method's own generalization), and not
+    // Amount/Currency specifically: their show_as_column/autocomplete flags are
+    // deliberately inert (see formatAmount()'s note on why their display stays
+    // paired and hardcoded), so a checkbox that visibly did nothing would just be
+    // confusing. Shared between both columns below -- show_as_column/autocomplete
+    // are properties of the field itself, not of its relationship to fsSelectedType,
+    // so they need to stay reachable whether or not the field happens to already be
+    // attached to whichever type is currently selected (a field attached to every
+    // type would otherwise have no way to ever reach its own checkboxes).
     function capabilitiesHtml(fieldName){
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
-      if(!fieldDef || fieldName === 'Amount' || fieldName === 'Currency') return '';
+      if(!fieldDef || fieldDef.type === 'person' || fieldName === 'Amount' || fieldName === 'Currency') return '';
       return `
         <div class="fs-field-capabilities">
           <label><input type="checkbox" class="fs-col-toggle" ${fieldDef.showAsColumn ? 'checked' : ''} /> Column</label>
@@ -2491,6 +2655,7 @@
                 <option value="number">Number</option>
                 <option value="date">Date</option>
                 <option value="checkbox">Checkbox</option>
+                <option value="person">Person</option>
               </select>
               <button type="button" id="f-new-field-btn">Add</button>
             </div>
@@ -2796,20 +2961,29 @@
         tagsForDoc.push(name);
       }
 
-      const personNames = readDynamicPeopleValue('f').split(',').map(p => p.trim()).filter(Boolean);
-      const peopleForDoc = [];
-      for(const name of personNames){
-        let personId = personNameToId[name];
-        if(personId === undefined){
-          personId = nextPersonId++;
-          db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
-          personNameToId[name] = personId;
-        }
-        db.run('INSERT OR IGNORE INTO document_people (document_id, person_id) VALUES (?, ?)', [id, personId]);
-        peopleForDoc.push(name);
-      }
-
       const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
+
+      // Every person-type field (People, Author, Collaborator, ...) uses the same
+      // find-or-create pattern -- see saveEditedDocument()'s matching block and
+      // migratePeopleToGenericField() for why 'People' is no longer special-cased.
+      const personFieldValuesForDoc = {};
+      for(const { fieldId, names } of readPersonFieldValues('f')){
+        const namesForField = [];
+        for(const name of names){
+          let personId = personNameToId[name];
+          if(personId === undefined){
+            personId = nextPersonId++;
+            db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+            personNameToId[name] = personId;
+          }
+          db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldId, personId]);
+          namesForField.push(name);
+        }
+        const fieldName = idToFieldName[fieldId];
+        if(fieldName) personFieldValuesForDoc[fieldName] = namesForField;
+      }
+      const peopleForDoc = personFieldValuesForDoc['People'] || [];
+
       const customFieldsForDoc = {};
       for(const { fieldId, value } of readDynamicFieldValues('f')){
         db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, fieldId, value]);
@@ -2817,8 +2991,12 @@
         if(name) customFieldsForDoc[name] = value;
       }
 
+      const otherPersonFieldsForSidecar = { ...personFieldValuesForDoc };
+      delete otherPersonFieldsForSidecar['People']; // People keeps its own dedicated sidecar line
+
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
-        title, category, subcategory, documentType, date, importDate, customFields: customFieldsForDoc, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        title, category, subcategory, documentType, date, importDate, customFields: customFieldsForDoc,
+        personFields: otherPersonFieldsForSidecar, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
       }));
 
       await persistDb();
@@ -2829,7 +3007,7 @@
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
         thumbnail_path: thumbnailPathForDb, customFields: customFieldsForDoc,
-        tags: tagsForDoc, people: peopleForDoc,
+        personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
       subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
@@ -2983,7 +3161,7 @@
         id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
         original_file_path: null, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, customFields: {}, tags: [], people: [],
+        thumbnail_path: thumbnailPathForDb, customFields: {}, personFieldValues: {}, tags: [], people: [],
       });
 
       await inboxDirHandle.removeEntry(name);
