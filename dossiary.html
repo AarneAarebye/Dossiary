@@ -154,6 +154,13 @@
     display:flex; align-items:center; justify-content:center;
   }
   .clear-btn:hover{ color:var(--red); background:rgba(224,113,92,0.12); border:none; }
+  .copy-path-btn{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
+    background:none; border:none; padding:0 0 0 6px; margin:0; cursor:pointer;
+    text-decoration:underline; text-underline-offset:2px;
+  }
+  .copy-path-btn:hover{ color:var(--phosphor); }
+  .copy-path-btn.copied{ color:var(--phosphor); text-decoration:none; }
   .checkbox-label input[type=checkbox]{ width:15px; height:15px; accent-color:var(--phosphor); cursor:pointer; }
   .field-row{ display:flex; gap:12px; }
   .field-row .field{ flex:1; }
@@ -1723,6 +1730,22 @@
     document.addEventListener('keydown', onModalKeydown);
   }
 
+  // Copies a full library-relative path (as displayed) to the clipboard, with brief
+  // on-button feedback. Unlike Finder-reveal or an absolute filesystem path (neither
+  // possible from a browser tab -- see the File/Original path notes above), the
+  // Clipboard API itself has no such restriction from a regular page context.
+  async function copyPathToClipboard(text, btnEl){
+    try{
+      await navigator.clipboard.writeText(text);
+      const original = btnEl.textContent;
+      btnEl.textContent = 'Copied!';
+      btnEl.classList.add('copied');
+      setTimeout(() => { btnEl.textContent = original; btnEl.classList.remove('copied'); }, 1500);
+    }catch(e){
+      alert('Could not copy to clipboard: ' + e.message);
+    }
+  }
+
   async function openDetail(id){
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
@@ -1764,6 +1787,12 @@
     const hasAmountForHeader = !isNaN(amountForHeader) && amountForHeader !== 0;
     const paymentMethodForHeader = (d.customFields || {})['Payment method'];
 
+    // Full paths as shown to the person (library folder name + relative path) --
+    // reused as-is for the copy-to-clipboard buttons below, so what gets copied
+    // always matches what's on screen.
+    const fileFullPath = d.file_path ? `${rootDirHandle.name}/${d.file_path}` : null;
+    const originalFullPath = d.original_file_path ? `${rootDirHandle.name}/${d.original_file_path}` : null;
+
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -1779,6 +1808,8 @@
                 ${pageCount != null ? `<div><b>Pages</b> ${pageCount}</div>` : ''}
                 <div><b>Imported</b> ${formatDate(d.import_date)}</div>
                 <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
+                ${fileFullPath ? `<div><b>File</b> <code>${escapeHtml(fileFullPath)}</code><button type="button" class="copy-path-btn" id="copy-file-path-btn">Copy</button></div>` : ''}
+                ${originalFullPath ? `<div><b>Original</b> <code>${escapeHtml(originalFullPath)}</code><button type="button" class="copy-path-btn" id="copy-original-path-btn">Copy</button></div>` : ''}
               </div>
             </div>
           </div>
@@ -1821,6 +1852,8 @@
         }catch(e){ alert('Could not open file: ' + e.message); }
       });
     }
+    if(fileFullPath) el('copy-file-path-btn').addEventListener('click', (e) => copyPathToClipboard(fileFullPath, e.target));
+    if(originalFullPath) el('copy-original-path-btn').addEventListener('click', (e) => copyPathToClipboard(originalFullPath, e.target));
     el('edit-doc-btn').addEventListener('click', () => openEditForm(id));
     el('regen-thumb-btn').addEventListener('click', () => regenerateThumbnail(id));
     el('archive-toggle-btn').addEventListener('click', () => toggleArchived(id));

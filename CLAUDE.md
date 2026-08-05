@@ -512,6 +512,18 @@ version number — only by the schema itself matching).
   section further down explicitly excludes `'Amount'`/`'Currency'`/
   `'Payment method'` from its own `Object.entries(d.customFields)` loop
   (they'd otherwise now show up there too, duplicating the header line).
+- **The detail view also shows `File`/`Original` lines with each file's
+  path**, prefixed with `rootDirHandle.name` — the same "as far as it can
+  go" pattern as the Inbox modal's own `Folder: ...` line (see that note
+  below): there's no browser API to reveal a file in Finder or expose its
+  absolute filesystem path, so a person who wants to find it manually gets
+  the next best thing, a path they can navigate to themselves. `File` shows
+  whenever `d.file_path` is set (effectively always, for anything with a
+  file at all); `Original` only shows when `d.original_file_path` is set,
+  which — see the searchable-PDF note below — is only true for a captured
+  JPEG/PNG that got OCR'd into a searchable PDF; every other case (PDF
+  uploads, images without OCR, migrated documents without a separate
+  original) has no distinct original to show.
 - **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
   "orphaned" fields render** — a field with a real value in
   `d.customFields`/`d.people` that isn't in the current type's
@@ -951,9 +963,12 @@ no-signal-at-all fallback, each verified via an overridden
 `navigator.userAgentData`/`navigator.platform` rather than trusting
 whatever OS the test happens to run on), the footer's app-version label
 (folded into `test_libraries_modal.py`, which already exercises that
-part of the page) and `scan_watch.py --version`'s output (its own
+part of the page), `scan_watch.py --version`'s output (its own
 standalone, non-Playwright script since it's a plain subprocess check),
-and search across all of the above. This
+the detail view's `File`/`Original` path lines (folded into
+`test_searchable_pdf.py`, since that's the one scenario that produces
+both a processed file and a separate original to show), and search
+across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

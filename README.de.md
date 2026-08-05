@@ -85,6 +85,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   wie über Tags
 - **Originale öffnen** — ein Klick öffnet die eigentliche Datei direkt von
   der Festplatte
+- **Dateipfade in der Detailansicht** — eine Zeile „File" (und „Original"
+  bei einem erfassten Bild, das in ein durchsuchbares PDF umgewandelt
+  wurde) zeigt den Pfad relativ zu Ihrem Bibliotheksordner, damit Sie die
+  Datei selbst im Finder finden können. Browser haben keine Möglichkeit,
+  eine Datei direkt im Finder anzuzeigen oder ihren absoluten Pfad
+  offenzulegen — das ist so nah, wie die App herankommt.
 - **Bearbeiten** — auf ein Dokument klicken, dann „Edit“, um dessen
   Metadaten nachträglich zu ändern (Titel, Kategorie, Unterkategorie, Typ,
   Zahlungsmethode, Betrag, Datum, Personen, Tags, Werte benutzerdefinierter

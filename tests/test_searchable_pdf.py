@@ -94,6 +94,16 @@ async def main():
         """)
         print("files/ listing:", files_listing)
 
+        # Detail view shows both the processed file's and the original's path, prefixed
+        # with the library folder name (since File System Access API handles expose no
+        # absolute path) -- see CLAUDE.md's note on this next to the Inbox modal's own
+        # "Folder: ..." line, which uses the same pattern.
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(200)
+        modal_meta_text = await page.locator('.modal-meta').inner_text()
+        print("modal shows File path:", 'File' in modal_meta_text and 'EmptyLibrary/files/1_Scanned Letter.pdf' in modal_meta_text)
+        print("modal shows Original path:", 'Original' in modal_meta_text and 'EmptyLibrary/files/1_Scanned Letter/scan.png' in modal_meta_text)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
