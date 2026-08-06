@@ -590,7 +590,8 @@ version number — only by the schema itself matching).
 - **The detail view also shows `File`/`Original` lines with each file's
   path**, prefixed with `rootDirHandle.name` — the same "as far as it can
   go" pattern as the Inbox modal's own `Folder: ...` line (see that note
-  below): there's no browser API to reveal a file in Finder or expose its
+  below): there's no browser API to reveal a file in the OS's file manager
+  (Finder/Explorer/whatever Linux distro is running) or expose its
   absolute filesystem path, so a person who wants to find it manually gets
   the next best thing, a path they can navigate to themselves. `File` shows
   whenever `d.file_path` is set (effectively always, for anything with a
@@ -600,8 +601,9 @@ version number — only by the schema itself matching).
   uploads, images without OCR, migrated documents without a separate
   original) has no distinct original to show. Each line also gets a small
   **"Copy" button** (`copyPathToClipboard()`) next to the path, wired only
-  when that path exists — unlike revealing a file in Finder or reading an
-  absolute filesystem path (impossible from a browser tab, see above), the
+  when that path exists — unlike revealing a file in the OS's file manager
+  or reading an absolute filesystem path (impossible from a browser tab,
+  see above), the
   Clipboard API (`navigator.clipboard.writeText()`) has no such
   restriction from a regular page context, so this is a real, working
   affordance rather than another "as far as it can go" compromise.
@@ -883,7 +885,8 @@ version number — only by the schema itself matching).
   error"), but nothing else ever brought it into existence either, so a
   person couldn't actually drag a file in by hand, or point
   `scan_watch.py`'s `--drop-folder` at it directly, without first manually
-  creating it in Finder. Creating an empty folder here doesn't conflict
+  creating it in Finder/Explorer/their file manager. Creating an empty
+  folder here doesn't conflict
   with the "no silent writes" principle below — no data is written, it's
   the same "ensure the expected structure exists" role `files/`'s own
   `{ create: true }` already plays) and this app never watches or polls it — `checkInbox()` only runs

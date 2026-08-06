@@ -81,8 +81,9 @@ working" problem that motivated this project in the first place.
 - **File paths shown in the detail view** — a `File` line (and `Original`,
   for a captured image that got turned into a searchable PDF) showing the
   path relative to your library folder, so you can find it yourself in
-  Finder. Browsers have no API to reveal a file in Finder directly or
-  expose its absolute path, so this is as close as the app can get.
+  Finder (macOS), File Explorer (Windows), or your file manager (Linux).
+  Browsers have no API to reveal a file in the OS's file manager directly
+  or expose its absolute path, so this is as close as the app can get.
 - **Edit** — click any document, then "Edit" to update its metadata (title,
   category, subcategory, type, payment method, amount, date, people, tags,
   custom field values, notes, OCR text) after the fact. This only ever
