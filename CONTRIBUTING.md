@@ -38,9 +38,11 @@ python3 test_<name>.py
 
 Nothing here touches a real browser dialog or real sql.js/Tesseract.js —
 see `CLAUDE.md`'s "How this was tested" section for how the stubbing
-approach works. Every test file loads the same shared
-`tests/stub_studio2.js` — never write your own copy of it for a new test
-file, even a small one; that's bitten this project before (see that same
+approach works. Every Playwright/browser test file loads the same shared
+`tests/stub_studio2.js` (the one exception is `test_scan_watch_version.py`,
+a plain `--version` subprocess check with no browser involved) — never
+write your own copy of the stub for a new browser test file, even a small
+one; that's bitten this project before (see that same
 section).
 
 **Every test seeds its own synthetic library.** Don't commit real personal

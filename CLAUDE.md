@@ -683,15 +683,19 @@ version number — only by the schema itself matching).
   deliberately does **not** request word-position data or touch
   `file_path`/rebuild any PDF — consistent with editing being
   metadata-only (see the "Editing" note above). **`runOcrForEdit()`
-  handles PDFs, `runOcr()` doesn't** — it renders the first page via
-  `renderPdfFirstPageToCanvas()` (a higher-resolution sibling of
+  handles PDFs, `runOcr()` doesn't** — it renders every page via
+  `renderPdfPageToCanvas()` (a higher-resolution sibling of
   `generateThumbnail()`'s PDF path; OCR accuracy degrades badly at
   thumbnail resolution, so this is intentionally a separate function
-  with its own `scale` parameter, not a shared one with a size flag) and
-  passes the resulting canvas straight to Tesseract, which accepts canvas
-  elements directly as an image source. If capture-mode OCR is ever
-  extended to support PDFs too, reuse `renderPdfFirstPageToCanvas()`
-  rather than duplicating the pdf.js rendering logic a third time.
+  with its own `scale` parameter, not a shared one with a size flag),
+  called once per page in a loop (`for(let pageNum = 1; pageNum <=
+  pdf.numPages; pageNum++)`), with each page's recognized text joined
+  together — not just the first page, see the "How this was tested"
+  section's note on multi-page PDF OCR — and passes each resulting
+  canvas straight to Tesseract, which accepts canvas elements directly
+  as an image source. If capture-mode OCR is ever extended to support
+  PDFs too, reuse `renderPdfPageToCanvas()` rather than duplicating the
+  pdf.js rendering logic a third time.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
