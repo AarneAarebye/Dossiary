@@ -99,9 +99,20 @@ async def main():
         """)
         print("files/ contents after adding scan001.pdf:", files_after_one)
 
-        # The main table row should flag it as inbox-added.
+        # An inbox-added document lands flagged for review (needs_review=1, see
+        # addInboxFile()), so it shows in the review queue, not the main table, until
+        # someone clicks Done -- see CLAUDE.md's review-queue note.
+        main_rows_before_done = await page.locator('#doc-tbody tr').count()
+        print("main table rows before Done (should be 0, doc lives in the review queue):", main_rows_before_done)
+        queue_row_count = await page.locator('.review-queue-row[data-id="1"]').count()
+        print("review queue shows the inbox-added doc:", queue_row_count)
+
+        await page.click('.review-queue-row[data-id="1"] .review-done-btn')
+        await page.wait_for_timeout(200)
+
+        # Once reviewed, it moves into the main table and shows the inbox-added pill.
         pill_text = await page.locator('tr[data-id="1"] .pill.captured').inner_text()
-        print("table pill for inbox-added doc:", pill_text)
+        print("table pill for inbox-added doc after Done:", pill_text)
 
         # === Scenario 3: "Add all with defaults" clears the rest and the banner disappears ===
         await page.click('#inbox-review-btn')

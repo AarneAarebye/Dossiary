@@ -65,6 +65,34 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   beobachtet niemals das Dateisystem und legt nie von selbst ein Dokument
   an; ein Dokument aus der Inbox hinzuzufügen erfordert immer diesen
   ausdrücklichen Klick.
+- **Prüfliste („Review queue“)** — eine zweite Stufe nach der Inbox: jedes
+  aus der Inbox hinzugefügte Dokument (zu diesem Zeitpunkt sind Kategorie,
+  Typ und Datum noch leer) wird automatisch als „zu prüfen“ markiert und in
+  einem eigenen Bereich oberhalb der Haupttabelle angezeigt, statt an
+  einer möglicherweise unbemerkten Stelle darin einsortiert zu werden.
+  Klicken Sie bei einem Dokument in der Prüfliste auf „Edit“, um seine
+  Metadaten auszufüllen, oder klicken Sie auf die Zeile, um es zu öffnen.
+  Nur der ausdrückliche „Done“-Button — auf der Zeile in der Prüfliste
+  selbst oder in der Detailansicht des Dokuments — hebt die Markierung auf
+  und verschiebt das Dokument in die Haupttabelle; das Speichern einer
+  Zwischenbearbeitung tut dies nicht, sodass Sie Ihren Fortschritt
+  zwischenspeichern können, ohne Ihren Platz in der Prüfliste zu verlieren.
+  Jedes Dokument kann auf diese Weise markiert werden, nicht nur
+  Inbox-Importe — öffnen Sie ein Dokument und klicken Sie auf „Flag for
+  review“, wenn Sie später darauf zurückkommen möchten. Markierung und
+  Archivierung sind voneinander unabhängig: Ein archiviertes Dokument zu
+  markieren hebt die Archivierung nicht auf, und umgekehrt — ein
+  archiviertes Dokument bleibt nur über „Show archived“ in der
+  Haupttabelle erreichbar, wie jedes andere archivierte Dokument auch.
+- **Papierkorb** — „Delete“ bei einem Dokument zerstört nichts wirklich; es
+  verschiebt das Dokument nur in den „🗑 Waste bin“ (aus der Symbolleiste),
+  wo es bleibt, bis Sie auf „Restore“ klicken — es gibt nirgendwo eine
+  Funktion zum Leeren des Papierkorbs, sodass nichts, was Sie löschen, je
+  wirklich verschwindet. Ein gelöschtes Dokument ist überall sonst
+  ausgeblendet, auch in der Haupttabelle mit aktiviertem „Show archived“
+  und in der Prüfliste, und seine Detailansicht bietet bis dahin nur
+  „Restore“ an. Dateien auf der Festplatte, Vorschaubilder und die
+  `.txt`-Begleitdatei werden in beide Richtungen nie angefasst.
 - **Spotlight-/Finder-Suche** — jedes erfasste Dokument bekommt zusätzlich
   eine einfache `.txt`-Begleitdatei (Sidecar-Datei) daneben (Titel,
   Kategorie, Tags, Notizen, OCR-Text, Werte der benutzerdefinierten
@@ -355,6 +383,16 @@ documents
     source              TEXT     -- 'migrated', 'captured' oder 'scan-inbox'
     source_legacy_id    INTEGER  -- nur zur Nachvollziehbarkeit, bei migrierten Dokumenten
     thumbnail_path      TEXT     -- relativ zur Bibliothekswurzel, nullable
+    archived            INTEGER  -- 0/1, Standard 0; umkehrbare Markierung „nicht mehr
+                                  -- benötigt“, in der Standardansicht ausgeblendet --
+                                  -- siehe Funktionen oben
+    needs_review        INTEGER  -- 0/1, Standard 0; Markierung „noch nicht geprüft“,
+                                  -- erscheint in der Prüfliste statt in der Haupttabelle --
+                                  -- siehe Funktionen oben
+    deleted             INTEGER  -- 0/1, Standard 0; Soft-Delete-Markierung, nur über den
+                                  -- Papierkorb erreichbar -- siehe Funktionen oben. Keine
+                                  -- Datei/kein Vorschaubild/keine Begleitdatei wird je
+                                  -- angefasst, und es gibt keine Funktion zum Leeren.
 
 tags
     id    INTEGER PRIMARY KEY
@@ -574,7 +612,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (44
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (46
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

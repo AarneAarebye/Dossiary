@@ -57,6 +57,29 @@ working" problem that motivated this project in the first place.
   `inbox/` folder — Dossiary itself never watches the filesystem or
   writes a document automatically; adding one from the inbox always requires
   this explicit click.
+- **Review queue** — a second stage after the Inbox: every document added
+  from the inbox (category, type, and date all still blank at that point)
+  is automatically flagged "needs review" and shown in its own section
+  above the main table, instead of sorting to a possibly-unnoticed spot in
+  it. Click "Edit" on a queued document to fill in its metadata, or click
+  the row to open it. Only the explicit "Done" button — on the queue row
+  itself, or in the document's own detail view — clears the flag and moves
+  it into the main table; saving an intermediate edit does not, so you can
+  save your progress partway through without losing your place in the
+  queue. Any document can be flagged this way, not just inbox imports —
+  open a document and click "Flag for review" if you want to come back to
+  it later. Flagging and archiving are independent: flagging an archived
+  document doesn't unarchive it, and vice versa — an archived document
+  stays reachable only via "Show archived" in the main table, same as any
+  other archived document.
+- **Waste bin** — "Delete" on a document doesn't actually destroy anything;
+  it just moves the document to the "🗑 Waste bin" (from the toolbar),
+  where it stays until you click "Restore" — there is no "empty bin"
+  action anywhere, so nothing you delete is ever truly gone. A deleted
+  document is hidden everywhere else, including the main table with "Show
+  archived" checked and the review queue, and its detail view only offers
+  Restore until you do. Files on disk, thumbnails, and the sidecar `.txt`
+  are never touched either way.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can
@@ -304,6 +327,13 @@ documents
     source              TEXT     -- 'migrated', 'captured', or 'scan-inbox'
     source_legacy_id    INTEGER  -- traceability only, for migrated documents
     thumbnail_path      TEXT     -- relative to library root, nullable
+    archived            INTEGER  -- 0/1, default 0; reversible "no longer needed" flag,
+                                  -- hidden from the default view -- see Features above
+    needs_review        INTEGER  -- 0/1, default 0; "not yet reviewed" flag, shown in the
+                                  -- review queue instead of the main table -- see Features above
+    deleted             INTEGER  -- 0/1, default 0; soft-delete flag, reachable only from the
+                                  -- Waste bin -- see Features above. No file/thumbnail/sidecar
+                                  -- is ever touched, and there's no "empty bin" purge feature.
 
 tags
     id    INTEGER PRIMARY KEY
@@ -499,7 +529,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (44
+There's a real, runnable Playwright regression suite in `tests/` (46
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

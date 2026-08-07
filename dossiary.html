@@ -67,6 +67,8 @@
   button.primary:hover:not(:disabled){ color:var(--text-ink); opacity:0.9; }
   button.accent{ background:var(--amber); color:var(--text-ink); border-color:var(--amber); font-weight:600; }
   button.accent:hover:not(:disabled){ color:var(--text-ink); opacity:0.9; }
+  button.danger{ color:var(--red); border-color:var(--red); }
+  button.danger:hover:not(:disabled){ background:var(--red); color:var(--text-ink); }
   button:disabled{ opacity:0.35; cursor:not-allowed; }
   button:focus-visible, .search:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible{ outline:2px solid var(--phosphor); outline-offset:1px; }
 
@@ -101,6 +103,20 @@
     background:rgba(217,154,63,0.08); display:flex; align-items:center; justify-content:space-between;
     gap:12px; font-family:var(--font-mono); font-size:12.5px; color:var(--amber);
   }
+  .review-queue{
+    margin:0 32px 14px; padding:14px 16px; border:1px solid var(--amber-dim); border-radius:var(--radius);
+    background:rgba(217,154,63,0.05);
+  }
+  .review-queue h3{
+    font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--amber); margin:0 0 10px; font-weight:500;
+  }
+  .review-queue-row{
+    display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line);
+  }
+  .review-queue-row:first-child{ border-top:none; padding-top:0; }
+  .review-queue-row .file-preview{ flex:1; margin-bottom:0; cursor:pointer; }
+  .review-queue-actions{ display:flex; gap:8px; flex-shrink:0; }
 
   /* modal shared */
   .backdrop{ position:fixed; inset:0; background:rgba(6,9,10,0.75); backdrop-filter:blur(2px); display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; z-index:50; overflow-y:auto; }
@@ -237,6 +253,7 @@
     </div>
     <button id="manage-fields-btn">⚙ Manage fields</button>
     <button id="inbox-check-btn">📥 Check inbox</button>
+    <button id="waste-bin-btn">🗑 Waste bin</button>
     <button class="accent" id="add-btn">＋ Add document</button>
     <button id="reload-btn">Switch library</button>
   </div>
@@ -266,6 +283,11 @@
     <p id="init-message">No <code>library.sqlite</code> found in that folder.</p>
     <button class="primary" id="init-btn">Initialize a new library here</button>
     <button id="pick-again-btn">Choose a different folder</button>
+  </div>
+
+  <div class="review-queue" id="review-queue" style="display:none;">
+    <h3 id="review-queue-heading">Needs Review</h3>
+    <div id="review-queue-list"></div>
   </div>
 
   <div class="count-line" id="count-line" style="display:none;"></div>
@@ -316,7 +338,7 @@
       payment_method TEXT, amount REAL, currency TEXT, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
-      archived INTEGER DEFAULT 0
+      archived INTEGER DEFAULT 0, needs_review INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -357,6 +379,8 @@
     'ALTER TABLE fields ADD COLUMN show_as_column INTEGER DEFAULT 0',
     'ALTER TABLE fields ADD COLUMN autocomplete INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN archived INTEGER DEFAULT 0',
+    'ALTER TABLE documents ADD COLUMN needs_review INTEGER DEFAULT 0',
+    'ALTER TABLE documents ADD COLUMN deleted INTEGER DEFAULT 0',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -819,6 +843,7 @@
     emptyState.style.display = 'block'; initState.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
     el('inbox-banner').style.display = 'none';
+    el('review-queue').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
   }
 
@@ -836,7 +861,7 @@
     // live in customFields (via document_field_values) like any other custom field.
     const { columns, rows } = queryAll(`
       SELECT id, title, category, subcategory, document_type, date, import_date, notes,
-             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived, needs_review, deleted
       FROM documents
     `);
     const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -909,6 +934,8 @@
         created_at: row[idx.created_at], source: row[idx.source], source_legacy_id: row[idx.source_legacy_id],
         thumbnail_path: row[idx.thumbnail_path],
         archived: !!row[idx.archived],
+        needs_review: !!row[idx.needs_review],
+        deleted: !!row[idx.deleted],
         customFields: fieldValuesByDocId[id] || {}, // { "Organization": "Dr. Schröter", "Paid": "1", ... }
         personFieldValues: personFieldValuesByDocId[id] || {}, // { "People": [...], "Author": [...], ... }
         tags: tagsByDocId[id] || [],
@@ -1697,12 +1724,30 @@
   function applyFilters(docs){
     const { q, category, type, person, showArchived, dynamic } = currentFilters();
     return docs.filter(d => {
-      // Archived documents are hidden from the default view -- "no longer needed"
-      // but not deleted, so they don't clutter the table/search until someone
-      // deliberately checks "Show archived". Checked first, before every other
+      // A deleted document is unconditionally hidden -- the strongest of the three
+      // staging flags, checked before even the archived check below, since the
+      // waste bin (see openWasteBinModal()) is the only place it should ever be
+      // reachable from, regardless of "Show archived" or needs_review state. This is
+      // a soft delete only -- see toggleDeleted()'s own comment -- nothing on disk is
+      // touched and there's no "empty bin" anywhere in this app.
+      if(d.deleted) return false;
+      // Archived documents are hidden from the default view -- "no longer needed,"
+      // not deleted -- so they don't clutter the table/search until someone
+      // deliberately checks "Show archived". Checked next, before every other
       // filter, so an archived document never leaks into a category/search match
       // by accident.
       if(d.archived && !showArchived) return false;
+      // A flagged-for-review document lives in the review queue instead (see
+      // renderReviewQueue()), not the main table -- no "show them here too" override,
+      // unlike archived, since the whole point is keeping the main table to just
+      // what's actually been reviewed. Exception: an archived document that's ALSO
+      // flagged stays governed by the archived check above, not this one -- archived
+      // and needs_review are independent flags (per design), but renderReviewQueue()
+      // itself excludes archived documents from the queue, so without this `!d.archived`
+      // carve-out a document that's both would be unreachable from anywhere once
+      // archived -- not even via "Show archived", which is supposed to be the one way
+      // back to an archived document for editing.
+      if(d.needs_review && !d.archived) return false;
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
@@ -1753,7 +1798,56 @@
     });
   }
 
+  // Documents flagged needs_review live here instead of the main table (see
+  // applyFilters()'s exclusion check) -- a compact, always-unfiltered list rather
+  // than the full dynamic-columns table, since most fields are still blank on a
+  // freshly-imported document and a wall of "—" placeholders wouldn't be useful.
+  // Archived documents never show here even if also flagged -- "archived means
+  // hidden from the default view, full stop" applies the same way it does to the
+  // main table (see toggleNeedsReview()'s own note on why the two flags never
+  // interact automatically). Called from render() itself so every existing render()
+  // call site picks up the queue automatically, without needing its own call site
+  // threaded through the rest of the app.
+  function renderReviewQueue(){
+    const section = el('review-queue');
+    const listEl = el('review-queue-list');
+    const queued = allDocs.filter(d => d.needs_review && !d.archived && !d.deleted);
+    if(!queued.length){
+      section.style.display = 'none';
+      listEl.innerHTML = '';
+      return;
+    }
+    section.style.display = 'block';
+    el('review-queue-heading').textContent = `Needs Review (${queued.length})`;
+    listEl.innerHTML = queued.map(d => `
+      <div class="review-queue-row" data-id="${d.id}">
+        <div class="file-preview">
+          <div class="file-icon">${escapeHtml(((d.file_path || '').split('.').pop() || '?').toUpperCase())}</div>
+          <div style="flex:1;">
+            <div class="doc-title">${escapeHtml(displayName(d))}</div>
+            <div class="doc-sub">Imported ${formatDate(d.import_date)}</div>
+          </div>
+        </div>
+        <div class="review-queue-actions">
+          <button class="review-edit-btn" data-id="${d.id}">Edit</button>
+          <button class="accent review-done-btn" data-id="${d.id}">Done</button>
+        </div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.review-queue-row .file-preview').forEach(elm => {
+      const id = Number(elm.closest('.review-queue-row').dataset.id);
+      elm.addEventListener('click', () => openDetail(id));
+    });
+    listEl.querySelectorAll('.review-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditForm(Number(btn.dataset.id)));
+    });
+    listEl.querySelectorAll('.review-done-btn').forEach(btn => {
+      btn.addEventListener('click', () => toggleNeedsReview(Number(btn.dataset.id)));
+    });
+  }
+
   function render(){
+    renderReviewQueue();
     const filtered = applyFilters(allDocs);
     const sorted = sortDocs(filtered);
     countLine.style.display = 'block';
@@ -1877,9 +1971,20 @@
     const actions = [];
     if(d.file_path) actions.push(`<button class="primary" id="open-file-btn">Open file</button>`);
     if(d.original_file_path) actions.push(`<button id="open-original-btn">Open original file</button>`);
-    actions.push(`<button id="edit-doc-btn">Edit</button>`);
-    actions.push(`<button id="regen-thumb-btn">${d.thumbnail_path ? 'Regenerate' : 'Generate'} preview</button>`);
-    actions.push(`<button id="archive-toggle-btn">${d.archived ? 'Unarchive' : 'Archive'}</button>`);
+    // A deleted document only offers Restore -- editing, archiving, and flagging a
+    // document that's sitting in the waste bin don't make sense (it isn't reachable
+    // anywhere those would matter until it's restored), so those buttons are left out
+    // entirely rather than shown disabled. See toggleDeleted()'s own comment for why
+    // "deleted" is the strongest of the three staging flags.
+    if(!d.deleted){
+      actions.push(`<button id="edit-doc-btn">Edit</button>`);
+      actions.push(`<button id="regen-thumb-btn">${d.thumbnail_path ? 'Regenerate' : 'Generate'} preview</button>`);
+      actions.push(`<button id="archive-toggle-btn">${d.archived ? 'Unarchive' : 'Archive'}</button>`);
+      actions.push(`<button id="review-toggle-btn">${d.needs_review ? 'Done' : 'Flag for review'}</button>`);
+      actions.push(`<button class="danger" id="delete-toggle-btn">Delete</button>`);
+    } else {
+      actions.push(`<button class="primary" id="delete-toggle-btn">Restore</button>`);
+    }
 
     let thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">No preview yet</div>`;
     if(d.thumbnail_path){
@@ -1988,16 +2093,27 @@
     }
     if(fileFullPath) el('copy-file-path-btn').addEventListener('click', (e) => copyPathToClipboard(fileFullPath, e.target));
     if(originalFullPath) el('copy-original-path-btn').addEventListener('click', (e) => copyPathToClipboard(originalFullPath, e.target));
-    el('edit-doc-btn').addEventListener('click', () => openEditForm(id));
-    el('regen-thumb-btn').addEventListener('click', () => regenerateThumbnail(id));
-    el('archive-toggle-btn').addEventListener('click', () => toggleArchived(id));
+    if(!d.deleted){
+      el('edit-doc-btn').addEventListener('click', () => openEditForm(id));
+      el('regen-thumb-btn').addEventListener('click', () => regenerateThumbnail(id));
+      el('archive-toggle-btn').addEventListener('click', () => toggleArchived(id));
+      el('review-toggle-btn').addEventListener('click', async () => {
+        await toggleNeedsReview(id);
+        openDetail(id); // refresh the modal so the button now reads Flag for review/Done correctly
+      });
+    }
+    el('delete-toggle-btn').addEventListener('click', async () => {
+      await toggleDeleted(id);
+      openDetail(id); // refresh the modal so it now shows Restore-only (or the full action set again)
+    });
   }
 
-  // Archiving is a reversible "no longer needed" flag, not deletion -- there is no
-  // delete feature in this app at all. An archived document is simply hidden from
-  // the default table/search view (see applyFilters()'s showArchived check) until
-  // someone checks "Show archived" in the toolbar; nothing about the document's
-  // own data changes.
+  // Archiving is a reversible "no longer needed" flag, not deletion -- this app has
+  // no *permanent* delete (see toggleDeleted() below for the soft-delete/waste-bin
+  // feature, which is likewise just another flag, never a real removal). An archived
+  // document is simply hidden from the default table/search view (see
+  // applyFilters()'s showArchived check) until someone checks "Show archived" in the
+  // toolbar; nothing about the document's own data changes.
   async function toggleArchived(id){
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
@@ -2006,6 +2122,52 @@
     await persistDb();
     render();
     openDetail(id); // refresh the modal so the button now reads Archive/Unarchive correctly
+  }
+
+  // needs_review is a fully independent flag from archived -- deliberately no
+  // automatic interaction between the two (e.g. flagging an archived document for
+  // review does not un-archive it; someone has to do that explicitly first). A
+  // flagged, non-archived document shows in the review queue instead of the main
+  // table (see applyFilters()'s needs_review check and renderReviewQueue()); a
+  // flagged, archived document shows in neither until unarchived, same "archived
+  // means hidden from the default view, full stop" rule that already applies
+  // everywhere else. Cleared *only* by this explicit toggle (the "Done" state) --
+  // deliberately never auto-cleared just by saving an edit, since an edit might be
+  // an intentional intermediate save, not a signal the document is actually finished.
+  // Deliberately does NOT reopen the detail modal itself, unlike toggleArchived()'s
+  // matching pattern -- this has two call sites (the detail view's own button, and
+  // the review queue row's Done button, where no modal is open at all and popping
+  // one open would be a real bug), so each caller decides for itself whether a
+  // refresh-in-place is appropriate.
+  async function toggleNeedsReview(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!d) return;
+    d.needs_review = !d.needs_review;
+    db.run('UPDATE documents SET needs_review = ? WHERE id = ?', [d.needs_review ? 1 : 0, id]);
+    await persistDb();
+    renderReviewQueue();
+    render();
+  }
+
+  // deleted is the strongest of the three staging flags -- a deleted document is
+  // unconditionally excluded from the main table (even with "Show archived" checked)
+  // and from the review queue (even if still needs_review), by design: this app has
+  // no real delete feature (see CLAUDE.md's "Working conventions"), so "deleting" a
+  // document only ever flips this flag and moves it into the waste bin -- nothing on
+  // disk (files/, thumbnails/, the sidecar .txt) is ever touched, same as archiving.
+  // There's deliberately no "empty bin" action anywhere in this app; the waste bin is
+  // the one place a deleted document stays reachable, forever, via Restore.
+  // Same dual-call-site reasoning as toggleNeedsReview() above: this doesn't reopen
+  // the detail modal itself (the waste bin's own Restore button has no modal open),
+  // so the detail view's own button wraps the call when a refresh-in-place is wanted.
+  async function toggleDeleted(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!d) return;
+    d.deleted = !d.deleted;
+    db.run('UPDATE documents SET deleted = ? WHERE id = ?', [d.deleted ? 1 : 0, id]);
+    await persistDb();
+    renderReviewQueue();
+    render();
   }
 
   async function regenerateThumbnail(id){
@@ -3150,8 +3312,8 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?)
+                                created_at, source, source_legacy_id, thumbnail_path, needs_review)
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?, 1)
       `, [id, title, documentType, createdAt, filePathForDb, createdAt, thumbnailPathForDb]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
@@ -3161,7 +3323,8 @@
         id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
         original_file_path: null, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, customFields: {}, personFieldValues: {}, tags: [], people: [],
+        thumbnail_path: thumbnailPathForDb, archived: false, needs_review: true, deleted: false,
+        customFields: {}, personFieldValues: {}, tags: [], people: [],
       });
 
       await inboxDirHandle.removeEntry(name);
@@ -3186,6 +3349,74 @@
     if(!pendingInboxFiles.length) closeModal();
   }
 
+  // Waste bin -- the one place a deleted document (see toggleDeleted()) stays
+  // reachable. Modeled on the Inbox modal above: a toolbar button opens a list,
+  // reused here from allDocs (deleted docs are still ordinary documents in memory,
+  // just excluded from the main table/queue -- see applyFilters()), not a separate
+  // pending-files array the way Inbox has. Deliberately behind a modal, not an
+  // always-visible section like the review queue -- unlike "still needs review,"
+  // "already dealt with, kept only as a just-in-case" isn't something that should
+  // stay in view by default, and there's no risk of it being missed the way an
+  // inbox import could be, since nothing times out or needs acting on here.
+  function openWasteBinModal(){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Waste bin</h2>
+          <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:-8px;">
+            Deleted documents stay here, restorable at any time. There is no "empty bin"
+            action anywhere in this app -- nothing is ever permanently removed.
+          </p>
+          <div id="waste-bin-list"></div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    renderWasteBinList();
+  }
+
+  // Reuses the review queue's own .review-queue-row/.review-queue-actions/
+  // .file-preview markup and classes -- they were never actually scoped to the
+  // review queue specifically (no .review-queue ancestor in their selectors), just a
+  // generic "list row with a title/sub-line and its own action buttons" pattern, the
+  // same one the Inbox modal's rows already followed. No new CSS needed for this.
+  function renderWasteBinList(){
+    const listEl = el('waste-bin-list');
+    if(!listEl) return;
+    const deletedDocs = allDocs.filter(d => d.deleted);
+    if(!deletedDocs.length){
+      listEl.innerHTML = `<p style="font-family:var(--font-mono); font-size:12px; color:var(--text-dim);">Nothing in the waste bin.</p>`;
+      return;
+    }
+    listEl.innerHTML = deletedDocs.map(d => `
+      <div class="review-queue-row" data-id="${d.id}">
+        <div class="file-preview">
+          <div class="file-icon">${escapeHtml(((d.file_path || '').split('.').pop() || '?').toUpperCase())}</div>
+          <div style="flex:1;">
+            <div class="doc-title">${escapeHtml(displayName(d))}</div>
+            <div class="doc-sub">Imported ${formatDate(d.import_date)}</div>
+          </div>
+        </div>
+        <div class="review-queue-actions">
+          <button class="waste-bin-restore-btn" data-id="${d.id}">Restore</button>
+        </div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.review-queue-row .file-preview').forEach(elm => {
+      const id = Number(elm.closest('.review-queue-row').dataset.id);
+      elm.addEventListener('click', () => openDetail(id));
+    });
+    listEl.querySelectorAll('.waste-bin-restore-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await toggleDeleted(Number(btn.dataset.id));
+        renderWasteBinList();
+      });
+    });
+  }
+
   el('inbox-review-btn').addEventListener('click', openInboxModal);
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
   // reflects whatever checkInbox() found the one time it runs automatically
@@ -3196,6 +3427,7 @@
   // Still a single explicit click, not automatic polling -- keeps the same
   // "no silent writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); openInboxModal(); });
+  el('waste-bin-btn').addEventListener('click', openWasteBinModal);
 
   resetAll();
 })();

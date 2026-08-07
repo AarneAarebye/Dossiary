@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (44 scripts) + shared
+tests/                   Playwright regression suite (46 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -709,10 +709,11 @@ version number — only by the schema itself matching).
   datalist autocomplete; don't add cleanup logic for this without a reason.
 - **Archiving** (`documents.archived`, `toggleArchived()`, the "Show
   archived" toolbar checkbox) is a reversible "no longer needed" flag, not
-  deletion — **this app has no delete feature at all**, and archiving isn't
-  a step toward adding one; it exists specifically so a document a person
-  doesn't want cluttering their view anymore doesn't have to be destroyed to
-  get out of the way. An archived document is hidden from the default
+  deletion — **this app has no *permanent* delete feature at all** (see the
+  Waste bin note below for the one, still-non-destructive, exception), and
+  archiving isn't a step toward adding one; it exists specifically so a
+  document a person doesn't want cluttering their view anymore doesn't have
+  to be destroyed to get out of the way. An archived document is hidden from the default
   table/search view — `applyFilters()` checks `d.archived && !showArchived`
   first, before every other filter, so an archived document can't leak into
   a category/search match by accident — until someone checks "Show
@@ -727,6 +728,122 @@ version number — only by the schema itself matching).
   "hidden from the view by default," only optional columns/filters that are
   always visible once configured, which doesn't fit what an archive needs
   to do.
+- **Review queue** (`documents.needs_review`, `toggleNeedsReview()`,
+  `renderReviewQueue()`, the `#review-queue` section rendered above the
+  main table) is a second, independent staging flag, built as a direct
+  structural mirror of `archived` above — same `documents` column pattern,
+  same `SCHEMA`/`SCHEMA_MIGRATIONS` treatment, same detail-modal toggle-
+  button pattern (`review-toggle-btn`, "Flag for review" / "Done") — but
+  serving a different purpose: not "no longer needed," but "not yet
+  reviewed." This is the second stage of a two-stage lifecycle for
+  inbox-imported documents — see the Inbox note below for the first stage
+  (raw files sitting in the `inbox/` folder, before they're documents at
+  all). `addInboxFile()` sets `needs_review = 1` on every document it
+  creates, since an inbox-imported document deliberately has category,
+  type, date, etc. left `NULL` rather than guessed (seeing "not listed at
+  the top of the table" for an inbox import with no date was the original
+  bug report that led to this feature — the fix isn't to guess a date, it's
+  to put unreviewed documents somewhere a person actually notices them).
+  Any document can be flagged, not just inbox-imported ones — the "Flag
+  for review" button in the detail modal works on anything, mirroring the
+  "mark all documents as needs_review" scope the person who requested this
+  feature specifically asked for. **Only the explicit Done action clears
+  the flag — saving an edit never does**, even though `openEditForm()` is
+  reachable directly from a review-queue row's own "Edit" button; this was
+  a deliberate design call (not a limitation) specifically so someone doing
+  an intermediate save on a document they're not fully done reviewing yet
+  doesn't lose their place in the queue. A flagged document is excluded
+  from the main table by `applyFilters()` (`if(d.needs_review &&
+  !d.archived) return false;`, checked right after the archived check) and
+  shown instead in `renderReviewQueue()`'s own list, which rebuilds
+  `#review-queue-list` from scratch on every `render()` call (first
+  statement in `render()`, so every existing call site — initial load,
+  post-edit, post-inbox-add — picks it up automatically) and hides the
+  whole section via `style.display` when the queue is empty. Each queue
+  row reuses the Inbox modal's own `.file-preview`/`.file-icon`/
+  `.doc-title`/`.doc-sub` markup and `displayName()`/`formatDate()`
+  helpers for visual consistency, with its own Edit (→ `openEditForm()`)
+  and Done (→ `toggleNeedsReview()`) buttons — clicking the row itself
+  (not a button) opens the full detail view via `openDetail()`, same
+  click-to-open pattern as the Inbox modal's own rows.
+  **`toggleNeedsReview()` deliberately does NOT call `openDetail()`
+  internally**, unlike `toggleArchived()` — it has two call sites (the
+  detail modal's own toggle button, where a modal is already open and
+  should refresh; and the queue row's Done button, where no modal is open
+  and popping one open on a bulk "clear the queue" click would be wrong)
+  with different needs, so the refresh-in-place behavior is left to the
+  detail-modal button's own click handler (`async () => { await
+  toggleNeedsReview(id); openDetail(id); }`) instead of being baked into
+  the toggle function itself.
+  **`needs_review` and `archived` are fully independent flags, with zero
+  automatic interaction in either direction** — flagging a document for
+  review doesn't touch `archived`, and archiving one doesn't touch
+  `needs_review`; per the explicit design call this was built to ("Archived
+  is archived. If one wants to edit it, it would have to be brought back
+  from archive."), un-archiving is the only sanctioned way back to an
+  archived document, flagged or not. This has one real consequence worth
+  being deliberate about: `renderReviewQueue()`'s own list excludes
+  archived documents (`allDocs.filter(d => d.needs_review && !d.archived)`)
+  — the queue is specifically for documents someone should be actively
+  working through, and an archived one isn't that — so a document that's
+  *both* archived and flagged would be reachable from **neither** the main
+  table nor the queue if `applyFilters()`'s exclusion were as unconditional
+  as it first looks. The `!d.archived` carve-out in that exclusion check is
+  what prevents that: an archived+flagged document is governed by the
+  archived check alone once "Show archived" is on, same as any other
+  archived document, so un-archiving (the one sanctioned way back) still
+  actually works instead of leading to a document nothing can reach. Don't
+  simplify that condition back to a bare `if(d.needs_review) return
+  false;` without re-deriving this — it looks redundant with `renderReviewQueue()`'s
+  own archived exclusion at a glance, but the two checks are guarding
+  different surfaces (queue vs. main table) and only one of them has the
+  archived carve-out.
+- **Waste bin** (`documents.deleted`, `toggleDeleted()`, the "🗑 Waste bin"
+  toolbar button, `openWasteBinModal()`/`renderWasteBinList()`) is a third
+  independent staging flag, added on explicit request to give "delete" a
+  real UI affordance without actually adding permanent deletion to an app
+  that otherwise never destroys a person's data. It's a soft delete only —
+  toggling it just flips the column, exactly like `archived`/`needs_review`;
+  nothing on disk (`files/`, `thumbnails/`, the sidecar `.txt`) is ever
+  touched, and **there is deliberately no "empty bin" action anywhere in
+  this app** — the waste bin is the permanent, sole home for a deleted
+  document, not a staging area with its own expiry.
+  **`deleted` is the strongest of the three flags**, unlike the
+  `archived`/`needs_review` relationship above, which is genuinely
+  symmetric (each has its own carve-out for the other). A deleted document
+  is unconditionally excluded from the main table — `applyFilters()` checks
+  `if(d.deleted) return false;` first, before even the archived check, so
+  it stays hidden **even with "Show archived" checked** — and from the
+  review queue (`renderReviewQueue()`'s filter gained a matching
+  `&& !d.deleted`). This is a deliberate asymmetry from the archived+
+  needs_review case: there, "Show archived" had to be preserved as the one
+  sanctioned way back to a document, because nothing else could reach it.
+  Deletion doesn't need that same escape hatch, because it gets its own
+  dedicated one instead — the waste bin itself — so there's no equivalent
+  risk of a document becoming unreachable from everywhere.
+  `openDetail()` reflects this by degree, not just visibility: a deleted
+  document's action bar drops Edit/Regenerate preview/Archive/Flag for
+  review entirely (not shown disabled — genuinely absent from the DOM) and
+  offers only Restore, since none of those other actions mean anything for
+  a document that isn't reachable anywhere they'd matter until it's
+  restored. `toggleDeleted()` follows the same dual-call-site pattern
+  `toggleNeedsReview()` established — it doesn't call `openDetail()`
+  itself, since it's invoked both from the detail modal's own button
+  (where a refresh-in-place is wanted) and the waste bin row's own Restore
+  button (where no modal is open at all). The waste bin modal itself
+  reuses the review queue's `.review-queue-row`/`.review-queue-actions`/
+  `.file-preview` markup and CSS classes wholesale — they were never
+  actually scoped to the review queue specifically (no `.review-queue`
+  ancestor in their selectors), just a generic "list row with a title/
+  sub-line and its own action button(s)" pattern already shared with the
+  Inbox modal's own rows, so no new CSS was needed for this. Unlike the
+  review queue, the waste bin lives behind a modal (opened via the
+  toolbar button, mirroring `openInboxModal()`/`checkInbox()`'s own
+  pattern), not an always-visible section — "already dealt with, kept
+  only as a just-in-case" doesn't carry the same "don't let this get
+  silently missed" urgency that "still needs review" does, so it doesn't
+  need to compete for permanent screen space the way the review queue
+  does.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
@@ -997,7 +1114,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **44
+There's a real, runnable Playwright regression suite in `tests/` — **46
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1041,7 +1158,29 @@ reopen of the same already-migrated library), archiving (hidden from the
 default table/search view, reappearing with its pill once "Show archived"
 is checked, a pre-`archived`-column document reading back as not-archived
 rather than erroring, and archiving/unarchiving actually persisting), the
-Date field's `color-scheme: dark` fix (asserted via `getComputedStyle` in
+review queue (`test_review_queue.py` — an inbox-imported document landing
+flagged and in the queue rather than the main table; the queue's own Done
+button clearing the flag without opening the detail modal; any document,
+not just inbox-imported ones, being manually flaggable from the detail
+view; an intermediate save from the queue row's own Edit button *not*
+clearing the flag, only the explicit Done action does; and the
+archived+needs_review independence property, including the one subtle
+case that actually matters — a document that's both stays out of the
+queue but is still reachable, and toggleable, via "Show archived" in the
+main table, per `applyFilters()`'s `!d.archived` carve-out described in
+the review-queue architecture note above), the waste bin
+(`test_waste_bin.py` — a pre-`deleted`-column document reading back as
+not-deleted rather than erroring; deleting an active document hiding it
+from the main table even with "Show archived" checked; its detail view
+dropping down to a Restore-only action set with Edit/Archive/Flag for
+review/Delete all genuinely absent from the DOM, not just disabled;
+restoring both from the waste bin row's own button and from the detail
+view; deleting a flagged document removing it from the review queue too,
+not just the main table; that no "Empty bin" button exists anywhere; and
+that restoring a document doesn't touch its independent `needs_review`
+state, so a restored, still-flagged document goes straight back to the
+queue rather than the main table), the Date field's
+`color-scheme: dark` fix (asserted via `getComputedStyle` in
 both the capture and edit forms, not just eyeballed), the Edit-form
 Currency guess (an existing document with a real non-zero Amount and no
 Currency saved gets guessed and flagged once a default currency is
