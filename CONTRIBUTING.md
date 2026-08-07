@@ -75,6 +75,30 @@ change — `CREATE TABLE IF NOT EXISTS` alone won't retroactively add it to
 anyone's existing library. See `CLAUDE.md`'s "Schema upgrades for
 already-existing libraries" note.
 
+## Cutting a release
+
+`dossiary.html` and `scan_watch.py` share one version number, kept manually
+in sync with the git tag (see `CLAUDE.md`'s "Versioning" section for why
+there's no shared version file to do this automatically). Nothing checks
+these agree with each other or with the tag, so work through this by hand:
+
+- [ ] Bump `APP_VERSION` in `dossiary.html`
+- [ ] Bump `__version__` in `scan_watch.py`
+- [ ] Update the literal version number in `CLAUDE.md`'s "Versioning"
+      section (the "as of this writing" line)
+- [ ] Update `tests/test_scan_watch_version.py`'s hardcoded expected
+      `--version` output to match
+- [ ] Run the test suite (see "Running the tests" above) —
+      `test_scan_watch_version.py` and `test_libraries_modal.py`'s footer
+      check are the fastest way to confirm the bump actually took
+- [ ] Commit the bump on its own, separate from unrelated changes
+- [ ] Tag the release commit and push the tag:
+      `git tag -a vX.Y.Z -m "vX.Y.Z"` then `git push origin vX.Y.Z`
+      (push `main` first if the bump commit isn't already on the remote)
+- [ ] Create the GitHub release, summarizing what changed since the last
+      tag (`git log vLAST..HEAD --oneline` is a good starting point):
+      `gh release create vX.Y.Z --repo AarneAarebye/Dossiary --title "Dossiary vX.Y.Z" --notes "..."`
+
 ## Reporting bugs / requesting features
 
 Open a GitHub issue. Please include your browser — Chrome or Edge only,
