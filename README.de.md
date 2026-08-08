@@ -27,6 +27,17 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 
 ## Funktionen
 
+- **Zuletzt geöffnete Bibliotheken** — die letzten 5 von Ihnen geöffneten
+  Bibliotheken erscheinen auf dem Startbildschirm; klicken Sie auf eine,
+  um sie mit einem einzigen Berechtigungsklick erneut zu öffnen, ohne den
+  Ordner erneut auswählen zu müssen. Dazu wird das Zugriffs-Handle des
+  Ordners in der IndexedDB Ihres Browsers gespeichert und die Berechtigung
+  erneut angefragt — es wird nichts hochgeladen oder kopiert, und auf die
+  Daten selbst wird erst beim Klick zugegriffen. Entfernen Sie einen
+  Eintrag über das ✕ (z. B. auf einem gemeinsam genutzten Computer, oder
+  bei einer Bibliothek, die Sie nicht mehr brauchen) — eine separate
+  Einstellung zum Deaktivieren gibt es nicht, das Entfernen ist die
+  Abmeldung.
 - **Durchsuchen** — sortierbare, durchsuchbare, filterbare Liste aller
   Dokumente in der Bibliothek, mit Kategorie-/Typ-Filtern. Die Suche
   durchsucht Titel, Kategorie, Unterkategorie, Dokumenttyp, Notizen,
@@ -622,11 +633,13 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   [`scan_watch.py`](#scan_watchpy-hilfsskript-für-überwachte-ordner)
   oben — auch dort ist, wie beabsichtigt, weiterhin ein expliziter Klick
   in der App nötig, um jede Datei tatsächlich als Dokument hinzuzufügen.
-- **Der Ordner muss jede Sitzung neu ausgewählt werden.** Browser
-  erlauben es nicht, direkten Dateisystemzugriff über Seiten-Neuladen
-  hinweg zu speichern, daher wählen Sie den Ordner bei jedem Öffnen der
-  App erneut aus. Das ist eine Einschränkung des Browsers, kein Punkt,
-  den Dossiary umgehen könnte.
+- **Das erneute Verbinden mit einer zuletzt geöffneten Bibliothek braucht
+  weiterhin einen Klick.** Browser lassen eine Seite nach einem Neuladen
+  nicht stillschweigend wieder auf das Dateisystem zugreifen — selbst mit
+  einer in „Zuletzt geöffnete Bibliotheken" gemerkten Bibliothek (siehe
+  Funktionen oben) braucht das erneute Öffnen einen expliziten Klick zur
+  Bestätigung der Berechtigung. Das ist eine Sicherheitsanforderung des
+  Browsers, kein Punkt, den Dossiary umgehen könnte.
 - **Die Erzeugung durchsuchbarer PDFs funktioniert bei direkt erfassten
   JPEG-/PNG-Bildern, nicht bei hochgeladenen PDFs.** Der Aufbau der
   unsichtbaren, markierbaren Textebene erfordert, dass die *Quelle* ein

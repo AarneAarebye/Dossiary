@@ -24,6 +24,14 @@ working" problem that motivated this project in the first place.
 
 ## Features
 
+- **Recent libraries** — the last 5 libraries you've opened show up on the
+  startup screen; click one to reopen it with a single permission-confirm
+  click, no need to browse to the folder again. This works by storing the
+  folder's access handle in your browser's IndexedDB and re-requesting
+  permission on it, not by uploading or copying anything — the data itself
+  is never touched until you click. Remove an entry with its ✕ (e.g. on a
+  shared computer, or a library you're done with) — there's no separate
+  setting to turn this off; removing is the opt-out.
 - **Browse** — sortable, searchable, filterable list of every document in
   the library, with category/type filters. Search matches title, category,
   subcategory, document type, notes, OCR text, tags, people, and every
@@ -549,10 +557,11 @@ separate genuinely distinct values.
   feature and [`scan_watch.py`](#scan_watchpy-watched-folder-helper) above
   — that still requires an explicit in-app click to actually add each file
   as a document, by design.
-- **Re-select the folder each session.** Browsers don't allow persisting
-  direct file-system access across page reloads, so you'll pick the folder
-  again each time you open the app. This is a browser constraint, not
-  something Dossiary can work around.
+- **Reconnecting a recent library still needs one click.** Browsers won't
+  let a page silently regain filesystem access after a reload — even with
+  a library remembered in the Recent libraries list (see Features above),
+  reopening it takes one explicit click to re-confirm permission. This is
+  a browser security requirement, not something Dossiary can skip.
 - **Searchable PDF generation works on JPEG/PNG images captured directly,
   not PDF uploads.** Building the invisible, selectable text layer
   requires the *source* to be an image jsPDF can embed; a PDF you upload

@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (46 scripts) + shared
+tests/                   Playwright regression suite (47 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -1110,15 +1110,41 @@ version number — only by the schema itself matching).
   repo does the equivalent thing in Python (`build_sidecar_text()`) for
   migrated documents; keep both in sync if the sidecar format changes,
   since a person migrating and then capturing should get consistent files.
-- **No persistence of the folder handle across page reloads.** A person
-  re-selects the library folder every session. This is a deliberate,
-  accepted limitation (see README), not something to silently work around
-  with `localStorage`/`indexedDB` — browser storage APIs beyond what the
-  File System Access API itself provides are out of scope here.
+- **Recent libraries** (`renderRecentLibraries()`, `recordRecentLibrary()`,
+  `reconnectRecentLibrary()`, `#recent-libraries` on the empty-state screen)
+  reverses what an earlier version of this note called an unavoidable
+  browser limitation. `FileSystemDirectoryHandle` objects are structured-
+  cloneable, so they can be stored directly in IndexedDB (database
+  `dossiary-app-db`, object store `recentLibraries`) and later
+  re-authorized with a single click via `handle.requestPermission()` — no
+  fresh `showDirectoryPicker()` dialog needed, just a user gesture. This is
+  still FSA's own handle object being persisted, not a `localStorage`-style
+  workaround around FSA. `afterDbReady()` (the single point both
+  `loadDb()` and `initNewLibrary()` funnel through) calls
+  `recordRecentLibrary(rootDirHandle)` as a fire-and-forget best-effort
+  call, same pattern as its neighboring `checkInbox()` call — a failure to
+  record history should never block a library from actually opening.
+  Dedup uses `handle.isSameEntry()` (folder *identity*, not name — a
+  folder can be renamed, and two different folders can share a name), not
+  a string comparison; a re-opened library updates its existing entry's
+  `lastOpenedAt` rather than creating a duplicate row. Capped at 5 entries,
+  oldest evicted first. On by default (matches Finder/Explorer "Recent
+  Files" conventions) — a person on a shared computer who doesn't want a
+  library remembered removes it via the row's own ✕; there's no separate
+  opt-out setting. `openLibrary()`'s original body (given a granted
+  handle, check for `library.sqlite` and proceed) is now the shared
+  `proceedWithRootDirHandle(handle)` helper, called both from the fresh-
+  picker path and from a successful reconnect — so there's exactly one
+  place that knows what "given a folder handle, open it" means. Tested via
+  `tests/test_recent_libraries.py`; `tests/stub_studio2.js` needed a
+  from-scratch in-memory `indexedDB` fake for this (storing values by
+  reference, not a real structured-clone round-trip) since a real
+  browser's IndexedDB would silently strip our fake `FileSystemDirectoryHandle`
+  class down to a plain data object, unlike what happens to a *real* handle.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **46
+There's a real, runnable Playwright regression suite in `tests/` — **47
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1217,8 +1243,12 @@ an Author, never as People; `test_people_migration.py` — an old-shape
 seeded library, `document_people` populated directly with no `fields` row
 for `'People'` yet, correctly promoted on open, its `document_type_fields`
 sentinel row needing no migration of its own, the old `document_people`
-table left untouched, and idempotency across a reopen), and search across
-all of the above. This
+table left untouched, and idempotency across a reopen), the recent-libraries
+startup list (`test_recent_libraries.py` — an entry recorded on open, dedup
+by folder identity rather than name, the 5-entry cap evicting the oldest,
+one-click reconnect without a fresh folder-picker call, manual removal, and
+a denied/failed reconnect leaving its entry in place with an inline error),
+and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
