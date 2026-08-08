@@ -51,7 +51,7 @@ rather than being folded into it.
 
 ## Versioning
 
-`dossiary.html` and `scan_watch.py` share one version number (`1.1.1` as of
+`dossiary.html` and `scan_watch.py` share one version number (`1.2.0` as of
 this writing), kept manually in sync with this repo's git tag on each
 release — no build step or shared version file to do this automatically.
 `dossiary.html` has its own `APP_VERSION` constant (the very first line
