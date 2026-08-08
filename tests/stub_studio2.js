@@ -54,7 +54,94 @@ class FakeDirHandle {
     }
     this._children.delete(name);
   }
+  async isSameEntry(other) { return this === other; }
+  async queryPermission(desc) { return this._forceDenied ? 'denied' : 'prompt'; }
+  async requestPermission(desc) {
+    if (this._forceThrow) { const e = new Error('Simulated failure'); e.name = this._forceThrow; throw e; }
+    return this._forceDenied ? 'denied' : 'granted';
+  }
 }
+
+// ---- Fake IndexedDB (in-memory, stores values by reference) ----
+// See the comment in the recent-libraries implementation plan for why this
+// can't just use the real browser indexedDB: our fake FileSystemDirectoryHandle
+// classes would lose their prototype/methods across a real structured-clone
+// round-trip, which a real FileSystemDirectoryHandle never does.
+window.__FAKE_IDB_DATABASES = window.__FAKE_IDB_DATABASES || new Map();
+
+class FakeIDBRequest {
+  constructor() { this.onsuccess = null; this.onerror = null; this.onupgradeneeded = null; this.result = undefined; this.error = null; }
+}
+class FakeIDBTransaction {
+  constructor() { this.oncomplete = null; this.onerror = null; this._pending = 0; this._completed = false; }
+  _begin() { this._pending++; }
+  _end() { this._pending--; if (this._pending === 0) this._maybeComplete(); }
+  _maybeComplete() {
+    if (this._completed) return;
+    this._completed = true;
+    queueMicrotask(() => { if (this.oncomplete) this.oncomplete({ target: this }); });
+  }
+}
+class FakeIDBObjectStore {
+  constructor(tx, storeState) { this._tx = tx; this._state = storeState; }
+  _run(work) {
+    const req = new FakeIDBRequest();
+    this._tx._begin();
+    queueMicrotask(() => {
+      try { req.result = work(); if (req.onsuccess) req.onsuccess({ target: req }); }
+      catch (e) { req.error = e; if (req.onerror) req.onerror({ target: req }); }
+      this._tx._end();
+    });
+    return req;
+  }
+  add(value) {
+    return this._run(() => {
+      const id = this._state.nextId++;
+      this._state.map.set(id, Object.assign({}, value, { [this._state.keyPath]: id }));
+      return id;
+    });
+  }
+  put(value) {
+    return this._run(() => {
+      const id = value[this._state.keyPath] != null ? value[this._state.keyPath] : this._state.nextId++;
+      this._state.map.set(id, Object.assign({}, value, { [this._state.keyPath]: id }));
+      return id;
+    });
+  }
+  get(id) { return this._run(() => this._state.map.get(id)); }
+  getAll() { return this._run(() => Array.from(this._state.map.values())); }
+  delete(id) { return this._run(() => { this._state.map.delete(id); }); }
+}
+class FakeIDBDatabase {
+  constructor() { this._stores = new Map(); } // name -> { map, keyPath, nextId }
+  createObjectStore(name, opts) {
+    this._stores.set(name, { map: new Map(), keyPath: (opts && opts.keyPath) || 'id', nextId: 1 });
+    return { name };
+  }
+  transaction(storeNames) {
+    const tx = new FakeIDBTransaction();
+    const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+    tx.objectStore = (name) => {
+      if (!names.includes(name)) throw new Error('Store not in transaction scope: ' + name);
+      return new FakeIDBObjectStore(tx, this._stores.get(name));
+    };
+    return tx;
+  }
+}
+window.indexedDB = {
+  open(name) {
+    const req = new FakeIDBRequest();
+    queueMicrotask(() => {
+      let db = window.__FAKE_IDB_DATABASES.get(name);
+      const isNew = !db;
+      if (isNew) { db = new FakeIDBDatabase(); window.__FAKE_IDB_DATABASES.set(name, db); }
+      req.result = db;
+      if (isNew && req.onupgradeneeded) req.onupgradeneeded({ target: req });
+      if (req.onsuccess) req.onsuccess({ target: req });
+    });
+    return req;
+  },
+};
 
 window.__makeEmptyRoot = function() { return new FakeDirHandle('EmptyLibrary'); };
 

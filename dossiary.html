@@ -752,6 +752,80 @@
     await writable.close();
   }
 
+  // --- recent libraries (startup list) ---
+  // FileSystemDirectoryHandle objects are structured-cloneable and can be
+  // stored directly in IndexedDB; re-authorizing a stored handle only needs
+  // a single click via requestPermission() (a user gesture), not a fresh
+  // showDirectoryPicker() dialog. This persists FSA's own handle object, not
+  // a localStorage-style workaround around FSA -- see CLAUDE.md's "Recent
+  // libraries" note for the fuller reasoning.
+  const RECENT_LIBRARIES_DB_NAME = 'dossiary-app-db';
+  const RECENT_LIBRARIES_STORE = 'recentLibraries';
+  const MAX_RECENT_LIBRARIES = 5;
+
+  function openRecentLibrariesDb(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(RECENT_LIBRARIES_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore(RECENT_LIBRARIES_STORE, { keyPath: 'id', autoIncrement: true });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function getRecentLibraries(){
+    const idb = await openRecentLibrariesDb();
+    return new Promise((resolve, reject) => {
+      const req = idb.transaction(RECENT_LIBRARIES_STORE, 'readonly').objectStore(RECENT_LIBRARIES_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function pruneRecentLibraries(){
+    const entries = (await getRecentLibraries()).sort((a, b) => b.lastOpenedAt.localeCompare(a.lastOpenedAt));
+    if(entries.length <= MAX_RECENT_LIBRARIES) return;
+    const idb = await openRecentLibrariesDb();
+    const store = idb.transaction(RECENT_LIBRARIES_STORE, 'readwrite').objectStore(RECENT_LIBRARIES_STORE);
+    entries.slice(MAX_RECENT_LIBRARIES).forEach(e => store.delete(e.id));
+  }
+
+  // Called from afterDbReady() as fire-and-forget, best effort -- same pattern
+  // as its neighboring checkInbox() call there. Must never throw into its
+  // caller: a stale/unreadable recent-libraries store should never block a
+  // library from actually opening.
+  async function recordRecentLibrary(handle){
+    try{
+      const entries = await getRecentLibraries();
+      let matchId = null;
+      for(const entry of entries){
+        // Identity, not name -- a folder can be renamed, and two different
+        // folders can share a name.
+        if(await handle.isSameEntry(entry.handle)){ matchId = entry.id; break; }
+      }
+      const idb = await openRecentLibrariesDb();
+      await new Promise((resolve, reject) => {
+        const store = idb.transaction(RECENT_LIBRARIES_STORE, 'readwrite').objectStore(RECENT_LIBRARIES_STORE);
+        const req = matchId != null
+          ? store.put({ id: matchId, name: handle.name, handle, lastOpenedAt: nowIso() })
+          : store.add({ name: handle.name, handle, lastOpenedAt: nowIso() });
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+      await pruneRecentLibraries();
+    }catch(e){ /* best effort, see comment above */ }
+  }
+
+  async function removeRecentLibrary(id){
+    const idb = await openRecentLibrariesDb();
+    await new Promise((resolve, reject) => {
+      const req = idb.transaction(RECENT_LIBRARIES_STORE, 'readwrite').objectStore(RECENT_LIBRARIES_STORE).delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   // --- library open / init ---
 
   el('open-btn').addEventListener('click', openLibrary);
@@ -830,6 +904,7 @@
     loadDocumentsFromDb();
     setStatus(`Opened ${allDocs.length} documents from ${rootDirHandle.name}.`, 'ok');
     checkInbox(); // fire-and-forget -- best effort, doesn't block the library from opening
+    recordRecentLibrary(rootDirHandle); // fire-and-forget, same reasoning as checkInbox() above
   }
 
   function resetAll(){
