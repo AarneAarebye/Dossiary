@@ -37,7 +37,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Eintrag über das ✕ (z. B. auf einem gemeinsam genutzten Computer, oder
   bei einer Bibliothek, die Sie nicht mehr brauchen) — eine separate
   Einstellung zum Deaktivieren gibt es nicht, das Entfernen ist die
-  Abmeldung.
+  Abmeldung. Hinweis: Bei `file://`-Seiten wird die IndexedDB-Speicherung
+  von allen lokal geöffneten Dateien im Browser gemeinsam genutzt —
+  grundsätzlich könnte also auch jede andere lokale HTML-Seite, die Sie
+  öffnen, das gespeicherte Zugriffs-Handle einer Bibliothek auslesen,
+  bräuchte dafür aber trotzdem Ihren Klick auf „Zulassen" bei einer
+  Berechtigungsabfrage, die den echten Ordner nennt.
 - **Durchsuchen** — sortierbare, durchsuchbare, filterbare Liste aller
   Dokumente in der Bibliothek, mit Kategorie-/Typ-Filtern. Die Suche
   durchsucht Titel, Kategorie, Unterkategorie, Dokumenttyp, Notizen,

@@ -55,6 +55,8 @@ async def main():
         await page.wait_for_timeout(300)
         entries = await read_recent_libraries(page)
         print("one entry recorded after opening LibraryA:", [e['name'] for e in entries])
+        scenario1_last_opened_at = entries[0]['lastOpenedAt']  # used below (Scenario 3) to confirm
+        # reconnecting the same handle actually advances lastOpenedAt in place.
 
         # === Scenario 2: the recent-libraries list is visible on the startup
         # screen after switching away from LibraryA (simulated "cancel") ===
@@ -71,6 +73,16 @@ async def main():
         await page.wait_for_timeout(300)
         empty_state_visible = await page.locator('#empty-state').is_visible()
         print("reconnect succeeded without a picker call, library is open:", not empty_state_visible)
+
+        # The feature's headline correctness property: reconnecting to the *same*
+        # stored handle must update its existing entry in place (isSameEntry-based
+        # dedup), never create a second entry -- assert this directly rather than
+        # relying on later scenarios whose count checks are relative and would
+        # still print True even if dedup silently broke here.
+        entries_after_reconnect = await read_recent_libraries(page)
+        print("reconnecting the same handle does not create a duplicate entry:", len(entries_after_reconnect) == 1)
+        print("lastOpenedAt advanced after reconnecting:",
+              entries_after_reconnect[0]['lastOpenedAt'] > scenario1_last_opened_at)
 
         # === Scenario 4: reopening the same folder again does not create a
         # duplicate entry -- switch away, reopen LibraryA the normal way, check

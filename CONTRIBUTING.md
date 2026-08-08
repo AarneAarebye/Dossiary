@@ -27,7 +27,7 @@ already written down.
 
 ## Running the tests
 
-There's a real Playwright regression suite in `tests/` (46 scripts, nothing
+There's a real Playwright regression suite in `tests/` (47 scripts, nothing
 extra to install beyond Python 3 and Playwright's Chromium). Each is
 standalone:
 

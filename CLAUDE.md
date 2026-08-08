@@ -1131,7 +1131,17 @@ version number — only by the schema itself matching).
   oldest evicted first. On by default (matches Finder/Explorer "Recent
   Files" conventions) — a person on a shared computer who doesn't want a
   library remembered removes it via the row's own ✕; there's no separate
-  opt-out setting. `openLibrary()`'s original body (given a granted
+  opt-out setting. **One real caveat worth being explicit about**: all
+  `file://` pages share a single IndexedDB origin, so this isn't isolated
+  to Dossiary the way it would be if this app were served from a real
+  origin — any other local HTML file a person happens to open in the same
+  browser can enumerate `indexedDB.databases()`, read `dossiary-app-db`'s
+  stored records back (live `FileSystemDirectoryHandle` objects included),
+  and call `requestPermission()` on them itself. The native OS/browser
+  permission prompt — which still names the real folder — is the only
+  remaining gate at that point, not origin isolation; there's no way to
+  scope `file://` storage per-page, and this is empirically confirmed
+  behavior in real Chromium, not a hypothetical. `openLibrary()`'s original body (given a granted
   handle, check for `library.sqlite` and proceed) is now the shared
   `proceedWithRootDirHandle(handle)` helper, called both from the fresh-
   picker path and from a successful reconnect — so there's exactly one

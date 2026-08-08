@@ -31,7 +31,11 @@ working" problem that motivated this project in the first place.
   permission on it, not by uploading or copying anything — the data itself
   is never touched until you click. Remove an entry with its ✕ (e.g. on a
   shared computer, or a library you're done with) — there's no separate
-  setting to turn this off; removing is the opt-out.
+  setting to turn this off; removing is the opt-out. Note that on `file://`
+  pages, IndexedDB storage is shared across every local file you open in
+  the browser, so in principle any other local HTML page you open could
+  read a stored library's access handle too — though it would still need
+  you to click Allow on a permission prompt naming the real folder.
 - **Browse** — sortable, searchable, filterable list of every document in
   the library, with category/type filters. Search matches title, category,
   subcategory, document type, notes, OCR text, tags, people, and every
