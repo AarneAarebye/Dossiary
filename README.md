@@ -304,6 +304,76 @@ its own).
 
 ## Database schema
 
+```mermaid
+erDiagram
+  documents }o--o{ tags : "tagged (document_tags)"
+  documents }o--o{ people : "involves (document_people, vestigial)"
+  documents }o--o{ fields : "custom field values (document_field_values)"
+  documents }o--o{ fields : "person-field values (document_field_people)"
+  documents }o--o{ people : "person-field values (document_field_people)"
+  fields ||--o{ document_type_fields : "field_name matches fields.name (by name, not FK)"
+
+  documents {
+    int id PK
+    string title
+    string category
+    string subcategory
+    string document_type
+    string payment_method
+    float amount
+    string currency
+    string date
+    string import_date
+    string notes
+    string ocr_text
+    string ocr_language
+    string file_path
+    string original_file_path
+    string created_at
+    string source
+    int source_legacy_id
+    string thumbnail_path
+    int archived
+    int needs_review
+    int deleted
+  }
+  tags {
+    int id PK
+    string name
+  }
+  people {
+    int id PK
+    string name
+  }
+  fields {
+    int id PK
+    string name
+    string type
+    int show_as_column
+    int autocomplete
+  }
+  document_type_fields {
+    string document_type
+    string field_name
+    int position
+  }
+```
+
+`document_type_fields.document_type` and `documents.document_type` match by
+plain-text name, not a SQLite foreign key — like `category`/`subcategory`/
+`payment_method` on `documents` itself, this schema stores resolved names
+directly as `TEXT` rather than keeping separate lookup tables, so there's
+nothing left to declare a real foreign key against. `document_field_people`
+is genuinely a three-way relationship (document × field × person), shown
+above as two separate binary lines for legibility rather than as its own
+box. `document_people` is vestigial — see below. `settings` isn't shown
+here since it's a plain key-value table with no relationships to anything
+else; see its own description below.
+
+The diagram above is a relational overview; the full column-by-column
+listing (types, defaults, and the reasoning behind vestigial/nullable
+columns) follows:
+
 ```
 documents
     id                  INTEGER PRIMARY KEY

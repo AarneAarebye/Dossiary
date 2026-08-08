@@ -360,6 +360,77 @@ durch Daten, die von selbst auf der Festplatte auftauchen).
 
 ## Datenbankschema
 
+```mermaid
+erDiagram
+  documents }o--o{ tags : "getaggt (document_tags)"
+  documents }o--o{ people : "beteiligt (document_people, veraltet)"
+  documents }o--o{ fields : "Werte benutzerdefinierter Felder (document_field_values)"
+  documents }o--o{ fields : "Werte personenbezogener Felder (document_field_people)"
+  documents }o--o{ people : "Werte personenbezogener Felder (document_field_people)"
+  fields ||--o{ document_type_fields : "field_name entspricht fields.name (per Name, kein FK)"
+
+  documents {
+    int id PK
+    string title
+    string category
+    string subcategory
+    string document_type
+    string payment_method
+    float amount
+    string currency
+    string date
+    string import_date
+    string notes
+    string ocr_text
+    string ocr_language
+    string file_path
+    string original_file_path
+    string created_at
+    string source
+    int source_legacy_id
+    string thumbnail_path
+    int archived
+    int needs_review
+    int deleted
+  }
+  tags {
+    int id PK
+    string name
+  }
+  people {
+    int id PK
+    string name
+  }
+  fields {
+    int id PK
+    string name
+    string type
+    int show_as_column
+    int autocomplete
+  }
+  document_type_fields {
+    string document_type
+    string field_name
+    int position
+  }
+```
+
+`document_type_fields.document_type` und `documents.document_type` werden
+über den reinen Textnamen abgeglichen, nicht über einen SQLite-Fremdschlüssel
+— genau wie `category`/`subcategory`/`payment_method` bei `documents` selbst
+speichert dieses Schema aufgelöste Namen direkt als `TEXT`, statt eigene
+Nachschlagetabellen zu führen, sodass es keinen echten Fremdschlüssel mehr
+gibt, gegen den man verweisen könnte. `document_field_people` ist eigentlich
+eine dreiseitige Beziehung (Dokument × Feld × Person), oben der
+Übersichtlichkeit halber als zwei separate binäre Linien dargestellt statt
+als eigene Box. `document_people` ist veraltet — siehe unten. `settings`
+wird hier nicht gezeigt, da es eine reine Schlüssel-Wert-Tabelle ohne
+Beziehungen zu anderen Tabellen ist; siehe die eigene Beschreibung unten.
+
+Das Diagramm oben ist ein relationaler Überblick; die vollständige,
+spaltenweise Auflistung (Typen, Standardwerte und die Gründe hinter
+veralteten/nullbaren Spalten) folgt:
+
 ```
 documents
     id                  INTEGER PRIMARY KEY
