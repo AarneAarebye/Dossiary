@@ -128,20 +128,34 @@ class FakeIDBDatabase {
     return tx;
   }
 }
-window.indexedDB = {
-  open(name) {
-    const req = new FakeIDBRequest();
-    queueMicrotask(() => {
-      let db = window.__FAKE_IDB_DATABASES.get(name);
-      const isNew = !db;
-      if (isNew) { db = new FakeIDBDatabase(); window.__FAKE_IDB_DATABASES.set(name, db); }
-      req.result = db;
-      if (isNew && req.onupgradeneeded) req.onupgradeneeded({ target: req });
-      if (req.onsuccess) req.onsuccess({ target: req });
-    });
-    return req;
+// NOTE: `window.indexedDB = {...}` (plain assignment) silently no-ops here --
+// the real `indexedDB` is a getter-only accessor inherited from Window.prototype
+// with no setter, so a sloppy-mode assignment to it is quietly swallowed
+// instead of throwing, leaving the *real* browser IndexedDB in place. That
+// defeats the entire point of this fake (see the comment above): the real
+// IndexedDB structured-clones everything written to it, which silently strips
+// our FakeDirHandle instances down to plain data objects, losing their
+// prototype methods (isSameEntry/queryPermission/requestPermission) on
+// read-back. Object.defineProperty forces the override regardless of the
+// inherited accessor.
+Object.defineProperty(window, 'indexedDB', {
+  configurable: true,
+  writable: true,
+  value: {
+    open(name) {
+      const req = new FakeIDBRequest();
+      queueMicrotask(() => {
+        let db = window.__FAKE_IDB_DATABASES.get(name);
+        const isNew = !db;
+        if (isNew) { db = new FakeIDBDatabase(); window.__FAKE_IDB_DATABASES.set(name, db); }
+        req.result = db;
+        if (isNew && req.onupgradeneeded) req.onupgradeneeded({ target: req });
+        if (req.onsuccess) req.onsuccess({ target: req });
+      });
+      return req;
+    },
   },
-};
+});
 
 window.__makeEmptyRoot = function() { return new FakeDirHandle('EmptyLibrary'); };
 

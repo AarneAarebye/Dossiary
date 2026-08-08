@@ -117,6 +117,20 @@
   .review-queue-row:first-child{ border-top:none; padding-top:0; }
   .review-queue-row .file-preview{ flex:1; margin-bottom:0; cursor:pointer; }
   .review-queue-actions{ display:flex; gap:8px; flex-shrink:0; }
+  #recent-libraries{
+    text-align:left; margin-bottom:20px; padding:14px 16px;
+    border:1px solid var(--line); border-radius:var(--radius);
+  }
+  #recent-libraries h3{
+    font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--text-dim); margin:0 0 10px; font-weight:500;
+  }
+  .recent-lib-remove-btn{
+    width:22px; height:22px; padding:0; border:none; background:transparent;
+    color:var(--text-dim); font-size:12px; line-height:1; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .recent-lib-remove-btn:hover{ color:var(--red); background:rgba(224,113,92,0.12); }
 
   /* modal shared */
   .backdrop{ position:fixed; inset:0; background:rgba(6,9,10,0.75); backdrop-filter:blur(2px); display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; z-index:50; overflow-y:auto; }
@@ -269,6 +283,7 @@
     <h2>No library open</h2>
     <p>Open a library folder created by <code>migrate_to_new_library.py</code>, or start a brand new one here.
        Everything happens locally in your browser — nothing is uploaded.</p>
+    <div id="recent-libraries" style="display:none;"></div>
     <button class="primary" id="open-btn">Open library folder</button>
     <div class="hint">
       Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).<br/>
@@ -826,6 +841,61 @@
     });
   }
 
+  async function reconnectRecentLibrary(id, handle){
+    const statusLine = el(`recent-lib-status-${id}`);
+    try{
+      let perm = await handle.queryPermission({ mode: 'readwrite' });
+      if(perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
+      if(perm !== 'granted'){
+        if(statusLine) statusLine.textContent = "Couldn't reopen — access was denied.";
+        return;
+      }
+      await proceedWithRootDirHandle(handle);
+    }catch(e){
+      if(statusLine) statusLine.textContent = "Couldn't reopen — folder may have moved or access was denied.";
+    }
+  }
+
+  async function renderRecentLibraries(){
+    const container = el('recent-libraries');
+    if(!container) return;
+    let entries = [];
+    try{ entries = await getRecentLibraries(); }catch(e){ entries = []; }
+    entries.sort((a, b) => b.lastOpenedAt.localeCompare(a.lastOpenedAt));
+    if(!entries.length){ container.innerHTML = ''; container.style.display = 'none'; return; }
+    container.style.display = 'block';
+    container.innerHTML = `
+      <h3>Recent libraries</h3>
+      <div id="recent-libraries-list">
+        ${entries.map(entry => `
+          <div class="review-queue-row" data-id="${entry.id}">
+            <div class="file-preview recent-lib-target" data-id="${entry.id}">
+              <div class="file-icon">DIR</div>
+              <div style="flex:1;">
+                <div class="doc-title">${escapeHtml(entry.name)}</div>
+                <div class="doc-sub" id="recent-lib-status-${entry.id}">Last opened ${formatDate(entry.lastOpenedAt)}</div>
+              </div>
+            </div>
+            <div class="review-queue-actions">
+              <button type="button" class="recent-lib-remove-btn" data-id="${entry.id}" title="Remove" aria-label="Remove ${escapeHtml(entry.name)} from recent libraries">✕</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.querySelectorAll('.recent-lib-target').forEach(elm => {
+      const id = Number(elm.dataset.id);
+      const entry = entries.find(e => e.id === id);
+      elm.addEventListener('click', () => reconnectRecentLibrary(id, entry.handle));
+    });
+    container.querySelectorAll('.recent-lib-remove-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await removeRecentLibrary(Number(btn.dataset.id));
+        renderRecentLibraries();
+      });
+    });
+  }
+
   // --- library open / init ---
 
   el('open-btn').addEventListener('click', openLibrary);
@@ -834,6 +904,7 @@
   el('init-btn').addEventListener('click', initNewLibrary);
   el('libraries-link').addEventListener('click', (e) => { e.preventDefault(); openLibrariesModal(); });
   el('app-version-label').textContent = `v${APP_VERSION}`;
+  renderRecentLibraries();
 
   async function openLibrary(){
     if(typeof window.showDirectoryPicker !== 'function'){
@@ -842,22 +913,31 @@
     }
     try{
       setStatus('Opening folder picker…');
-      rootDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-      setStatus('Checking for library.sqlite…');
-      try{
-        dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
-        filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
-        await rootDirHandle.getDirectoryHandle('inbox', { create: true }); // ensure it exists so a person can drop a file in by hand, or scan_watch.py's --drop-folder can be pointed here directly, without a manual mkdir first
-        await loadDb();
-      }catch(e){
-        emptyState.style.display = 'none';
-        initState.style.display = 'block';
-        el('init-message').innerHTML = `No <code>library.sqlite</code> found in "<b>${escapeHtml(rootDirHandle.name)}</b>".`;
-        setStatus('');
-      }
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      await proceedWithRootDirHandle(handle);
     }catch(e){
       if(e.name === 'AbortError'){ setStatus('Folder selection cancelled.'); }
       else{ setStatus('Could not open that folder: ' + e.message, 'err'); }
+    }
+  }
+
+  // Given an already-granted directory handle (from a fresh showDirectoryPicker()
+  // call, or from re-authorizing a stored recent-library handle), check for
+  // library.sqlite and proceed -- the one place that knows what "given a folder
+  // handle, open it" means.
+  async function proceedWithRootDirHandle(handle){
+    rootDirHandle = handle;
+    setStatus('Checking for library.sqlite…');
+    try{
+      dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
+      filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
+      await rootDirHandle.getDirectoryHandle('inbox', { create: true }); // ensure it exists so a person can drop a file in by hand, or scan_watch.py's --drop-folder can be pointed here directly, without a manual mkdir first
+      await loadDb();
+    }catch(e){
+      emptyState.style.display = 'none';
+      initState.style.display = 'block';
+      el('init-message').innerHTML = `No <code>library.sqlite</code> found in "<b>${escapeHtml(rootDirHandle.name)}</b>".`;
+      setStatus('');
     }
   }
 
@@ -920,6 +1000,7 @@
     el('inbox-banner').style.display = 'none';
     el('review-queue').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
+    renderRecentLibraries();
   }
 
   // --- db helpers ---
