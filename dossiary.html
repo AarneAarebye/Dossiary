@@ -3497,7 +3497,8 @@
       id = nextDocId++;
       const file = await entry.handle.getFile();
       const baseName = safeFilename(file.name.replace(/\.[^.]+$/, ''), 'document');
-      const destName = `${id}_${safeFilename(file.name, 'document')}`;
+      const ext = (file.name.match(/\.[^.]+$/) || [''])[0];
+      const destName = `${id}_${baseName}${ext}`;
       const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
       const writable = await destHandle.createWritable();
       await writable.write(await file.arrayBuffer());
