@@ -74,6 +74,8 @@ async def main():
         doc1 = db_state['documents'][0]
         print("plain PDF save gets a real original_file_path (should not be None):", doc1.get('original_file_path'))
         print("plain PDF save searchable_pdf_built (should be 0):", doc1.get('searchable_pdf_built'))
+        print("plain PDF save file_path (should share the title-derived base name with original_file_path's subfolder):", doc1.get('file_path'))
+        print("plain PDF save original_file_path (should share the same title-derived base name as file_path):", doc1.get('original_file_path'))
 
         print("JS ERRORS:", errors)
         await browser.close()

@@ -3272,7 +3272,8 @@
         // or OCR wasn't run) -- just save the picked file directly, same as before.
         // The original preserved above still gives this document a real, safe
         // "original" even though nothing was processed.
-        const destName = `${id}_${safeFilename(pendingFile.name, 'document')}`;
+        const ext = (pendingFile.name.match(/\.[^.]+$/) || [''])[0];
+        const destName = `${id}_${baseName}${ext}`;
         const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
         const writable = await destHandle.createWritable();
         await writable.write(await pendingFile.arrayBuffer());
