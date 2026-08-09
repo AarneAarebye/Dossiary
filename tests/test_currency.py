@@ -154,7 +154,7 @@ async def main():
         sidecar_text = await page.evaluate("""
             (async () => {
                 const files = await window.__TEST_ROOT.getDirectoryHandle('files');
-                const fh = await files.getFileHandle('1_curdoc.txt');
+                const fh = await files.getFileHandle('1_Currency Doc.txt');
                 const f = await fh.getFile();
                 return await f.text();
             })()

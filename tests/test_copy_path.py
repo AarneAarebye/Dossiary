@@ -39,7 +39,10 @@ async def main():
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
 
-        # === Doc without a searchable-PDF original -- only the File copy button shows ===
+        # === Doc that never runs OCR (no searchable PDF built) -- both copy buttons
+        # show now, since every capture preserves its own untouched original
+        # (see "Preserving an original file on ingestion" in CLAUDE.md), and each
+        # copies its own distinct path ===
         await page.click('#add-btn')
         await page.wait_for_timeout(100)
         await page.fill('#f-title', 'Plain PDF Doc')
@@ -55,7 +58,8 @@ async def main():
         file_copy_count = await page.locator('#copy-file-path-btn').count()
         original_copy_count = await page.locator('#copy-original-path-btn').count()
         print("File copy button present (should be 1):", file_copy_count)
-        print("Original copy button absent for a plain PDF (should be 0):", original_copy_count)
+        print("Original copy button present even though no searchable PDF was built (should be 1):", original_copy_count)
+        assert original_copy_count == 1
 
         await page.click('#copy-file-path-btn')
         await page.wait_for_timeout(100)
@@ -63,12 +67,19 @@ async def main():
         clip = await page.evaluate("navigator.clipboard.readText()")
         print("button shows 'Copied!' right after click:", btn_text == 'Copied!')
         print("clipboard content matches the displayed path:", clip)
-        assert clip == 'EmptyLibrary/files/1_copytest1.pdf', f"unexpected clipboard content: {clip!r}"
+        assert clip == 'EmptyLibrary/files/1_Plain PDF Doc.pdf', f"unexpected clipboard content: {clip!r}"
 
         await page.wait_for_timeout(1600)
         btn_text_after = await page.locator('#copy-file-path-btn').inner_text()
         print("button label resets back to 'Copy' after the timeout:", btn_text_after == 'Copy')
         assert btn_text_after == 'Copy'
+
+        await page.click('#copy-original-path-btn')
+        await page.wait_for_timeout(100)
+        clip1 = await page.evaluate("navigator.clipboard.readText()")
+        print("Original button copies the preserved original's own path (distinct from file_path):", clip1)
+        assert clip1 == 'EmptyLibrary/files/1_Plain PDF Doc/copytest1.pdf', f"unexpected clipboard content: {clip1!r}"
+
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 

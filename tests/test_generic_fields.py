@@ -140,7 +140,7 @@ async def main():
         sidecar = await page.evaluate("""
             (async () => {
                 const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files');
-                const fh = await filesDir.getFileHandle('1_genfield.txt');
+                const fh = await filesDir.getFileHandle('1_Genfield Doc.txt');
                 const f = await fh.getFile();
                 return await f.text();
             })()

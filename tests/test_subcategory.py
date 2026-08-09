@@ -69,7 +69,7 @@ async def main():
         sidecar = await page.evaluate("""
             (async () => {
                 const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files');
-                const fh = await filesDir.getFileHandle('1_subdoc.txt');
+                const fh = await filesDir.getFileHandle('1_Dentist Bill.txt');
                 const f = await fh.getFile();
                 return await f.text();
             })()
