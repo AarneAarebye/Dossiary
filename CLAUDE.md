@@ -1103,12 +1103,22 @@ version number — only by the schema itself matching).
   every new document, regardless of file type or whether OCR ever runs,
   gets its raw, untouched bytes written into `files/<id>_<baseName>/` and
   `original_file_path` set to that — before any processing happens.
-  `file_path` keeps meaning exactly what it always has: whatever's
+  `file_path` keeps meaning the same *concept* it always has — whatever's
   currently active (the searchable PDF when one was built, otherwise a
-  plain copy of the same content) — only whether a *sibling* original also
-  exists has changed. LibraryLifeboat-migrated documents are untouched by
-  this — their `original_file_path` reflects Mariner's own historical
-  layout via `migrate_to_new_library.py`, not this app's own ingestion.
+  plain copy of the same content) — but its *naming scheme* changed for
+  `saveNewDocument()`'s plain-save branch specifically: the active copy is
+  now named `<id>_<baseName><ext>`, using the same title-or-filename-derived
+  `baseName` computed once and reused for the original's subfolder, rather
+  than being purely filename-derived as it was before this feature (`ext`
+  is extracted directly from the raw uploaded filename, not re-run through
+  `safeFilename()`, since `baseName` already went through it). This is a
+  real, user-visible change — documents captured after this ships are named
+  differently than ones captured before. `addInboxFile()` was always
+  filename-derived (no title field exists at Inbox-add time) and still is;
+  only the capture form's plain-save path changed. LibraryLifeboat-migrated
+  documents are untouched by this — their `original_file_path` reflects
+  Mariner's own historical layout via `migrate_to_new_library.py`, not this
+  app's own ingestion.
   **This means `original_file_path IS NOT NULL` can no longer be read as
   "this document went through searchable-PDF processing"** — a new
   `searchable_pdf_built` column (`documents.searchable_pdf_built`, `0`/`1`)

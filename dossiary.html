@@ -3273,7 +3273,7 @@
         // The original preserved above still gives this document a real, safe
         // "original" even though nothing was processed.
         const ext = (pendingFile.name.match(/\.[^.]+$/) || [''])[0];
-        const destName = `${id}_${baseName}${ext}`;
+        const destName = ext ? `${id}_${baseName}${ext}` : `${id}_${baseName}_file`;
         const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
         const writable = await destHandle.createWritable();
         await writable.write(await pendingFile.arrayBuffer());
@@ -3498,7 +3498,7 @@
       const file = await entry.handle.getFile();
       const baseName = safeFilename(file.name.replace(/\.[^.]+$/, ''), 'document');
       const ext = (file.name.match(/\.[^.]+$/) || [''])[0];
-      const destName = `${id}_${baseName}${ext}`;
+      const destName = ext ? `${id}_${baseName}${ext}` : `${id}_${baseName}_file`;
       const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
       const writable = await destHandle.createWritable();
       await writable.write(await file.arrayBuffer());
