@@ -3496,11 +3496,17 @@
     try{
       id = nextDocId++;
       const file = await entry.handle.getFile();
+      const baseName = safeFilename(file.name.replace(/\.[^.]+$/, ''), 'document');
       const destName = `${id}_${safeFilename(file.name, 'document')}`;
       const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
       const writable = await destHandle.createWritable();
       await writable.write(await file.arrayBuffer());
       await writable.close();
+
+      // Preserve the untouched original from the moment the document is added --
+      // Inbox never runs OCR automatically, so this document is always
+      // unprocessed at this point (searchable_pdf_built stays 0 below).
+      const originalFilePathForDb = await writeOriginalToSubfolder(id, baseName, file);
 
       // Best-effort, same as saveNewDocument() -- a missing preview isn't fatal.
       let thumbnailPathForDb = null;
@@ -3518,9 +3524,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, needs_review)
-        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, NULL, ?, 'scan-inbox', NULL, ?, 1)
-      `, [id, title, documentType, createdAt, filePathForDb, createdAt, thumbnailPathForDb]);
+                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built)
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, 'scan-inbox', NULL, ?, 1, 0)
+      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
       await persistDb();
@@ -3528,7 +3534,7 @@
       allDocs.push({
         id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
-        original_file_path: null, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
+        original_file_path: originalFilePathForDb, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
         thumbnail_path: thumbnailPathForDb, archived: false, needs_review: true, deleted: false,
         customFields: {}, personFieldValues: {}, tags: [], people: [],
       });

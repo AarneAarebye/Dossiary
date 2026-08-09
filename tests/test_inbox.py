@@ -78,6 +78,8 @@ async def main():
         """)
         doc1 = persisted['documents'][0]
         print("doc1:", {k: doc1[k] for k in ['id', 'title', 'category', 'document_type', 'date', 'source', 'file_path']})
+        print("inbox-added doc gets a real original_file_path (should not be None):", doc1.get('original_file_path'))
+        print("inbox-added doc searchable_pdf_built (should be 0):", doc1.get('searchable_pdf_built'))
 
         inbox_after_one = await page.evaluate("""
             (async () => {
