@@ -64,6 +64,17 @@ async def main():
         status2 = await page.locator("#status").inner_text()
         print("status after first save on new library:", status2)
 
+        db_state = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        doc1 = db_state['documents'][0]
+        print("plain PDF save gets a real original_file_path (should not be None):", doc1.get('original_file_path'))
+        print("plain PDF save searchable_pdf_built (should be 0):", doc1.get('searchable_pdf_built'))
+
         print("JS ERRORS:", errors)
         await browser.close()
 

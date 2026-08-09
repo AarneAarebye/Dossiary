@@ -77,6 +77,7 @@ async def main():
             })()
         """)
         print("documents[0]:", db_state['documents'][0])
+        print("searchable_pdf_built (should be 1):", db_state['documents'][0].get('searchable_pdf_built'))
 
         # verify actual files on the fake filesystem
         files_listing = await page.evaluate("""

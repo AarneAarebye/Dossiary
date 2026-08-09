@@ -3214,6 +3214,24 @@
     if(e.target && e.target.id === 'save-doc-btn') saveNewDocument();
   });
 
+  // Writes `file`'s raw bytes into files/<id>_<baseName>/<originalName>, returning
+  // the relative path to store as original_file_path. Called before any
+  // processing, from both saveNewDocument() (below) and addInboxFile(), so every
+  // new document's untouched original is preserved from the moment it's added,
+  // regardless of file type or whether it's ever OCR'd -- see the "Preserve
+  // original file on ingestion" design note in CLAUDE.md for why this is
+  // unconditional now, not just for the searchable-PDF path.
+  async function writeOriginalToSubfolder(id, baseName, file){
+    const subfolderName = `${id}_${baseName}`;
+    const subfolderHandle = await filesDirHandle.getDirectoryHandle(subfolderName, { create: true });
+    const originalName = safeFilename(file.name, 'original');
+    const originalHandle = await subfolderHandle.getFileHandle(originalName, { create: true });
+    const writable = await originalHandle.createWritable();
+    await writable.write(await file.arrayBuffer());
+    await writable.close();
+    return `files/${subfolderName}/${originalName}`;
+  }
+
   async function saveNewDocument(){
     if(!pendingFile){ return; }
     const captureStatus = el('capture-status');
@@ -3227,44 +3245,39 @@
       const canBuildSearchablePdf = pendingOcrWords && pendingOcrWords.length && pendingImageDims
         && (pendingFile.type === 'image/jpeg' || pendingFile.type === 'image/png');
 
-      let filePathForDb, originalFilePathForDb, sidecarBaseName;
+      let filePathForDb, sidecarBaseName;
+
+      const baseName = safeFilename((el('f-title').value.trim() || pendingFile.name.replace(/\.[^.]+$/, '')), 'document');
+      // Preserve the untouched original from the moment the document is added,
+      // regardless of file type or whether a searchable PDF gets built below.
+      const originalFilePathForDb = await writeOriginalToSubfolder(id, baseName, pendingFile);
+      let searchablePdfBuilt = 0;
 
       if(canBuildSearchablePdf){
         const imageFormat = pendingFile.type === 'image/jpeg' ? 'JPEG' : 'PNG';
         const dataUrl = await fileToDataUrl(pendingFile);
         const pdfBytes = await buildSearchablePdf(dataUrl, imageFormat, pendingImageDims, pendingOcrWords);
 
-        const baseName = safeFilename((el('f-title').value.trim() || pendingFile.name.replace(/\.[^.]+$/, '')), 'document');
         const processedName = `${id}_${baseName}.pdf`;
         const processedHandle = await filesDirHandle.getFileHandle(processedName, { create: true });
         const processedWritable = await processedHandle.createWritable();
         await processedWritable.write(pdfBytes);
         await processedWritable.close();
 
-        // Original raw file goes in a subfolder next to the processed PDF -- the
-        // same layout Mariner Paperless used, and what migrate_to_new_library.py
-        // produces for migrated documents.
-        const subfolderName = `${id}_${baseName}`;
-        const subfolderHandle = await filesDirHandle.getDirectoryHandle(subfolderName, { create: true });
-        const originalName = safeFilename(pendingFile.name, 'original');
-        const originalHandle = await subfolderHandle.getFileHandle(originalName, { create: true });
-        const originalWritable = await originalHandle.createWritable();
-        await originalWritable.write(await pendingFile.arrayBuffer());
-        await originalWritable.close();
-
         filePathForDb = `files/${processedName}`;
-        originalFilePathForDb = `files/${subfolderName}/${originalName}`;
         sidecarBaseName = `${id}_${baseName}`;
+        searchablePdfBuilt = 1;
       }else{
         // No word-position OCR data available (PDF upload, unsupported image type,
         // or OCR wasn't run) -- just save the picked file directly, same as before.
+        // The original preserved above still gives this document a real, safe
+        // "original" even though nothing was processed.
         const destName = `${id}_${safeFilename(pendingFile.name, 'document')}`;
         const destHandle = await filesDirHandle.getFileHandle(destName, { create: true });
         const writable = await destHandle.createWritable();
         await writable.write(await pendingFile.arrayBuffer());
         await writable.close();
         filePathForDb = `files/${destName}`;
-        originalFilePathForDb = null;
         sidecarBaseName = destName.replace(/\.[^.]+$/, '');
       }
 
@@ -3298,9 +3311,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?)
-      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
+                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?)
+      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
