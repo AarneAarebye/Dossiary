@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (47 scripts) + shared
+tests/                   Playwright regression suite (48 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -595,11 +595,15 @@ version number — only by the schema itself matching).
   absolute filesystem path, so a person who wants to find it manually gets
   the next best thing, a path they can navigate to themselves. `File` shows
   whenever `d.file_path` is set (effectively always, for anything with a
-  file at all); `Original` only shows when `d.original_file_path` is set,
-  which — see the searchable-PDF note below — is only true for a captured
-  JPEG/PNG that got OCR'd into a searchable PDF; every other case (PDF
-  uploads, images without OCR, migrated documents without a separate
-  original) has no distinct original to show. Each line also gets a small
+  file at all); `Original` shows whenever `d.original_file_path` is set —
+  see "Preserving an original file on ingestion" below, this is now true
+  for essentially every document captured or added via Inbox by this app
+  (not just ones that went through searchable-PDF processing), since
+  `writeOriginalToSubfolder()` preserves a raw original unconditionally.
+  A document with no distinct original at all (e.g. a migrated document
+  whose Mariner-sourced record never had one) simply has
+  `original_file_path` left `NULL`, and the line doesn't render.
+  Each line also gets a small
   **"Copy" button** (`copyPathToClipboard()`) next to the path, wired only
   when that path exists — unlike revealing a file in the OS's file manager
   or reading an absolute filesystem path (impossible from a browser tab,
@@ -1091,10 +1095,39 @@ version number — only by the schema itself matching).
     PDF (`file_path`), and the *original* upload is preserved untouched in
     a subfolder next to it (`original_file_path`) — mirroring the layout
     `migrate_to_new_library.py` produces for migrated documents and that
-    Mariner Paperless itself used. When a searchable PDF *isn't* built
-    (PDF upload, or an image format other than JPEG/PNG), the picked file
-    is saved directly as `file_path` with `original_file_path` left `NULL`
-    — there's no meaningfully separate "original" in that case.
+    Mariner Paperless itself used. See "Preserving an original file on
+    ingestion" below for what happens when a searchable PDF *isn't* built.
+- **Preserving an original file on ingestion** (`writeOriginalToSubfolder()`,
+  called unconditionally from both `saveNewDocument()` and `addInboxFile()`)
+  reverses what used to be true only for the searchable-PDF path above:
+  every new document, regardless of file type or whether OCR ever runs,
+  gets its raw, untouched bytes written into `files/<id>_<baseName>/` and
+  `original_file_path` set to that — before any processing happens.
+  `file_path` keeps meaning exactly what it always has: whatever's
+  currently active (the searchable PDF when one was built, otherwise a
+  plain copy of the same content) — only whether a *sibling* original also
+  exists has changed. LibraryLifeboat-migrated documents are untouched by
+  this — their `original_file_path` reflects Mariner's own historical
+  layout via `migrate_to_new_library.py`, not this app's own ingestion.
+  **This means `original_file_path IS NOT NULL` can no longer be read as
+  "this document went through searchable-PDF processing"** — a new
+  `searchable_pdf_built` column (`documents.searchable_pdf_built`, `0`/`1`)
+  is the explicit signal for that now, set to `1` only in
+  `saveNewDocument()`'s searchable-PDF branch, `0` everywhere else
+  (including every Inbox add, since Inbox never runs OCR automatically).
+  A one-time backfill migration (`migrateSearchablePdfBuiltFlag()`, same
+  settings-row-tracked-once pattern as `migrateTextFieldsAutocompleteDefault()`
+  below) sets `searchable_pdf_built = 1` for existing documents where
+  `original_file_path IS NOT NULL AND source = 'captured'` — the same
+  predicate that uniquely identified the old rule — deliberately excluding
+  `source = 'migrated'` documents, whose `original_file_path` predates and
+  is unrelated to this app's own OCR pipeline. Every new document now
+  permanently uses roughly double the disk space (an original plus an
+  active copy, even when nothing is ever processed) — an accepted
+  tradeoff, not an oversight. `searchable_pdf_built` is not yet loaded
+  into the in-memory `allDocs` model or read by any UI — nothing consumes
+  it yet; it exists for a planned future "build a searchable PDF after the
+  fact" action to gate on.
 - **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
   written next to every captured document's primary file, containing the
   fields that only live in `library.sqlite` (category, tags, notes, OCR
@@ -1154,7 +1187,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **47
+There's a real, runnable Playwright regression suite in `tests/` — **48
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1258,7 +1291,11 @@ startup list (`test_recent_libraries.py` — an entry recorded on open, dedup
 by folder identity rather than name, the 5-entry cap evicting the oldest,
 one-click reconnect without a fresh folder-picker call, manual removal, and
 a denied/failed reconnect leaving its entry in place with an inline error),
-and search across all of the above. This
+the `searchable_pdf_built` backfill migration (`test_searchable_pdf_built_migration.py`
+— a `captured` document with a pre-existing original correctly backfilled
+to `1`, a `migrated` document's unrelated original correctly left alone, a
+`scan-inbox` document with no original left alone, and stability across a
+reopen), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

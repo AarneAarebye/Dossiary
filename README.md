@@ -348,6 +348,7 @@ erDiagram
     int archived
     int needs_review
     int deleted
+    int searchable_pdf_built
   }
   tags {
     int id PK
@@ -404,7 +405,11 @@ documents
     ocr_text            TEXT
     ocr_language        TEXT     -- 'deu' / 'eng' / 'eng+deu' / NULL
     file_path           TEXT     -- relative to library root, e.g. "files/3_invoice.pdf"
-    original_file_path  TEXT     -- relative to library root, nullable
+    original_file_path  TEXT     -- relative to library root; now set for every new
+                                  -- document (Inbox or capture), not just searchable PDFs
+    searchable_pdf_built INTEGER -- 0/1, default 0; whether Dossiary's own OCR+jsPDF
+                                  -- pipeline built the file currently at file_path --
+                                  -- original_file_path's presence alone no longer means this
     created_at          TEXT     -- ISO 8601, when the record was created
     source              TEXT     -- 'migrated', 'captured', or 'scan-inbox'
     source_legacy_id    INTEGER  -- traceability only, for migrated documents
