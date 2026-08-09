@@ -354,7 +354,8 @@
       payment_method TEXT, amount REAL, currency TEXT, date TEXT, import_date TEXT, notes TEXT, ocr_text TEXT,
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
-      archived INTEGER DEFAULT 0, needs_review INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0
+      archived INTEGER DEFAULT 0, needs_review INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0,
+      searchable_pdf_built INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -397,6 +398,7 @@
     'ALTER TABLE documents ADD COLUMN archived INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN needs_review INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN deleted INTEGER DEFAULT 0',
+    'ALTER TABLE documents ADD COLUMN searchable_pdf_built INTEGER DEFAULT 0',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -951,6 +953,7 @@
       migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
       migratePeopleToGenericField(); // seeds People as an available person-type field from the start
       migrateTextFieldsAutocompleteDefault(); // no-op here (no text fields exist yet beyond the sentinels above), but marks this library as migrated
+      migrateSearchablePdfBuiltFlag(); // no-op here (no documents exist yet), but marks this library as migrated
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
       await persistDb();
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
@@ -975,6 +978,7 @@
     migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
     migratePeopleToGenericField(); // one-time; no-op if this library was already migrated
     migrateTextFieldsAutocompleteDefault(); // one-time; no-op if this library was already migrated
+    migrateSearchablePdfBuiltFlag(); // one-time; no-op if this library was already migrated
     await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
   }
@@ -1346,6 +1350,37 @@
     if(rows.length) return; // already run once for this library
     db.run("UPDATE fields SET autocomplete = ? WHERE type = ?", [1, 'text']);
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('text_autocomplete_default_migrated', ?)", ['1']);
+  }
+
+  // One-time backfill for the new searchable_pdf_built flag (see the "Preserve
+  // original file on ingestion" design). Before this change, original_file_path
+  // IS NOT NULL implicitly meant "went through the capture form's searchable-PDF
+  // branch" -- the only code path that ever set it. Once every new document gets
+  // original_file_path unconditionally (see writeOriginalToSubfolder()), that
+  // implication breaks, so this runs exactly once (tracked via a dedicated
+  // settings row, same reasoning as migrateTextFieldsAutocompleteDefault() above
+  // -- there's no way to tell "never touched" apart from "correctly computed as
+  // unprocessed" just by looking at the documents table) to backfill the flag for
+  // documents that already exist under the old rule. source = 'captured' is the
+  // same predicate that already, uniquely, identified that old rule -- no
+  // scan-inbox document could have original_file_path set (addInboxFile() always
+  // wrote NULL), and migrated documents are deliberately excluded: their
+  // original_file_path reflects Mariner's own historical layout, unrelated to
+  // whether Dossiary's own OCR pipeline has ever touched them.
+  function migrateSearchablePdfBuiltFlag(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'searchable_pdf_built_backfill_migrated'").rows;
+    if(rows.length) return; // already run once for this library
+    const { columns, rows: docRows } = queryAll('SELECT id, original_file_path, source FROM documents');
+    const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
+    for(const row of docRows){
+      const docId = row[idx.id];
+      const originalFilePath = row[idx.original_file_path];
+      const source = row[idx.source];
+      if(originalFilePath != null && source === 'captured'){
+        db.run('UPDATE documents SET searchable_pdf_built = ? WHERE id = ?', [1, docId]);
+      }
+    }
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('searchable_pdf_built_backfill_migrated', ?)", ['1']);
   }
 
   function loadFieldValues(){
