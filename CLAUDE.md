@@ -897,7 +897,7 @@ version number — only by the schema itself matching).
   `currentView` and calls `render()`; wired from each `.nav-item[data-view]`'s
   click handler.
   **Visual style is a persisted, user-configurable setting**
-  (`navStyle`, `'tabs'` | `'sidebar'`, default `'tabs'`), toggled via a
+  (`navStyle`, `'tabs'` | `'sidebar'`, default `'sidebar'`), toggled via a
   `#nav-style-toggle` button living inside the nav itself — no general
   settings-modal infrastructure exists in this app, so the control sits
   spatially attached to what it controls, the same reasoning behind where

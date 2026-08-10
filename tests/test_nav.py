@@ -156,13 +156,19 @@ async def main():
         print("All Documents badge drops by one after archiving doc 2 (Show archived unchecked):", all_count_after_archive)
 
         # === Scenario 7: nav_style setting persists across a reopen ===
+        # No nav_style row was ever seeded for this library, so it should be showing
+        # the default -- sidebar -- before any toggle click.
+        main_layout_class_default = await page.get_attribute('#main-layout', 'class')
+        print("main-layout defaults to nav-style-sidebar with no persisted setting:", main_layout_class_default)
+
+        # One click switches away from the default, to top tabs.
         await page.click('#nav-style-toggle')
         await page.wait_for_timeout(200)
         main_layout_class = await page.get_attribute('#main-layout', 'class')
-        print("main-layout gets nav-style-sidebar class after toggling:", main_layout_class)
+        print("main-layout loses nav-style-sidebar class after toggling to tabs:", main_layout_class)
         settings_after_toggle = await read_settings(page)
         nav_style_row = next((s for s in settings_after_toggle if s['key'] == 'nav_style'), None)
-        print("nav_style persisted as 'sidebar':", nav_style_row['value'] if nav_style_row else None)
+        print("nav_style persisted as 'tabs':", nav_style_row['value'] if nav_style_row else None)
 
         # Reopen the library via "Switch library" -- a real reopen would read the
         # still-persisted nav_style setting back from the same on-disk
@@ -172,13 +178,17 @@ async def main():
         # and others do the same). window.__TEST_ROOT must be updated BEFORE
         # clicking #reload-btn, since that click's handler calls openLibrary()
         # (and therefore the stubbed showDirectoryPicker()) synchronously.
+        # Explicitly persisting 'tabs' here (rather than 'sidebar') is the
+        # meaningful case now that sidebar is the default -- it proves a
+        # non-default persisted value survives reopen, not just whatever the
+        # default already happens to be.
         seed_with_style = dict(SEED)
-        seed_with_style['settings'] = [{'key': 'nav_style', 'value': 'sidebar'}]
+        seed_with_style['settings'] = [{'key': 'nav_style', 'value': 'tabs'}]
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_style)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
         main_layout_class_after_reopen = await page.get_attribute('#main-layout', 'class')
-        print("nav-style-sidebar class survives reopen:", main_layout_class_after_reopen)
+        print("nav-style-sidebar class absent after reopening with 'tabs' persisted:", main_layout_class_after_reopen)
 
         print("JS ERRORS:", errors)
         await browser.close()

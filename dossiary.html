@@ -337,7 +337,7 @@
         <span class="nav-item-label">Waste bin</span>
         <span class="nav-item-count" id="nav-count-trash">0</span>
       </button>
-      <button type="button" class="nav-style-toggle" id="nav-style-toggle" title="Switch to sidebar navigation" aria-label="Switch navigation layout">⇄</button>
+      <button type="button" class="nav-style-toggle" id="nav-style-toggle" title="Switch to top-tab navigation" aria-label="Switch navigation layout">⇄</button>
     </nav>
 
     <div id="content-col">
@@ -508,7 +508,7 @@
   // Which of the three top-level nav views is showing -- session state only, never
   // persisted, always starts 'all' on a freshly opened library (see resetAll()).
   let currentView = 'all';     // 'all' | 'inbox' | 'trash'
-  let navStyle = 'tabs';       // 'tabs' | 'sidebar' -- persisted per-library, see loadNavStyle()
+  let navStyle = 'sidebar';    // 'tabs' | 'sidebar' -- persisted per-library, see loadNavStyle()
   let navCounts = { all: 0, inbox: 0, trash: 0 }; // last-computed badge counts, refreshed every render()
   let tagsByDocId = {};
   let tagNameToId = {};
@@ -1280,7 +1280,7 @@
   // one in this app and the toggle is spatially attached to exactly what it controls.
   function loadNavStyle(){
     const rows = queryAll("SELECT value FROM settings WHERE key = 'nav_style'").rows;
-    navStyle = (rows.length && rows[0][0] === 'sidebar') ? 'sidebar' : 'tabs';
+    navStyle = (rows.length && rows[0][0] === 'tabs') ? 'tabs' : 'sidebar';
     applyNavStyle();
   }
 
