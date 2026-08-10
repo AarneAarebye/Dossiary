@@ -1204,7 +1204,7 @@
     appNav.style.display = 'flex';
     toolbar.style.display = 'flex';
     tableWrap.style.display = 'block';
-    subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+    subLabel.textContent = rootDirHandle.name;
     loadColumnSettings();
     loadDefaultDocumentType();
     loadDefaultCurrency();
@@ -3500,7 +3500,7 @@
         personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
-      subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+      subLabel.textContent = rootDirHandle.name;
 
       closeModal();
       setStatus(`Saved "${title || 'Document #' + id}" as #${id}.`, 'ok');
@@ -3666,7 +3666,7 @@
       pendingInboxFiles = pendingInboxFiles.filter(f => f.name !== name);
 
       renderStats(); populateFilters(); populateDatalists(); render();
-      subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
+      subLabel.textContent = rootDirHandle.name;
       updateInboxBanner();
       renderInboxList();
       if(statusEl){ statusEl.className = 'status ok'; statusEl.textContent = `Added "${title}" as #${id}.`; }
