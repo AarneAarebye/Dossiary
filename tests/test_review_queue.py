@@ -7,12 +7,12 @@ APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ si
 import asyncio, json
 from playwright.async_api import async_playwright
 
-# Doc 1: a normal, already-reviewed document -- shows in the main table.
-# Doc 2: flagged for review, not archived -- shows in the review queue instead of
-#        the main table.
+# Doc 1: a normal, already-reviewed document -- shows in All Documents.
+# Doc 2: flagged for review, not archived -- shows in the Inbox nav view instead of
+#        All Documents.
 # Doc 3: flagged for review AND archived -- independent flags (per design), so it's
-#        excluded from the queue (which excludes archived docs) and only reachable
-#        via "Show archived" in the main table, same as any other archived doc.
+#        excluded from the Inbox view (which excludes archived docs) and only
+#        reachable via "Show archived" in All Documents, same as any other archived doc.
 SEED = {
     "documents": [
         {
@@ -63,45 +63,67 @@ async def main():
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
 
-        # === Scenario 1: queue shows only the non-archived flagged doc; main table
-        # shows only the fully-reviewed doc; the archived+flagged doc is in neither
-        # place until "Show archived" is checked ===
-        queue_visible = await page.locator('#review-queue').is_visible()
-        queue_heading = await page.locator('#review-queue-heading').inner_text()
-        print("queue visible on load:", queue_visible)
-        print("queue heading (should say 1):", queue_heading)
-        queue_row_ids = await page.locator('.review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("queue contains only doc 2:", queue_row_ids)
+        # === Scenario 1: Inbox nav badge shows only the non-archived flagged doc;
+        # All Documents shows only the fully-reviewed doc; the archived+flagged doc
+        # is in neither place until "Show archived" is checked ===
+        inbox_count = await page.locator('#nav-count-inbox').inner_text()
+        print("Inbox badge (should say 1):", inbox_count)
+        all_count = await page.locator('#nav-count-all').inner_text()
+        print("All Documents badge (should say 1):", all_count)
 
         main_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("main table shows only doc 1 by default:", main_row_ids)
+        print("All Documents shows only doc 1 by default:", main_row_ids)
 
-        # === Scenario 2: checking 'Show archived' surfaces doc 3 in the main table
-        # (archived overrides the queue-only routing for a flagged doc), but doc 2
-        # still doesn't appear there -- it's still only reachable via the queue ===
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        inbox_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Inbox view contains only doc 2:", inbox_row_ids)
+        show_archived_visible_in_inbox = await page.locator('#show-archived-wrap').is_visible()
+        print("'Show archived' hidden while in Inbox view:", not show_archived_visible_in_inbox)
+
+        # === Scenario 2: checking 'Show archived' back on All Documents surfaces
+        # doc 3 (archived overrides the Inbox-only routing for a flagged doc), but
+        # doc 2 still doesn't appear there -- it's still only reachable via Inbox ===
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
         await page.check('#show-archived-toggle')
         await page.wait_for_timeout(150)
         main_row_ids_archived_shown = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("main table with 'Show archived' checked shows doc 1 and 3, not 2:", main_row_ids_archived_shown)
-        queue_row_ids_still = await page.locator('.review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("queue still shows only doc 2 (archived flagged doc never joins it):", queue_row_ids_still)
+        print("All Documents with 'Show archived' checked shows doc 1 and 3, not 2:", main_row_ids_archived_shown)
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        inbox_row_ids_still = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Inbox still shows only doc 2 (archived flagged doc never joins it):", inbox_row_ids_still)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
         await page.uncheck('#show-archived-toggle')
         await page.wait_for_timeout(150)
 
-        # === Scenario 3: the queue row's own 'Done' button clears needs_review without
-        # opening the detail modal, and the document then appears in the main table ===
-        await page.click('.review-queue-row[data-id="2"] .review-done-btn')
+        # === Scenario 3: clicking a row in Inbox opens the same detail modal as any
+        # other view; its 'Done' button clears needs_review, and the document then
+        # moves to All Documents ===
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        await page.click('tr[data-id="2"]')
         await page.wait_for_timeout(200)
-        modal_open_after_done = await page.locator('#modal-backdrop').count()
-        print("no modal opened by the queue's own Done button:", modal_open_after_done == 0)
-        queue_visible_after_done = await page.locator('#review-queue').is_visible()
-        print("queue hidden once empty:", not queue_visible_after_done)
+        doc2_review_label = await page.locator('#review-toggle-btn').inner_text()
+        print("doc 2's detail button label from Inbox (should be Done):", doc2_review_label)
+        await page.click('#review-toggle-btn')
+        await page.wait_for_timeout(200)
+        modal_still_open_after_done = await page.locator('#modal-backdrop').count()
+        print("modal refreshes in place after Done (stays open):", modal_still_open_after_done == 1)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        inbox_count_after_done = await page.locator('#nav-count-inbox').inner_text()
+        print("Inbox badge now 0:", inbox_count_after_done)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
         main_row_ids_after_done = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 2 now in the main table:", '2' in main_row_ids_after_done)
+        print("doc 2 now in All Documents:", '2' in main_row_ids_after_done)
 
         # === Scenario 4: any document can be manually flagged from the detail view,
-        # not just inbox-imported ones -- flagging doc 1 removes it from the main
-        # table and adds it to the queue ===
+        # not just inbox-imported ones -- flagging doc 1 removes it from All
+        # Documents and adds it to Inbox ===
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
         review_btn_label = await page.locator('#review-toggle-btn').inner_text()
@@ -114,17 +136,21 @@ async def main():
         await page.wait_for_timeout(150)
 
         main_row_ids_after_flag = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 no longer in main table after being flagged:", '1' not in main_row_ids_after_flag)
-        queue_row_ids_after_flag = await page.locator('.review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 now in the queue:", '1' in queue_row_ids_after_flag)
+        print("doc 1 no longer in All Documents after being flagged:", '1' not in main_row_ids_after_flag)
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        inbox_row_ids_after_flag = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 1 now in Inbox:", '1' in inbox_row_ids_after_flag)
 
         # === Scenario 5: saving an intermediate edit on a flagged document does NOT
         # clear needs_review -- only the explicit Done action does (per design: some
         # people do intermediate saves before a document is actually ready) ===
-        await page.click('.review-queue-row[data-id="1"] .review-edit-btn')
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
         await page.wait_for_timeout(200)
         edit_modal_open = await page.locator('#modal-backdrop').count()
-        print("queue row's Edit button opens the edit form:", edit_modal_open == 1)
+        print("clicking Edit from the detail view (reached via Inbox) opens the edit form:", edit_modal_open == 1)
         await page.fill('#e-title', 'Reviewed Invoice (touched)')
         await page.click('#save-edit-btn')
         await page.wait_for_timeout(300)
@@ -133,10 +159,12 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
-        queue_row_ids_after_save = await page.locator('.review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 still in the queue after an intermediate save:", '1' in queue_row_ids_after_save)
+        inbox_row_ids_after_save = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 1 still in Inbox after an intermediate save:", '1' in inbox_row_ids_after_save)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
         main_row_ids_after_save = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 still absent from the main table after that save:", '1' not in main_row_ids_after_save)
+        print("doc 1 still absent from All Documents after that save:", '1' not in main_row_ids_after_save)
 
         persisted = await page.evaluate("""
             (async () => {

@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (48 scripts) + shared
+tests/                   Playwright regression suite (50 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -82,29 +82,40 @@ version number — only by the schema itself matching).
   instead of a guarantee. Both bugs are the kind that "work fine" in quick
   testing and then fail unpredictably for someone else — keep both lines.
 - **`.table-wrap` is a deliberate, bounded scroll container** (`overflow:auto`
-  + `max-height:calc(100vh - 230px)`), not just "the table with horizontal
-  scroll" it looks like at a glance. This exists specifically so `thead
-  th`'s `position:sticky; top:0;` has something correct to stick to. The
-  original version only had `overflow-x:auto` (no `overflow-y` set at
-  all) — which looks harmless, but per the CSS Overflow spec, if one axis
-  is anything other than `visible` and the other is left as `visible`,
-  the browser silently forces the `visible` one to compute as `auto` too.
-  That turned `.table-wrap` into an unintended vertical scroll container,
-  which broke the sticky header — it stuck to the top of `.table-wrap`'s
-  own (never-scrolling, since the *page* was scrolling instead) box
-  rather than the viewport, so it just scrolled away like nothing was
-  sticky at all. Setting `overflow-y: visible` explicitly does **not**
-  fix this — the spec doesn't allow "one visible, one not" as a computed
-  combination, so the browser overrides it back to `auto` regardless of
-  what's literally written. The actual fix was to stop fighting that
-  rule and lean into it: make `.table-wrap` an intentional, bounded
-  scroll container for both axes, so sticky has exactly one clear,
-  correctly-scrolling ancestor. If you ever need to adjust the header/
-  toolbar layout, `230px` is calibrated against their current combined
-  height — recalibrate it (verify empirically, e.g. checking
-  `getBoundingClientRect()` on `thead th` before/after a large internal
-  scroll stays roughly constant) rather than assuming a nearby value is
-  still correct.
+  + `max-height:calc(100vh - Xpx)`, `X` now nav-style-dependent — see below),
+  not just "the table with horizontal scroll" it looks like at a glance. This
+  exists specifically so `thead th`'s `position:sticky; top:0;` has something
+  correct to stick to. The original version only had `overflow-x:auto` (no
+  `overflow-y` set at all) — which looks harmless, but per the CSS Overflow
+  spec, if one axis is anything other than `visible` and the other is left as
+  `visible`, the browser silently forces the `visible` one to compute as
+  `auto` too. That turned `.table-wrap` into an unintended vertical scroll
+  container, which broke the sticky header — it stuck to the top of
+  `.table-wrap`'s own (never-scrolling, since the *page* was scrolling
+  instead) box rather than the viewport, so it just scrolled away like
+  nothing was sticky at all. Setting `overflow-y: visible` explicitly does
+  **not** fix this — the spec doesn't allow "one visible, one not" as a
+  computed combination, so the browser overrides it back to `auto`
+  regardless of what's literally written. The actual fix was to stop
+  fighting that rule and lean into it: make `.table-wrap` an intentional,
+  bounded scroll container for both axes, so sticky has exactly one clear,
+  correctly-scrolling ancestor. **`X` is `295` by default (top-tab nav) and
+  `256` when `#main-layout` has the `.nav-style-sidebar` class** (see the
+  "Top-level nav" note below) — the tab strip sits *above* `.table-wrap` in
+  the tabs layout, adding real height to the stack, while the sidebar sits
+  *beside* it, contributing none. Both numbers were verified empirically
+  (`getBoundingClientRect()` on `#table-wrap` itself, confirming its
+  rendered bottom edge lands exactly at the viewport bottom) while building
+  the nav feature — worth restating since that same check caught the
+  *sidebar* case's inherited value having already silently drifted stale
+  (real value `256`, not the `230` a straight "no extra height, so reuse the
+  old number unchanged" assumption would have kept) from unrelated
+  header/toolbar changes made elsewhere, well before the nav existed. If you
+  ever adjust the header/toolbar/nav layout, recalibrate the same way —
+  verify empirically, e.g. checking `getBoundingClientRect()` on `thead th`
+  before/after a large internal scroll stays roughly constant, or that
+  `#table-wrap`'s own bottom edge lands at the viewport bottom — rather than
+  assuming a nearby value, or an old comment's value, is still correct.
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, plus sql.js
@@ -721,68 +732,63 @@ version number — only by the schema itself matching).
   Waste bin note below for the one, still-non-destructive, exception), and
   archiving isn't a step toward adding one; it exists specifically so a
   document a person doesn't want cluttering their view anymore doesn't have
-  to be destroyed to get out of the way. An archived document is hidden from the default
-  table/search view — `applyFilters()` checks `d.archived && !showArchived`
-  first, before every other filter, so an archived document can't leak into
-  a category/search match by accident — until someone checks "Show
-  archived" in the toolbar, at which point it reappears with a small
-  `archived` pill next to its title (same spot as the existing "new"/"from
-  inbox" pills). Nothing else about the document changes; toggling it is a
-  single `UPDATE documents SET archived = ?` from the detail modal's
-  Archive/Unarchive button, mirroring `regenerateThumbnail()`'s own
-  update-in-memory → persist → `render()` → re-open-the-modal pattern.
-  Deliberately a dedicated `documents` column, not a generic custom
-  checkbox field — the generic fields system (see below) has no concept of
-  "hidden from the view by default," only optional columns/filters that are
-  always visible once configured, which doesn't fit what an archive needs
-  to do.
-- **Review queue** (`documents.needs_review`, `toggleNeedsReview()`,
-  `renderReviewQueue()`, the `#review-queue` section rendered above the
-  main table) is a second, independent staging flag, built as a direct
-  structural mirror of `archived` above — same `documents` column pattern,
-  same `SCHEMA`/`SCHEMA_MIGRATIONS` treatment, same detail-modal toggle-
-  button pattern (`review-toggle-btn`, "Flag for review" / "Done") — but
-  serving a different purpose: not "no longer needed," but "not yet
-  reviewed." This is the second stage of a two-stage lifecycle for
-  inbox-imported documents — see the Inbox note below for the first stage
-  (raw files sitting in the `inbox/` folder, before they're documents at
-  all). `addInboxFile()` sets `needs_review = 1` on every document it
-  creates, since an inbox-imported document deliberately has category,
-  type, date, etc. left `NULL` rather than guessed (seeing "not listed at
-  the top of the table" for an inbox import with no date was the original
-  bug report that led to this feature — the fix isn't to guess a date, it's
-  to put unreviewed documents somewhere a person actually notices them).
-  Any document can be flagged, not just inbox-imported ones — the "Flag
-  for review" button in the detail modal works on anything, mirroring the
-  "mark all documents as needs_review" scope the person who requested this
-  feature specifically asked for. **Only the explicit Done action clears
-  the flag — saving an edit never does**, even though `openEditForm()` is
-  reachable directly from a review-queue row's own "Edit" button; this was
-  a deliberate design call (not a limitation) specifically so someone doing
-  an intermediate save on a document they're not fully done reviewing yet
-  doesn't lose their place in the queue. A flagged document is excluded
-  from the main table by `applyFilters()` (`if(d.needs_review &&
-  !d.archived) return false;`, checked right after the archived check) and
-  shown instead in `renderReviewQueue()`'s own list, which rebuilds
-  `#review-queue-list` from scratch on every `render()` call (first
-  statement in `render()`, so every existing call site — initial load,
-  post-edit, post-inbox-add — picks it up automatically) and hides the
-  whole section via `style.display` when the queue is empty. Each queue
-  row reuses the Inbox modal's own `.file-preview`/`.file-icon`/
-  `.doc-title`/`.doc-sub` markup and `displayName()`/`formatDate()`
-  helpers for visual consistency, with its own Edit (→ `openEditForm()`)
-  and Done (→ `toggleNeedsReview()`) buttons — clicking the row itself
-  (not a button) opens the full detail view via `openDetail()`, same
-  click-to-open pattern as the Inbox modal's own rows.
-  **`toggleNeedsReview()` deliberately does NOT call `openDetail()`
-  internally**, unlike `toggleArchived()` — it has two call sites (the
-  detail modal's own toggle button, where a modal is already open and
-  should refresh; and the queue row's Done button, where no modal is open
-  and popping one open on a bulk "clear the queue" click would be wrong)
-  with different needs, so the refresh-in-place behavior is left to the
-  detail-modal button's own click handler (`async () => { await
-  toggleNeedsReview(id); openDetail(id); }`) instead of being baked into
-  the toggle function itself.
+  to be destroyed to get out of the way. An archived document is hidden
+  from the All Documents nav view by default — `matchesView()` (see the
+  "Top-level navigation" note below) checks `d.archived && !showArchived`
+  for the `'all'` view, before any category/search filter, so an archived
+  document can't leak into a match by accident — until someone checks
+  "Show archived" in the toolbar (only shown for the `'all'` view — see
+  below), at which point it reappears with a small `archived` pill next to
+  its title (same spot as the existing "new"/"from inbox" pills). Nothing
+  else about the document changes; toggling it is a single `UPDATE
+  documents SET archived = ?` from the detail modal's Archive/Unarchive
+  button, mirroring `regenerateThumbnail()`'s own update-in-memory →
+  persist → `render()` → re-open-the-modal pattern. Deliberately a
+  dedicated `documents` column, not a generic custom checkbox field — the
+  generic fields system (see below) has no concept of "hidden from the
+  view by default," only optional columns/filters that are always visible
+  once configured, which doesn't fit what an archive needs to do.
+- **Review queue** (`documents.needs_review`, `toggleNeedsReview()`, the
+  Inbox nav item — `#nav-item-inbox`, `data-view="inbox"`) is a second,
+  independent staging flag, built as a direct structural mirror of
+  `archived` above — same `documents` column pattern, same `SCHEMA`/
+  `SCHEMA_MIGRATIONS` treatment, same detail-modal toggle-button pattern
+  (`review-toggle-btn`, "Flag for review" / "Done") — but serving a
+  different purpose: not "no longer needed," but "not yet reviewed." This
+  is the second stage of a two-stage lifecycle for inbox-imported
+  documents — see the Inbox note further below for the first stage (raw
+  files sitting in the `inbox/` folder, before they're documents at all;
+  that feature's own "📥 Check inbox" button is deliberately unrelated to
+  this Inbox *nav item*, down to the icon choice — see the "Top-level
+  navigation" note for why 🚩, not 📥, was picked for this one, precisely
+  to avoid the two being conflated). `addInboxFile()` sets `needs_review =
+  1` on every document it creates, since an inbox-imported document
+  deliberately has category, type, date, etc. left `NULL` rather than
+  guessed (seeing "not listed at the top of the table" for an inbox import
+  with no date was the original bug report that led to this feature — the
+  fix isn't to guess a date, it's to put unreviewed documents somewhere a
+  person actually notices them). Any document can be flagged, not just
+  inbox-imported ones — the "Flag for review" button in the detail modal
+  works on anything, mirroring the "mark all documents as needs_review"
+  scope the person who requested this feature specifically asked for.
+  **Only the explicit Done action clears the flag — saving an edit never
+  does**, even though `openEditForm()` is reachable directly from a row's
+  own detail view; this was a deliberate design call (not a limitation)
+  specifically so someone doing an intermediate save on a document they're
+  not fully done reviewing yet doesn't lose their place in the queue. A
+  flagged document is excluded from the `'all'` nav view by `matchesView()`
+  and shown instead when `currentView === 'inbox'`, via the same real
+  `<table>` every other view renders through — see the "Top-level
+  navigation" note below for how view membership, badge counts, and
+  rendering all work; this note only covers `needs_review`'s own semantics
+  and its interaction with `archived`.
+  **`toggleNeedsReview()` has a single call site now** — the detail
+  modal's own toggle button — unlike the old review-queue UI, which also
+  had a queue row's standalone Done button calling it directly; that
+  second call site went away with the old queue rendering, so the
+  function no longer needs to guard against being invoked with no modal
+  open, and it always refreshes in place (`async () => { await
+  toggleNeedsReview(id); openDetail(id); }`).
   **`needs_review` and `archived` are fully independent flags, with zero
   automatic interaction in either direction** — flagging a document for
   review doesn't touch `archived`, and archiving one doesn't touch
@@ -790,27 +796,27 @@ version number — only by the schema itself matching).
   is archived. If one wants to edit it, it would have to be brought back
   from archive."), un-archiving is the only sanctioned way back to an
   archived document, flagged or not. This has one real consequence worth
-  being deliberate about: `renderReviewQueue()`'s own list excludes
-  archived documents (`allDocs.filter(d => d.needs_review && !d.archived)`)
-  — the queue is specifically for documents someone should be actively
-  working through, and an archived one isn't that — so a document that's
-  *both* archived and flagged would be reachable from **neither** the main
-  table nor the queue if `applyFilters()`'s exclusion were as unconditional
-  as it first looks. The `!d.archived` carve-out in that exclusion check is
-  what prevents that: an archived+flagged document is governed by the
-  archived check alone once "Show archived" is on, same as any other
-  archived document, so un-archiving (the one sanctioned way back) still
-  actually works instead of leading to a document nothing can reach. Don't
-  simplify that condition back to a bare `if(d.needs_review) return
-  false;` without re-deriving this — it looks redundant with `renderReviewQueue()`'s
-  own archived exclusion at a glance, but the two checks are guarding
-  different surfaces (queue vs. main table) and only one of them has the
-  archived carve-out.
-- **Waste bin** (`documents.deleted`, `toggleDeleted()`, the "🗑 Waste bin"
-  toolbar button, `openWasteBinModal()`/`renderWasteBinList()`) is a third
-  independent staging flag, added on explicit request to give "delete" a
-  real UI affordance without actually adding permanent deletion to an app
-  that otherwise never destroys a person's data. It's a soft delete only —
+  being deliberate about: the `'inbox'` view's own `matchesView()` branch
+  excludes archived documents — the queue is specifically for documents
+  someone should be actively working through, and an archived one isn't
+  that — so a document that's *both* archived and flagged would be
+  reachable from **neither** the `'all'` view nor the `'inbox'` view if the
+  `'all'` view's own exclusion of flagged documents were as unconditional
+  as it first looks. The `!d.archived` carve-out in `matchesView()`'s
+  `'all'`-view exclusion of `needs_review` documents is what prevents
+  that: an archived+flagged document is governed by the archived check
+  alone once "Show archived" is on, same as any other archived document,
+  so un-archiving (the one sanctioned way back) still actually works
+  instead of leading to a document nothing can reach. Don't simplify that
+  condition without re-deriving this — it looks redundant with the
+  `'inbox'` branch's own archived exclusion at a glance, but the two
+  branches are guarding different views (`'inbox'` vs. `'all'`) and only
+  one of them has the archived carve-out.
+- **Waste bin** (`documents.deleted`, `toggleDeleted()`, the Waste bin nav
+  item — `#nav-item-trash`, `data-view="trash"`) is a third independent
+  staging flag, added on explicit request to give "delete" a real UI
+  affordance without actually adding permanent deletion to an app that
+  otherwise never destroys a person's data. It's a soft delete only —
   toggling it just flips the column, exactly like `archived`/`needs_review`;
   nothing on disk (`files/`, `thumbnails/`, the sidecar `.txt`) is ever
   touched, and **there is deliberately no "empty bin" action anywhere in
@@ -819,39 +825,102 @@ version number — only by the schema itself matching).
   **`deleted` is the strongest of the three flags**, unlike the
   `archived`/`needs_review` relationship above, which is genuinely
   symmetric (each has its own carve-out for the other). A deleted document
-  is unconditionally excluded from the main table — `applyFilters()` checks
-  `if(d.deleted) return false;` first, before even the archived check, so
-  it stays hidden **even with "Show archived" checked** — and from the
-  review queue (`renderReviewQueue()`'s filter gained a matching
-  `&& !d.deleted`). This is a deliberate asymmetry from the archived+
-  needs_review case: there, "Show archived" had to be preserved as the one
-  sanctioned way back to a document, because nothing else could reach it.
-  Deletion doesn't need that same escape hatch, because it gets its own
-  dedicated one instead — the waste bin itself — so there's no equivalent
-  risk of a document becoming unreachable from everywhere.
+  is unconditionally excluded from the `'all'` view — `matchesView()`
+  checks `d.deleted` first, before any other view's logic, so it stays
+  hidden from `'all'` **even with "Show archived" checked** — and from the
+  `'inbox'` view too, regardless of `needs_review`. This is a deliberate
+  asymmetry from the archived+needs_review case: there, "Show archived"
+  had to be preserved as the one sanctioned way back to a document,
+  because nothing else could reach it. Deletion doesn't need that same
+  escape hatch, because it gets its own dedicated one instead — the
+  `'trash'` nav view itself — so there's no equivalent risk of a document
+  becoming unreachable from everywhere.
   `openDetail()` reflects this by degree, not just visibility: a deleted
   document's action bar drops Edit/Regenerate preview/Archive/Flag for
   review entirely (not shown disabled — genuinely absent from the DOM) and
   offers only Restore, since none of those other actions mean anything for
   a document that isn't reachable anywhere they'd matter until it's
-  restored. `toggleDeleted()` follows the same dual-call-site pattern
-  `toggleNeedsReview()` established — it doesn't call `openDetail()`
-  itself, since it's invoked both from the detail modal's own button
-  (where a refresh-in-place is wanted) and the waste bin row's own Restore
-  button (where no modal is open at all). The waste bin modal itself
-  reuses the review queue's `.review-queue-row`/`.review-queue-actions`/
-  `.file-preview` markup and CSS classes wholesale — they were never
-  actually scoped to the review queue specifically (no `.review-queue`
-  ancestor in their selectors), just a generic "list row with a title/
-  sub-line and its own action button(s)" pattern already shared with the
-  Inbox modal's own rows, so no new CSS was needed for this. Unlike the
-  review queue, the waste bin lives behind a modal (opened via the
-  toolbar button, mirroring `openInboxModal()`/`checkInbox()`'s own
-  pattern), not an always-visible section — "already dealt with, kept
-  only as a just-in-case" doesn't carry the same "don't let this get
-  silently missed" urgency that "still needs review" does, so it doesn't
-  need to compete for permanent screen space the way the review queue
-  does.
+  restored. `toggleDeleted()`, like `toggleNeedsReview()` above, now has a
+  single call site — the detail modal's own button — and always refreshes
+  in place; restoring from a `'trash'`-view row works by opening that
+  row's detail view (the same `openDetail()` every other view's rows use)
+  and clicking Restore there, rather than a dedicated inline restore
+  button. The `'trash'` view is reached the same way as `'inbox'` or
+  `'all'` — a click on its nav item, not a separate modal — see the
+  "Top-level navigation" note below for why all three views were unified
+  onto one shared table rather than each keeping its own bespoke
+  rendering, as this feature and the review queue originally did.
+- **Top-level navigation** (`#main-layout`, `#app-nav`, `.nav-item`,
+  `currentView`, `matchesView()`, `renderNav()`, `setView()`) unifies
+  All Documents/Inbox/Waste bin — previously an always-visible Review
+  Queue banner above the table plus a separately-modal Waste Bin reached
+  via its own toolbar button — into one persistent nav switching between
+  three views of the exact same real `<table>` (same columns, sorting,
+  search, category/type/dynamic filters), directly modeled on Mariner
+  Paperless's own "Everything"/"Inbox" sidebar. Clicking a row in any view
+  opens the same `openDetail()` modal used everywhere else, which already
+  renders the correct action set per document state (see the Archiving/
+  Review queue/Waste bin notes above) — this is why unifying onto one
+  table needed no new per-row action buttons at all, unlike the old
+  review-queue rows' own inline Edit/Done buttons or the waste-bin modal's
+  own inline Restore button, both now gone.
+  **`matchesView(d, view, showArchived)`** is the single function
+  encoding view membership, extracted from what used to be `applyFilters()`'s
+  own inline logic: `'trash'` → `!!d.deleted`; `'inbox'` → (after excluding
+  deleted) `!!d.needs_review && !d.archived`; `'all'` → (after excluding
+  deleted) the pre-existing default-table rules, `archived && !showArchived`
+  excluded and `needs_review && !archived` excluded. `applyFilters()` now
+  reads `if(!matchesView(d, currentView, showArchived)) return false;`
+  before its unchanged category/type/person/dynamic/search filters — so
+  those filters compose correctly with whichever view is active for free,
+  which the old separate Review Queue/Waste Bin renderers never supported
+  (neither had its own search or category filtering at all).
+  **`currentView`** (`'all'` | `'inbox'` | `'trash'`) is session-only,
+  never persisted — always starts `'all'` on every library open, via
+  `resetAll()`. Switching views does **not** reset search text, filter
+  selects, or "Show archived" — only the document set changes.
+  **`renderNav()` replaces `renderReviewQueue()` in `render()`'s "always
+  call this first" slot** (`render()`'s first statement, so every existing
+  call site — initial load, post-edit, post-inbox-add, post-toggle — picks
+  it up automatically): it computes `navCounts` (one `matchesView()` filter
+  pass per view, against the *current* `showArchivedToggle` state),
+  updates each `.nav-item`'s badge and `.active` class, and shows/hides
+  `showArchivedWrap` (`currentView === 'all'` only — "Show archived" only
+  means anything for the `'all'` view; `'inbox'` already excludes archived
+  unconditionally, and `'trash'`'s `deleted` flag trumps `archived`
+  regardless, so showing the checkbox in those views would just be inert
+  UI). Badges reflect **view membership only**, not the live search/filter
+  text — recomputing per keystroke would make navigation counts flicker
+  while typing, and the existing `countLine` ("Showing X of Y", its
+  denominator now `navCounts[currentView]` rather than `allDocs.length`)
+  already covers the filtered-count case. `setView(view)` sets
+  `currentView` and calls `render()`; wired from each `.nav-item[data-view]`'s
+  click handler.
+  **Visual style is a persisted, user-configurable setting**
+  (`navStyle`, `'tabs'` | `'sidebar'`, default `'tabs'`), toggled via a
+  `#nav-style-toggle` button living inside the nav itself — no general
+  settings-modal infrastructure exists in this app, so the control sits
+  spatially attached to what it controls, the same reasoning behind where
+  `default_document_type`/`default_currency` live in Field Settings.
+  `loadNavStyle()`/`saveNavStyle()`/`applyNavStyle()` follow the exact
+  existing `settings`-table `key`/`value` pattern used by
+  `loadDefaultCurrency()`/`saveDefaultCurrency()` — `applyNavStyle()`
+  just toggles a `nav-style-sidebar` class on `#main-layout`; one shared
+  markup structure and one CSS class flips between a horizontal tab strip
+  and a vertical sidebar, not two divergent markups. `loadNavStyle()` is
+  called from `loadDocumentsFromDb()` alongside `loadDefaultCurrency()`.
+  **Icons were chosen to avoid a real collision**: All Documents is 📁,
+  Waste bin is 🗑 (already used elsewhere in the app), and Inbox is
+  deliberately **🚩**, not 📥 — 📥 is already the separate, pre-existing
+  "Check inbox" toolbar button for raw staged files (see the Inbox note
+  below), and reusing it here would visually conflate two unrelated
+  features; 🚩 instead matches the existing "Flag for review" button label
+  already used for this exact `needs_review` concept.
+  **`.table-wrap`'s sticky-header max-height calibration is nav-style-
+  dependent** — see that note near the top of this file for the current
+  values and the empirical-verification story; the tabs nav sits *above*
+  the table (adding real height to the stack) while the sidebar nav sits
+  *beside* it (adding none), so the two styles need different constants.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
@@ -1197,7 +1266,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **48
+There's a real, runnable Playwright regression suite in `tests/` — **50
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1242,27 +1311,35 @@ default table/search view, reappearing with its pill once "Show archived"
 is checked, a pre-`archived`-column document reading back as not-archived
 rather than erroring, and archiving/unarchiving actually persisting), the
 review queue (`test_review_queue.py` — an inbox-imported document landing
-flagged and in the queue rather than the main table; the queue's own Done
-button clearing the flag without opening the detail modal; any document,
-not just inbox-imported ones, being manually flaggable from the detail
-view; an intermediate save from the queue row's own Edit button *not*
-clearing the flag, only the explicit Done action does; and the
-archived+needs_review independence property, including the one subtle
-case that actually matters — a document that's both stays out of the
-queue but is still reachable, and toggleable, via "Show archived" in the
-main table, per `applyFilters()`'s `!d.archived` carve-out described in
-the review-queue architecture note above), the waste bin
-(`test_waste_bin.py` — a pre-`deleted`-column document reading back as
-not-deleted rather than erroring; deleting an active document hiding it
-from the main table even with "Show archived" checked; its detail view
-dropping down to a Restore-only action set with Edit/Archive/Flag for
-review/Delete all genuinely absent from the DOM, not just disabled;
-restoring both from the waste bin row's own button and from the detail
-view; deleting a flagged document removing it from the review queue too,
-not just the main table; that no "Empty bin" button exists anywhere; and
-that restoring a document doesn't touch its independent `needs_review`
-state, so a restored, still-flagged document goes straight back to the
-queue rather than the main table), the Date field's
+flagged and reachable via the Inbox nav view rather than All Documents;
+Done clearing the flag from the detail modal; any document, not just
+inbox-imported ones, being manually flaggable from the detail view; an
+intermediate save via Edit *not* clearing the flag, only the explicit
+Done action does; and the archived+needs_review independence property,
+including the one subtle case that actually matters — a document that's
+both stays out of the Inbox view but is still reachable, and toggleable,
+via "Show archived" in the All Documents view, per `matchesView()`'s
+`!d.archived` carve-out described in the review-queue architecture note
+above), the waste bin (`test_waste_bin.py` — a pre-`deleted`-column
+document reading back as not-deleted rather than erroring; deleting an
+active document hiding it from All Documents even with "Show archived"
+checked; its detail view dropping down to a Restore-only action set with
+Edit/Archive/Flag for review/Delete all genuinely absent from the DOM,
+not just disabled; restoring both from a Waste bin row's detail view and
+from within the modal after re-opening it there; deleting a flagged
+document removing it from the Inbox view too, not just All Documents;
+that no "Empty bin" button exists anywhere; and that restoring a document
+doesn't touch its independent `needs_review` state, so a restored,
+still-flagged document goes straight back to the Inbox view rather than
+All Documents), the unified top-level nav itself (`test_nav.py` — the old
+`#waste-bin-btn`/`#review-queue` markup genuinely gone; the separate,
+unrelated "Check inbox" staged-files button/modal still present and
+distinct from the new Inbox nav item; category and search filters
+composing correctly with the Inbox and Waste bin views, not just All
+Documents, which the old separate Review Queue/Waste Bin renderers never
+supported; nav badge counts correct on load and live after a mutation;
+the `nav_style` setting persisting `'sidebar'` across a reopen), the Date
+field's
 `color-scheme: dark` fix (asserted via `getComputedStyle` in
 both the capture and edit forms, not just eyeballed), the Edit-form
 Currency guess (an existing document with a real non-zero Amount and no

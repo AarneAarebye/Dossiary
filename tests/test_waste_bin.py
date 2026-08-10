@@ -8,7 +8,7 @@ import asyncio, json
 from playwright.async_api import async_playwright
 
 # Doc 1: an ordinary, active document.
-# Doc 2: flagged for review, not archived, not deleted -- shows in the review queue.
+# Doc 2: flagged for review, not archived, not deleted -- shows in the Inbox nav view.
 # Doc 3: pre-`deleted`-column document (the key is omitted entirely, simulating a
 #        library from before this feature existed) -- should read back as not-deleted,
 #        same tolerance already proven for `archived` in test_archive.py.
@@ -63,12 +63,12 @@ async def main():
         await page.wait_for_timeout(300)
 
         # === Scenario 1: a pre-`deleted`-column document reads back as not-deleted
-        # rather than erroring, and shows normally ===
+        # rather than erroring, and shows normally in All Documents ===
         row3_visible = await page.locator('tr[data-id="3"]').count()
         print("pre-deleted-column doc shows normally (should be 1):", row3_visible)
 
-        # === Scenario 2: deleting doc 1 from its detail view removes it from the main
-        # table and puts it in the waste bin; no modal auto-opens ===
+        # === Scenario 2: deleting doc 1 from its detail view removes it from All
+        # Documents; the modal refreshes in place rather than closing ===
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
         delete_btn_label = await page.locator('#delete-toggle-btn').inner_text()
@@ -90,10 +90,10 @@ async def main():
         await page.wait_for_timeout(150)
 
         main_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 no longer in the main table:", '1' not in main_row_ids)
+        print("doc 1 no longer in All Documents:", '1' not in main_row_ids)
 
         # Even with "Show archived" checked, a deleted (non-archived) document stays
-        # hidden from the main table -- deleted is the strongest of the three flags.
+        # hidden from All Documents -- deleted is the strongest of the three flags.
         await page.check('#show-archived-toggle')
         await page.wait_for_timeout(150)
         main_row_ids_archived_shown = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
@@ -101,35 +101,45 @@ async def main():
         await page.uncheck('#show-archived-toggle')
         await page.wait_for_timeout(150)
 
-        # === Scenario 4: the waste bin lists the deleted document, and there is no
-        # "empty bin" action anywhere in it ===
-        await page.click('#waste-bin-btn')
+        # === Scenario 4: the Waste bin nav view lists the deleted document (in the
+        # same real table every other view uses), and there is no "empty bin" action
+        # anywhere in this app ===
+        await page.click('#nav-item-trash')
         await page.wait_for_timeout(200)
-        bin_row_ids = await page.locator('#waste-bin-list .review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("waste bin shows doc 1:", bin_row_ids)
+        bin_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Waste bin shows doc 1:", bin_row_ids)
         empty_bin_btn_count = await page.locator('button:has-text("Empty")').count()
         print("no 'Empty bin' button exists:", empty_bin_btn_count == 0)
 
-        # === Scenario 5: restoring directly from the waste bin's own Restore button
-        # works without opening the detail modal, and the row disappears from the list ===
-        await page.click('.waste-bin-restore-btn[data-id="1"]')
+        # === Scenario 5: restoring from the detail view (reached by clicking the row
+        # in the Waste bin nav view) refreshes the modal in place, and the row
+        # disappears from Waste bin ===
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(200)
+        await page.click('#delete-toggle-btn')
         await page.wait_for_timeout(200)
         modal_still_open = await page.locator('#modal-backdrop').count()
-        print("waste bin modal stays open after Restore (list refreshes in place):", modal_still_open == 1)
-        bin_row_ids_after_restore = await page.locator('#waste-bin-list .review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 no longer listed in the waste bin:", '1' not in bin_row_ids_after_restore)
+        print("modal stays open after Restore (refreshes in place):", modal_still_open == 1)
+        restore_label_after = await page.locator('#delete-toggle-btn').inner_text()
+        print("button now reads Delete again (full action set restored):", restore_label_after)
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
+        bin_row_ids_after_restore = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 1 no longer listed in Waste bin:", '1' not in bin_row_ids_after_restore)
 
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
         main_row_ids_after_restore = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 back in the main table after restoring:", '1' in main_row_ids_after_restore)
+        print("doc 1 back in All Documents after restoring:", '1' in main_row_ids_after_restore)
 
         # === Scenario 6: deleting a flagged (needs_review) document removes it from
-        # the review queue too, not just the main table -- deleted trumps needs_review
-        # the same way it trumps archived ===
-        # Doc 2 is needs_review=1, so it lives in the review queue, not a main-table
-        # row -- click its queue row (same pattern renderReviewQueue() itself wires).
-        await page.click('.review-queue-row[data-id="2"] .file-preview')
+        # Inbox too, not just All Documents -- deleted trumps needs_review the same
+        # way it trumps archived ===
+        # Doc 2 is needs_review=1, so it lives in the Inbox nav view, not All
+        # Documents -- switch there and click its row.
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        await page.click('tr[data-id="2"]')
         await page.wait_for_timeout(200)
         queue_review_label_before = await page.locator('#review-toggle-btn').inner_text()
         print("doc 2 starts flagged (Done label):", queue_review_label_before)
@@ -138,21 +148,21 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
-        queue_row_ids = await page.locator('.review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 2 no longer in the review queue after deletion:", '2' not in queue_row_ids)
-        review_queue_visible = await page.locator('#review-queue').is_visible()
-        print("review queue hidden entirely now (was its only entry):", not review_queue_visible)
+        inbox_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 2 no longer in Inbox after deletion:", '2' not in inbox_row_ids)
+        inbox_count_now = await page.locator('#nav-count-inbox').inner_text()
+        print("Inbox badge now 0 (was its only entry):", inbox_count_now)
 
-        await page.click('#waste-bin-btn')
+        await page.click('#nav-item-trash')
         await page.wait_for_timeout(200)
-        bin_row_ids2 = await page.locator('#waste-bin-list .review-queue-row').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 2 shows in the waste bin instead:", '2' in bin_row_ids2)
+        bin_row_ids2 = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 2 shows in Waste bin instead:", '2' in bin_row_ids2)
 
-        # Clicking the row itself (not the Restore button) opens the full detail view.
-        await page.click('.review-queue-row[data-id="2"] .file-preview')
+        # Clicking the row itself opens the full detail view, same as any other view.
+        await page.click('tr[data-id="2"]')
         await page.wait_for_timeout(200)
         detail_title = await page.locator('.modal h2').first.inner_text()
-        print("clicking a waste bin row opens its detail view:", detail_title)
+        print("clicking a Waste bin row opens its detail view:", detail_title)
         restore_from_detail_label = await page.locator('#delete-toggle-btn').inner_text()
         print("its detail view also only offers Restore:", restore_from_detail_label)
         await page.click('#delete-toggle-btn')
@@ -167,8 +177,8 @@ async def main():
         """)
         doc2 = next(d for d in persisted['documents'] if d['id'] == 2)
         print("doc 2 persisted as not-deleted after restoring from its own detail view:", doc2['deleted'])
-        # Restoring doc 2 doesn't touch needs_review -- it goes right back to the
-        # review queue, not the main table, since that flag was never cleared.
+        # Restoring doc 2 doesn't touch needs_review -- it goes right back to Inbox,
+        # not All Documents, since that flag was never cleared.
         print("doc 2 is still flagged for review after restoring (flags are independent):", doc2['needs_review'])
 
         print("JS ERRORS:", errors)

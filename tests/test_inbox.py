@@ -102,17 +102,25 @@ async def main():
         print("files/ contents after adding scan001.pdf:", files_after_one)
 
         # An inbox-added document lands flagged for review (needs_review=1, see
-        # addInboxFile()), so it shows in the review queue, not the main table, until
-        # someone clicks Done -- see CLAUDE.md's review-queue note.
+        # addInboxFile()), so it shows in the Inbox nav view, not All Documents,
+        # until someone clicks Done -- see CLAUDE.md's nav architecture note.
         main_rows_before_done = await page.locator('#doc-tbody tr').count()
-        print("main table rows before Done (should be 0, doc lives in the review queue):", main_rows_before_done)
-        queue_row_count = await page.locator('.review-queue-row[data-id="1"]').count()
-        print("review queue shows the inbox-added doc:", queue_row_count)
+        print("All Documents rows before Done (should be 0, doc lives in Inbox):", main_rows_before_done)
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        inbox_row_count = await page.locator('tr[data-id="1"]').count()
+        print("Inbox view shows the inbox-added doc:", inbox_row_count)
 
-        await page.click('.review-queue-row[data-id="1"] .review-done-btn')
+        await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
+        await page.click('#review-toggle-btn')
+        await page.wait_for_timeout(200)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
 
-        # Once reviewed, it moves into the main table and shows the inbox-added pill.
+        # Once reviewed, it moves into All Documents and shows the inbox-added pill.
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
         pill_text = await page.locator('tr[data-id="1"] .pill.captured').inner_text()
         print("table pill for inbox-added doc after Done:", pill_text)
 

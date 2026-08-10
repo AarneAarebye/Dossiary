@@ -30,6 +30,57 @@
   .stats{ display:flex; gap:22px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
   .stat b{ color:var(--phosphor); font-size:15px; display:block; font-weight:600; }
 
+  #main-layout{ display:flex; flex-direction:column; }
+  #content-col{ min-width:0; flex:1 1 auto; }
+
+  .app-nav{
+    display:flex; flex-direction:row; align-items:stretch; gap:4px;
+    padding:0 32px; border-bottom:1px solid var(--line); background:var(--ink-2);
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:8px; padding:11px 16px;
+    border:none; border-bottom:2px solid transparent; margin-bottom:-1px; border-radius:0;
+    background:transparent; color:var(--text-dim); font-family:var(--font-mono);
+    font-size:12px; letter-spacing:0.03em; cursor:pointer;
+  }
+  .nav-item:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  .nav-item.active{
+    color:var(--text-ink); background:var(--phosphor); border-color:var(--phosphor);
+    border-radius:var(--radius) var(--radius) 0 0; font-weight:600;
+  }
+  .nav-item.active .nav-item-count{ color:var(--text-ink); border-color:rgba(18,24,26,0.3); }
+  .nav-item-icon{ font-size:13px; line-height:1; }
+  .nav-item-label{ white-space:nowrap; }
+  .nav-item-count{
+    font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim);
+    border:1px solid var(--line); border-radius:20px; padding:1px 7px;
+    min-width:18px; text-align:center;
+  }
+  .nav-style-toggle{
+    margin-left:auto; align-self:center; padding:6px 10px; font-size:13px;
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:transparent; color:var(--text-dim);
+  }
+  .nav-style-toggle:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+
+  /* Sidebar variant -- toggled by adding .nav-style-sidebar to #main-layout, see
+     applyNavStyle(). The selected-item highlight (.nav-item.active) is shared
+     unmodified by both variants; only the surrounding geometry differs here. */
+  #main-layout.nav-style-sidebar{ flex-direction:row; align-items:stretch; }
+  #main-layout.nav-style-sidebar #content-col{ flex:1 1 auto; min-width:0; }
+  #main-layout.nav-style-sidebar .app-nav{
+    flex-direction:column; align-items:stretch; width:220px; flex:0 0 220px;
+    padding:16px 0; gap:2px; border-bottom:none; border-right:1px solid var(--line);
+    background:var(--panel);
+  }
+  #main-layout.nav-style-sidebar .nav-item{
+    padding:10px 20px; border-bottom:none; border-left:3px solid transparent;
+    margin-bottom:0; justify-content:flex-start;
+  }
+  #main-layout.nav-style-sidebar .nav-item.active{ border-radius:0; }
+  #main-layout.nav-style-sidebar .nav-item-label{ flex:1; }
+  #main-layout.nav-style-sidebar .nav-style-toggle{ margin:auto 20px 0; align-self:stretch; }
+
   .toolbar{ padding:16px 32px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); flex-wrap:wrap; }
   .search-wrap{ flex:1 1 240px; }
   .search{ width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
@@ -78,7 +129,20 @@
   .empty p{ color:var(--text-dim); font-size:13.5px; line-height:1.6; margin:0 0 20px; }
   .empty .hint{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:18px; line-height:1.7; text-align:left; }
 
-  .table-wrap{ padding:0 32px 40px; overflow:auto; max-height:calc(100vh - 230px); }
+  /* 295px (tabs, default) vs 256px (sidebar) -- see CLAUDE.md's sticky-header
+     calibration note for why this number matters and how it was derived. The
+     .app-nav tab strip sits ABOVE .table-wrap in the tabs layout, adding real
+     height to the stack; in the sidebar layout .app-nav sits BESIDE .table-wrap
+     (#main-layout.nav-style-sidebar is flex-direction:row), contributing no
+     extra vertical height of its own -- but both numbers were verified fresh
+     empirically (getBoundingClientRect() on #table-wrap, confirming its
+     rendered bottom edge lands exactly at the viewport bottom), not assumed:
+     the pre-existing "230px" the sidebar case was expected to inherit
+     unchanged had itself already drifted stale (real value 256px) from
+     unrelated header/toolbar changes made elsewhere this session, discovered
+     only because this feature's own empirical check happened to re-measure it. */
+  .table-wrap{ padding:0 32px 40px; overflow:auto; max-height:calc(100vh - 295px); }
+  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 256px); }
   table{ width:100%; border-collapse:collapse; margin-top:18px; min-width:800px; }
   thead th{ text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); font-weight:500; padding:8px 14px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; white-space:nowrap; position:sticky; top:0; background:var(--ink); z-index:10; }
   thead th:hover{ color:var(--phosphor); }
@@ -104,14 +168,10 @@
     background:rgba(217,154,63,0.08); display:flex; align-items:center; justify-content:space-between;
     gap:12px; font-family:var(--font-mono); font-size:12.5px; color:var(--amber);
   }
-  .review-queue{
-    margin:0 32px 14px; padding:14px 16px; border:1px solid var(--amber-dim); border-radius:var(--radius);
-    background:rgba(217,154,63,0.05);
-  }
-  .review-queue h3{
-    font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em;
-    color:var(--amber); margin:0 0 10px; font-weight:500;
-  }
+  /* .review-queue-row/.review-queue-actions below are NOT scoped to the
+     (now-removed) always-visible review-queue banner -- they're generic list-row
+     markup independently reused by renderRecentLibraries(), so they stay even
+     though the banner itself is gone. See CLAUDE.md's nav architecture note. */
   .review-queue-row{
     display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line);
   }
@@ -233,6 +293,16 @@
     header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
     footer{ padding:16px 16px 20px; } .inbox-banner{ margin:0 16px 14px; flex-direction:column; align-items:flex-start; }
+    .app-nav{ padding:0 16px; overflow-x:auto; }
+    /* A true left sidebar doesn't fit a phone-width viewport -- collapse the
+       sidebar variant back to a horizontal, icon+badge-only strip rather than
+       trying to preserve a full-height side column. */
+    #main-layout.nav-style-sidebar{ flex-direction:column; }
+    #main-layout.nav-style-sidebar .app-nav{
+      flex-direction:row; width:auto; flex:0 0 auto; padding:0 16px;
+      border-right:none; border-bottom:1px solid var(--line); overflow-x:auto;
+    }
+    #main-layout.nav-style-sidebar .nav-item-label{ display:none; }
   }
 </style>
 
@@ -250,80 +320,97 @@
     <div class="stats" id="stats"></div>
   </header>
 
-  <div class="toolbar" id="toolbar" style="display:none;">
-    <div class="search-wrap field-with-clear">
-      <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
-      <button type="button" class="clear-btn" id="search-clear" title="Clear" aria-label="Clear search">✕</button>
+  <div id="main-layout">
+    <nav class="app-nav" id="app-nav" style="display:none;">
+      <button type="button" class="nav-item" id="nav-item-all" data-view="all">
+        <span class="nav-item-icon">📁</span>
+        <span class="nav-item-label">All Documents</span>
+        <span class="nav-item-count" id="nav-count-all">0</span>
+      </button>
+      <button type="button" class="nav-item" id="nav-item-inbox" data-view="inbox">
+        <span class="nav-item-icon">🚩</span>
+        <span class="nav-item-label">Inbox</span>
+        <span class="nav-item-count" id="nav-count-inbox">0</span>
+      </button>
+      <button type="button" class="nav-item" id="nav-item-trash" data-view="trash">
+        <span class="nav-item-icon">🗑</span>
+        <span class="nav-item-label">Waste bin</span>
+        <span class="nav-item-count" id="nav-count-trash">0</span>
+      </button>
+      <button type="button" class="nav-style-toggle" id="nav-style-toggle" title="Switch to sidebar navigation" aria-label="Switch navigation layout">⇄</button>
+    </nav>
+
+    <div id="content-col">
+      <div class="toolbar" id="toolbar" style="display:none;">
+        <div class="search-wrap field-with-clear">
+          <input class="search" id="search" type="text" placeholder="Search title, category, notes, tags, OCR text…" />
+          <button type="button" class="clear-btn" id="search-clear" title="Clear" aria-label="Clear search">✕</button>
+        </div>
+        <span class="filter-wrap" data-field="category"><select id="category-filter"><option value="">All categories</option></select></span>
+        <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
+        <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
+        <span id="dynamic-filters"></span>
+        <label class="show-archived-toggle" id="show-archived-wrap">
+          <input type="checkbox" id="show-archived-toggle" /> Show archived
+        </label>
+        <div class="columns-menu-wrap">
+          <button id="columns-btn">⚙ Columns</button>
+          <div class="columns-menu" id="columns-menu" style="display:none;"></div>
+        </div>
+        <button id="manage-fields-btn">⚙ Manage fields</button>
+        <button id="inbox-check-btn">📥 Check inbox</button>
+        <button class="accent" id="add-btn">＋ Add document</button>
+        <button id="reload-btn">Switch library</button>
+      </div>
+
+      <div class="inbox-banner" id="inbox-banner" style="display:none;">
+        <span id="inbox-banner-text"></span>
+        <button class="accent" id="inbox-review-btn">Review</button>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div id="empty-state" class="empty">
+        <h2>No library open</h2>
+        <p>Open a Dossiary library folder, or start a brand new one here.
+           Everything happens locally in your browser — nothing is uploaded.</p>
+        <div id="recent-libraries" style="display:none;"></div>
+        <button class="primary" id="open-btn">Open library folder</button>
+        <div class="hint">
+          Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).<br/>
+          This app needs write access to save new documents, so pick <b>"Edit"</b>/allow when your browser asks.<br/><br/>
+          <b style="color:var(--text)">Important:</b> open this file directly in your browser (not inside a chat
+          preview pane) — folder write access is blocked inside embedded frames.
+        </div>
+      </div>
+
+      <div id="init-state" class="empty" style="display:none;">
+        <h2>Empty folder</h2>
+        <p id="init-message">No <code>library.sqlite</code> found in that folder.</p>
+        <button class="primary" id="init-btn">Initialize a new library here</button>
+        <button id="pick-again-btn">Choose a different folder</button>
+      </div>
+
+      <div class="count-line" id="count-line" style="display:none;"></div>
+
+      <div class="table-wrap" id="table-wrap" style="display:none;">
+        <table id="doc-table">
+          <thead>
+            <tr id="doc-thead-row">
+              <th data-key="title">Document</th>
+              <th data-key="category" data-field="category">Category</th>
+              <th data-key="document_type" data-field="document_type">Type</th>
+              <th data-field="people">People</th>
+              <th data-key="date" data-field="date">Date</th>
+              <th data-key="import_date" data-field="import_date">Imported</th>
+              <th data-key="amount" data-field="amount">Amount</th>
+              <th data-field="tags">Tags</th>
+            </tr>
+          </thead>
+          <tbody id="doc-tbody"></tbody>
+        </table>
+      </div>
     </div>
-    <span class="filter-wrap" data-field="category"><select id="category-filter"><option value="">All categories</option></select></span>
-    <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="">All types</option></select></span>
-    <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="">All people</option></select></span>
-    <span id="dynamic-filters"></span>
-    <label class="show-archived-toggle" id="show-archived-wrap">
-      <input type="checkbox" id="show-archived-toggle" /> Show archived
-    </label>
-    <div class="columns-menu-wrap">
-      <button id="columns-btn">⚙ Columns</button>
-      <div class="columns-menu" id="columns-menu" style="display:none;"></div>
-    </div>
-    <button id="manage-fields-btn">⚙ Manage fields</button>
-    <button id="inbox-check-btn">📥 Check inbox</button>
-    <button id="waste-bin-btn">🗑 Waste bin</button>
-    <button class="accent" id="add-btn">＋ Add document</button>
-    <button id="reload-btn">Switch library</button>
-  </div>
-
-  <div class="inbox-banner" id="inbox-banner" style="display:none;">
-    <span id="inbox-banner-text"></span>
-    <button class="accent" id="inbox-review-btn">Review</button>
-  </div>
-
-  <div class="status" id="status"></div>
-
-  <div id="empty-state" class="empty">
-    <h2>No library open</h2>
-    <p>Open a Dossiary library folder, or start a brand new one here.
-       Everything happens locally in your browser — nothing is uploaded.</p>
-    <div id="recent-libraries" style="display:none;"></div>
-    <button class="primary" id="open-btn">Open library folder</button>
-    <div class="hint">
-      Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).<br/>
-      This app needs write access to save new documents, so pick <b>"Edit"</b>/allow when your browser asks.<br/><br/>
-      <b style="color:var(--text)">Important:</b> open this file directly in your browser (not inside a chat
-      preview pane) — folder write access is blocked inside embedded frames.
-    </div>
-  </div>
-
-  <div id="init-state" class="empty" style="display:none;">
-    <h2>Empty folder</h2>
-    <p id="init-message">No <code>library.sqlite</code> found in that folder.</p>
-    <button class="primary" id="init-btn">Initialize a new library here</button>
-    <button id="pick-again-btn">Choose a different folder</button>
-  </div>
-
-  <div class="review-queue" id="review-queue" style="display:none;">
-    <h3 id="review-queue-heading">Needs Review</h3>
-    <div id="review-queue-list"></div>
-  </div>
-
-  <div class="count-line" id="count-line" style="display:none;"></div>
-
-  <div class="table-wrap" id="table-wrap" style="display:none;">
-    <table id="doc-table">
-      <thead>
-        <tr id="doc-thead-row">
-          <th data-key="title">Document</th>
-          <th data-key="category" data-field="category">Category</th>
-          <th data-key="document_type" data-field="document_type">Type</th>
-          <th data-field="people">People</th>
-          <th data-key="date" data-field="date">Date</th>
-          <th data-key="import_date" data-field="import_date">Imported</th>
-          <th data-key="amount" data-field="amount">Amount</th>
-          <th data-field="tags">Tags</th>
-        </tr>
-      </thead>
-      <tbody id="doc-tbody"></tbody>
-    </table>
   </div>
 
   <div id="modal-root"></div>
@@ -418,6 +505,11 @@
                                 // in for one-click "add with defaults" review; null if that folder doesn't exist
   let pendingInboxFiles = [];  // [{name, handle}, ...] snapshot from the last checkInbox() call
   let allDocs = [];
+  // Which of the three top-level nav views is showing -- session state only, never
+  // persisted, always starts 'all' on a freshly opened library (see resetAll()).
+  let currentView = 'all';     // 'all' | 'inbox' | 'trash'
+  let navStyle = 'tabs';       // 'tabs' | 'sidebar' -- persisted per-library, see loadNavStyle()
+  let navCounts = { all: 0, inbox: 0, trash: 0 }; // last-computed badge counts, refreshed every render()
   let tagsByDocId = {};
   let tagNameToId = {};
   let peopleByDocId = {};
@@ -492,6 +584,9 @@
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
   const showArchivedToggle = el('show-archived-toggle');
+  const showArchivedWrap = el('show-archived-wrap');
+  const mainLayout = el('main-layout');
+  const appNav = el('app-nav');
   const modalRoot = el('modal-root');
 
   function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
@@ -1000,10 +1095,11 @@
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
+    currentView = 'all'; navCounts = { all: 0, inbox: 0, trash: 0 };
     emptyState.style.display = 'block'; initState.style.display = 'none';
+    appNav.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
     el('inbox-banner').style.display = 'none';
-    el('review-queue').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
   }
@@ -1105,12 +1201,14 @@
     }
     nextDocId = maxDocId + 1;
 
+    appNav.style.display = 'flex';
     toolbar.style.display = 'flex';
     tableWrap.style.display = 'block';
     subLabel.textContent = `${allDocs.length} documents · ${rootDirHandle.name}`;
     loadColumnSettings();
     loadDefaultDocumentType();
     loadDefaultCurrency();
+    loadNavStyle();
     loadTypeFieldOrder();
     renderColumnsMenu();
     applyColumnVisibility();
@@ -1173,6 +1271,30 @@
     defaultCurrency = value.trim() || null;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('default_currency', ?)", [defaultCurrency || '']);
     await persistDb();
+  }
+
+  // Which visual style the top-level nav (All Documents/Inbox/Waste bin) renders
+  // in -- a persisted-per-library preference, same settings-table pattern as
+  // default_currency above, toggled via the small button inside the nav itself
+  // (#nav-style-toggle) rather than a dedicated settings dialog, since there isn't
+  // one in this app and the toggle is spatially attached to exactly what it controls.
+  function loadNavStyle(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'nav_style'").rows;
+    navStyle = (rows.length && rows[0][0] === 'sidebar') ? 'sidebar' : 'tabs';
+    applyNavStyle();
+  }
+
+  async function saveNavStyle(value){
+    navStyle = value === 'sidebar' ? 'sidebar' : 'tabs';
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('nav_style', ?)", [navStyle]);
+    await persistDb();
+    applyNavStyle();
+  }
+
+  function applyNavStyle(){
+    mainLayout.classList.toggle('nav-style-sidebar', navStyle === 'sidebar');
+    const toggleBtn = el('nav-style-toggle');
+    if(toggleBtn) toggleBtn.title = navStyle === 'sidebar' ? 'Switch to top-tab navigation' : 'Switch to sidebar navigation';
   }
 
   // Document types worth managing in the Field Settings dialog: ones actually
@@ -1913,33 +2035,43 @@
       .filter(f => f.value);
     return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, showArchived: showArchivedToggle.checked, dynamic };
   }
+  // Decides whether document `d` belongs to nav view `view` at all -- independent of
+  // the search/category/type/person/dynamic-field filters layered on top in
+  // applyFilters() below, which apply identically no matter which view is active.
+  // `showArchived` is only consulted for the 'all' view: it has no effect on 'inbox'
+  // (already excludes archived unconditionally) or 'trash' (deleted trumps archived
+  // regardless) -- see renderNav()'s own note on why the toggle is hidden outside 'all'.
+  function matchesView(d, view, showArchived){
+    // Trash is the only place a deleted document is ever reachable, regardless of
+    // "Show archived" or needs_review state -- see toggleDeleted()'s own comment.
+    // This is a soft delete only; nothing on disk is touched and there's no "empty
+    // bin" anywhere in this app.
+    if(view === 'trash') return !!d.deleted;
+    if(d.deleted) return false; // both remaining views unconditionally exclude it
+    // Inbox is exactly the old review queue's predicate: flagged, not archived. An
+    // archived+flagged document stays reachable only via 'all' + "Show archived" --
+    // same "archived means hidden from the default view, full stop" rule as always.
+    if(view === 'inbox') return !!d.needs_review && !d.archived;
+    // view === 'all' -- the original default-table rules, unchanged. Archived
+    // documents are hidden here unless "Show archived" is on -- "no longer needed,"
+    // not deleted -- so they don't clutter the table/search until someone
+    // deliberately checks it. A flagged-for-review document lives in the Inbox view
+    // instead -- no "show them here too" override, unlike archived, since the whole
+    // point is keeping this view to just what's actually been reviewed. Exception:
+    // an archived document that's ALSO flagged stays governed by the archived check
+    // above, not this one -- archived and needs_review are independent flags (per
+    // design), but the Inbox view itself excludes archived documents, so without
+    // this `!d.archived` carve-out a document that's both would be unreachable from
+    // anywhere once archived -- not even via "Show archived", which is supposed to
+    // be the one way back to an archived document for editing.
+    if(d.archived && !showArchived) return false;
+    if(d.needs_review && !d.archived) return false;
+    return true;
+  }
   function applyFilters(docs){
     const { q, category, type, person, showArchived, dynamic } = currentFilters();
     return docs.filter(d => {
-      // A deleted document is unconditionally hidden -- the strongest of the three
-      // staging flags, checked before even the archived check below, since the
-      // waste bin (see openWasteBinModal()) is the only place it should ever be
-      // reachable from, regardless of "Show archived" or needs_review state. This is
-      // a soft delete only -- see toggleDeleted()'s own comment -- nothing on disk is
-      // touched and there's no "empty bin" anywhere in this app.
-      if(d.deleted) return false;
-      // Archived documents are hidden from the default view -- "no longer needed,"
-      // not deleted -- so they don't clutter the table/search until someone
-      // deliberately checks "Show archived". Checked next, before every other
-      // filter, so an archived document never leaks into a category/search match
-      // by accident.
-      if(d.archived && !showArchived) return false;
-      // A flagged-for-review document lives in the review queue instead (see
-      // renderReviewQueue()), not the main table -- no "show them here too" override,
-      // unlike archived, since the whole point is keeping the main table to just
-      // what's actually been reviewed. Exception: an archived document that's ALSO
-      // flagged stays governed by the archived check above, not this one -- archived
-      // and needs_review are independent flags (per design), but renderReviewQueue()
-      // itself excludes archived documents from the queue, so without this `!d.archived`
-      // carve-out a document that's both would be unreachable from anywhere once
-      // archived -- not even via "Show archived", which is supposed to be the one way
-      // back to an archived document for editing.
-      if(d.needs_review && !d.archived) return false;
+      if(!matchesView(d, currentView, showArchived)) return false;
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
@@ -1990,60 +2122,55 @@
     });
   }
 
-  // Documents flagged needs_review live here instead of the main table (see
-  // applyFilters()'s exclusion check) -- a compact, always-unfiltered list rather
-  // than the full dynamic-columns table, since most fields are still blank on a
-  // freshly-imported document and a wall of "—" placeholders wouldn't be useful.
-  // Archived documents never show here even if also flagged -- "archived means
-  // hidden from the default view, full stop" applies the same way it does to the
-  // main table (see toggleNeedsReview()'s own note on why the two flags never
-  // interact automatically). Called from render() itself so every existing render()
-  // call site picks up the queue automatically, without needing its own call site
-  // threaded through the rest of the app.
-  function renderReviewQueue(){
-    const section = el('review-queue');
-    const listEl = el('review-queue-list');
-    const queued = allDocs.filter(d => d.needs_review && !d.archived && !d.deleted);
-    if(!queued.length){
-      section.style.display = 'none';
-      listEl.innerHTML = '';
-      return;
-    }
-    section.style.display = 'block';
-    el('review-queue-heading').textContent = `Needs Review (${queued.length})`;
-    listEl.innerHTML = queued.map(d => `
-      <div class="review-queue-row" data-id="${d.id}">
-        <div class="file-preview">
-          <div class="file-icon">${escapeHtml(((d.file_path || '').split('.').pop() || '?').toUpperCase())}</div>
-          <div style="flex:1;">
-            <div class="doc-title">${escapeHtml(displayName(d))}</div>
-            <div class="doc-sub">Imported ${formatDate(d.import_date)}</div>
-          </div>
-        </div>
-        <div class="review-queue-actions">
-          <button class="review-edit-btn" data-id="${d.id}">Edit</button>
-          <button class="accent review-done-btn" data-id="${d.id}">Done</button>
-        </div>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.review-queue-row .file-preview').forEach(elm => {
-      const id = Number(elm.closest('.review-queue-row').dataset.id);
-      elm.addEventListener('click', () => openDetail(id));
+  // Keeps the top-level nav's own chrome in sync with currentView/allDocs -- badge
+  // counts, which item is highlighted, and whether "Show archived" is even relevant
+  // right now. Called as render()'s first statement, the exact role a previous
+  // always-visible review-queue banner used to play, so every existing render()
+  // call site (document mutations, filter changes, view switches) picks it up
+  // automatically without its own call site threaded through the rest of the app.
+  // Badge counts reflect view membership only (matchesView()), not the live
+  // search/category/type text -- recomputing them on every keystroke would make
+  // navigation counts flicker distractingly while typing, and the separate
+  // countLine ("Showing X of Y") already covers the filtered-count case.
+  function renderNav(){
+    const showArchived = showArchivedToggle.checked;
+    navCounts = {
+      all: allDocs.filter(d => matchesView(d, 'all', showArchived)).length,
+      inbox: allDocs.filter(d => matchesView(d, 'inbox', showArchived)).length,
+      trash: allDocs.filter(d => matchesView(d, 'trash', showArchived)).length,
+    };
+    if(el('nav-count-all')) el('nav-count-all').textContent = navCounts.all;
+    if(el('nav-count-inbox')) el('nav-count-inbox').textContent = navCounts.inbox;
+    if(el('nav-count-trash')) el('nav-count-trash').textContent = navCounts.trash;
+    document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === currentView);
     });
-    listEl.querySelectorAll('.review-edit-btn').forEach(btn => {
-      btn.addEventListener('click', () => openEditForm(Number(btn.dataset.id)));
-    });
-    listEl.querySelectorAll('.review-done-btn').forEach(btn => {
-      btn.addEventListener('click', () => toggleNeedsReview(Number(btn.dataset.id)));
-    });
+    // "Show archived" only means anything for All Documents -- Inbox already
+    // excludes archived unconditionally, and Trash's `deleted` flag trumps archived
+    // regardless (see matchesView()). Hidden rather than disabled, matching this
+    // toolbar's existing pattern of controls that appear/disappear by relevance
+    // (dynamic-filters, inbox-banner) rather than sitting there inertly.
+    if(showArchivedWrap) showArchivedWrap.style.display = currentView === 'all' ? 'flex' : 'none';
+  }
+
+  // Switches which of the three top-level views is active and re-renders. Search
+  // text, category/type/person filter selects, and "Show archived" are deliberately
+  // NOT reset here -- currentView alone is session state; everything else keeps
+  // behaving exactly as it does today, so returning to All Documents restores
+  // whatever "Show archived" was previously set to.
+  function setView(view){
+    if(view !== 'all' && view !== 'inbox' && view !== 'trash') return;
+    if(currentView === view) return;
+    currentView = view;
+    render();
   }
 
   function render(){
-    renderReviewQueue();
+    renderNav();
     const filtered = applyFilters(allDocs);
     const sorted = sortDocs(filtered);
     countLine.style.display = 'block';
-    countLine.textContent = `Showing ${sorted.length} of ${allDocs.length} documents`;
+    countLine.textContent = `Showing ${sorted.length} of ${navCounts[currentView]} documents`;
 
     const dynDefs = dynamicColumnDefs();
     tbody.innerHTML = sorted.map(d => `
@@ -2319,47 +2446,42 @@
   // needs_review is a fully independent flag from archived -- deliberately no
   // automatic interaction between the two (e.g. flagging an archived document for
   // review does not un-archive it; someone has to do that explicitly first). A
-  // flagged, non-archived document shows in the review queue instead of the main
-  // table (see applyFilters()'s needs_review check and renderReviewQueue()); a
-  // flagged, archived document shows in neither until unarchived, same "archived
-  // means hidden from the default view, full stop" rule that already applies
-  // everywhere else. Cleared *only* by this explicit toggle (the "Done" state) --
-  // deliberately never auto-cleared just by saving an edit, since an edit might be
-  // an intentional intermediate save, not a signal the document is actually finished.
-  // Deliberately does NOT reopen the detail modal itself, unlike toggleArchived()'s
-  // matching pattern -- this has two call sites (the detail view's own button, and
-  // the review queue row's Done button, where no modal is open at all and popping
-  // one open would be a real bug), so each caller decides for itself whether a
-  // refresh-in-place is appropriate.
+  // flagged, non-archived document shows in the Inbox nav view instead of All
+  // Documents (see matchesView()); a flagged, archived document shows in neither
+  // until unarchived, same "archived means hidden from the default view, full
+  // stop" rule that already applies everywhere else. Cleared *only* by this
+  // explicit toggle (the "Done" state) -- deliberately never auto-cleared just by
+  // saving an edit, since an edit might be an intentional intermediate save, not a
+  // signal the document is actually finished. Doesn't reopen the detail modal
+  // itself -- its one call site (the detail view's own button, below) does that,
+  // keeping the toggle itself decoupled from whether a modal happens to be open.
   async function toggleNeedsReview(id){
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
     d.needs_review = !d.needs_review;
     db.run('UPDATE documents SET needs_review = ? WHERE id = ?', [d.needs_review ? 1 : 0, id]);
     await persistDb();
-    renderReviewQueue();
-    render();
+    render(); // render()'s own renderNav() call refreshes badge counts/active view
   }
 
   // deleted is the strongest of the three staging flags -- a deleted document is
-  // unconditionally excluded from the main table (even with "Show archived" checked)
-  // and from the review queue (even if still needs_review), by design: this app has
+  // unconditionally excluded from the All Documents and Inbox nav views (even with
+  // "Show archived" checked, even if still needs_review), by design: this app has
   // no real delete feature (see CLAUDE.md's "Working conventions"), so "deleting" a
-  // document only ever flips this flag and moves it into the waste bin -- nothing on
-  // disk (files/, thumbnails/, the sidecar .txt) is ever touched, same as archiving.
-  // There's deliberately no "empty bin" action anywhere in this app; the waste bin is
-  // the one place a deleted document stays reachable, forever, via Restore.
-  // Same dual-call-site reasoning as toggleNeedsReview() above: this doesn't reopen
-  // the detail modal itself (the waste bin's own Restore button has no modal open),
-  // so the detail view's own button wraps the call when a refresh-in-place is wanted.
+  // document only ever flips this flag and moves it into the Waste bin nav view --
+  // nothing on disk (files/, thumbnails/, the sidecar .txt) is ever touched, same
+  // as archiving. There's deliberately no "empty bin" action anywhere in this app;
+  // Waste bin is where a deleted document stays reachable, forever, via Restore.
+  // Same reasoning as toggleNeedsReview() above: this doesn't reopen the detail
+  // modal itself -- its one call site (the detail view's own button, below) does
+  // that, keeping the toggle itself decoupled from whether a modal happens to be open.
   async function toggleDeleted(id){
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
     d.deleted = !d.deleted;
     db.run('UPDATE documents SET deleted = ? WHERE id = ?', [d.deleted ? 1 : 0, id]);
     await persistDb();
-    renderReviewQueue();
-    render();
+    render(); // render()'s own renderNav() call refreshes badge counts/active view
   }
 
   async function regenerateThumbnail(id){
@@ -3562,73 +3684,12 @@
     if(!pendingInboxFiles.length) closeModal();
   }
 
-  // Waste bin -- the one place a deleted document (see toggleDeleted()) stays
-  // reachable. Modeled on the Inbox modal above: a toolbar button opens a list,
-  // reused here from allDocs (deleted docs are still ordinary documents in memory,
-  // just excluded from the main table/queue -- see applyFilters()), not a separate
-  // pending-files array the way Inbox has. Deliberately behind a modal, not an
-  // always-visible section like the review queue -- unlike "still needs review,"
-  // "already dealt with, kept only as a just-in-case" isn't something that should
-  // stay in view by default, and there's no risk of it being missed the way an
-  // inbox import could be, since nothing times out or needs acting on here.
-  function openWasteBinModal(){
-    modalRoot.innerHTML = `
-      <div class="backdrop" id="modal-backdrop">
-        <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
-          <h2>Waste bin</h2>
-          <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:-8px;">
-            Deleted documents stay here, restorable at any time. There is no "empty bin"
-            action anywhere in this app -- nothing is ever permanently removed.
-          </p>
-          <div id="waste-bin-list"></div>
-        </div>
-      </div>
-    `;
-    el('modal-close-btn').addEventListener('click', closeModal);
-    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
-    document.addEventListener('keydown', onModalKeydown);
-    renderWasteBinList();
-  }
-
-  // Reuses the review queue's own .review-queue-row/.review-queue-actions/
-  // .file-preview markup and classes -- they were never actually scoped to the
-  // review queue specifically (no .review-queue ancestor in their selectors), just a
-  // generic "list row with a title/sub-line and its own action buttons" pattern, the
-  // same one the Inbox modal's rows already followed. No new CSS needed for this.
-  function renderWasteBinList(){
-    const listEl = el('waste-bin-list');
-    if(!listEl) return;
-    const deletedDocs = allDocs.filter(d => d.deleted);
-    if(!deletedDocs.length){
-      listEl.innerHTML = `<p style="font-family:var(--font-mono); font-size:12px; color:var(--text-dim);">Nothing in the waste bin.</p>`;
-      return;
-    }
-    listEl.innerHTML = deletedDocs.map(d => `
-      <div class="review-queue-row" data-id="${d.id}">
-        <div class="file-preview">
-          <div class="file-icon">${escapeHtml(((d.file_path || '').split('.').pop() || '?').toUpperCase())}</div>
-          <div style="flex:1;">
-            <div class="doc-title">${escapeHtml(displayName(d))}</div>
-            <div class="doc-sub">Imported ${formatDate(d.import_date)}</div>
-          </div>
-        </div>
-        <div class="review-queue-actions">
-          <button class="waste-bin-restore-btn" data-id="${d.id}">Restore</button>
-        </div>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.review-queue-row .file-preview').forEach(elm => {
-      const id = Number(elm.closest('.review-queue-row').dataset.id);
-      elm.addEventListener('click', () => openDetail(id));
-    });
-    listEl.querySelectorAll('.waste-bin-restore-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await toggleDeleted(Number(btn.dataset.id));
-        renderWasteBinList();
-      });
-    });
-  }
+  // Waste bin, Inbox (needs_review), and All Documents are now the three top-level
+  // nav views (see matchesView()/setView()/renderNav()) sharing the same real table
+  // -- a deleted document is just an ordinary row shown when currentView === 'trash',
+  // reached and acted on (Restore, via the same openDetail() modal every other view
+  // uses) exactly like any other document. There is deliberately no "empty bin"
+  // action anywhere in this app; nothing is ever permanently removed.
 
   el('inbox-review-btn').addEventListener('click', openInboxModal);
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
@@ -3640,7 +3701,10 @@
   // Still a single explicit click, not automatic polling -- keeps the same
   // "no silent writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); openInboxModal(); });
-  el('waste-bin-btn').addEventListener('click', openWasteBinModal);
+  document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => setView(btn.dataset.view));
+  });
+  el('nav-style-toggle').addEventListener('click', () => saveNavStyle(navStyle === 'sidebar' ? 'tabs' : 'sidebar'));
 
   resetAll();
 })();
