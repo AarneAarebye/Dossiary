@@ -334,6 +334,34 @@ das dieses Projekt überhaupt erst ausgelöst hat.
    Dokumenten.
 3. Klicken Sie auf **„＋ Add document“**, um etwas Neues zu erfassen.
 
+### Als App installieren (optional)
+
+Dossiary bleibt weiterhin die eine Datei — es gibt keinen Installer und
+nichts zu bauen —, aber Chrome und Edge können eine bereits geöffnete Seite
+in etwas verwandeln, das wie eine native App aussieht und startet, mit
+eigenem Symbol und eigenem Fenster (ohne Tabs oder Adressleiste). Das ist
+optional; die Datei direkt in einem Browser-Tab zu öffnen funktioniert genau
+gleich.
+
+**macOS (Chrome):** Öffnen Sie `dossiary.html` in Chrome, dann **⋮ → Save
+and Share → Create Shortcut…** (ältere Chrome-Versionen: **More Tools →
+Create Shortcut…**). Benennen Sie es in „Dossiary“ um, aktivieren Sie
+**„Open as window“** und klicken Sie auf **Create**. Es wird unter
+`~/Applications/Chrome Apps.localized/` abgelegt und erscheint in Launchpad
+und Spotlight wie jede andere App.
+
+**Windows (Edge):** Öffnen Sie `dossiary.html` in Edge, dann **··· → Apps →
+Install this site as an app**. Benennen Sie es in „Dossiary“ um und klicken
+Sie auf **Install**. Edge legt einen Eintrag im Startmenü an und bietet an,
+es an die Taskleiste oder den Desktop anzuheften.
+
+In beiden Fällen ist es dieselbe Datei wie zuvor — an der Art, wie Ihre
+Bibliothek gespeichert oder gelesen wird, ändert sich nichts; der Browser
+gibt der Seite lediglich einen eigenen Starter und ein eigenes Fenster statt
+eines Tabs. (Da `dossiary.html` kein `<title>`-Tag besitzt, schlagen beide
+Browser standardmäßig „dossiary.html“ als App-Namen vor — das ist der
+einzige Punkt, den es bei der Einrichtung umzubenennen lohnt.)
+
 ### Von einem anderen Werkzeug wechseln?
 
 Wenn Sie von der eingestellten App Mariner Paperless kommen, finden Sie
