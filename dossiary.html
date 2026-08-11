@@ -212,6 +212,19 @@
     background:rgba(217,154,63,0.08); display:flex; align-items:center; justify-content:space-between;
     gap:12px; font-family:var(--font-mono); font-size:12.5px; color:var(--amber);
   }
+  .bulk-action-bar{
+    margin:0 32px 14px; padding:12px 16px; border:1px solid var(--phosphor-dim); border-radius:var(--radius);
+    background:rgba(79,224,166,0.06); display:flex; align-items:center; gap:12px;
+    font-family:var(--font-mono); font-size:12.5px; color:var(--phosphor);
+  }
+  .bulk-collection-menu-wrap{ position:relative; }
+  .bulk-collection-menu{
+    position:absolute; top:calc(100% + 6px); left:0; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:6px; z-index:40; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .bulk-collection-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
+  .bulk-collection-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
+  .select-col{ width:32px; text-align:center; padding:11px 8px !important; }
   /* .review-queue-row/.review-queue-actions below are NOT scoped to the
      (now-removed) always-visible review-queue banner -- they're generic list-row
      markup independently reused by renderRecentLibraries(), so they stay even
@@ -478,10 +491,25 @@
 
       <div class="count-line" id="count-line" style="display:none;"></div>
 
+      <div class="bulk-action-bar" id="bulk-action-bar" style="display:none;">
+        <span id="bulk-action-count"></span>
+        <div class="bulk-collection-menu-wrap">
+          <button type="button" id="bulk-add-to-collection-btn">Add to collection ▾</button>
+          <div class="bulk-collection-menu" id="bulk-collection-menu" style="display:none;"></div>
+        </div>
+        <span class="add-field-form" id="bulk-new-collection-form" style="display:none;">
+          <input type="text" id="bulk-new-collection-input" placeholder="New collection name" />
+          <button type="button" id="bulk-new-collection-save-btn">Create &amp; add</button>
+          <button type="button" id="bulk-new-collection-cancel-btn">Cancel</button>
+        </span>
+        <button type="button" id="bulk-clear-selection-btn">Clear selection</button>
+      </div>
+
       <div class="table-wrap" id="table-wrap" style="display:none;">
         <table id="doc-table">
           <thead>
             <tr id="doc-thead-row">
+              <th class="select-col"><input type="checkbox" id="select-all-checkbox" title="Select all visible" /></th>
               <th data-key="title">Document</th>
               <th data-key="category" data-field="category">Category</th>
               <th data-key="document_type" data-field="document_type">Type</th>
@@ -662,6 +690,7 @@
                                 // MAX(id)+1 on library open, incremented locally, explicit id passed
                                 // into each INSERT (this app assigns ids in JS, never via AUTOINCREMENT)
   let collectionsNavExpanded = true;
+  let selectedDocIds = new Set();
 
   let sortKey = 'date';
   let sortDir = 'desc';
@@ -1198,7 +1227,7 @@
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
-    collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true;
+    collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     currentView = 'all'; navCounts = { all: 0, inbox: 0, trash: 0 };
     emptyState.style.display = 'block'; initState.style.display = 'none';
@@ -2504,6 +2533,7 @@
     if(view !== 'all' && view !== 'inbox' && view !== 'trash' && view !== 'reports' && !view.startsWith('collection-')) return;
     if(currentView === view) return;
     currentView = view;
+    selectedDocIds = new Set();
     render();
   }
 
@@ -2536,6 +2566,7 @@
     const dynDefs = dynamicColumnDefs();
     tbody.innerHTML = sorted.map(d => `
       <tr data-id="${d.id}">
+        <td class="select-col" onclick="event.stopPropagation()"><input type="checkbox" class="row-select-checkbox" data-id="${d.id}" ${selectedDocIds.has(d.id) ? 'checked' : ''} /></td>
         <td>
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
           <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : d.source === 'scan-inbox' ? ' · <span class="pill captured">from inbox</span>' : ''}${d.archived ? ' · <span class="pill archived">archived</span>' : ''}</div>
@@ -2557,6 +2588,34 @@
     document.querySelectorAll('thead th[data-key]').forEach(th => th.classList.toggle('active', th.dataset.key === sortKey));
     tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openDetail(Number(tr.dataset.id))));
     applyColumnVisibility();
+
+    document.querySelectorAll('.row-select-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = Number(cb.dataset.id);
+        if(cb.checked) selectedDocIds.add(id); else selectedDocIds.delete(id);
+        renderBulkActionBar();
+        const selectAll = el('select-all-checkbox');
+        if(selectAll) selectAll.checked = sorted.length > 0 && sorted.every(d => selectedDocIds.has(d.id));
+      });
+    });
+    const selectAllCheckbox = el('select-all-checkbox');
+    if(selectAllCheckbox){
+      selectAllCheckbox.checked = sorted.length > 0 && sorted.every(d => selectedDocIds.has(d.id));
+      selectAllCheckbox.onchange = () => {
+        if(selectAllCheckbox.checked){ sorted.forEach(d => selectedDocIds.add(d.id)); }
+        else { sorted.forEach(d => selectedDocIds.delete(d.id)); }
+        render();
+      };
+    }
+    renderBulkActionBar();
+  }
+
+  function renderBulkActionBar(){
+    const bar = el('bulk-action-bar');
+    if(!bar) return;
+    if(selectedDocIds.size === 0){ bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    el('bulk-action-count').textContent = `${selectedDocIds.size} selected`;
   }
 
   searchInput.addEventListener('input', render);
@@ -4087,6 +4146,49 @@
   el('smart-collection-name-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') saveSmartCollection(); });
   el('smart-collection-name-save-btn').addEventListener('click', saveSmartCollection);
 
+  el('bulk-add-to-collection-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = el('bulk-collection-menu');
+    const manualCollections = collections.filter(c => c.kind === 'manual');
+    menu.innerHTML = manualCollections.map(c => `<button type="button" class="bulk-collection-option" data-collection-id="${c.id}">${escapeHtml(c.name)}</button>`).join('')
+      + `<button type="button" class="bulk-collection-option" id="bulk-new-collection-option">+ New collection…</button>`;
+    menu.querySelectorAll('.bulk-collection-option[data-collection-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await addDocumentsToCollection(Number(btn.dataset.collectionId), [...selectedDocIds]);
+        selectedDocIds = new Set();
+        menu.style.display = 'none';
+        renderBulkActionBar();
+      });
+    });
+    el('bulk-new-collection-option').addEventListener('click', () => {
+      menu.style.display = 'none';
+      el('bulk-new-collection-form').style.display = 'inline-flex';
+      el('bulk-new-collection-input').value = '';
+      el('bulk-new-collection-input').focus();
+    });
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', (e) => {
+    const wrap = document.querySelector('.bulk-collection-menu-wrap');
+    if(wrap && !wrap.contains(e.target)) el('bulk-collection-menu').style.display = 'none';
+  });
+
+  // No window.prompt() anywhere in this app (see Global Constraints) -- "+ New
+  // collection..." opens the inline #bulk-new-collection-form instead, the same
+  // .add-field-form pattern Task 2's #smart-collection-name-form already uses.
+  async function createAndAddToNewCollection(){
+    const name = el('bulk-new-collection-input').value.trim();
+    if(!name) return;
+    const newId = await createManualCollection(name); // already persists + re-renders
+    await addDocumentsToCollection(newId, [...selectedDocIds]); // already persists + re-renders
+    selectedDocIds = new Set();
+    el('bulk-new-collection-form').style.display = 'none';
+  }
+  el('bulk-new-collection-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') createAndAddToNewCollection(); });
+  el('bulk-new-collection-save-btn').addEventListener('click', createAndAddToNewCollection);
+  el('bulk-new-collection-cancel-btn').addEventListener('click', () => { el('bulk-new-collection-form').style.display = 'none'; });
+  el('bulk-clear-selection-btn').addEventListener('click', () => { selectedDocIds = new Set(); render(); });
+
   async function saveSmartCollection(){
     const name = el('smart-collection-name-input').value.trim();
     if(!name) return;
@@ -4098,6 +4200,30 @@
     el('smart-collection-name-form').style.display = 'none';
     el('save-smart-collection-btn').style.display = 'inline-block';
     render();
+  }
+
+  // Shared by the bulk-select "Add to collection" action (this task) and the detail
+  // modal's single-document "Add to collection..." action (Task 4) -- the one place
+  // that writes collection_documents rows, so both call sites stay identical.
+  async function addDocumentsToCollection(collectionId, docIds){
+    for(const docId of docIds){
+      db.run('INSERT OR IGNORE INTO collection_documents (collection_id, document_id) VALUES (?, ?)', [collectionId, docId]);
+    }
+    await persistDb();
+    loadCollections();
+    render();
+  }
+
+  // Shared by this task's bulk-bar "+ New collection..." option and Task 5's Manage
+  // Collections modal "+ New collection" button -- the one place that creates an
+  // empty manual collection.
+  async function createManualCollection(name){
+    const id = nextCollectionId++;
+    db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'manual', null]);
+    await persistDb();
+    loadCollections();
+    render();
+    return id;
   }
 
   resetAll();

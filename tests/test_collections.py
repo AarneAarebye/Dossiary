@@ -220,6 +220,48 @@ async def main():
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
 
+        # === Scenario 9: checkbox column exists, selecting rows shows the bulk bar ===
+        checkbox_count = await page.locator('.row-select-checkbox').count()
+        print("Row checkboxes present, one per visible row:", checkbox_count == 3)
+
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        bulk_bar_visible = await page.locator('#bulk-action-bar').is_visible()
+        bulk_bar_text = await page.locator('#bulk-action-count').inner_text()
+        print("Bulk action bar visible with 2 selected:", bulk_bar_visible, bulk_bar_text)
+
+        # Clicking a checkbox must not also open the detail modal (row click delegation).
+        modal_open_after_check = await page.locator('#modal-backdrop').count()
+        print("Checking a row's checkbox does not open its detail modal:", modal_open_after_check == 0)
+
+        # === Scenario 10: bulk "Add to collection" adds both selected docs to the
+        # existing manual collection (which already had doc 3) ===
+        await page.click('#bulk-add-to-collection-btn')
+        await page.wait_for_timeout(150)
+        await page.click('.bulk-collection-option[data-collection-id="1"]')
+        await page.wait_for_timeout(200)
+
+        selection_cleared = await page.locator('#bulk-action-bar').is_visible()
+        print("Selection cleared (bulk bar hidden) after adding:", not selection_cleared)
+
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        manual_row_ids_after = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Manual collection now has docs 1, 2, and 3:", sorted(manual_row_ids_after))
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 11: selection clears when switching views ===
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        await page.click('#nav-item-collection-2')
+        await page.wait_for_timeout(150)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        bulk_bar_after_view_switch = await page.locator('#bulk-action-bar').is_visible()
+        print("Selection cleared after switching views:", not bulk_bar_after_view_switch)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
