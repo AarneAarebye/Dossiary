@@ -246,6 +246,22 @@ async def main():
         await page.fill('#report-date-to', '')
         await page.wait_for_timeout(150)
 
+        # === Scenario 11: Print button exists and calls window.print() ===
+        await page.evaluate("window.__printCalled = false; window.print = () => { window.__printCalled = true; };")
+        print_btn_count = await page.locator('#reports-print-btn').count()
+        print("Print button exists:", print_btn_count == 1)
+        await page.click('#reports-print-btn')
+        print_called = await page.evaluate("window.__printCalled")
+        print("window.print() called on click:", print_called)
+
+        # === Scenario 12: nav/toolbar are hidden under print media ===
+        await page.emulate_media(media="print")
+        nav_display = await page.locator('#app-nav').evaluate("el => getComputedStyle(el).display")
+        toolbar_display = await page.locator('.toolbar').evaluate("el => getComputedStyle(el).display")
+        print("Nav hidden under print media:", nav_display == 'none')
+        print("Toolbar hidden under print media:", toolbar_display == 'none')
+        await page.emulate_media(media="screen")
+
         print("JS ERRORS:", errors)
         await browser.close()
 
