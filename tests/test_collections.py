@@ -359,6 +359,18 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 16: Remove-from-collection hidden when viewing from inside a
+        # smart collection's view, even though doc 3 is a member of a manual collection
+        # (doc 3 matches the smart "Travel Category" collection's criteria) ===
+        await page.click('#nav-item-collection-2')
+        await page.wait_for_timeout(150)
+        await page.click('tr[data-id="3"]')
+        await page.wait_for_timeout(200)
+        remove_btn_from_smart = await page.locator('#remove-from-collection-btn').count()
+        print("Remove-from-collection hidden when viewing from inside a smart collection:", remove_btn_from_smart == 0)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
