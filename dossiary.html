@@ -81,7 +81,12 @@
   #main-layout.nav-style-sidebar .nav-item-label{ flex:1; }
   #main-layout.nav-style-sidebar .nav-style-toggle{ margin:auto 20px 0; align-self:stretch; }
 
-  .nav-collections-section{ display:flex; flex-direction:column; }
+  .nav-collections-section{
+    display:flex; flex-direction:column;
+    /* Tabs mode (default): position section as relative anchor for absolutely-positioned list,
+       same pattern as .columns-menu-wrap, so the list doesn't inflate the nav row */
+    position:relative;
+  }
   .nav-collections-header{
     display:flex; align-items:center; gap:8px; padding:11px 16px; border:none; background:transparent;
     color:var(--text-dim); font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; cursor:pointer;
@@ -90,7 +95,17 @@
   .nav-collections-chevron{ margin-left:auto; font-size:10px; transition:transform 0.15s; }
   .nav-collections-section.collapsed .nav-collections-chevron{ transform:rotate(-90deg); }
   .nav-collections-section.collapsed .nav-collections-list{ display:none; }
-  .nav-collections-list .nav-item{ padding-left:32px; }
+  /* Tabs mode: list is absolutely positioned as a dropdown overlay */
+  .nav-collections-list{
+    position:absolute; top:calc(100% + 0px); right:0; background:var(--ink-2); border:1px solid var(--line);
+    border-radius:var(--radius); min-width:200px; max-height:40vh; overflow-y:auto; z-index:30;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .nav-collections-list .nav-item{ padding-left:16px; }
+  /* Sidebar mode: Collections stacks vertically inline with other nav items, list is not an overlay */
+  #main-layout.nav-style-sidebar .nav-collections-list{
+    position:static; background:transparent; border:none; box-shadow:none; max-height:none;
+  }
   #main-layout.nav-style-sidebar .nav-collections-list .nav-item{ padding-left:40px; }
 
   .toolbar{ padding:16px 32px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); flex-wrap:wrap; }
@@ -2467,7 +2482,7 @@
     if(collectionsList){
       collectionsList.innerHTML = sortedCollections.map(c => `
         <button type="button" class="nav-item" id="nav-item-collection-${c.id}" data-view="collection-${c.id}">
-          <span class="nav-item-icon">${c.kind === 'smart' ? '☆' : '📁'}</span>
+          <span class="nav-item-icon">${c.kind === 'smart' ? '☆' : '🗂'}</span>
           <span class="nav-item-label">${escapeHtml(c.name)}</span>
         </button>
       `).join('');
@@ -2509,7 +2524,14 @@
     reportsView.style.display = 'none';
     tableWrap.style.display = 'block';
     countLine.style.display = 'block';
-    countLine.textContent = `Showing ${sorted.length} of ${navCounts[currentView]} documents`;
+    // For collections, compute the denominator directly since navCounts only has keys for all/inbox/trash
+    let denominator;
+    if(currentView.startsWith('collection-')){
+      denominator = allDocs.filter(d => matchesView(d, currentView, showArchivedToggle.checked)).length;
+    } else {
+      denominator = navCounts[currentView];
+    }
+    countLine.textContent = `Showing ${sorted.length} of ${denominator} documents`;
 
     const dynDefs = dynamicColumnDefs();
     tbody.innerHTML = sorted.map(d => `

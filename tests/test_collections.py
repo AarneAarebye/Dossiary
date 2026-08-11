@@ -129,6 +129,60 @@ async def main():
         collapsed_setting = next((s for s in settings_after if s['key'] == 'collections_nav_expanded'), None)
         print("collections_nav_expanded persisted as '0':", collapsed_setting['value'] if collapsed_setting else None)
 
+        # === Scenario 7: countLine shows correct denominator for collection views (not "undefined") ===
+        # Re-expand collections section if it's still collapsed
+        collections_section_class = await page.locator('#nav-collections-section').get_attribute('class')
+        if 'collapsed' in (collections_section_class or ''):
+            await page.click('#nav-collections-toggle')
+            await page.wait_for_timeout(150)
+
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        count_line_text = await page.locator('#count-line').text_content()
+        print("countLine for manual collection has valid denominator (not 'undefined'):", 'undefined' not in (count_line_text or ''))
+        print("countLine text for manual collection:", count_line_text)
+
+        await page.click('#nav-item-collection-2')
+        await page.wait_for_timeout(150)
+        count_line_text_smart = await page.locator('#count-line').text_content()
+        print("countLine for smart collection has valid denominator (not 'undefined'):", 'undefined' not in (count_line_text_smart or ''))
+
+        # === Scenario 8: verify nav layout doesn't break sticky header height calibration (tabs mode) ===
+        # Re-expand collections section if it's still collapsed
+        collections_section_class = await page.locator('#nav-collections-section').get_attribute('class')
+        if 'collapsed' in (collections_section_class or ''):
+            await page.click('#nav-collections-toggle')
+            await page.wait_for_timeout(150)
+
+        table_wrap_rect = await page.evaluate("""
+            () => {
+                const el = document.querySelector('#table-wrap');
+                const rect = el.getBoundingClientRect();
+                return { top: rect.top, bottom: rect.bottom, height: rect.height };
+            }
+        """)
+        viewport_height = await page.evaluate("() => window.innerHeight")
+        table_bottom_distance = viewport_height - table_wrap_rect['bottom']
+        print("Table-wrap bottom lands near viewport bottom (tabs mode):", abs(table_bottom_distance) <= 2, f"(distance: {table_bottom_distance}px)")
+
+        # === Scenario 9: verify nav layout works correctly in sidebar mode ===
+        await page.click('#nav-style-toggle')
+        await page.wait_for_timeout(150)
+
+        table_wrap_rect_sidebar = await page.evaluate("""
+            () => {
+                const el = document.querySelector('#table-wrap');
+                const rect = el.getBoundingClientRect();
+                return { top: rect.top, bottom: rect.bottom, height: rect.height };
+            }
+        """)
+        table_bottom_distance_sidebar = viewport_height - table_wrap_rect_sidebar['bottom']
+        print("Table-wrap bottom lands near viewport bottom (sidebar mode):", abs(table_bottom_distance_sidebar) <= 2, f"(distance: {table_bottom_distance_sidebar}px)")
+
+        # Verify collections section is still visible and functional in sidebar mode
+        sidebar_collections = await page.locator('#nav-collections-section').count()
+        print("Collections section still visible in sidebar mode:", sidebar_collections == 1)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
