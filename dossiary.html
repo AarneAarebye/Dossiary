@@ -81,6 +81,18 @@
   #main-layout.nav-style-sidebar .nav-item-label{ flex:1; }
   #main-layout.nav-style-sidebar .nav-style-toggle{ margin:auto 20px 0; align-self:stretch; }
 
+  .nav-collections-section{ display:flex; flex-direction:column; }
+  .nav-collections-header{
+    display:flex; align-items:center; gap:8px; padding:11px 16px; border:none; background:transparent;
+    color:var(--text-dim); font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; cursor:pointer;
+  }
+  .nav-collections-header:hover{ color:var(--phosphor); }
+  .nav-collections-chevron{ margin-left:auto; font-size:10px; transition:transform 0.15s; }
+  .nav-collections-section.collapsed .nav-collections-chevron{ transform:rotate(-90deg); }
+  .nav-collections-section.collapsed .nav-collections-list{ display:none; }
+  .nav-collections-list .nav-item{ padding-left:32px; }
+  #main-layout.nav-style-sidebar .nav-collections-list .nav-item{ padding-left:40px; }
+
   .toolbar{ padding:16px 32px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); flex-wrap:wrap; }
   .search-wrap{ flex:1 1 240px; }
   .search{ width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
@@ -373,6 +385,14 @@
         <span class="nav-item-icon">📊</span>
         <span class="nav-item-label">Reports</span>
       </button>
+      <div class="nav-collections-section" id="nav-collections-section">
+        <button type="button" class="nav-collections-header" id="nav-collections-toggle">
+          <span class="nav-item-icon">📚</span>
+          <span class="nav-item-label">Collections</span>
+          <span class="nav-collections-chevron" id="nav-collections-chevron">▾</span>
+        </button>
+        <div class="nav-collections-list" id="nav-collections-list"></div>
+      </div>
       <button type="button" class="nav-style-toggle" id="nav-style-toggle" title="Switch to top-tab navigation" aria-label="Switch navigation layout">⇄</button>
     </nav>
 
@@ -512,6 +532,13 @@
     CREATE TABLE IF NOT EXISTS document_field_values (
       document_id INTEGER, field_id INTEGER, value TEXT, PRIMARY KEY (document_id, field_id)
     );
+    CREATE TABLE IF NOT EXISTS collections (
+      id INTEGER PRIMARY KEY, name TEXT, kind TEXT,
+      criteria TEXT
+    );
+    CREATE TABLE IF NOT EXISTS collection_documents (
+      collection_id INTEGER, document_id INTEGER, PRIMARY KEY (collection_id, document_id)
+    );
   `;
 
   // Columns added after a library may already have been created. CREATE TABLE IF NOT
@@ -606,6 +633,14 @@
   let defaultDocumentType = null; // prefills Document Type when opening "Add document"
   let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
+
+  let collections = [];        // [{id, name, kind, criteria}, ...] from the `collections` table
+  let collectionDocIds = {};   // { <collectionId>: Set<documentId> } -- manual collections only;
+                                // a smart collection has no entry here at all, see loadCollections()
+  let nextCollectionId = 1;    // same pattern as nextDocId/nextTagId/nextFieldId -- initialized from
+                                // MAX(id)+1 on library open, incremented locally, explicit id passed
+                                // into each INSERT (this app assigns ids in JS, never via AUTOINCREMENT)
+  let collectionsNavExpanded = true;
 
   let sortKey = 'date';
   let sortDir = 'desc';
@@ -1142,6 +1177,7 @@
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
+    collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true;
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     currentView = 'all'; navCounts = { all: 0, inbox: 0, trash: 0 };
     emptyState.style.display = 'block'; initState.style.display = 'none';
@@ -1202,6 +1238,7 @@
     nextPersonId = maxPersonId + 1;
 
     loadFieldDefs();
+    loadCollections();
     loadFieldValues();
 
     // Person-type fields (People, Author, Collaborator, ...) are all backed by the
@@ -1260,6 +1297,7 @@
     loadDefaultDocumentType();
     loadDefaultCurrency();
     loadNavStyle();
+    loadCollectionsNavExpanded();
     loadTypeFieldOrder();
     renderColumnsMenu();
     applyColumnVisibility();
@@ -1348,6 +1386,24 @@
     if(toggleBtn) toggleBtn.title = navStyle === 'sidebar' ? 'Switch to top-tab navigation' : 'Switch to sidebar navigation';
   }
 
+  function loadCollectionsNavExpanded(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'collections_nav_expanded'").rows;
+    collectionsNavExpanded = !(rows.length && rows[0][0] === '0');
+    applyCollectionsNavExpanded();
+  }
+
+  async function saveCollectionsNavExpanded(value){
+    collectionsNavExpanded = !!value;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('collections_nav_expanded', ?)", [collectionsNavExpanded ? '1' : '0']);
+    await persistDb();
+    applyCollectionsNavExpanded();
+  }
+
+  function applyCollectionsNavExpanded(){
+    const section = el('nav-collections-section');
+    if(section) section.classList.toggle('collapsed', !collectionsNavExpanded);
+  }
+
   // Document types worth managing in the Field Settings dialog: ones actually
   // assigned to at least one document, plus any that already have field
   // configuration (so a type's setup stays visible/editable even if every
@@ -1384,6 +1440,20 @@
       maxFieldId = Math.max(maxFieldId, f.id);
     }
     nextFieldId = maxFieldId + 1;
+  }
+
+  function loadCollections(){
+    const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
+    collections = rows.map(([id, name, kind, criteria]) => ({ id, name, kind, criteria }));
+    let maxCollectionId = 0;
+    for(const c of collections) maxCollectionId = Math.max(maxCollectionId, c.id);
+    nextCollectionId = maxCollectionId + 1;
+
+    collectionDocIds = {};
+    const links = queryAll('SELECT collection_id, document_id FROM collection_documents');
+    for(const [collectionId, documentId] of links.rows){
+      (collectionDocIds[collectionId] = collectionDocIds[collectionId] || new Set()).add(documentId);
+    }
   }
 
   // One-time-per-library promotion of Payment method, Amount, and Currency from
@@ -2222,6 +2292,28 @@
       .filter(f => f.value);
     return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, showArchived: showArchivedToggle.checked, dynamic };
   }
+
+  // Applies a saved (or live) filter snapshot to one document -- the shape `criteria`
+  // takes is exactly currentFilters()'s own return shape, so the same object can come
+  // from either the live toolbar or a Smart Collection's stored criteria. Factored out
+  // so both use identical predicate logic; see applyFilters() (Task 2) for the live
+  // side, and matchesView()'s 'collection-<id>' branch below for the saved side.
+  function matchesCriteria(d, criteria){
+    const { q, category, type, person, dynamic } = criteria;
+    if(category && d.category !== category) return false;
+    if(type && d.document_type !== type) return false;
+    if(person && !(d.people||[]).includes(person)) return false;
+    for(const f of dynamic){
+      if((d.customFields || {})[f.label] !== f.value) return false;
+    }
+    if(q){
+      const personFieldNames = Object.values(d.personFieldValues || {}).map(names => (names || []).join(' '));
+      const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  }
+
   // Decides whether document `d` belongs to nav view `view` at all -- independent of
   // the search/category/type/person/dynamic-field filters layered on top in
   // applyFilters() below, which apply identically no matter which view is active.
@@ -2245,6 +2337,19 @@
     // `if(d.deleted) return false;` check above -- this branch runs only once
     // that's already ruled out.
     if(view === 'reports') return true;
+    // A collection view -- 'collection-<id>'. Manual membership comes from
+    // collectionDocIds (built once per library open by loadCollections()); smart
+    // membership is computed live against the collection's saved criteria, via the
+    // exact same matchesCriteria() the live toolbar filters use in applyFilters().
+    // Same as every other view, deleted documents are already excluded by the
+    // shared `if(d.deleted) return false;` check above this point.
+    if(view.startsWith('collection-')){
+      const id = Number(view.slice('collection-'.length));
+      const collection = collections.find(c => c.id === id);
+      if(!collection) return false;
+      if(collection.kind === 'manual') return collectionDocIds[id] ? collectionDocIds[id].has(d.id) : false;
+      return matchesCriteria(d, JSON.parse(collection.criteria));
+    }
     // view === 'all' -- the original default-table rules, unchanged. Archived
     // documents are hidden here unless "Show archived" is on -- "no longer needed,"
     // not deleted -- so they don't clutter the table/search until someone
@@ -2353,6 +2458,26 @@
     if(reportBreakdownWrap) reportBreakdownWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
     const reportDateRangeWrap = el('report-date-range-wrap');
     if(reportDateRangeWrap) reportDateRangeWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
+
+    // Collections nav section -- rebuilt from scratch every render() call, same
+    // "delete-then-reinsert" pattern this app already uses for other dynamic
+    // containers (dynamicColumnDefs()'s <th>s, populateFilters()'s dynamic-filters).
+    const sortedCollections = [...collections].sort((a, b) => a.name.localeCompare(b.name));
+    const collectionsList = el('nav-collections-list');
+    if(collectionsList){
+      collectionsList.innerHTML = sortedCollections.map(c => `
+        <button type="button" class="nav-item" id="nav-item-collection-${c.id}" data-view="collection-${c.id}">
+          <span class="nav-item-icon">${c.kind === 'smart' ? '☆' : '📁'}</span>
+          <span class="nav-item-label">${escapeHtml(c.name)}</span>
+        </button>
+      `).join('');
+      collectionsList.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+        btn.addEventListener('click', () => setView(btn.dataset.view));
+      });
+      collectionsList.querySelectorAll('.nav-item[data-view]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === currentView);
+      });
+    }
   }
 
   // Switches which of the four top-level views is active and re-renders. Search
@@ -2361,7 +2486,7 @@
   // behaving exactly as it does today, so returning to All Documents restores
   // whatever "Show archived" was previously set to.
   function setView(view){
-    if(view !== 'all' && view !== 'inbox' && view !== 'trash' && view !== 'reports') return;
+    if(view !== 'all' && view !== 'inbox' && view !== 'trash' && view !== 'reports' && !view.startsWith('collection-')) return;
     if(currentView === view) return;
     currentView = view;
     render();
@@ -3923,6 +4048,9 @@
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });
   el('nav-style-toggle').addEventListener('click', () => saveNavStyle(navStyle === 'sidebar' ? 'tabs' : 'sidebar'));
+  el('nav-collections-toggle').addEventListener('click', () => {
+    saveCollectionsNavExpanded(!collectionsNavExpanded);
+  });
 
   resetAll();
 })();

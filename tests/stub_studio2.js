@@ -171,12 +171,12 @@ class FakeDatabase {
     if (bytes && bytes.length) {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(bytes));
-        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [] };
+        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [] };
       } catch (e) {
-        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [] };
+        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [] };
       }
     } else {
-      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [] };
+      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [] };
     }
   }
   run(sql, params) {
@@ -368,6 +368,7 @@ window.__makeSeededRoot = function(seed) {
     settings: seed.settings || [],
     document_type_fields: seed.document_type_fields || [], fields: seed.fields || [],
     document_field_values: seed.document_field_values || [],
+    collections: seed.collections || [], collection_documents: seed.collection_documents || [],
   };
   const dbBytes = new TextEncoder().encode(JSON.stringify(full));
   root._children.set('library.sqlite', new FakeFileHandle('library.sqlite', dbBytes));
