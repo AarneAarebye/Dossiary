@@ -262,6 +262,61 @@ async def main():
         bulk_bar_after_view_switch = await page.locator('#bulk-action-bar').is_visible()
         print("Selection cleared after switching views:", not bulk_bar_after_view_switch)
 
+        # === Scenario 12: "+ New collection…" flow works end-to-end (tests the inline
+        # form for creating a new manual collection on-the-fly during bulk-add) ===
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.check('tr[data-id="3"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        await page.click('#bulk-add-to-collection-btn')
+        await page.wait_for_timeout(150)
+        await page.click('#bulk-new-collection-option')
+        await page.wait_for_timeout(150)
+        await page.fill('#bulk-new-collection-input', 'My New Collection')
+        await page.click('#bulk-new-collection-save-btn')
+        await page.wait_for_timeout(200)
+
+        # New collection should appear in the nav
+        new_coll_nav_labels = await page.locator('.nav-item[data-view^="collection-"] .nav-item-label').all_inner_texts()
+        print("New collection 'My New Collection' appears in nav:", 'My New Collection' in new_coll_nav_labels)
+
+        # Click into the new collection and verify it has docs 2 and 3
+        new_coll_nav_btn = page.locator('.nav-item[data-view^="collection-"]', has_text='My New Collection')
+        await new_coll_nav_btn.click()
+        await page.wait_for_timeout(150)
+        new_coll_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("New collection contains docs 2 and 3:", sorted(new_coll_row_ids))
+
+        # Go back to All Documents and verify bulk bar is hidden and checkboxes are unchecked
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        bulk_bar_hidden_after_new_coll = await page.locator('#bulk-action-bar').is_visible()
+        print("Bulk bar hidden after creating and adding to new collection:", not bulk_bar_hidden_after_new_coll)
+        checked_count_after_new_coll = await page.locator('.row-select-checkbox:checked').count()
+        print("No checkboxes remain checked after new collection creation:", checked_count_after_new_coll == 0)
+
+        # === Scenario 13: select-all checkbox works ===
+        # Click select-all checkbox
+        select_all_checkbox = page.locator('#select-all-checkbox')
+        await select_all_checkbox.check()
+        await page.wait_for_timeout(150)
+
+        # All visible row checkboxes should be checked
+        all_checked_count = await page.locator('.row-select-checkbox:checked').count()
+        all_total_count = await page.locator('.row-select-checkbox').count()
+        print("Select-all checks all visible checkboxes:", all_checked_count == all_total_count)
+
+        # Bulk bar should show correct count
+        bulk_bar_text_all = await page.locator('#bulk-action-count').inner_text()
+        print("Bulk bar shows correct count after select-all:", f"{all_total_count} selected" in bulk_bar_text_all)
+
+        # Uncheck select-all
+        await select_all_checkbox.uncheck()
+        await page.wait_for_timeout(150)
+
+        # Bulk bar should disappear
+        bulk_bar_hidden_after_uncheck = await page.locator('#bulk-action-bar').is_visible()
+        print("Bulk bar hidden after unchecking select-all:", not bulk_bar_hidden_after_uncheck)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

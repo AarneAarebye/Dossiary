@@ -4157,7 +4157,7 @@
         await addDocumentsToCollection(Number(btn.dataset.collectionId), [...selectedDocIds]);
         selectedDocIds = new Set();
         menu.style.display = 'none';
-        renderBulkActionBar();
+        render();
       });
     });
     el('bulk-new-collection-option').addEventListener('click', () => {
@@ -4183,6 +4183,7 @@
     await addDocumentsToCollection(newId, [...selectedDocIds]); // already persists + re-renders
     selectedDocIds = new Set();
     el('bulk-new-collection-form').style.display = 'none';
+    render();
   }
   el('bulk-new-collection-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') createAndAddToNewCollection(); });
   el('bulk-new-collection-save-btn').addEventListener('click', createAndAddToNewCollection);
