@@ -432,6 +432,12 @@
           <span>–</span>
           <input type="date" id="report-date-to" title="To date" />
         </span>
+        <button type="button" id="save-smart-collection-btn" style="display:none;">☆ Save as Smart Collection</button>
+        <span class="add-field-form" id="smart-collection-name-form" style="display:none;">
+          <input type="text" id="smart-collection-name-input" placeholder="Collection name" />
+          <button type="button" id="smart-collection-name-save-btn">Save</button>
+          <button type="button" id="smart-collection-name-cancel-btn">Cancel</button>
+        </span>
         <div class="columns-menu-wrap">
           <button id="columns-btn">⚙ Columns</button>
           <div class="columns-menu" id="columns-menu" style="display:none;"></div>
@@ -2382,28 +2388,15 @@
     return true;
   }
   function applyFilters(docs){
-    const { q, category, type, person, showArchived, dynamic } = currentFilters();
+    const filters = currentFilters();
     return docs.filter(d => {
-      if(!matchesView(d, currentView, showArchived)) return false;
+      if(!matchesView(d, currentView, filters.showArchived)) return false;
       if(currentView === 'reports'){
         const { dateFrom, dateTo } = currentReportDateRange();
         if(dateFrom && (!d.date || d.date.slice(0, 10) < dateFrom)) return false;
         if(dateTo && (!d.date || d.date.slice(0, 10) > dateTo)) return false;
       }
-      if(category && d.category !== category) return false;
-      if(type && d.document_type !== type) return false;
-      if(person && !(d.people||[]).includes(person)) return false;
-      for(const f of dynamic){
-        if((d.customFields || {})[f.label] !== f.value) return false;
-      }
-      if(q){
-        // Every person-type field's names are searchable, not just People -- so
-        // finding "Arne" also surfaces a document where he's only listed as Author.
-        const personFieldNames = Object.values(d.personFieldValues || {}).map(names => (names || []).join(' '));
-        const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
-        if(!hay.includes(q)) return false;
-      }
-      return true;
+      return matchesCriteria(d, filters);
     });
   }
   function sortDocs(docs){
@@ -2473,6 +2466,13 @@
     if(reportBreakdownWrap) reportBreakdownWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
     const reportDateRangeWrap = el('report-date-range-wrap');
     if(reportDateRangeWrap) reportDateRangeWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
+
+    const saveSmartBtn = el('save-smart-collection-btn');
+    if(saveSmartBtn) saveSmartBtn.style.display = currentView === 'all' ? 'inline-block' : 'none';
+    if(currentView !== 'all'){
+      const nameForm = el('smart-collection-name-form');
+      if(nameForm) nameForm.style.display = 'none';
+    }
 
     // Collections nav section -- rebuilt from scratch every render() call, same
     // "delete-then-reinsert" pattern this app already uses for other dynamic
@@ -4073,6 +4073,32 @@
   el('nav-collections-toggle').addEventListener('click', () => {
     saveCollectionsNavExpanded(!collectionsNavExpanded);
   });
+
+  el('save-smart-collection-btn').addEventListener('click', () => {
+    el('save-smart-collection-btn').style.display = 'none';
+    el('smart-collection-name-form').style.display = 'inline-flex';
+    el('smart-collection-name-input').value = '';
+    el('smart-collection-name-input').focus();
+  });
+  el('smart-collection-name-cancel-btn').addEventListener('click', () => {
+    el('smart-collection-name-form').style.display = 'none';
+    el('save-smart-collection-btn').style.display = 'inline-block';
+  });
+  el('smart-collection-name-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') saveSmartCollection(); });
+  el('smart-collection-name-save-btn').addEventListener('click', saveSmartCollection);
+
+  async function saveSmartCollection(){
+    const name = el('smart-collection-name-input').value.trim();
+    if(!name) return;
+    const id = nextCollectionId++;
+    const criteria = JSON.stringify(currentFilters());
+    db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'smart', criteria]);
+    await persistDb();
+    loadCollections();
+    el('smart-collection-name-form').style.display = 'none';
+    el('save-smart-collection-btn').style.display = 'inline-block';
+    render();
+  }
 
   resetAll();
 })();

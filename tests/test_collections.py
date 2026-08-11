@@ -183,6 +183,40 @@ async def main():
         sidebar_collections = await page.locator('#nav-collections-section').count()
         print("Collections section still visible in sidebar mode:", sidebar_collections == 1)
 
+        # === Scenario 7: "Save as Smart Collection" is visible only in All
+        # Documents, not inside a collection's own view ===
+        save_smart_btn_in_all = await page.locator('#save-smart-collection-btn').is_visible()
+        print("Save-as-Smart-Collection button visible in All Documents:", save_smart_btn_in_all)
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        save_smart_btn_in_collection = await page.locator('#save-smart-collection-btn').is_visible()
+        print("Save-as-Smart-Collection button hidden inside a collection view:", not save_smart_btn_in_collection)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 8: setting a category filter and saving creates a new Smart
+        # Collection that live-filters the same way the seeded one does ===
+        await page.select_option('#category-filter', 'Food')
+        await page.wait_for_timeout(150)
+        await page.click('#save-smart-collection-btn')
+        await page.wait_for_timeout(150)
+        await page.fill('#smart-collection-name-input', 'Food Category')
+        await page.click('#smart-collection-name-save-btn')
+        await page.wait_for_timeout(200)
+        await page.select_option('#category-filter', '')
+        await page.wait_for_timeout(150)
+
+        new_collection_labels = await page.locator('.nav-item[data-view^="collection-"] .nav-item-label').all_inner_texts()
+        print("New Smart Collection appears in the nav:", 'Food Category' in new_collection_labels)
+
+        new_smart_nav_btn = page.locator('.nav-item[data-view^="collection-"]', has_text='Food Category')
+        await new_smart_nav_btn.click()
+        await page.wait_for_timeout(150)
+        new_smart_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("New Smart Collection shows only doc 2 (Category=Food):", new_smart_row_ids)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
