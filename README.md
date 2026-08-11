@@ -92,6 +92,10 @@ working" problem that motivated this project in the first place.
   archived" checked and the review queue, and its detail view only offers
   Restore until you do. Files on disk, thumbnails, and the sidecar `.txt`
   are never touched either way.
+- **Reports** — a 4th nav view totals your documents by Category, Type,
+  People, or any custom field, grouped by currency so amounts in different
+  currencies are never added together, with a date-range filter and a
+  print-friendly layout for tax season or expense reimbursement.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can

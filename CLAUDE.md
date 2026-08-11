@@ -921,6 +921,41 @@ version number — only by the schema itself matching).
   values and the empirical-verification story; the tabs nav sits *above*
   the table (adding real height to the stack) while the sidebar nav sits
   *beside* it (adding none), so the two styles need different constants.
+- **Reports** (`#nav-item-reports`, `data-view="reports"`, `reportBreakdownFields()`,
+  `reportBreakdownFieldInfo()`, `computeReportGroups()`, `renderReportsView()`) is a
+  4th top-level nav view alongside All Documents/Inbox/Waste bin, giving totals
+  for tax prep and expense reimbursement workflows Dossiary previously had no way
+  to support. **`matchesView()`'s `'reports'` branch always includes archived and
+  needs-review documents** — a report is about real financial history, not about
+  what's currently decluttered out of the browse view; only `deleted` (Waste bin)
+  documents are excluded, same as every other view. Totals are grouped by Currency
+  first and never summed across different currency labels
+  (`customFields['Currency']`, blank treated as its own "No currency set" group) —
+  Dossiary never assumes a single-currency library. Within each currency group,
+  documents are further grouped by a chosen breakdown field (`#report-breakdown-field`,
+  populated from `reportBreakdownFields()`: Category/Type/People from `FIELD_DEFS`,
+  plus any custom field flagged `show_as_column` via the same `dynamicColumnDefs()`
+  table columns/filters already use — deliberately excludes `date`/`import_date`
+  (near-unique per document, not a meaningful grouping key), `amount` (the value
+  being summed, not a grouping key), and `tags` (multi-valued like People, but
+  out of scope for v1). **A document with more than one value for a multi-valued
+  breakdown field (People, or a custom person-type field) contributes its full
+  Amount to every value's row** — `renderReportsView()` shows an explicit caption
+  when this applies, since row totals then legitimately don't sum to the currency
+  group's own Grand total; that Grand total (`computeReportGroups()`'s `grandTotal`/
+  `documentCount`) is deliberately computed independently over every document in
+  the currency group, not by summing the rows above it, so it stays a reliable
+  "true total" regardless. A separate, Reports-only date-range filter
+  (`#report-date-from`/`#report-date-to`, `currentReportDateRange()`) filters on
+  the document's own `date` field (its content date, not `import_date`) —
+  `applyFilters()` only applies this filter when `currentView === 'reports'`; the
+  existing search/category/type/dynamic-field filters continue to apply unchanged
+  in this view too. No new dependency, no schema change — this is a pure
+  read/aggregate view over `allDocs`. Printing (`#reports-print-btn` →
+  `window.print()`) is the first `@media print` stylesheet in this app, hiding
+  `#app-nav`/`.toolbar`/etc.; the browser's own print dialog already offers "Save
+  as PDF" on every platform this app targets, so no separate PDF-generation path
+  was needed.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
@@ -1266,7 +1301,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **50
+There's a real, runnable Playwright regression suite in `tests/` — **51
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1382,7 +1417,17 @@ the `searchable_pdf_built` backfill migration (`test_searchable_pdf_built_migrat
 — a `captured` document with a pre-existing original correctly backfilled
 to `1`, a `migrated` document's unrelated original correctly left alone, a
 `scan-inbox` document with no original left alone, and stability across a
-reopen), and search across all of the above. This
+reopen), the Reports view (`test_reports.py` — the nav item and view-scoping
+(archived and needs-review included, deleted excluded, matching the
+"Top-level navigation" note's own `matchesView()` design); currency
+grouping across three distinct groups including a blank-Currency "No
+currency set" group; category/type breakdown totals and their independently-
+computed Grand total; the multi-valued People-breakdown row-inflation
+caveat and its on-screen caption, switched to without leaving the Reports
+view; the date-range filter narrowing totals by the document's own Date
+field and correctly excluding a document with no date set once a bound is
+active; and the print button/`@media print` layout hiding the nav and
+toolbar), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
