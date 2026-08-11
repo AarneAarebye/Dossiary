@@ -337,6 +337,10 @@
         <span class="nav-item-label">Waste bin</span>
         <span class="nav-item-count" id="nav-count-trash">0</span>
       </button>
+      <button type="button" class="nav-item" id="nav-item-reports" data-view="reports">
+        <span class="nav-item-icon">📊</span>
+        <span class="nav-item-label">Reports</span>
+      </button>
       <button type="button" class="nav-style-toggle" id="nav-style-toggle" title="Switch to top-tab navigation" aria-label="Switch navigation layout">⇄</button>
     </nav>
 
@@ -410,6 +414,7 @@
           <tbody id="doc-tbody"></tbody>
         </table>
       </div>
+      <div id="reports-view" style="display:none;"></div>
     </div>
   </div>
 
@@ -579,6 +584,7 @@
   const tableWrap = el('table-wrap');
   const tbody = el('doc-tbody');
   const countLine = el('count-line');
+  const reportsView = el('reports-view');
   const searchInput = el('search');
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
@@ -1099,6 +1105,7 @@
     emptyState.style.display = 'block'; initState.style.display = 'none';
     appNav.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
+    reportsView.style.display = 'none';
     el('inbox-banner').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
@@ -2052,6 +2059,12 @@
     // archived+flagged document stays reachable only via 'all' + "Show archived" --
     // same "archived means hidden from the default view, full stop" rule as always.
     if(view === 'inbox') return !!d.needs_review && !d.archived;
+    // Reports always includes archived and needs-review documents -- a report is
+    // about real financial history, not about what's currently cluttering the
+    // browse view. Only `deleted` (Waste bin) is excluded, via the shared
+    // `if(d.deleted) return false;` check above -- this branch runs only once
+    // that's already ruled out.
+    if(view === 'reports') return true;
     // view === 'all' -- the original default-table rules, unchanged. Archived
     // documents are hidden here unless "Show archived" is on -- "no longer needed,"
     // not deleted -- so they don't clutter the table/search until someone
@@ -2159,7 +2172,7 @@
   // behaving exactly as it does today, so returning to All Documents restores
   // whatever "Show archived" was previously set to.
   function setView(view){
-    if(view !== 'all' && view !== 'inbox' && view !== 'trash') return;
+    if(view !== 'all' && view !== 'inbox' && view !== 'trash' && view !== 'reports') return;
     if(currentView === view) return;
     currentView = view;
     render();
@@ -2169,6 +2182,15 @@
     renderNav();
     const filtered = applyFilters(allDocs);
     const sorted = sortDocs(filtered);
+    if(currentView === 'reports'){
+      tableWrap.style.display = 'none';
+      countLine.style.display = 'none';
+      reportsView.style.display = 'block';
+      reportsView.innerHTML = `<p id="reports-doc-count">${filtered.length} document${filtered.length === 1 ? '' : 's'} in scope</p>`;
+      return;
+    }
+    reportsView.style.display = 'none';
+    tableWrap.style.display = 'block';
     countLine.style.display = 'block';
     countLine.textContent = `Showing ${sorted.length} of ${navCounts[currentView]} documents`;
 
