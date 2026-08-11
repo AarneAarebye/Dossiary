@@ -167,8 +167,16 @@
   .report-currency-group{ margin-bottom:32px; }
   .report-currency-group h3{ font-family:var(--font-mono); font-size:13px; color:var(--phosphor); margin:0 0 8px; }
   .report-caption{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin:0 0 10px; }
+  .report-table{ min-width:0; }
   .report-table tfoot td{ font-weight:600; border-top:2px solid var(--line); padding:11px 14px; }
-  #reports-empty{ font-family:var(--font-mono); font-size:13px; color:var(--text-dim); padding:0 32px; }
+  /* Report headers aren't sortable and report rows aren't clickable, unlike the
+     generic .table/thead/tbody styling this reuses -- override the inherited
+     clickable/sortable hover cues so they don't mislead. */
+  .report-table thead th{ cursor:default; }
+  .report-table thead th:hover{ color:var(--text-dim); }
+  .report-table tbody tr{ cursor:default; }
+  .report-table tbody tr:hover{ background:transparent; }
+  #reports-empty{ font-family:var(--font-mono); font-size:13px; color:var(--text-dim); }
   .report-print-btn{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 14px; border-radius:var(--radius); cursor:pointer; margin-bottom:16px; }
   .report-print-btn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
 
@@ -318,7 +326,15 @@
   }
 
   @media print{
-    #app-nav, .toolbar, .inbox-banner, footer, #reports-print-btn{ display:none !important; }
+    #app-nav, .toolbar, .inbox-banner, footer, #reports-print-btn, .scanline{ display:none !important; }
+    /* The app is dark-themed (#app background var(--ink), light text) and Chrome/
+       Edge don't print background colors by default, so without these overrides a
+       printed report is low-contrast light-gray text on white paper, and the
+       phosphor-green currency headings are worse. Force plain black-on-white for
+       print instead of trying to preserve the on-screen dark theme. */
+    #app{ background:#fff !important; color:#000 !important; }
+    .report-currency-group h3, .report-caption, .report-table tfoot td, .report-table td, .report-table th{ color:#000 !important; }
+    .report-table{ min-width:0 !important; }
   }
 </style>
 
@@ -374,7 +390,7 @@
           <input type="checkbox" id="show-archived-toggle" /> Show archived
         </label>
         <span class="filter-wrap" id="report-breakdown-wrap" style="display:none;">
-          <select id="report-breakdown-field"></select>
+          <select id="report-breakdown-field" title="Break down by"></select>
         </span>
         <span class="report-date-range" id="report-date-range-wrap" style="display:none;">
           <input type="date" id="report-date-from" title="From date" />
@@ -534,9 +550,9 @@
                                 // in for one-click "add with defaults" review; null if that folder doesn't exist
   let pendingInboxFiles = [];  // [{name, handle}, ...] snapshot from the last checkInbox() call
   let allDocs = [];
-  // Which of the three top-level nav views is showing -- session state only, never
+  // Which of the four top-level nav views is showing -- session state only, never
   // persisted, always starts 'all' on a freshly opened library (see resetAll()).
-  let currentView = 'all';     // 'all' | 'inbox' | 'trash'
+  let currentView = 'all';     // 'all' | 'inbox' | 'trash' | 'reports'
   let navStyle = 'sidebar';    // 'tabs' | 'sidebar' -- persisted per-library, see loadNavStyle()
   let navCounts = { all: 0, inbox: 0, trash: 0 }; // last-computed badge counts, refreshed every render()
   let tagsByDocId = {};
@@ -1132,6 +1148,8 @@
     appNav.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
     reportsView.style.display = 'none';
+    if(reportDateFrom) reportDateFrom.value = '';
+    if(reportDateTo) reportDateTo.value = '';
     el('inbox-banner').style.display = 'none';
     subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
@@ -2003,6 +2021,13 @@
       const options = reportBreakdownFields();
       breakdownSelect.innerHTML = options.map(f => `<option value="${f.id}">${escapeHtml(f.label)}</option>`).join('');
       breakdownSelect.value = options.some(f => f.id === previousValue) ? previousValue : (options[0] ? options[0].id : '');
+      // Unlike the dynamic-filters selects above (freshly created elements every
+      // call, so they must be re-wired each time), #report-breakdown-field is
+      // static markup -- only its <option>s are replaced here. Re-registering the
+      // same (type, listener, capture) tuple on the same persistent element per the
+      // DOM spec is a harmless no-op the browser silently discards, so calling this
+      // on every populateFilters() (document save, inbox add, field-settings change,
+      // ...) doesn't stack up duplicate listeners.
       breakdownSelect.addEventListener('change', render);
     }
   }
@@ -2095,7 +2120,14 @@
           return (names && names.length) ? names : [null];
         }};
       }
-      return { label: def.name, multiValued: false, getValues: d => [(d.customFields || {})[def.name] || null] };
+      // Run non-text custom fields through the same formatCustomFieldValue() the
+      // rest of the app uses, so e.g. a checkbox field shows "Yes"/"No" and a date
+      // field shows a readable date here too, instead of the raw stored string --
+      // only when there's a real value, matching the existing null-means-"(none)" fallback.
+      return { label: def.name, multiValued: false, getValues: d => {
+        const raw = (d.customFields || {})[def.name];
+        return [raw ? formatCustomFieldValue(def.name, raw) : null];
+      }};
     }
     return null;
   }
@@ -2323,7 +2355,7 @@
     if(reportDateRangeWrap) reportDateRangeWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
   }
 
-  // Switches which of the three top-level views is active and re-renders. Search
+  // Switches which of the four top-level views is active and re-renders. Search
   // text, category/type/person filter selects, and "Show archived" are deliberately
   // NOT reset here -- currentView alone is session state; everything else keeps
   // behaving exactly as it does today, so returning to All Documents restores
@@ -2338,7 +2370,6 @@
   function render(){
     renderNav();
     const filtered = applyFilters(allDocs);
-    const sorted = sortDocs(filtered);
     if(currentView === 'reports'){
       tableWrap.style.display = 'none';
       countLine.style.display = 'none';
@@ -2346,6 +2377,10 @@
       renderReportsView(filtered);
       return;
     }
+    // Sorting is only meaningful for the real doc-table views below -- Reports
+    // (handled above, already returned) never consults `sorted`, so computing it
+    // earlier would be wasted work on every Reports render.
+    const sorted = sortDocs(filtered);
     reportsView.style.display = 'none';
     tableWrap.style.display = 'block';
     countLine.style.display = 'block';
@@ -3865,9 +3900,11 @@
     if(!pendingInboxFiles.length) closeModal();
   }
 
-  // Waste bin, Inbox (needs_review), and All Documents are now the three top-level
-  // nav views (see matchesView()/setView()/renderNav()) sharing the same real table
-  // -- a deleted document is just an ordinary row shown when currentView === 'trash',
+  // Waste bin, Inbox (needs_review), All Documents, and Reports are now the four
+  // top-level nav views (see matchesView()/setView()/renderNav()); the first three
+  // share the same real table (Reports renders its own aggregate view instead --
+  // see its own note above) -- a deleted document is just an ordinary row shown
+  // when currentView === 'trash',
   // reached and acted on (Restore, via the same openDetail() modal every other view
   // uses) exactly like any other document. There is deliberately no "empty bin"
   // action anywhere in this app; nothing is ever permanently removed.

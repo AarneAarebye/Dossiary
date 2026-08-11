@@ -109,7 +109,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   und in der Prüfliste, und seine Detailansicht bietet bis dahin nur
   „Restore“ an. Dateien auf der Festplatte, Vorschaubilder und die
   `.txt`-Begleitdatei werden in beide Richtungen nie angefasst.
-- **Reports** — eine 4. Nav-Ansicht, die Ihre Dokumente nach Category, Type,
+- **Reports** — eine 4. Navigationsansicht, die Ihre Dokumente nach Category, Type,
   People oder benutzerdefinierten Feldern summiert, gruppiert nach Währung,
   damit Beträge in verschiedenen Währungen nie zusammengezählt werden, mit
   einem Datumsbereichsfilter und einem druckfreundlichen Layout für

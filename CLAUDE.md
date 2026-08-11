@@ -849,7 +849,10 @@ version number — only by the schema itself matching).
   `'all'` — a click on its nav item, not a separate modal — see the
   "Top-level navigation" note below for why all three views were unified
   onto one shared table rather than each keeping its own bespoke
-  rendering, as this feature and the review queue originally did.
+  rendering, as this feature and the review queue originally did. (A
+  fourth nav view, Reports, was added later — see its own note below —
+  but it deliberately renders its own aggregate view rather than sharing
+  this table, so it isn't part of the three unified here.)
 - **Top-level navigation** (`#main-layout`, `#app-nav`, `.nav-item`,
   `currentView`, `matchesView()`, `renderNav()`, `setView()`) unifies
   All Documents/Inbox/Waste bin — previously an always-visible Review

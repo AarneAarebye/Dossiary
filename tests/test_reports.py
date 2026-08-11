@@ -167,16 +167,18 @@ async def main():
         breakdown_options = await page.locator('#report-breakdown-field option').all_inner_texts()
         print("Breakdown dropdown options:", breakdown_options)
 
-        # === Scenario 6: currency grouping -- EUR (docs 1,2,4), USD (doc 5), and "No
+        # === Scenario 6: currency grouping -- EUR (docs 1,2,4,7), USD (doc 5), and "No
         # currency set" (doc 6) are three separate groups, in that order (sorted by
-        # currency label; "No currency set" sorts last since its internal grouping
-        # key starts with underscores) ===
+        # currency label; "No currency set" happens to sort last here because its
+        # internal grouping key starts with underscores and every real currency used
+        # in this SEED is an uppercase letter -- not a general sorting guarantee for
+        # arbitrary Currency values) ===
         group_headings = await page.locator('.report-currency-group h3').all_inner_texts()
         print("Currency group headings:", group_headings)
 
-        # === Scenario 7: Category breakdown within the EUR group -- docs 1/2 share
-        # Category "Travel" (count 2, total 75.00), doc 4 is "Medical" (count 1,
-        # total 10.00); the group's own Grand total (85.00, count 3) is computed
+        # === Scenario 7: Category breakdown within the EUR group -- docs 1/2/7 share
+        # Category "Travel" (count 3, total 45+30+5=80.00), doc 4 is "Medical" (count 1,
+        # total 10.00); the group's own Grand total (90.00, count 4) is computed
         # independently, not by summing the rows (which happen to match here since
         # Category is single-valued) ===
         eur_group = page.locator('.report-currency-group').first
@@ -191,12 +193,12 @@ async def main():
 
         # === Scenario 8: People breakdown within the EUR group -- doc 1 has both
         # Alice and Bob, so it contributes its 45.00 to BOTH rows; doc 2 (Alice only)
-        # contributes 30.00 to Alice; doc 4 has no People at all, landing in "(none)".
-        # Row totals (75+45+10=130) intentionally exceed the group's real Grand total
-        # (85.00) -- this is the documented multi-valued-breakdown behavior, and the
-        # caption must appear to explain it. Switching the dropdown here, without
-        # leaving the Reports view, also proves the report recomputes on dropdown
-        # change alone. ===
+        # contributes 30.00 to Alice; docs 4 and 7 have no People at all, landing in
+        # "(none)" together (10.00+5.00=15.00). Row totals (75+45+15=135) intentionally
+        # exceed the group's real Grand total (90.00) -- this is the documented
+        # multi-valued-breakdown behavior, and the caption must appear to explain it.
+        # Switching the dropdown here, without leaving the Reports view, also proves
+        # the report recomputes on dropdown change alone. ===
         await page.select_option('#report-breakdown-field', 'people')
         await page.wait_for_timeout(150)
         eur_group = page.locator('.report-currency-group').first
@@ -206,7 +208,7 @@ async def main():
         people_grand_total_row = await eur_group.locator('.report-table tfoot td').all_inner_texts()
         people_caption_count = await eur_group.locator('.report-caption').count()
         print("EUR group People rows (label, count, total):", list(zip(people_row_labels, people_row_counts, people_row_totals)))
-        print("EUR group Grand total row (independent, still 85.00/3):", people_grand_total_row)
+        print("EUR group Grand total row (independent, still 90.00/4):", people_grand_total_row)
         print("Multi-valued caption shown for People breakdown:", people_caption_count > 0)
 
         # === Scenario 9: date-range filter narrows Reports totals -- with the
@@ -254,12 +256,19 @@ async def main():
         print_called = await page.evaluate("window.__printCalled")
         print("window.print() called on click:", print_called)
 
-        # === Scenario 12: nav/toolbar are hidden under print media ===
+        # === Scenario 12: nav/toolbar are hidden under print media, and the dark
+        # theme's own colors (light text on the app's dark background) are overridden
+        # to plain black-on-white for print -- Chrome/Edge don't print background
+        # colors by default, so without an explicit override the printed page would
+        # be low-contrast light-gray-on-white rather than an actual failure any of
+        # the display:none checks above would catch ===
         await page.emulate_media(media="print")
         nav_display = await page.locator('#app-nav').evaluate("el => getComputedStyle(el).display")
         toolbar_display = await page.locator('.toolbar').evaluate("el => getComputedStyle(el).display")
         print("Nav hidden under print media:", nav_display == 'none')
         print("Toolbar hidden under print media:", toolbar_display == 'none')
+        report_td_color = await page.locator('.report-table td').first.evaluate("el => getComputedStyle(el).color")
+        print("Report table text is black under print media:", report_td_color == 'rgb(0, 0, 0)')
         await page.emulate_media(media="screen")
 
         print("JS ERRORS:", errors)
