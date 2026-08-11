@@ -609,6 +609,8 @@
   const personFilter = el('person-filter');
   const showArchivedToggle = el('show-archived-toggle');
   const showArchivedWrap = el('show-archived-wrap');
+  const reportDateFrom = el('report-date-from');
+  const reportDateTo = el('report-date-to');
   const mainLayout = el('main-layout');
   const appNav = el('app-nav');
   const modalRoot = el('modal-root');
@@ -2035,9 +2037,7 @@
     return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
   }
   function currentReportDateRange(){
-    const from = el('report-date-from');
-    const to = el('report-date-to');
-    return { dateFrom: from ? from.value : '', dateTo: to ? to.value : '' };
+    return { dateFrom: reportDateFrom ? reportDateFrom.value : '', dateTo: reportDateTo ? reportDateTo.value : '' };
   }
   // Currency is appended after the number ("45.00 EUR", "45.00 $") rather than
   // guessing symbol-prefix vs. code-suffix placement per currency -- it's free
@@ -2227,8 +2227,8 @@
       if(!matchesView(d, currentView, showArchived)) return false;
       if(currentView === 'reports'){
         const { dateFrom, dateTo } = currentReportDateRange();
-        if(dateFrom && (!d.date || d.date < dateFrom)) return false;
-        if(dateTo && (!d.date || d.date > dateTo)) return false;
+        if(dateFrom && (!d.date || d.date.slice(0, 10) < dateFrom)) return false;
+        if(dateTo && (!d.date || d.date.slice(0, 10) > dateTo)) return false;
       }
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
@@ -2375,8 +2375,8 @@
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
   showArchivedToggle.addEventListener('change', render);
-  el('report-date-from').addEventListener('change', render);
-  el('report-date-to').addEventListener('change', render);
+  reportDateFrom.addEventListener('change', render);
+  reportDateTo.addEventListener('change', render);
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();

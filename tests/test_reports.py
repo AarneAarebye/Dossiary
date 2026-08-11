@@ -232,6 +232,20 @@ async def main():
         group_headings_unfiltered = await page.locator('.report-currency-group h3').all_inner_texts()
         print("Currency groups with no date range (doc 6 and doc 7 included again):", group_headings_unfiltered)
 
+        # === Scenario 10: date-range end-boundary inclusive test -- doc 5 has timestamp
+        # "2026-03-05T00:00:00+00:00"; setting dateTo to exactly "2026-03-05" should
+        # include it (not exclude it due to string comparison bug), proven by USD group
+        # appearing (which only doc 5 provides in its full currency breakdown) ===
+        await page.fill('#report-date-from', '2026-03-05')
+        await page.fill('#report-date-to', '2026-03-05')
+        await page.wait_for_timeout(150)
+        group_headings_exact_date = await page.locator('.report-currency-group h3').all_inner_texts()
+        print("Currency groups with exact date 2026-03-05 (should include doc 5's USD):", group_headings_exact_date)
+
+        await page.fill('#report-date-from', '')
+        await page.fill('#report-date-to', '')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
