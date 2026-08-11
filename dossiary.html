@@ -163,6 +163,13 @@
   .status{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); padding:0 32px 10px; min-height:16px; }
   .status.err{ color:var(--red); } .status.ok{ color:var(--phosphor); } .status.busy{ color:var(--amber); }
 
+  #reports-view{ padding:0 32px 40px; }
+  .report-currency-group{ margin-bottom:32px; }
+  .report-currency-group h3{ font-family:var(--font-mono); font-size:13px; color:var(--phosphor); margin:0 0 8px; }
+  .report-caption{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin:0 0 10px; }
+  .report-table tfoot td{ font-weight:600; border-top:2px solid var(--line); padding:11px 14px; }
+  #reports-empty{ font-family:var(--font-mono); font-size:13px; color:var(--text-dim); padding:0 32px; }
+
   .inbox-banner{
     margin:0 32px 14px; padding:12px 16px; border:1px solid var(--amber-dim); border-radius:var(--radius);
     background:rgba(217,154,63,0.08); display:flex; align-items:center; justify-content:space-between;
@@ -357,6 +364,9 @@
         <label class="show-archived-toggle" id="show-archived-wrap">
           <input type="checkbox" id="show-archived-toggle" /> Show archived
         </label>
+        <span class="filter-wrap" id="report-breakdown-wrap" style="display:none;">
+          <select id="report-breakdown-field"></select>
+        </span>
         <div class="columns-menu-wrap">
           <button id="columns-btn">⚙ Columns</button>
           <div class="columns-menu" id="columns-menu" style="display:none;"></div>
@@ -1966,6 +1976,19 @@
       </select></span>`;
     }).join('');
     dynamicFiltersEl.querySelectorAll('select').forEach(sel => sel.addEventListener('change', render));
+
+    // Report breakdown dropdown -- Category/Type/People plus any custom field
+    // flagged show_as_column (same source dynamicColumnDefs() already uses for
+    // table columns/filters). Deliberately excludes date/import_date/amount/tags
+    // from FIELD_DEFS -- see reportBreakdownFields()'s own comment.
+    const breakdownSelect = el('report-breakdown-field');
+    if(breakdownSelect){
+      const previousValue = breakdownSelect.value;
+      const options = reportBreakdownFields();
+      breakdownSelect.innerHTML = options.map(f => `<option value="${f.id}">${escapeHtml(f.label)}</option>`).join('');
+      breakdownSelect.value = options.some(f => f.id === previousValue) ? previousValue : (options[0] ? options[0].id : '');
+      breakdownSelect.addEventListener('change', render);
+    }
   }
 
   // Category/Subcategory/Document Type/Currency/People/Tags stay fixed, hardcoded
@@ -2020,6 +2043,110 @@
     const amt = amount.toFixed(2);
     const currency = (d.customFields || {})['Currency'];
     return currency ? `${amt} ${escapeHtml(currency)}` : amt;
+  }
+
+  // Category/Type/People are always offered as breakdown dimensions; any other
+  // show_as_column field (including Payment method, already flagged show_as_column
+  // by migrateSentinelFieldsToGeneric()) comes from dynamicColumnDefs(), the same
+  // mechanism table columns/filters already use. Deliberately excludes date/
+  // import_date (near-unique per document, not a meaningful grouping key -- the
+  // Reports date-range filter handles time-scoping instead), amount (the value
+  // being summed, not something to group by), and tags (multi-valued like People,
+  // but out of scope for v1).
+  function reportBreakdownFields(){
+    const fixed = FIELD_DEFS.filter(f => ['category', 'document_type', 'people'].includes(f.id));
+    return [...fixed, ...dynamicColumnDefs()];
+  }
+
+  // Resolves a breakdown field id (from reportBreakdownFields()) to how to read its
+  // value(s) off a document. getValues() always returns an array -- a single-value
+  // field returns a one-element array (possibly [null]), a multi-valued field
+  // (People, or a custom person-type field) returns every name, or [null] if empty.
+  function reportBreakdownFieldInfo(fieldId){
+    if(fieldId === 'category') return { label: 'Category', multiValued: false, getValues: d => [d.category || null] };
+    if(fieldId === 'document_type') return { label: 'Type', multiValued: false, getValues: d => [d.document_type || null] };
+    if(fieldId === 'people') return { label: 'People', multiValued: true, getValues: d => (d.people && d.people.length) ? d.people : [null] };
+    if(fieldId.startsWith('field-')){
+      const id = Number(fieldId.slice('field-'.length));
+      const def = fieldDefs.find(f => f.id === id);
+      if(!def) return null;
+      if(def.type === 'person'){
+        return { label: def.name, multiValued: true, getValues: d => {
+          const names = (d.personFieldValues || {})[def.name];
+          return (names && names.length) ? names : [null];
+        }};
+      }
+      return { label: def.name, multiValued: false, getValues: d => [(d.customFields || {})[def.name] || null] };
+    }
+    return null;
+  }
+
+  // A document's Amount as a real number for summing, or null if it has none --
+  // mirrors formatAmount()'s own isNaN/=== 0 treatment of "no real amount" as
+  // excluded, not counted as 0, so a document without an Amount doesn't silently
+  // drag a group's total toward zero while still counting toward its Count.
+  function numericAmount(d){
+    const raw = (d.customFields || {})['Amount'];
+    const n = raw != null && raw !== '' ? parseFloat(raw) : NaN;
+    return (isNaN(n) || n === 0) ? null : n;
+  }
+
+  // Groups `docs` by Currency first (never summing across different currency
+  // labels), then by the chosen breakdown field's value(s) within each currency
+  // group. Each currency group's grandTotal/documentCount are computed
+  // independently over every document in that currency group -- NOT by summing
+  // the rows below -- so they stay correct even when the breakdown field is
+  // multi-valued and its own rows over-count (a document with two People contributes
+  // its Amount to both rows, but only once to the group's real total).
+  function computeReportGroups(docs, fieldId){
+    const info = reportBreakdownFieldInfo(fieldId);
+    if(!info) return [];
+    const byCurrency = {};
+    for(const d of docs){
+      const currency = (d.customFields || {})['Currency'] || null;
+      const key = currency || '__no_currency__';
+      (byCurrency[key] = byCurrency[key] || { currency, docs: [] }).docs.push(d);
+    }
+    return Object.keys(byCurrency).sort().map(key => {
+      const group = byCurrency[key];
+      const rows = {};
+      for(const d of group.docs){
+        const amount = numericAmount(d);
+        for(const rawValue of info.getValues(d)){
+          const label = (rawValue == null || rawValue === '') ? '(none)' : rawValue;
+          const row = (rows[label] = rows[label] || { label, count: 0, total: 0 });
+          row.count += 1;
+          if(amount != null) row.total += amount;
+        }
+      }
+      const rowList = Object.values(rows).sort((a, b) => (b.total - a.total) || a.label.localeCompare(b.label));
+      const grandTotal = group.docs.reduce((sum, d) => { const a = numericAmount(d); return sum + (a != null ? a : 0); }, 0);
+      return {
+        currency: group.currency, rows: rowList, grandTotal,
+        documentCount: group.docs.length, multiValued: info.multiValued, breakdownLabel: info.label,
+      };
+    });
+  }
+
+  // Builds the grouped totals HTML into #reports-view, replacing whatever it
+  // currently contains. Called from render()'s `currentView === 'reports'` branch.
+  function renderReportsView(docs){
+    const breakdownSelect = el('report-breakdown-field');
+    const fieldId = breakdownSelect ? breakdownSelect.value : 'category';
+    const groups = computeReportGroups(docs, fieldId);
+    reportsView.innerHTML = groups.length ? groups.map(g => `
+      <div class="report-currency-group">
+        <h3>${g.currency ? escapeHtml(g.currency) : 'No currency set'}</h3>
+        ${g.multiValued ? `<p class="report-caption">Documents with more than one ${escapeHtml(g.breakdownLabel)} are counted once per name, so this breakdown's row totals may not add up to the Grand total below.</p>` : ''}
+        <table class="report-table">
+          <thead><tr><th>${escapeHtml(g.breakdownLabel)}</th><th>Count</th><th>Total</th></tr></thead>
+          <tbody>
+            ${g.rows.map(r => `<tr><td>${escapeHtml(r.label)}</td><td>${r.count}</td><td>${r.total.toFixed(2)}</td></tr>`).join('')}
+          </tbody>
+          <tfoot><tr><td>Grand total</td><td>${g.documentCount}</td><td>${g.grandTotal.toFixed(2)}</td></tr></tfoot>
+        </table>
+      </div>
+    `).join('') : '<p id="reports-empty">No documents match the current filters.</p>';
   }
 
   // Formats a raw document_field_values string for display, based on the field's
@@ -2164,6 +2291,8 @@
     // toolbar's existing pattern of controls that appear/disappear by relevance
     // (dynamic-filters, inbox-banner) rather than sitting there inertly.
     if(showArchivedWrap) showArchivedWrap.style.display = currentView === 'all' ? 'flex' : 'none';
+    const reportBreakdownWrap = el('report-breakdown-wrap');
+    if(reportBreakdownWrap) reportBreakdownWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
   }
 
   // Switches which of the three top-level views is active and re-renders. Search
@@ -2186,7 +2315,7 @@
       tableWrap.style.display = 'none';
       countLine.style.display = 'none';
       reportsView.style.display = 'block';
-      reportsView.innerHTML = `<p id="reports-doc-count">${filtered.length} document${filtered.length === 1 ? '' : 's'} in scope</p>`;
+      renderReportsView(filtered);
       return;
     }
     reportsView.style.display = 'none';

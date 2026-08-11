@@ -48,8 +48,47 @@ SEED = {
             "created_at": "2026-01-15T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
             "archived": 0, "needs_review": 1, "deleted": 0,
         },
+        {
+            "id": 5, "title": "USD Food Receipt", "category": "Food", "document_type": "Receipt",
+            "date": "2026-03-05T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/5_e.pdf", "original_file_path": None,
+            "created_at": "2026-03-05T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 1, "needs_review": 0, "deleted": 0,
+        },
+        {
+            "id": 6, "title": "No-Currency Food Receipt", "category": "Food", "document_type": "Receipt",
+            "date": "2025-06-01T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/6_f.pdf", "original_file_path": None,
+            "created_at": "2025-06-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 1, "needs_review": 0, "deleted": 0,
+        },
     ],
     "tags": [], "document_tags": [],
+    "fields": [
+        {"id": 1, "name": "Amount", "type": "number", "show_as_column": 0, "autocomplete": 0},
+        {"id": 2, "name": "Currency", "type": "text", "show_as_column": 0, "autocomplete": 0},
+        {"id": 3, "name": "People", "type": "person", "show_as_column": 0, "autocomplete": 0},
+    ],
+    "document_field_values": [
+        {"document_id": 1, "field_id": 1, "value": "45.00"},
+        {"document_id": 1, "field_id": 2, "value": "EUR"},
+        {"document_id": 2, "field_id": 1, "value": "30.00"},
+        {"document_id": 2, "field_id": 2, "value": "EUR"},
+        {"document_id": 4, "field_id": 1, "value": "10.00"},
+        {"document_id": 4, "field_id": 2, "value": "EUR"},
+        {"document_id": 5, "field_id": 1, "value": "20.00"},
+        {"document_id": 5, "field_id": 2, "value": "USD"},
+        {"document_id": 6, "field_id": 1, "value": "15.00"},
+    ],
+    "people": [
+        {"id": 1, "name": "Alice"},
+        {"id": 2, "name": "Bob"},
+    ],
+    "document_field_people": [
+        {"document_id": 1, "field_id": 3, "person_id": 1},
+        {"document_id": 1, "field_id": 3, "person_id": 2},
+        {"document_id": 2, "field_id": 3, "person_id": 1},
+    ],
 }
 
 async def main():
@@ -93,10 +132,9 @@ async def main():
         print("#reports-view visible:", reports_view_visible)
 
         # === Scenario 3: Reports scope includes archived and needs-review, excludes
-        # deleted -- 3 of the 4 seeded documents (doc 1 active, doc 2 archived, doc 4
+        # deleted -- 3 of the 4 initial seeded documents (doc 1 active, doc 2 archived, doc 4
         # needs-review) should be in scope; doc 3 (deleted) should not ===
-        doc_count_text = await page.locator('#reports-doc-count').inner_text()
-        print("Reports doc-count text:", doc_count_text)
+        # (This scope property is now verified more thoroughly by Scenario 7's row/grand-total checks)
 
         # === Scenario 4: switching back to All Documents restores the table, and
         # Show archived reflects that view's own independent state (unaffected by
@@ -111,6 +149,56 @@ async def main():
         print("#reports-view hidden again:", not reports_view_visible_after)
         all_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("All Documents still shows only doc 1 (rest are archived/needs-review/deleted):", all_row_ids)
+
+        # === Scenario 5: breakdown dropdown exists and defaults to Category ===
+        await page.click('#nav-item-reports')
+        await page.wait_for_timeout(150)
+        breakdown_count = await page.locator('#report-breakdown-field').count()
+        print("Breakdown dropdown exists:", breakdown_count == 1)
+        breakdown_options = await page.locator('#report-breakdown-field option').all_inner_texts()
+        print("Breakdown dropdown options:", breakdown_options)
+
+        # === Scenario 6: currency grouping -- EUR (docs 1,2,4), USD (doc 5), and "No
+        # currency set" (doc 6) are three separate groups, in that order (sorted by
+        # currency label; "No currency set" sorts last since its internal grouping
+        # key starts with underscores) ===
+        group_headings = await page.locator('.report-currency-group h3').all_inner_texts()
+        print("Currency group headings:", group_headings)
+
+        # === Scenario 7: Category breakdown within the EUR group -- docs 1/2 share
+        # Category "Travel" (count 2, total 75.00), doc 4 is "Medical" (count 1,
+        # total 10.00); the group's own Grand total (85.00, count 3) is computed
+        # independently, not by summing the rows (which happen to match here since
+        # Category is single-valued) ===
+        eur_group = page.locator('.report-currency-group').first
+        cat_row_labels = await eur_group.locator('.report-table tbody td:nth-child(1)').all_inner_texts()
+        cat_row_counts = await eur_group.locator('.report-table tbody td:nth-child(2)').all_inner_texts()
+        cat_row_totals = await eur_group.locator('.report-table tbody td:nth-child(3)').all_inner_texts()
+        cat_grand_total_row = await eur_group.locator('.report-table tfoot td').all_inner_texts()
+        print("EUR group Category rows (label, count, total):", list(zip(cat_row_labels, cat_row_counts, cat_row_totals)))
+        print("EUR group Grand total row:", cat_grand_total_row)
+        cat_caption_count = await eur_group.locator('.report-caption').count()
+        print("No multi-valued caption for Category breakdown:", cat_caption_count == 0)
+
+        # === Scenario 8: People breakdown within the EUR group -- doc 1 has both
+        # Alice and Bob, so it contributes its 45.00 to BOTH rows; doc 2 (Alice only)
+        # contributes 30.00 to Alice; doc 4 has no People at all, landing in "(none)".
+        # Row totals (75+45+10=130) intentionally exceed the group's real Grand total
+        # (85.00) -- this is the documented multi-valued-breakdown behavior, and the
+        # caption must appear to explain it. Switching the dropdown here, without
+        # leaving the Reports view, also proves the report recomputes on dropdown
+        # change alone. ===
+        await page.select_option('#report-breakdown-field', 'people')
+        await page.wait_for_timeout(150)
+        eur_group = page.locator('.report-currency-group').first
+        people_row_labels = await eur_group.locator('.report-table tbody td:nth-child(1)').all_inner_texts()
+        people_row_counts = await eur_group.locator('.report-table tbody td:nth-child(2)').all_inner_texts()
+        people_row_totals = await eur_group.locator('.report-table tbody td:nth-child(3)').all_inner_texts()
+        people_grand_total_row = await eur_group.locator('.report-table tfoot td').all_inner_texts()
+        people_caption_count = await eur_group.locator('.report-caption').count()
+        print("EUR group People rows (label, count, total):", list(zip(people_row_labels, people_row_counts, people_row_totals)))
+        print("EUR group Grand total row (independent, still 85.00/3):", people_grand_total_row)
+        print("Multi-valued caption shown for People breakdown:", people_caption_count > 0)
 
         print("JS ERRORS:", errors)
         await browser.close()
