@@ -242,6 +242,9 @@
   .field-prominent{ padding:12px 14px; border:1px solid var(--phosphor-dim); border-radius:6px; background:rgba(79,224,166,0.04); margin-bottom:16px; }
   .field-prominent label{ color:var(--phosphor); font-weight:600; }
   .field-prominent input{ font-size:14px !important; }
+  .report-date-range{ display:flex; align-items:center; gap:6px; }
+  .report-date-range input[type=date]{ color-scheme:dark; background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:7px 9px; border-radius:var(--radius); }
+  .report-date-range span{ color:var(--text-dim); font-family:var(--font-mono); font-size:12px; }
   .checkbox-label{ display:flex !important; align-items:center; gap:8px; cursor:pointer; text-transform:none !important; letter-spacing:normal !important; font-family:var(--font-sans) !important; font-size:13px !important; color:var(--text) !important; }
   .field-with-clear{ position:relative; }
   .field-with-clear input{ padding-right:30px !important; }
@@ -366,6 +369,11 @@
         </label>
         <span class="filter-wrap" id="report-breakdown-wrap" style="display:none;">
           <select id="report-breakdown-field"></select>
+        </span>
+        <span class="report-date-range" id="report-date-range-wrap" style="display:none;">
+          <input type="date" id="report-date-from" title="From date" />
+          <span>–</span>
+          <input type="date" id="report-date-to" title="To date" />
         </span>
         <div class="columns-menu-wrap">
           <button id="columns-btn">⚙ Columns</button>
@@ -2026,6 +2034,11 @@
     if(isNaN(d.getTime())) return '—';
     return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'2-digit' });
   }
+  function currentReportDateRange(){
+    const from = el('report-date-from');
+    const to = el('report-date-to');
+    return { dateFrom: from ? from.value : '', dateTo: to ? to.value : '' };
+  }
   // Currency is appended after the number ("45.00 EUR", "45.00 $") rather than
   // guessing symbol-prefix vs. code-suffix placement per currency -- it's free
   // text, so there's no reliable way to know which convention a given value
@@ -2212,6 +2225,11 @@
     const { q, category, type, person, showArchived, dynamic } = currentFilters();
     return docs.filter(d => {
       if(!matchesView(d, currentView, showArchived)) return false;
+      if(currentView === 'reports'){
+        const { dateFrom, dateTo } = currentReportDateRange();
+        if(dateFrom && (!d.date || d.date < dateFrom)) return false;
+        if(dateTo && (!d.date || d.date > dateTo)) return false;
+      }
       if(category && d.category !== category) return false;
       if(type && d.document_type !== type) return false;
       if(person && !(d.people||[]).includes(person)) return false;
@@ -2293,6 +2311,8 @@
     if(showArchivedWrap) showArchivedWrap.style.display = currentView === 'all' ? 'flex' : 'none';
     const reportBreakdownWrap = el('report-breakdown-wrap');
     if(reportBreakdownWrap) reportBreakdownWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
+    const reportDateRangeWrap = el('report-date-range-wrap');
+    if(reportDateRangeWrap) reportDateRangeWrap.style.display = currentView === 'reports' ? 'flex' : 'none';
   }
 
   // Switches which of the three top-level views is active and re-renders. Search
@@ -2355,6 +2375,8 @@
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
   showArchivedToggle.addEventListener('change', render);
+  el('report-date-from').addEventListener('change', render);
+  el('report-date-to').addEventListener('change', render);
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();

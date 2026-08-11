@@ -62,6 +62,13 @@ SEED = {
             "created_at": "2025-06-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
             "archived": 1, "needs_review": 0, "deleted": 0,
         },
+        {
+            "id": 7, "title": "No-Date Travel Receipt", "category": "Travel", "document_type": "Receipt",
+            "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/7_g.pdf", "original_file_path": None,
+            "created_at": "2026-01-20T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 1, "needs_review": 0, "deleted": 0,
+        },
     ],
     "tags": [], "document_tags": [],
     "fields": [
@@ -79,6 +86,8 @@ SEED = {
         {"document_id": 5, "field_id": 1, "value": "20.00"},
         {"document_id": 5, "field_id": 2, "value": "USD"},
         {"document_id": 6, "field_id": 1, "value": "15.00"},
+        {"document_id": 7, "field_id": 1, "value": "5.00"},
+        {"document_id": 7, "field_id": 2, "value": "EUR"},
     ],
     "people": [
         {"id": 1, "name": "Alice"},
@@ -199,6 +208,29 @@ async def main():
         print("EUR group People rows (label, count, total):", list(zip(people_row_labels, people_row_counts, people_row_totals)))
         print("EUR group Grand total row (independent, still 85.00/3):", people_grand_total_row)
         print("Multi-valued caption shown for People breakdown:", people_caption_count > 0)
+
+        # === Scenario 9: date-range filter narrows Reports totals -- with the
+        # dropdown reset to Category (Scenario 8 left it on People), filtering to
+        # 2026 excludes doc 6 (dated 2025) and doc 7 (no date at all), leaving only
+        # the EUR and USD currency groups; clearing the range restores all three ===
+        await page.select_option('#report-breakdown-field', 'category')
+        await page.wait_for_timeout(150)
+
+        date_from_count = await page.locator('#report-date-from').count()
+        date_to_count = await page.locator('#report-date-to').count()
+        print("Date range inputs exist:", date_from_count == 1 and date_to_count == 1)
+
+        await page.fill('#report-date-from', '2026-01-01')
+        await page.fill('#report-date-to', '2026-12-31')
+        await page.wait_for_timeout(150)
+        group_headings_filtered = await page.locator('.report-currency-group h3').all_inner_texts()
+        print("Currency groups with 2026 date range (doc 6's 2025 date and doc 7's blank date both excluded):", group_headings_filtered)
+
+        await page.fill('#report-date-from', '')
+        await page.fill('#report-date-to', '')
+        await page.wait_for_timeout(150)
+        group_headings_unfiltered = await page.locator('.report-currency-group h3').all_inner_texts()
+        print("Currency groups with no date range (doc 6 and doc 7 included again):", group_headings_unfiltered)
 
         print("JS ERRORS:", errors)
         await browser.close()
