@@ -147,6 +147,9 @@ async def main():
         count_line_text_smart = await page.locator('#count-line').text_content()
         print("countLine for smart collection has valid denominator (not 'undefined'):", 'undefined' not in (count_line_text_smart or ''))
 
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+
         # === Scenario 8: verify nav layout doesn't break sticky header height calibration (tabs mode) ===
         # Re-expand collections section if it's still collapsed
         collections_section_class = await page.locator('#nav-collections-section').get_attribute('class')
