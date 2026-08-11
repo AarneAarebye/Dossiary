@@ -2710,6 +2710,7 @@
     if(!d) return;
 
     const actions = [];
+    const manualCollections = collections.filter(c => c.kind === 'manual');
     if(d.file_path) actions.push(`<button class="primary" id="open-file-btn">Open file</button>`);
     if(d.original_file_path) actions.push(`<button id="open-original-btn">Open original file</button>`);
     // A deleted document only offers Restore -- editing, archiving, and flagging a
@@ -2722,6 +2723,11 @@
       actions.push(`<button id="regen-thumb-btn">${d.thumbnail_path ? 'Regenerate' : 'Generate'} preview</button>`);
       actions.push(`<button id="archive-toggle-btn">${d.archived ? 'Unarchive' : 'Archive'}</button>`);
       actions.push(`<button id="review-toggle-btn">${d.needs_review ? 'Done' : 'Flag for review'}</button>`);
+      if(manualCollections.length) actions.push(`<button id="add-to-collection-btn">Add to collection…</button>`);
+      if(currentView.startsWith('collection-')){
+        const viewedCollection = collections.find(c => c.id === Number(currentView.slice('collection-'.length)));
+        if(viewedCollection && viewedCollection.kind === 'manual') actions.push(`<button id="remove-from-collection-btn">Remove from this collection</button>`);
+      }
       actions.push(`<button class="danger" id="delete-toggle-btn">Delete</button>`);
     } else {
       actions.push(`<button class="primary" id="delete-toggle-btn">Restore</button>`);
@@ -2842,6 +2848,38 @@
         await toggleNeedsReview(id);
         openDetail(id); // refresh the modal so the button now reads Flag for review/Done correctly
       });
+      if(el('add-to-collection-btn')){
+        el('add-to-collection-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          const menu = document.createElement('div');
+          menu.className = 'bulk-collection-menu';
+          menu.style.cssText = 'position:absolute; z-index:50;';
+          const rect = e.target.getBoundingClientRect();
+          menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+          menu.style.left = rect.left + 'px';
+          menu.innerHTML = manualCollections.map(c => `<button type="button" class="modal-collection-option" data-collection-id="${c.id}">${escapeHtml(c.name)}</button>`).join('');
+          document.body.appendChild(menu);
+          menu.querySelectorAll('.modal-collection-option').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              await addDocumentsToCollection(Number(btn.dataset.collectionId), [id]);
+              menu.remove();
+              openDetail(id); // refresh so a newly-relevant Remove action, if any, appears
+            });
+          });
+          const removeMenu = (evt) => { if(!menu.contains(evt.target)){ menu.remove(); document.removeEventListener('click', removeMenu); } };
+          setTimeout(() => document.addEventListener('click', removeMenu), 0);
+        });
+      }
+      if(el('remove-from-collection-btn')){
+        el('remove-from-collection-btn').addEventListener('click', async () => {
+          const collectionId = Number(currentView.slice('collection-'.length));
+          db.run('DELETE FROM collection_documents WHERE collection_id = ? AND document_id = ?', [collectionId, id]);
+          await persistDb();
+          loadCollections();
+          closeModal();
+          render();
+        });
+      }
     }
     el('delete-toggle-btn').addEventListener('click', async () => {
       await toggleDeleted(id);

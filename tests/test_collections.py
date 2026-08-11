@@ -317,6 +317,48 @@ async def main():
         bulk_bar_hidden_after_uncheck = await page.locator('#bulk-action-bar').is_visible()
         print("Bulk bar hidden after unchecking select-all:", not bulk_bar_hidden_after_uncheck)
 
+        # === Scenario 14: detail modal "Add to collection..." action, single document ===
+        await page.click('tr[data-id="2"]')
+        await page.wait_for_timeout(200)
+        add_to_collection_btn_count = await page.locator('#add-to-collection-btn').count()
+        print("Detail modal has an Add-to-collection action:", add_to_collection_btn_count == 1)
+        await page.click('#add-to-collection-btn')
+        await page.wait_for_timeout(150)
+        await page.click('.modal-collection-option[data-collection-id="1"]')
+        await page.wait_for_timeout(200)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        manual_after_modal_add = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Manual collection includes doc 2 after adding from its detail view:", sorted(manual_after_modal_add))
+
+        # === Scenario 15: detail modal "Remove from this collection" appears only
+        # when viewing a document from inside a manual collection's own view, and
+        # correctly removes it ===
+        await page.click('tr[data-id="2"]')
+        await page.wait_for_timeout(200)
+        remove_btn_count = await page.locator('#remove-from-collection-btn').count()
+        print("Remove-from-collection action shown when viewing from inside the collection:", remove_btn_count == 1)
+        await page.click('#remove-from-collection-btn')
+        await page.wait_for_timeout(200)
+
+        manual_after_remove = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Doc 2 removed from the manual collection:", sorted(manual_after_remove))
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+
+        # Opening a document from All Documents (not from inside a collection) never
+        # shows the remove action, even if that document happens to belong to a
+        # manual collection (doc 3 has been a member since the SEED).
+        await page.click('tr[data-id="3"]')
+        await page.wait_for_timeout(200)
+        remove_btn_from_all = await page.locator('#remove-from-collection-btn').count()
+        print("Remove-from-collection hidden when viewing from All Documents:", remove_btn_from_all == 0)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
