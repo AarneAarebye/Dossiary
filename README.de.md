@@ -100,14 +100,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   markieren hebt die Archivierung nicht auf, und umgekehrt — ein
   archiviertes Dokument bleibt nur über „Show archived“ in der
   Haupttabelle erreichbar, wie jedes andere archivierte Dokument auch.
-- **Papierkorb** — „Delete” bei einem Dokument zerstört nichts wirklich; es
-  verschiebt das Dokument nur in den „🗑 Waste bin” (aus der Symbolleiste),
-  wo es bleibt, bis Sie auf „Restore” klicken — es gibt nirgendwo eine
+- **Papierkorb** — „Delete“ bei einem Dokument zerstört nichts wirklich; es
+  verschiebt das Dokument nur in den „🗑 Waste bin“ (aus der Symbolleiste),
+  wo es bleibt, bis Sie auf „Restore“ klicken — es gibt nirgendwo eine
   Funktion zum Leeren des Papierkorbs, sodass nichts, was Sie löschen, je
   wirklich verschwindet. Ein gelöschtes Dokument ist überall sonst
-  ausgeblendet, auch in der Haupttabelle mit aktiviertem „Show archived”
+  ausgeblendet, auch in der Haupttabelle mit aktiviertem „Show archived“
   und in der Prüfliste, und seine Detailansicht bietet bis dahin nur
-  „Restore” an. Dateien auf der Festplatte, Vorschaubilder und die
+  „Restore“ an. Dateien auf der Festplatte, Vorschaubilder und die
   `.txt`-Begleitdatei werden in beide Richtungen nie angefasst.
 - **Reports** — eine 4. Nav-Ansicht, die Ihre Dokumente nach Category, Type,
   People oder benutzerdefinierten Feldern summiert, gruppiert nach Währung,
