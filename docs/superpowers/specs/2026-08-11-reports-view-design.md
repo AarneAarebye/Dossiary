@@ -5,21 +5,17 @@ Status: approved, ready for implementation plan
 
 ## Context
 
-Prompted by reading Mariner Paperless's own User Guide (the app Dossiary
-migrates from) end-to-end and comparing it against Dossiary's current
-feature set. Paperless's Reports feature (Expense/Table/Chart views over a
-collection, printable) directly serves two use cases the manual calls out
-repeatedly: tax preparation ("the IRS will accept electronic copies... it
-makes gathering information for taxes a snap") and flexible-spending
-reimbursement (categorize receipts, then total by category for a date
-range). Dossiary already tracks everything a report needs — Amount,
-Currency, Category, Document Type, Payment method, People, custom fields —
-but has no way to total or summarize any of it; the table only ever shows
-individual rows.
+A reports/totals view serves two common use cases this app has no way to
+support today: tax preparation (gathering and totaling receipts for a
+filing period) and flexible-spending reimbursement (categorize receipts,
+then total by category for a date range). Dossiary already tracks
+everything a report needs — Amount, Currency, Category, Document Type,
+Payment method, People, custom fields — but has no way to total or
+summarize any of it; the table only ever shows individual rows.
 
-This is sub-project 1 of two independent candidates identified during that
-comparison (the other, Collections/Smart Collections, is a separate,
-not-yet-brainstormed spec). Reports was chosen to go first because it
+This is sub-project 1 of two independent candidates identified during
+feature-gap analysis (the other, Collections/Smart Collections, is a
+separate, not-yet-brainstormed spec). Reports was chosen to go first because it
 requires no schema changes and no new dependency, reusing data plumbing
 (`allDocs`, `dynamicColumnDefs()`, `matchesView()`, `applyFilters()`) that
 already exists.
