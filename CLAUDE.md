@@ -963,7 +963,7 @@ version number — only by the schema itself matching).
   `openManageCollectionsModal()`, `createManualCollection()`,
   `addDocumentsToCollection()`) are user-created document groupings, manually
   curated or automatically matching your current search/filter state as a
-  live view. The schema stores only two tables: `collections` (name, type,
+  live view. The schema stores only two tables: `collections` (name, `kind`,
   criteria JSON for smart collections) and `collection_documents` (the
   manual join for non-smart collections). Smart collections store no rows in
   `collection_documents` — instead, `matchesCriteria()` re-evaluates their
@@ -978,19 +978,37 @@ version number — only by the schema itself matching).
   picks which one; "Remove from Collection" appears only when viewing from
   inside a specific manual collection). Removing a document from a collection
   and deleting a collection are both inline `DELETE FROM` statements in their
-  respective click handlers, not named functions. The Collections nav section
+  respective click handlers, not named functions; deleting the collection
+  currently being viewed (via its own nav item) falls back `currentView` to
+  `'all'` first, so the person isn't left in a now-nonexistent view with
+  nothing highlighted. The Collections nav section
   expands and collapses via a toggle button (`#nav-collections-toggle` →
   `saveCollectionsNavExpanded()`), defaulting to **expanded**
   (`collectionsNavExpanded = true` unconditionally at startup and in `resetAll()`)
   and staying expanded until the user explicitly collapses it, with that choice
   then persisted via the `collections_nav_expanded` setting; the list itself
-  (`#nav-collections-list`) is rebuilt whenever a collection is created, deleted,
-  or renamed, not persistently wired. Smart collections
-  are created only via the toolbar's "Save as Smart Collection" button
+  (`#nav-collections-list`) is rebuilt on **every `render()` call** (it lives
+  inside `renderNav()`, called from `render()`'s "always call this first" slot —
+  see the Top-level navigation note above), not just when a collection is
+  created, deleted, or renamed — the same delete-then-reinsert-from-scratch
+  pattern this app already uses for other `render()`-driven containers
+  (`dynamicColumnDefs()`'s `<th>`s, `populateFilters()`'s dynamic filters).
+  Smart collections
+  are created only via the "☆ Save as Smart Collection" button
   (visible only in the All Documents view) — the Manage Collections modal's
-  "+ New collection" creates manual collections only, never smart ones, since
-  a manual collection's starting roster is deliberately chosen by the person
-  from the current table state, not captured from filter state. Multi-select
+  "+ New collection" creates manual collections only, never smart ones: a
+  Smart Collection is only ever created by capturing a real, live filter
+  snapshot at the moment "Save as Smart Collection" is clicked (its criteria
+  coming straight from `currentFilters()`), and the Manage Collections modal
+  has no filter state of its own to capture — a smart collection created
+  there would have no criteria, which has no meaning for a collection whose
+  entire membership is defined by its criteria. **"Save as Smart Collection"
+  lives in the Collections nav section itself, not `.toolbar`** — moved there
+  to fix a real toolbar-wrap regression (two new buttons pushed `.toolbar`
+  from 2 rows to 3, landing `#reload-btn` directly under the open Columns
+  dropdown); "⚙ Manage collections" stayed in the toolbar, since removing
+  just the one button was already enough to restore the original 2-row
+  layout. Multi-select
   checkboxes (`#select-all-checkbox`, per-row checkboxes with class
   `row-select-checkbox` and `data-id="${d.id}"`) reset whenever you switch views
   (`setView()` clears `selectedDocIds` and re-renders the table) or close the
@@ -1001,6 +1019,24 @@ version number — only by the schema itself matching).
   `addDocumentsToCollection()` and `createManualCollection()` functions that
   the detail-modal single-document action buttons use — no special
   code-path difference between a bulk add and a single add.
+  **A collection view (`matchesView()`'s `'collection-<id>'` branch, both
+  manual and smart) deliberately includes archived and needs-review
+  documents** — the same choice, and the same reasoning, as the Reports view
+  above: a collection is a saved/curated view (a manually-built roster, or a
+  saved filter snapshot), conceptually closer to a report than to the
+  day-to-day `'all'` browse view, so a document someone explicitly added to
+  a collection — or that matches a Smart Collection's saved criteria —
+  shouldn't silently vanish from that collection just because it got
+  archived or flagged for review elsewhere. Only `deleted` (Waste bin) is
+  excluded, via the same shared check every other view uses.
+  **The bulk-action bar's height is part of `.table-wrap`'s sticky-header
+  calibration too** — see that note near the top of this file. Selecting any
+  row shows `#bulk-action-bar` (~74px of real page height above
+  `.table-wrap`), so `renderBulkActionBar()` toggles a `.bulk-bar-visible`
+  class on `#main-layout` and the CSS has dedicated `max-height` rules for
+  all four combinations of nav style × bulk-bar visibility — don't assume
+  the two nav-style constants alone are enough; selecting documents (this
+  feature's own core workflow) is exactly the case that needs the other two.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
@@ -1476,15 +1512,30 @@ toolbar), Collections (`test_collections.py` — manual and smart collection
 view routing and live re-evaluation of Smart Collection criteria whenever
 filters change; toolbar filters composing correctly on top of a
 collection's own scope; "Save as Smart Collection" visibility (scoped to
-All Documents only, disabled for other views), pre-filling the modal with
-the current filter state; multi-select + bulk add (including that checking
+All Documents only, **hidden** — not disabled — everywhere else, checked
+across the Inbox/Waste bin/Reports views too, not just one example
+collection view); multi-select + bulk add (including that checking
 a checkbox doesn't also open the detail modal, and that selected checkboxes
 clear on view switch), the detail modal's Add-to-Collection and
 Remove-from-Collection action buttons (Remove appearing only when viewing
 from inside that specific manual collection), the Manage Collections
-modal's rename/delete/create-empty-manual-collection flows, and the
-Collections nav section's expand/collapse toggle), and search across all of
-the above. This
+modal's rename/delete/create-empty-manual-collection flows (including that
+an empty rename resets the input back to the real name instead of leaving
+it blank), the Collections nav section's expand/collapse toggle, an
+archived document that's a collection member still showing up in that
+collection's view (manual and smart collections deliberately include
+archived/needs-review documents — see this note's own Collections entry
+above), deleting the collection currently being viewed falling back to All
+Documents rather than leaving a phantom view, and a dedicated
+large-document-seed (60+) check of `.table-wrap`'s sticky-header height
+calibration across all four combinations of nav style × bulk-action-bar
+visibility, replacing an earlier version of this same check that used only
+3-4 seeded documents — too few to ever make the `max-height` constraint
+actually binding, so it could report success regardless of whether the CSS
+constants were actually correct; the current version explicitly asserts
+`scrollHeight > clientHeight` first, to prove the constraint is binding
+before trusting the bottom-edge measurement that follows it), and search
+across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
