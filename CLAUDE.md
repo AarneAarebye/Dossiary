@@ -1221,15 +1221,17 @@ version number — only by the schema itself matching).
   fresh `checkInbox()` scan) or the banner's own `#inbox-add-all-btn`
   ("Add all") both call the same `addAllInboxFilesAndShowStatus()`, which
   adds every currently-staged file via `addAllInboxFiles()`/`addInboxFile()`,
-  jumps to the 🚩 Inbox nav view so the newly needs-review-flagged
-  documents are immediately visible (subject to any active search/filter text
-  that might hide them, same as any other view — see the Top-level navigation
-  note for how filters compose), and reports what happened on the status line
+  and reports what happened on the status line
   (`"Added N document(s) to the review queue from <folder>/inbox/."`, with
-  an error indicator and partial-failure message if any files failed to add);
-  a `checkInbox()` scan that finds nothing staged reports `"No files waiting
-  in <folder>/inbox/."` on the status line instead, without navigating
-  anywhere — there's nothing new to look at.
+  an error indicator and partial-failure message if any files failed to add).
+  If at least one file was actually added, it also jumps to the 🚩 Inbox nav
+  view so the newly needs-review-flagged documents are immediately visible
+  (subject to any active search/filter text that might hide them, same as
+  any other view — see the Top-level navigation note for how filters
+  compose); a `checkInbox()` scan that finds nothing staged, or where every
+  staged file fails to add, reports the appropriate status message instead
+  without navigating anywhere — there's nothing new to look at in either
+  case.
   This intentionally removed what used to be a review modal
   (`openInboxModal()`, listing each staged file with its own "Add" button
   plus an "Add all with defaults" button) — that extra confirmation step
