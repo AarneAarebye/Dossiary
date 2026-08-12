@@ -980,9 +980,12 @@ version number — only by the schema itself matching).
   and deleting a collection are both inline `DELETE FROM` statements in their
   respective click handlers, not named functions. The Collections nav section
   expands and collapses via a toggle button (`#nav-collections-toggle` →
-  `saveCollectionsNavExpanded()`), collapsing by default if no collection exists
-  yet; the list itself (`#nav-collections-list`) is rebuilt whenever a collection
-  is created, deleted, or renamed, not persistently wired. Smart collections
+  `saveCollectionsNavExpanded()`), defaulting to **expanded**
+  (`collectionsNavExpanded = true` unconditionally at startup and in `resetAll()`)
+  and staying expanded until the user explicitly collapses it, with that choice
+  then persisted via the `collections_nav_expanded` setting; the list itself
+  (`#nav-collections-list`) is rebuilt whenever a collection is created, deleted,
+  or renamed, not persistently wired. Smart collections
   are created only via the toolbar's "Save as Smart Collection" button
   (visible only in the All Documents view) — the Manage Collections modal's
   "+ New collection" creates manual collections only, never smart ones, since
