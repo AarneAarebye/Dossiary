@@ -108,6 +108,31 @@
   }
   #main-layout.nav-style-sidebar .nav-collections-list .nav-item{ padding-left:40px; }
 
+  /* "Save as Smart Collection" lives here (not .toolbar) -- see the HTML comment
+     next to #save-smart-collection-btn for why. Tabs mode: header-row is a plain
+     flex row (no absolute positioning needed for the button itself, only its
+     name-entry form below); sidebar mode wraps it onto its own line so it doesn't
+     compete with "Collections ▾" for the sidebar's narrow 220px width. */
+  .nav-collections-header-row{ display:flex; align-items:center; }
+  .nav-collections-header-row .nav-collections-header{ flex:1; min-width:0; }
+  .nav-save-smart-btn{
+    margin-right:12px; padding:4px 9px; font-size:10.5px; white-space:nowrap;
+    border:1px solid var(--line); border-radius:var(--radius); background:transparent; color:var(--text-dim);
+  }
+  .nav-save-smart-btn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  #main-layout.nav-style-sidebar .nav-collections-header-row{ flex-wrap:wrap; row-gap:6px; }
+  #main-layout.nav-style-sidebar .nav-save-smart-btn{ margin:0 0 0 20px; }
+  /* Tabs mode: the inline name-entry form floats like the collections list itself
+     (same anchor -- .nav-collections-section is position:relative). Sidebar mode:
+     normal in-flow, indented to match the rest of this section's sidebar content. */
+  .nav-smart-collection-form{
+    position:absolute; top:calc(100% + 4px); right:0; background:var(--ink-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:8px; z-index:31; margin:0;
+  }
+  #main-layout.nav-style-sidebar .nav-smart-collection-form{
+    position:static; background:transparent; border:none; padding:0; margin:4px 0 8px 20px;
+  }
+
   .toolbar{ padding:16px 32px; display:flex; gap:12px; align-items:center; border-bottom:1px solid var(--line); flex-wrap:wrap; }
   .search-wrap{ flex:1 1 240px; }
   .search{ width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:9px 12px; color:var(--text); font-family:var(--font-mono); font-size:13px; outline:none; }
@@ -160,20 +185,39 @@
   .empty p{ color:var(--text-dim); font-size:13.5px; line-height:1.6; margin:0 0 20px; }
   .empty .hint{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:18px; line-height:1.7; text-align:left; }
 
-  /* 295px (tabs, default) vs 256px (sidebar) -- see CLAUDE.md's sticky-header
+  /* 302px (tabs, idle) vs 262px (sidebar, idle) -- see CLAUDE.md's sticky-header
      calibration note for why this number matters and how it was derived. The
      .app-nav tab strip sits ABOVE .table-wrap in the tabs layout, adding real
      height to the stack; in the sidebar layout .app-nav sits BESIDE .table-wrap
      (#main-layout.nav-style-sidebar is flex-direction:row), contributing no
-     extra vertical height of its own -- but both numbers were verified fresh
-     empirically (getBoundingClientRect() on #table-wrap, confirming its
-     rendered bottom edge lands exactly at the viewport bottom), not assumed:
-     the pre-existing "230px" the sidebar case was expected to inherit
+     extra vertical height of its own -- but all four numbers here were verified
+     fresh empirically (getBoundingClientRect() on #table-wrap against a 60+
+     document seed large enough to actually make max-height binding -- a small
+     seed never overflows it and any check against one is non-diagnostic, see
+     the Collections note below), confirming the rendered bottom edge lands at
+     the viewport bottom, not assumed.
+     Two additional rules below (.bulk-bar-visible) exist because the Collections
+     feature's bulk-action bar (#bulk-action-bar, shown whenever a row is
+     selected) adds ~74px of real page height above .table-wrap that the two
+     idle constants don't account for -- without them, selecting documents (the
+     feature's own core workflow: select -> bulk-add to a collection) pushed
+     .table-wrap's bottom edge past the viewport bottom, which is exactly the
+     failure mode this whole calibration exists to avoid (see the note directly
+     above this one): once .table-wrap's bottom goes past the viewport, the
+     *page* scrolls to reach it, and once the page scrolls, .table-wrap and its
+     sticky header scroll away together instead of the intended inner scroll.
+     `renderBulkActionBar()` toggles the `.bulk-bar-visible` class on
+     #main-layout precisely so these rules can key off it. If you change the
+     bulk bar's own height, or the header/toolbar/nav layout again, recalibrate
+     all four constants the same way -- don't assume only the two you touched
+     drifted; the pre-existing "230px" the sidebar case was expected to inherit
      unchanged had itself already drifted stale (real value 256px) from
-     unrelated header/toolbar changes made elsewhere this session, discovered
-     only because this feature's own empirical check happened to re-measure it. */
-  .table-wrap{ padding:0 32px 40px; overflow:auto; max-height:calc(100vh - 295px); }
-  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 256px); }
+     unrelated header/toolbar changes made elsewhere, discovered only because
+     that feature's own empirical check happened to re-measure it. */
+  .table-wrap{ padding:0 32px 40px; overflow:auto; max-height:calc(100vh - 302px); }
+  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 262px); }
+  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 376px); }
+  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 336px); }
   table{ width:100%; border-collapse:collapse; margin-top:18px; min-width:800px; }
   thead th{ text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); font-weight:500; padding:8px 14px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; white-space:nowrap; position:sticky; top:0; background:var(--ink); z-index:10; }
   thead th:hover{ color:var(--phosphor); }
@@ -226,8 +270,12 @@
     position:absolute; top:calc(100% + 6px); left:0; background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); padding:6px; z-index:40; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
   }
-  .bulk-collection-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
-  .bulk-collection-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
+  /* .modal-collection-option is the detail-modal's own single-document collection
+     picker (see openDetail()'s add-to-collection-btn handler) -- identically
+     purposed to .bulk-collection-option above, so it shares the exact same list-row
+     styling rather than falling through to the plain global button{} rule. */
+  .bulk-collection-option, .modal-collection-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
+  .bulk-collection-option:hover, .modal-collection-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
   .select-col{ width:32px; text-align:center; padding:11px 8px !important; }
   /* .review-queue-row/.review-queue-actions below are NOT scoped to the
      (now-removed) always-visible review-queue banner -- they're generic list-row
@@ -418,11 +466,27 @@
         <span class="nav-item-label">Reports</span>
       </button>
       <div class="nav-collections-section" id="nav-collections-section">
-        <button type="button" class="nav-collections-header" id="nav-collections-toggle">
-          <span class="nav-item-icon">📚</span>
-          <span class="nav-item-label">Collections</span>
-          <span class="nav-collections-chevron" id="nav-collections-chevron">▾</span>
-        </button>
+        <div class="nav-collections-header-row">
+          <button type="button" class="nav-collections-header" id="nav-collections-toggle">
+            <span class="nav-item-icon">📚</span>
+            <span class="nav-item-label">Collections</span>
+            <span class="nav-collections-chevron" id="nav-collections-chevron">▾</span>
+          </button>
+          <!-- Lives here, not in .toolbar, specifically to fix a toolbar-wrap
+               regression (see C1 in the final-review fix report): with both this
+               button and "Manage collections" in the toolbar, .toolbar wrapped to
+               a 3rd row, landing #reload-btn directly under the open Columns
+               dropdown. Moving just this one button out (measured sufficient on
+               its own -- see the fix report) restores the toolbar to its original
+               2-row layout. Conceptually collections-related either way, so this
+               nav section is a natural home for it. -->
+          <button type="button" id="save-smart-collection-btn" class="nav-save-smart-btn" style="display:none;">☆ Save as Smart Collection</button>
+        </div>
+        <span class="add-field-form nav-smart-collection-form" id="smart-collection-name-form" style="display:none;">
+          <input type="text" id="smart-collection-name-input" placeholder="Collection name" />
+          <button type="button" id="smart-collection-name-save-btn">Save</button>
+          <button type="button" id="smart-collection-name-cancel-btn">Cancel</button>
+        </span>
         <div class="nav-collections-list" id="nav-collections-list"></div>
       </div>
       <button type="button" class="nav-style-toggle" id="nav-style-toggle" title="Switch to top-tab navigation" aria-label="Switch navigation layout">⇄</button>
@@ -448,12 +512,6 @@
           <input type="date" id="report-date-from" title="From date" />
           <span>–</span>
           <input type="date" id="report-date-to" title="To date" />
-        </span>
-        <button type="button" id="save-smart-collection-btn" style="display:none;">☆ Save as Smart Collection</button>
-        <span class="add-field-form" id="smart-collection-name-form" style="display:none;">
-          <input type="text" id="smart-collection-name-input" placeholder="Collection name" />
-          <button type="button" id="smart-collection-name-save-btn">Save</button>
-          <button type="button" id="smart-collection-name-cancel-btn">Cancel</button>
         </span>
         <div class="columns-menu-wrap">
           <button id="columns-btn">⚙ Columns</button>
@@ -696,6 +754,13 @@
                                 // into each INSERT (this app assigns ids in JS, never via AUTOINCREMENT)
   let collectionsNavExpanded = true;
   let selectedDocIds = new Set();
+  // The detail modal's own single-document "Add to collection..." picker (built
+  // in openDetail() below) is appended to document.body, outside modalRoot, so it
+  // isn't cleared by closeModal()'s own `modalRoot.innerHTML = ''`. It already
+  // removes itself on an outside click; this reference lets closeModal() also
+  // remove it when the modal closes some other way (Escape, the backdrop, Close),
+  // so it can't outlive the modal it was opened from.
+  let openDocCollectionMenu = null;
 
   let sortKey = 'date';
   let sortDir = 'desc';
@@ -2398,6 +2463,14 @@
     // exact same matchesCriteria() the live toolbar filters use in applyFilters().
     // Same as every other view, deleted documents are already excluded by the
     // shared `if(d.deleted) return false;` check above this point.
+    // Deliberately no archived/needs_review check here, same choice Reports makes
+    // above and for the same reason: a collection is a saved/curated view (a
+    // manually-built roster, or a saved filter snapshot), conceptually closer to a
+    // report than to the day-to-day 'all' browse view -- a document someone
+    // explicitly added to a collection, or that matches a Smart Collection's saved
+    // criteria, shouldn't silently vanish from that collection just because it got
+    // archived or flagged for review elsewhere. Only `deleted` is excluded, via the
+    // shared check above.
     if(view.startsWith('collection-')){
       const id = Number(view.slice('collection-'.length));
       const collection = collections.find(c => c.id === id);
@@ -2550,6 +2623,13 @@
       countLine.style.display = 'none';
       reportsView.style.display = 'block';
       renderReportsView(filtered);
+      // Reports has no row-selection UI at all -- without this, a stale bulk-action
+      // bar (and its "N selected" text) from whatever view was active before could
+      // stay visible here, with a live "Add to collection" that would silently no-op
+      // against the DOM table Reports doesn't even render. setView() already clears
+      // selectedDocIds on every view switch, so this just makes the bar's own DOM
+      // catch up to that (already-empty) selection state, same as every other view.
+      renderBulkActionBar();
       return;
     }
     // Sorting is only meaningful for the real doc-table views below -- Reports
@@ -2615,10 +2695,20 @@
     renderBulkActionBar();
   }
 
+  // The bulk-action bar adds real page height (~74px) whenever it's shown, which
+  // .table-wrap's sticky-header max-height calibration (see CLAUDE.md's own note,
+  // and the four max-height constants above) needs to account for -- otherwise
+  // .table-wrap's bottom can land past the viewport bottom, which breaks the
+  // sticky header the same way an uncalibrated nav layout does (see that note for
+  // the full mechanism). Toggling this class, rather than baking a third constant
+  // into the max-height rules directly, keeps the two concerns (nav style, bulk
+  // bar) independently toggleable via ordinary CSS class composition.
   function renderBulkActionBar(){
     const bar = el('bulk-action-bar');
     if(!bar) return;
-    if(selectedDocIds.size === 0){ bar.style.display = 'none'; return; }
+    const visible = selectedDocIds.size > 0;
+    mainLayout.classList.toggle('bulk-bar-visible', visible);
+    if(!visible){ bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
     el('bulk-action-count').textContent = `${selectedDocIds.size} selected`;
   }
@@ -2656,7 +2746,14 @@
 
   // --- detail modal (view existing document) ---
 
-  function closeModal(){ modalRoot.innerHTML = ''; document.removeEventListener('keydown', onModalKeydown); }
+  function closeModal(){
+    modalRoot.innerHTML = '';
+    document.removeEventListener('keydown', onModalKeydown);
+    // See openDocCollectionMenu's own declaration -- it lives outside modalRoot,
+    // so it needs its own explicit cleanup here (Escape/backdrop/Close), not just
+    // its existing outside-click handler.
+    if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
+  }
   function onModalKeydown(e){ if(e.key === 'Escape') closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
@@ -2861,17 +2958,25 @@
           menu.style.cssText = 'position:absolute; z-index:50;';
           const rect = e.target.getBoundingClientRect();
           menu.style.top = (rect.bottom + window.scrollY + 6) + 'px';
-          menu.style.left = rect.left + 'px';
+          menu.style.left = (rect.left + window.scrollX) + 'px';
           menu.innerHTML = manualCollections.map(c => `<button type="button" class="modal-collection-option" data-collection-id="${c.id}">${escapeHtml(c.name)}</button>`).join('');
           document.body.appendChild(menu);
+          openDocCollectionMenu = menu;
           menu.querySelectorAll('.modal-collection-option').forEach(btn => {
             btn.addEventListener('click', async () => {
               await addDocumentsToCollection(Number(btn.dataset.collectionId), [id]);
               menu.remove();
+              if(openDocCollectionMenu === menu) openDocCollectionMenu = null;
               openDetail(id); // refresh so a newly-relevant Remove action, if any, appears
             });
           });
-          const removeMenu = (evt) => { if(!menu.contains(evt.target)){ menu.remove(); document.removeEventListener('click', removeMenu); } };
+          const removeMenu = (evt) => {
+            if(!menu.contains(evt.target)){
+              menu.remove();
+              if(openDocCollectionMenu === menu) openDocCollectionMenu = null;
+              document.removeEventListener('click', removeMenu);
+            }
+          };
           setTimeout(() => document.addEventListener('click', removeMenu), 0);
         });
       }
@@ -4039,7 +4144,14 @@
       const renameInput = rowEl.querySelector('.manage-collection-rename-input');
       const commitRename = async () => {
         const name = renameInput.value.trim();
-        if(!name) return;
+        if(!name){
+          // Reset the box back to the real (unchanged) name rather than leaving it
+          // blank -- an empty rename input otherwise stayed blank until the modal
+          // was closed and reopened, even though nothing was actually renamed.
+          const current = collections.find(c => c.id === id);
+          renameInput.value = current ? current.name : '';
+          return;
+        }
         db.run('UPDATE collections SET name = ? WHERE id = ?', [name, id]);
         await persistDb();
         loadCollections();
@@ -4052,6 +4164,14 @@
         db.run('DELETE FROM collections WHERE id = ?', [id]);
         db.run('DELETE FROM collection_documents WHERE collection_id = ?', [id]);
         await persistDb();
+        // Deleting the collection currently being viewed (reachable via its own nav
+        // item) would otherwise leave the person in a phantom view -- the table
+        // degrades gracefully (renderNav()/render() don't error on a currentView
+        // that no longer matches any collection), but there'd be no nav item
+        // highlighted and no way to tell where they'd ended up. Falling back to
+        // 'all' matches how every other "the thing I was looking at is gone" case
+        // in this app behaves.
+        if(currentView === `collection-${id}`) currentView = 'all';
         loadCollections();
         renderManageCollectionsList();
         render();
@@ -4318,7 +4438,11 @@
   async function saveSmartCollection(){
     const name = el('smart-collection-name-input').value.trim();
     if(!name) return;
-    const id = nextCollectionId++;
+    // Not `nextCollectionId++` -- the very next loadCollections() call below
+    // recomputes nextCollectionId from MAX(id)+1 anyway, so incrementing it here
+    // first would just be immediately overwritten (same reasoning applies to
+    // createManualCollection() below).
+    const id = nextCollectionId;
     const criteria = JSON.stringify(currentFilters());
     db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'smart', criteria]);
     await persistDb();
@@ -4344,7 +4468,7 @@
   // Collections modal "+ New collection" button -- the one place that creates an
   // empty manual collection.
   async function createManualCollection(name){
-    const id = nextCollectionId++;
+    const id = nextCollectionId; // see saveSmartCollection()'s own comment on why not `++`
     db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'manual', null]);
     await persistDb();
     loadCollections();
