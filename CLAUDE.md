@@ -991,8 +991,11 @@ version number — only by the schema itself matching).
   inside `renderNav()`, called from `render()`'s "always call this first" slot —
   see the Top-level navigation note above), not just when a collection is
   created, deleted, or renamed — the same delete-then-reinsert-from-scratch
-  pattern this app already uses for other `render()`-driven containers
-  (`dynamicColumnDefs()`'s `<th>`s, `populateFilters()`'s dynamic filters).
+  pattern this app already uses for other dynamic containers, though those
+  rebuild on their own separate triggers rather than every `render()` call
+  (`renderDynamicTableHead()`'s `<th>`s rebuild when the columns menu
+  changes, `populateFilters()`'s dynamic filters rebuild from their own
+  explicit call sites — neither is invoked from inside `render()` itself).
   Smart collections
   are created only via the "☆ Save as Smart Collection" button
   (visible only in the All Documents view) — the Manage Collections modal's

@@ -513,15 +513,15 @@
           <span>–</span>
           <input type="date" id="report-date-to" title="To date" />
         </span>
-        <div class="columns-menu-wrap">
-          <button id="columns-btn">⚙ Columns</button>
-          <div class="columns-menu" id="columns-menu" style="display:none;"></div>
-        </div>
         <button id="manage-fields-btn">⚙ Manage fields</button>
         <button id="manage-collections-btn">⚙ Manage collections</button>
         <button id="inbox-check-btn">📥 Check inbox</button>
         <button class="accent" id="add-btn">＋ Add document</button>
         <button id="reload-btn">Switch library</button>
+        <div class="columns-menu-wrap">
+          <button id="columns-btn">⚙ Columns</button>
+          <div class="columns-menu" id="columns-menu" style="display:none;"></div>
+        </div>
       </div>
 
       <div class="inbox-banner" id="inbox-banner" style="display:none;">
@@ -2583,7 +2583,8 @@
 
     // Collections nav section -- rebuilt from scratch every render() call, same
     // "delete-then-reinsert" pattern this app already uses for other dynamic
-    // containers (dynamicColumnDefs()'s <th>s, populateFilters()'s dynamic-filters).
+    // containers rebuilt on their own triggers (e.g. renderDynamicTableHead()'s
+    // <th>s, rebuilt whenever the columns menu changes, not on every render()).
     const sortedCollections = [...collections].sort((a, b) => a.name.localeCompare(b.name));
     const collectionsList = el('nav-collections-list');
     if(collectionsList){
