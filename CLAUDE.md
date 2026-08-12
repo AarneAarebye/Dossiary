@@ -1173,20 +1173,21 @@ version number — only by the schema itself matching).
   need for this to be reactive) and interpolated directly into the
   `#scan-hint` template — the toggle-visibility wiring itself
   (`#scan-hint-toggle`'s click listener) is unchanged.
-- **Inbox** (`checkInbox()`, `openInboxModal()`, `addInboxFile()`,
-  `addAllInboxFiles()`, the `#inbox-banner` element) reads a library's
-  `inbox/` folder (a sibling of `library.sqlite` and `files/` at the library
-  root) and offers one-click "add with defaults" for whatever's in it —
-  mirroring legacy Mariner Paperless's own ScanSnap watch-folder integration
-  (a scanned file showing up already filed, with the rest of the metadata
-  left for later cleanup), but deliberately split into two pieces rather than
-  a single background auto-import, for two reasons documented in more detail
-  in "Working conventions" below: (1) this app is meant to be the library's
-  sole writer to `library.sqlite` — it loads the whole database into memory
+- **Inbox** (`checkInbox()`, `addInboxFile()`, `addAllInboxFiles()`,
+  `addAllInboxFilesAndShowStatus()`, the `#inbox-banner` element) reads a
+  library's `inbox/` folder (a sibling of `library.sqlite` and `files/` at
+  the library root) and adds everything currently staged there directly,
+  with no per-file review step — mirroring legacy Mariner Paperless's own
+  ScanSnap watch-folder integration (a scanned file showing up already
+  filed, with the rest of the metadata left for later cleanup), but
+  deliberately split into two pieces rather than a single background
+  auto-import, for two reasons documented in more detail in "Working
+  conventions" below: (1) this app is meant to be the library's sole
+  writer to `library.sqlite` — it loads the whole database into memory
   and only writes it back out on an explicit save, so a second process
-  inserting rows directly risks silently losing work to whichever side saved
-  last; (2) every write is supposed to come from an explicit click, never
-  from data that just showed up on disk. So `inbox/` is populated by
+  inserting rows directly risks silently losing work to whichever side
+  saved last; (2) every write is supposed to come from an explicit click,
+  never from data that just showed up on disk. So `inbox/` is populated by
   something else entirely outside this file (see `scan_watch.py` below,
   though nothing stops a person from just dragging a file into that folder
   by hand — **the folder itself is created for you** by both
@@ -1194,51 +1195,68 @@ version number — only by the schema itself matching).
   alongside the equivalent `files/` call; a real gap reported against an
   earlier version of this app, since `checkInbox()`'s own `getDirectoryHandle('inbox',
   { create: false })` deliberately never creates it — that's correct for
-  *checking* (a missing folder just means "nothing to review, not an
+  *checking* (a missing folder just means "nothing to add, not an
   error"), but nothing else ever brought it into existence either, so a
   person couldn't actually drag a file in by hand, or point
   `scan_watch.py`'s `--drop-folder` at it directly, without first manually
   creating it in Finder/Explorer/their file manager. Creating an empty
-  folder here doesn't conflict
-  with the "no silent writes" principle below — no data is written, it's
-  the same "ensure the expected structure exists" role `files/`'s own
-  `{ create: true }` already plays) and this app never watches or polls it — `checkInbox()` only runs
-  once, right after `afterDbReady()`, and again when the Inbox modal's
-  "Refresh" button is clicked, or the toolbar's always-visible **"📥 Check
-  inbox" button** (`#inbox-check-btn`) is clicked, which calls `checkInbox()`
-  then immediately opens the modal. That toolbar button exists specifically
-  because the "Refresh" button and the banner's own "Review" button are only
-  reachable from inside/via the banner — which only reflects whatever
-  `checkInbox()` found the one time it runs automatically, at library-open.
-  Without a toolbar entry point, a file a watched-folder helper (e.g.
-  `scan_watch.py`) stages *after* someone already has the library open in
-  their browser (the normal way people actually use it — leaving the tab
-  open while scanning throughout the day) would have no visible way to be
-  noticed short of fully reopening the library. This is still a single
-  explicit click, not automatic polling — same "no silent writes" principle
-  as everything else in this section, just a second, always-available door
-  to the same `checkInbox()` call the banner already made once. Turning a staged file into an actual document
-  always requires a click on "Add" or "Add all with defaults" inside this
-  tab. An inbox-added document gets `source = 'scan-inbox'` (distinct from
-  `'captured'` and `'migrated'`) and only two things set beyond the file
-  itself: a filename-derived title, and `document_type` prefilled from
-  `default_document_type` if one's configured (same intent as the capture
-  form's own default-type prefill) — category, subcategory, payment method,
-  amount, date, and notes are all left `NULL` rather than guessed, and no OCR
-  runs automatically (that stays an explicit action from the Edit dialog's
-  existing `runOcrForEdit()`, so a bulk "Add all" doesn't silently kick off a
+  folder here doesn't conflict with the "no silent writes" principle
+  below — no data is written, it's the same "ensure the expected
+  structure exists" role `files/`'s own `{ create: true }` already plays)
+  and this app never watches or polls it — `checkInbox()` only runs once,
+  right after `afterDbReady()`, or when the toolbar's always-visible
+  **"📥 Check inbox" button** (`#inbox-check-btn`) is clicked. That toolbar
+  button exists specifically because the automatic once-at-open call is
+  the *only* other thing that ever triggers a scan — a file a
+  watched-folder helper (e.g. `scan_watch.py`) stages *after* someone
+  already has the library open in their browser (the normal way people
+  actually use it — leaving the tab open while scanning throughout the
+  day) would have no visible way to be noticed short of fully reopening
+  the library. This is still a single explicit click, not automatic
+  polling — same "no silent writes" principle as everything else in this
+  section.
+
+  **Both entry points add everything staged, immediately, with no
+  intermediate review step** — clicking `#inbox-check-btn` (after its own
+  fresh `checkInbox()` scan) or the banner's own `#inbox-add-all-btn`
+  ("Add all") both call the same `addAllInboxFilesAndShowStatus()`, which
+  adds every currently-staged file via `addAllInboxFiles()`/`addInboxFile()`,
+  jumps to the 🚩 Inbox nav view so the newly needs-review-flagged
+  documents are immediately visible, and reports what happened on the
+  status line (`"Added N document(s) to the review queue from
+  <folder>/inbox/."`); a `checkInbox()` scan that finds nothing staged
+  reports `"No files waiting in <folder>/inbox/."` on the status line
+  instead, without navigating anywhere — there's nothing new to look at.
+  This intentionally removed what used to be a review modal
+  (`openInboxModal()`, listing each staged file with its own "Add" button
+  plus an "Add all with defaults" button) — that extra confirmation step
+  existed specifically so nothing got written without a person looking at
+  it first, but now that the Waste bin (see its own note above) gives
+  every write a safe, fully reversible undo path, it stopped pulling its
+  weight: the click on "Check inbox" or "Add all" is already the explicit
+  gesture that satisfies principle (2) above, a second confirming click on
+  top of it was redundant. An inbox-added document gets
+  `source = 'scan-inbox'` (distinct from `'captured'` and `'migrated'`)
+  and only two things set beyond the file itself: a filename-derived
+  title, and `document_type` prefilled from `default_document_type` if
+  one's configured (same intent as the capture form's own default-type
+  prefill) — category, subcategory, payment method, amount, date, and
+  notes are all left `NULL` rather than guessed, and no OCR runs
+  automatically (that stays an explicit action from the Edit dialog's
+  existing `runOcrForEdit()`, so a bulk add doesn't silently kick off a
   slow OCR pass per file). This mirrors `saveNewDocument()`'s file-copy/
-  thumbnail/sidecar logic closely but isn't a shared function with it, since
-  the two have different inputs (a form's DOM fields vs. nothing but a
-  filename) and different defaults for nearly every column. **`openInboxModal()`
-  shows which folder it's actually reading from** (`Folder:
-  ${rootDirHandle.name}/inbox/`, plain text, not a link) — the File System
-  Access API exposes no absolute filesystem path for a `FileSystemDirectoryHandle`
-  (only its own name) and there's no API to launch a native file manager
-  from a browser tab, so this is deliberately as far as it can go; still
-  useful to confirm at a glance that `scan_watch.py --library` is pointed
-  at the folder you expect, especially with more than one library folder
-  in play.
+  thumbnail/sidecar logic closely but isn't a shared function with it,
+  since the two have different inputs (a form's DOM fields vs. nothing but
+  a filename) and different defaults for nearly every column. The folder
+  being read from is surfaced in the status-line message itself now
+  (`${rootDirHandle.name}/inbox/`, plain text, not a link — the File
+  System Access API exposes no absolute filesystem path for a
+  `FileSystemDirectoryHandle`, only its own name, and there's no API to
+  launch a native file manager from a browser tab, so this is
+  deliberately as far as it can go) rather than a dedicated modal line,
+  since there's no modal anymore; still useful to confirm at a glance that
+  `scan_watch.py --library` is pointed at the folder you expect,
+  especially with more than one library folder in play.
 - **scan_watch.py** is the other half of Inbox, and is intentionally *not*
   part of `dossiary.html` — a stdlib-only Python script (no
   dependency to `pip install`), run separately, that watches a folder your

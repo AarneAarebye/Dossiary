@@ -85,16 +85,17 @@ async def main():
         print("#waste-bin-btn no longer exists:", waste_bin_btn_count == 0)
         print("#review-queue no longer exists:", review_queue_count == 0)
 
-        # === Scenario 2: the separate, unrelated "Check inbox" (raw staged files)
-        # feature still works and isn't conflated with the new Inbox nav item ===
+        # === Scenario 2: the Check inbox button directly adds staged files (no modal)
+        # with no navigation when there's nothing to add ===
         inbox_check_count = await page.locator('#inbox-check-btn').count()
         print("#inbox-check-btn still present:", inbox_check_count == 1)
+        nav_before = await page.locator('#nav-item-all.active').count()
         await page.click('#inbox-check-btn')
         await page.wait_for_timeout(200)
-        staged_modal_heading = await page.locator('.modal h2').first.inner_text()
-        print("Check inbox opens the staged-files Inbox modal, not the nav view:", staged_modal_heading)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        nav_after = await page.locator('#nav-item-all.active').count()
+        print("Check inbox with no staged files doesn't navigate:", nav_before == 1 and nav_after == 1)
+        status = await page.locator('#status').inner_text()
+        print("status line says no files waiting:", 'No files waiting' in status)
 
         # === Scenario 3: category filter composes with the Inbox nav view -- doc 3
         # is the only Inbox document, and it has no category, so filtering by

@@ -94,12 +94,10 @@ async def main():
         banner_visible = await page.locator('#inbox-banner').is_visible()
         print("inbox banner visible with the extensionless file staged:", banner_visible)
 
-        await page.click('#inbox-review-btn')
-        await page.wait_for_timeout(150)
-        await page.click('.inbox-add-one-btn[data-name="scanned_document"]')
+        await page.click('#inbox-add-all-btn')
         await page.wait_for_timeout(300)
-        inbox_status = await page.locator('#inbox-status').inner_text() if await page.locator('#inbox-status').count() else ''
-        print("inbox-status after adding the extensionless file:", inbox_status)
+        status = await page.locator('#status').inner_text()
+        print("status line after adding the extensionless file via inbox:", status)
 
         persisted = await page.evaluate("""
             (async () => {

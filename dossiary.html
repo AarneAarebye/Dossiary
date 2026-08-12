@@ -526,7 +526,7 @@
 
       <div class="inbox-banner" id="inbox-banner" style="display:none;">
         <span id="inbox-banner-text"></span>
-        <button class="accent" id="inbox-review-btn">Review</button>
+        <button class="accent" id="inbox-add-all-btn">Add all</button>
       </div>
 
       <div class="status" id="status"></div>
@@ -4217,56 +4217,6 @@
     }
   }
 
-  function openInboxModal(){
-    modalRoot.innerHTML = `
-      <div class="backdrop" id="modal-backdrop">
-        <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
-          <h2>Inbox</h2>
-          <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:-8px;">
-            Files dropped into this library's <code>inbox/</code> folder (e.g. by a watched-folder scan
-            helper) — add each with default values, then fill in the rest from its Edit dialog.
-          </p>
-          <p style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:-8px;">
-            Folder: <code>${escapeHtml(rootDirHandle.name)}/inbox/</code>
-          </p>
-          <div id="inbox-list"></div>
-          <div class="modal-actions">
-            <button class="accent" id="inbox-add-all-btn">Add all with defaults</button>
-            <button id="inbox-refresh-btn">Refresh</button>
-          </div>
-          <div class="status" id="inbox-status" style="padding:10px 0 0;"></div>
-        </div>
-      </div>
-    `;
-    el('modal-close-btn').addEventListener('click', closeModal);
-    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
-    document.addEventListener('keydown', onModalKeydown);
-    el('inbox-refresh-btn').addEventListener('click', async () => { await checkInbox(); openInboxModal(); });
-    el('inbox-add-all-btn').addEventListener('click', addAllInboxFiles);
-    renderInboxList();
-  }
-
-  function renderInboxList(){
-    const listEl = el('inbox-list');
-    if(!listEl) return;
-    if(!pendingInboxFiles.length){
-      listEl.innerHTML = `<p style="font-family:var(--font-mono); font-size:12px; color:var(--text-dim);">Nothing waiting.</p>`;
-      el('inbox-add-all-btn').disabled = true;
-      return;
-    }
-    el('inbox-add-all-btn').disabled = false;
-    listEl.innerHTML = pendingInboxFiles.map(f => `
-      <div class="file-preview">
-        <div class="file-icon">${escapeHtml((f.name.split('.').pop() || '').toUpperCase())}</div>
-        <div style="flex:1;"><div class="doc-title">${escapeHtml(f.name)}</div></div>
-        <button class="inbox-add-one-btn" data-name="${escapeHtml(f.name)}">Add</button>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.inbox-add-one-btn').forEach(btn => {
-      btn.addEventListener('click', () => addInboxFile(btn.dataset.name));
-    });
-  }
 
   // Adds one inbox file as a new document with only the file itself and a
   // filename-derived title set -- category/subcategory/payment/amount/date/notes
@@ -4280,8 +4230,6 @@
   async function addInboxFile(name){
     const entry = pendingInboxFiles.find(f => f.name === name);
     if(!entry) return;
-    const statusEl = el('inbox-status');
-    if(statusEl){ statusEl.className = 'status busy'; statusEl.innerHTML = `<span class="spinner"></span> Adding "${escapeHtml(name)}"…`; }
     let id;
     try{
       id = nextDocId++;
@@ -4336,12 +4284,10 @@
       renderStats(); populateFilters(); populateDatalists(); render();
       subLabel.textContent = rootDirHandle.name;
       updateInboxBanner();
-      renderInboxList();
-      if(statusEl){ statusEl.className = 'status ok'; statusEl.textContent = `Added "${title}" as #${id}.`; }
       setStatus(`Added "${title || 'Document #' + id}" as #${id} from the inbox.`, 'ok');
     }catch(e){
       if(id !== undefined) nextDocId--; // roll back the reservation since the add didn't complete
-      if(statusEl){ statusEl.className = 'status err'; statusEl.textContent = `Failed to add "${name}": ${e.message}`; }
+      setStatus(`Failed to add "${name}": ${e.message}`, 'err');
     }
   }
 
@@ -4349,7 +4295,6 @@
     for(const name of pendingInboxFiles.map(f => f.name)){
       await addInboxFile(name);
     }
-    if(!pendingInboxFiles.length) closeModal();
   }
 
   // Waste bin, Inbox (needs_review), All Documents, and Reports are now the four
@@ -4361,16 +4306,33 @@
   // uses) exactly like any other document. There is deliberately no "empty bin"
   // action anywhere in this app; nothing is ever permanently removed.
 
-  el('inbox-review-btn').addEventListener('click', openInboxModal);
+  // Adds every currently-staged inbox file directly (no review step -- see
+  // CLAUDE.md's Inbox note for why the modal that used to sit here was removed),
+  // jumps to the Inbox nav view so the newly needs-review-flagged documents are
+  // immediately visible, and reports what happened via the status line. A count
+  // of zero (nothing staged) reports that instead of navigating anywhere, since
+  // there's nothing new to look at.
+  async function addAllInboxFilesAndShowStatus(){
+    const count = pendingInboxFiles.length;
+    const folderLabel = `${rootDirHandle.name}/inbox/`;
+    if(!count){
+      setStatus(`No files waiting in ${folderLabel}.`, 'ok');
+      return;
+    }
+    await addAllInboxFiles();
+    setView('inbox');
+    setStatus(`Added ${count} document${count === 1 ? '' : 's'} to the review queue from ${folderLabel}.`, 'ok');
+  }
+
+  el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
   // reflects whatever checkInbox() found the one time it runs automatically
-  // (right after a library opens, see afterDbReady()), and the Inbox modal's own
-  // "Refresh" button is only reachable through that same banner. Without this,
-  // there was no way to notice files a watched-folder helper (e.g. scan_watch.py)
-  // staged *after* the library was already open, short of fully reopening it.
-  // Still a single explicit click, not automatic polling -- keeps the same
-  // "no silent writes" principle as everything else in this app.
-  el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); openInboxModal(); });
+  // (right after a library opens, see afterDbReady()). Without this, there was
+  // no way to notice files a watched-folder helper (e.g. scan_watch.py) staged
+  // *after* the library was already open, short of fully reopening it. Still a
+  // single explicit click, not automatic polling -- keeps the same "no silent
+  // writes" principle as everything else in this app.
+  el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });
