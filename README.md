@@ -96,6 +96,7 @@ working" problem that motivated this project in the first place.
   People, or any custom field, grouped by currency so amounts in different
   currencies are never added together, with a date-range filter and a
   print-friendly layout for tax season or expense reimbursement.
+- **Collections** — organize documents into your own named groupings, reachable from an expandable Collections section in the nav. Manual collections are hand-picked lists (select documents in the table or add them from a document's own detail view); Smart Collections save your current search/category/type/person/field filters as a live view that keeps matching new documents automatically.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can

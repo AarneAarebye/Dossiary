@@ -959,6 +959,44 @@ version number — only by the schema itself matching).
   `#app-nav`/`.toolbar`/etc.; the browser's own print dialog already offers "Save
   as PDF" on every platform this app targets, so no separate PDF-generation path
   was needed.
+- **Collections** (`collections` + `collection_documents` tables,
+  `openManageCollectionsModal()`, `createManualCollection()`,
+  `addDocumentsToCollection()`, `removeDocumentsFromCollection()`,
+  `deleteCollection()`) are user-created document groupings, manually
+  curated or automatically matching your current search/filter state as a
+  live view. The schema stores only two tables: `collections` (name, type,
+  criteria JSON for smart collections) and `collection_documents` (the
+  manual join for non-smart collections). Smart collections store no rows in
+  `collection_documents` — instead, `matchesCriteria()` re-evaluates their
+  filter criteria against each document on every `render()` call, the same
+  criteria grammar `currentFilters()` extracts from the toolbar (Category,
+  Type, Person dropdowns, dynamic-field filters, search text), so a smart
+  collection always stays synchronized with new documents without any
+  background sync logic. Manual collections are static rosters you build by
+  selecting documents in the table and clicking "Add to Collection" (via the
+  bulk-action toolbar that appears when checkboxes are checked), or one at a
+  time from a document's own detail-modal action buttons ("Add to Collection"
+  picks which one; "Remove from Collection" appears only when viewing from
+  inside a specific manual collection). The Collections nav section expands
+  and collapses via a toggle button (`#collections-toggle` →
+  `toggleCollectionsNav()`), collapsing by default if no collection exists
+  yet; the list itself (`#collections-list`) is rebuilt whenever a collection
+  is created, deleted, or renamed, not persistently wired. Smart collections
+  are created only via the toolbar's "Save as Smart Collection" button
+  (visible only in the All Documents view) — the Manage Collections modal's
+  "+ New Collection" creates manual collections only, never smart ones, since
+  a manual collection's starting roster is deliberately chosen by the person
+  from the current table state, not captured from filter state. Multi-select
+  checkboxes (`#select-all-checkbox`, per-row checkboxes with
+  `data-doc-id='<id>'`) reset whenever you switch views (`setView()` clears
+  `selectedDocIds` and re-renders the table) or close the library — the
+  selection state never persists across sessions and is scoped to a single
+  view, so switching to a Smart Collection and back to All Documents doesn't
+  retain your old All Documents selection. Creating a new manual collection
+  and adding its first documents happen as one action via the same
+  `addDocumentsToCollection()` and `createManualCollection()` functions that
+  the detail-modal single-document action buttons use — no special
+  code-path difference between a bulk add and a single add.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
@@ -1304,7 +1342,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **51
+There's a real, runnable Playwright regression suite in `tests/` — **52
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1430,7 +1468,19 @@ caveat and its on-screen caption, switched to without leaving the Reports
 view; the date-range filter narrowing totals by the document's own Date
 field and correctly excluding a document with no date set once a bound is
 active; and the print button/`@media print` layout hiding the nav and
-toolbar), and search across all of the above. This
+toolbar), Collections (`test_collections.py` — manual and smart collection
+view routing and live re-evaluation of Smart Collection criteria whenever
+filters change; toolbar filters composing correctly on top of a
+collection's own scope; "Save as Smart Collection" visibility (scoped to
+All Documents only, disabled for other views), pre-filling the modal with
+the current filter state; multi-select + bulk add (including that checking
+a checkbox doesn't also open the detail modal, and that selected checkboxes
+clear on view switch), the detail modal's Add-to-Collection and
+Remove-from-Collection action buttons (Remove appearing only when viewing
+from inside that specific manual collection), the Manage Collections
+modal's rename/delete/create-empty-manual-collection flows, and the
+Collections nav section's expand/collapse toggle), and search across all of
+the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

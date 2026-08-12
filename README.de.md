@@ -114,6 +114,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   damit Beträge in verschiedenen Währungen nie zusammengezählt werden, mit
   einem Datumsbereichsfilter und einem druckfreundlichen Layout für
   Steuererklärung oder Spesenerstattung.
+- **Collections** — organisieren Sie Dokumente in Ihren eigenen benannten Gruppierungen, erreichbar über einen erweiterbaren Collections-Bereich in der Navigation. Manuelle Collections sind handgewählte Listen (wählen Sie Dokumente in der Tabelle aus oder fügen Sie sie aus der Detailansicht eines Dokuments hinzu); Smart Collections speichern Ihren aktuellen Such-/Kategorie-/Typ-/Personen-/Feldfilter als Live-View, die automatisch neu hinzugekommene Dokumente weiterhin berücksichtigt.
 - **Spotlight-/Finder-Suche** — jedes erfasste Dokument bekommt zusätzlich
   eine einfache `.txt`-Begleitdatei (Sidecar-Datei) daneben (Titel,
   Kategorie, Tags, Notizen, OCR-Text, Werte der benutzerdefinierten
