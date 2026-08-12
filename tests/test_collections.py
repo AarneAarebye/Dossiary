@@ -371,6 +371,43 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 17: Manage Collections modal lists every collection with the
+        # right kind and document count ===
+        await page.click('#manage-collections-btn')
+        await page.wait_for_timeout(150)
+        collection_rows = await page.locator('.manage-collection-row').count()
+        print("Manage Collections modal lists all collections:", collection_rows)
+        row_names = await page.locator('.manage-collection-row .manage-collection-name').all_inner_texts()
+        print("Row names:", sorted(row_names))
+        travel_count = await page.locator('.manage-collection-row', has_text='Travel Category').locator('.manage-collection-count').inner_text()
+        print("Smart Collection's live count reflects current matching docs:", travel_count)
+
+        # === Scenario 18: renaming a collection ===
+        manual_row = page.locator('.manage-collection-row', has_text='Manual Trip Folder')
+        await manual_row.locator('.manage-collection-rename-input').fill('Trip Docs')
+        await manual_row.locator('.manage-collection-rename-input').press('Enter')
+        await page.wait_for_timeout(200)
+        renamed_label = await page.locator('#nav-collections-list .nav-item-label', has_text='Trip Docs').count()
+        print("Rename reflected in the nav:", renamed_label == 1)
+
+        # === Scenario 19: "+ New collection" creates an empty manual collection ===
+        await page.fill('#manage-new-collection-input', 'Empty Folder')
+        await page.click('#manage-new-collection-btn')
+        await page.wait_for_timeout(200)
+        new_row_count = await page.locator('.manage-collection-row', has_text='Empty Folder').count()
+        print("New empty manual collection created:", new_row_count == 1)
+
+        # === Scenario 20: deleting a collection removes it from the nav without
+        # touching its member documents ===
+        await page.locator('.manage-collection-row', has_text='Empty Folder').locator('.manage-collection-delete-btn').click()
+        await page.wait_for_timeout(200)
+        deleted_row_count = await page.locator('.manage-collection-row', has_text='Empty Folder').count()
+        print("Deleted collection gone from the modal:", deleted_row_count == 0)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        deleted_nav_count = await page.locator('#nav-collections-list .nav-item-label', has_text='Empty Folder').count()
+        print("Deleted collection gone from the nav:", deleted_nav_count == 0)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

@@ -140,6 +140,10 @@
   .fs-field-capabilities{ display:flex; gap:10px; margin-top:4px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
   .fs-field-capabilities label{ display:flex; align-items:center; gap:3px; cursor:pointer; }
   .fs-field-capabilities input{ accent-color:var(--phosphor); cursor:pointer; }
+  .manage-collection-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .manage-collection-kind{ font-size:13px; }
+  .manage-collection-rename-input{ flex:1; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:6px 8px; color:var(--text); font-family:var(--font-sans); font-size:13px; }
+  .manage-collection-count{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); min-width:24px; text-align:right; }
   button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
   button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
   button.primary{ background:var(--phosphor); color:var(--text-ink); border-color:var(--phosphor); font-weight:600; }
@@ -456,6 +460,7 @@
           <div class="columns-menu" id="columns-menu" style="display:none;"></div>
         </div>
         <button id="manage-fields-btn">⚙ Manage fields</button>
+        <button id="manage-collections-btn">⚙ Manage collections</button>
         <button id="inbox-check-btn">📥 Check inbox</button>
         <button class="accent" id="add-btn">＋ Add document</button>
         <button id="reload-btn">Switch library</button>
@@ -3255,6 +3260,7 @@
 
   el('add-btn').addEventListener('click', openCaptureModal);
   el('manage-fields-btn').addEventListener('click', openFieldSettingsModal);
+  el('manage-collections-btn').addEventListener('click', openManageCollectionsModal);
 
   // --- field settings modal (manage which fields show per document type, and the default type) ---
 
@@ -3970,6 +3976,87 @@
       saveBtn.disabled = false;
       nextDocId--; // roll back the reservation since the save didn't complete
     }
+  }
+
+  // --- Manage Collections modal (rename, delete, create manual collections) ---
+
+  function openManageCollectionsModal(){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <h2>Manage collections</h2>
+          <div id="manage-collections-list"></div>
+          <div class="add-field-form" style="margin-top:16px;">
+            <input type="text" id="manage-new-collection-input" placeholder="New collection name" />
+            <button type="button" id="manage-new-collection-btn">+ New collection</button>
+          </div>
+          <div class="modal-actions" style="margin-top:16px;">
+            <button id="manage-collections-done-btn">Done</button>
+          </div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('manage-collections-done-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    el('manage-new-collection-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') el('manage-new-collection-btn').click(); });
+    el('manage-new-collection-btn').addEventListener('click', async () => {
+      const name = el('manage-new-collection-input').value.trim();
+      if(!name) return;
+      await createManualCollection(name);
+      el('manage-new-collection-input').value = '';
+      renderManageCollectionsList();
+    });
+    renderManageCollectionsList();
+  }
+
+  // documentCount for a smart collection is computed live against allDocs (matching
+  // the same criteria evaluation matchesView()'s 'collection-<id>' branch uses),
+  // never stored -- for a manual collection it's just the collection_documents row
+  // count already loaded into collectionDocIds.
+  function renderManageCollectionsList(){
+    const listEl = el('manage-collections-list');
+    if(!listEl) return;
+    const sorted = [...collections].sort((a, b) => a.name.localeCompare(b.name));
+    listEl.innerHTML = sorted.map(c => {
+      const count = c.kind === 'manual'
+        ? (collectionDocIds[c.id] ? collectionDocIds[c.id].size : 0)
+        : allDocs.filter(d => matchesCriteria(d, JSON.parse(c.criteria))).length;
+      return `
+        <div class="manage-collection-row" data-collection-id="${c.id}">
+          <span class="manage-collection-kind">${c.kind === 'smart' ? '☆' : '📁'}</span>
+          <input type="text" class="manage-collection-rename-input" value="${escapeHtml(c.name)}" />
+          <span class="manage-collection-name" style="display:none;">${escapeHtml(c.name)}</span>
+          <span class="manage-collection-count">${count}</span>
+          <button type="button" class="manage-collection-delete-btn">Delete</button>
+        </div>
+      `;
+    }).join('');
+    listEl.querySelectorAll('.manage-collection-row').forEach(rowEl => {
+      const id = Number(rowEl.dataset.collectionId);
+      const renameInput = rowEl.querySelector('.manage-collection-rename-input');
+      const commitRename = async () => {
+        const name = renameInput.value.trim();
+        if(!name) return;
+        db.run('UPDATE collections SET name = ? WHERE id = ?', [name, id]);
+        await persistDb();
+        loadCollections();
+        renderManageCollectionsList();
+        render();
+      };
+      renameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') commitRename(); });
+      renameInput.addEventListener('blur', commitRename);
+      rowEl.querySelector('.manage-collection-delete-btn').addEventListener('click', async () => {
+        db.run('DELETE FROM collections WHERE id = ?', [id]);
+        db.run('DELETE FROM collection_documents WHERE collection_id = ?', [id]);
+        await persistDb();
+        loadCollections();
+        renderManageCollectionsList();
+        render();
+      });
+    });
   }
 
   // --- Inbox (files dropped into <library>/inbox/ by an outside watched-folder
