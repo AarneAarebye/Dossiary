@@ -97,8 +97,7 @@ async def main():
 
         # Detail view shows both the processed file's and the original's path, prefixed
         # with the library folder name (since File System Access API handles expose no
-        # absolute path) -- see CLAUDE.md's note on this next to the Inbox modal's own
-        # "Folder: ..." line, which uses the same pattern.
+        # absolute path) -- see CLAUDE.md's note on this pattern in the Inbox section.
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
         modal_meta_text = await page.locator('.modal-meta').inner_text()

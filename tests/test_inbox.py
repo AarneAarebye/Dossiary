@@ -104,12 +104,53 @@ async def main():
         """)
         print("files/ contents after Add all:", sorted(files_after_all))
 
+        # === Scenario 2b: partial failure (1 succeeds, 1 fails) reports accurately ===
+        # Verify that if a file disappears mid-flow, the status message correctly
+        # reports the partial failure (1 added, 1 couldn't be added) rather than
+        # falsely claiming both were added successfully.
+        #
+        # We'll stage 2 files, verify the banner shows both, then delete one file
+        # from the filesystem to simulate it disappearing (permission denied, etc.)
+        # and verify the error status is reported accurately.
+        await page.evaluate("""
+            () => {
+                window.__TEST_ROOT = window.__makeEmptyRoot();
+                window.__addInboxFile(window.__TEST_ROOT, 'partial1.pdf');
+                window.__addInboxFile(window.__TEST_ROOT, 'partial2.jpg');
+            }
+        """)
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(200)
+        await page.click("#init-btn")
+        await page.wait_for_timeout(300)
+
+        # After library opens, checkInbox() runs automatically and discovers both files
+        banner_text_before = await page.locator('#inbox-banner-text').inner_text()
+        print("banner shows 2 files staged:", '2' in banner_text_before)
+
+        # Now delete one file from the filesystem to simulate it disappearing
+        # (this is the race condition we're testing)
+        await page.evaluate("""
+            async () => {
+                const inbox = await window.__TEST_ROOT.getDirectoryHandle('inbox');
+                await inbox.removeEntry('partial2.jpg');
+            }
+        """)
+
+        # Click the banner's add button; 1 will succeed, 1 will fail
+        await page.click('#inbox-add-all-btn')
+        await page.wait_for_timeout(400)
+
+        status_partial = await page.locator('#status').inner_text()
+        print("status after partial failure (1 success, 1 fail):", status_partial)
+        print("status correctly reports 1 added:", '1' in status_partial and 'added' in status_partial.lower() and 'document' in status_partial.lower())
+        print("status correctly reports 1 failed:", '1' in status_partial and 'could not be added' in status_partial.lower())
+        print("status shows error (not false success):", 'err' in await page.locator('#status').get_attribute("class"))
+
         # Both land flagged for review (needs_review=1, see addInboxFile()), so both
         # show in the Inbox nav view, not All Documents, until someone clicks Done --
         # see CLAUDE.md's nav architecture note.
-        main_rows_before_done = await page.locator('#doc-tbody tr').count()
-        print("All Documents rows before Done (should be 0, both live in Inbox):", main_rows_before_done)
-        inbox_row_count = await page.locator('#doc-tbody tr').count()  # already on the Inbox view from above
+        inbox_row_count = await page.locator('#doc-tbody tr').count()  # still on Inbox view from Add all
         print("Inbox view shows both inbox-added docs:", inbox_row_count)
 
         # Done-ing one of them moves it into All Documents with the inbox-added pill;

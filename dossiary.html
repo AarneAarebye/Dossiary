@@ -4181,16 +4181,16 @@
   }
 
   // --- Inbox (files dropped into <library>/inbox/ by an outside watched-folder
-  // helper, e.g. scan_watch.py, for one-click "add with defaults" review) ---
+  // helper, e.g. scan_watch.py, for direct one-click add) ---
   //
   // This app never writes to library.sqlite except from an explicit click here --
   // it deliberately does NOT poll/watch the inbox/ folder itself or auto-add
   // anything the instant a file appears, matching the "no silent writes" working
   // convention in CLAUDE.md. The watcher's only job is moving files into inbox/;
   // turning one into an actual document row always requires a person to click
-  // "Add" (or "Add all with defaults") in this library's own open tab, which also
-  // keeps this app the library's sole writer -- a background process never touches
-  // library.sqlite directly, so there's no risk of it racing this tab's own save.
+  // "Add all" in this library's own open tab, which also keeps this app the
+  // library's sole writer -- a background process never touches library.sqlite
+  // directly, so there's no risk of it racing this tab's own save.
 
   async function checkInbox(){
     pendingInboxFiles = [];
@@ -4201,7 +4201,7 @@
       }
       pendingInboxFiles.sort((a, b) => a.name.localeCompare(b.name));
     }catch(e){
-      inboxDirHandle = null; // no inbox/ folder yet -- nothing to review, not an error
+      inboxDirHandle = null; // no inbox/ folder yet -- nothing to add, not an error
     }
     updateInboxBanner();
   }
@@ -4309,9 +4309,8 @@
   // Adds every currently-staged inbox file directly (no review step -- see
   // CLAUDE.md's Inbox note for why the modal that used to sit here was removed),
   // jumps to the Inbox nav view so the newly needs-review-flagged documents are
-  // immediately visible, and reports what happened via the status line. A count
-  // of zero (nothing staged) reports that instead of navigating anywhere, since
-  // there's nothing new to look at.
+  // immediately visible (subject to any active search/filter), and reports what
+  // happened via the status line (including any partial failures).
   async function addAllInboxFilesAndShowStatus(){
     const count = pendingInboxFiles.length;
     const folderLabel = `${rootDirHandle.name}/inbox/`;
@@ -4320,8 +4319,16 @@
       return;
     }
     await addAllInboxFiles();
+    const added = count - pendingInboxFiles.length;
+    if(!added){
+      setStatus(`Could not add any of the ${count} file${count === 1 ? '' : 's'} in ${folderLabel}.`, 'err');
+      return;
+    }
     setView('inbox');
-    setStatus(`Added ${count} document${count === 1 ? '' : 's'} to the review queue from ${folderLabel}.`, 'ok');
+    const failed = count - added;
+    setStatus(`Added ${added} document${added === 1 ? '' : 's'} to the review queue from ${folderLabel}.`
+      + (failed ? ` ${failed} file${failed === 1 ? '' : 's'} could not be added and ${failed === 1 ? 'is' : 'are'} still there.` : ''),
+      failed ? 'err' : 'ok');
   }
 
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);

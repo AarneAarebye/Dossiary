@@ -600,9 +600,9 @@ version number — only by the schema itself matching).
   (they'd otherwise now show up there too, duplicating the header line).
 - **The detail view also shows `File`/`Original` lines with each file's
   path**, prefixed with `rootDirHandle.name` — the same "as far as it can
-  go" pattern as the Inbox modal's own `Folder: ...` line (see that note
-  below): there's no browser API to reveal a file in the OS's file manager
-  (Finder/Explorer/whatever Linux distro is running) or expose its
+  go" pattern as the Inbox status message's own folder label (see the Inbox
+  note below): there's no browser API to reveal a file in the OS's file
+  manager (Finder/Explorer/whatever Linux distro is running) or expose its
   absolute filesystem path, so a person who wants to find it manually gets
   the next best thing, a path they can navigate to themselves. `File` shows
   whenever `d.file_path` is set (effectively always, for anything with a
@@ -1222,11 +1222,14 @@ version number — only by the schema itself matching).
   ("Add all") both call the same `addAllInboxFilesAndShowStatus()`, which
   adds every currently-staged file via `addAllInboxFiles()`/`addInboxFile()`,
   jumps to the 🚩 Inbox nav view so the newly needs-review-flagged
-  documents are immediately visible, and reports what happened on the
-  status line (`"Added N document(s) to the review queue from
-  <folder>/inbox/."`); a `checkInbox()` scan that finds nothing staged
-  reports `"No files waiting in <folder>/inbox/."` on the status line
-  instead, without navigating anywhere — there's nothing new to look at.
+  documents are immediately visible (subject to any active search/filter text
+  that might hide them, same as any other view — see the Top-level navigation
+  note for how filters compose), and reports what happened on the status line
+  (`"Added N document(s) to the review queue from <folder>/inbox/."`, with
+  an error indicator and partial-failure message if any files failed to add);
+  a `checkInbox()` scan that finds nothing staged reports `"No files waiting
+  in <folder>/inbox/."` on the status line instead, without navigating
+  anywhere — there's nothing new to look at.
   This intentionally removed what used to be a review modal
   (`openInboxModal()`, listing each staged file with its own "Add" button
   plus an "Add all with defaults" button) — that extra confirmation step
@@ -1431,12 +1434,16 @@ needing its own fallback code), Payment Date as a genuine migrated custom
 field, the detail view's conditional header, orphaned-field display and
 editability in the Edit dialog, every clear button, the sticky table
 header, the scan-hint toggle, the Libraries/licenses modal, sidecar file
-content, the Inbox review flow (banner visibility, add-one and
-add-all-with-defaults, the file moving from `inbox/` into `files/`, the
-banner disappearing once empty, the toolbar's "Check inbox" button
-surfacing a file staged after the library was already open, which the
-automatic once-at-open `checkInbox()` call alone would miss, and the
-modal showing which folder it's actually reading from),
+content, the Inbox add flow (`test_inbox.py` — banner visibility, the
+banner's "Add all" button adding both staged files directly to Inbox with
+no modal appearing, landing on the Inbox nav view, reporting the folder
+path + count on the status line, the banner hiding once empty, the
+toolbar's "Check inbox" button surfacing a file staged after library open
+(which the one-time-at-open `checkInbox()` call alone would miss) and
+adding it directly the same way, "Check inbox" with nothing staged
+reporting "No files waiting" without navigating, and a partial-failure
+scenario (1 succeeds, 1 fails) reporting accurately on the status line
+with both success and error indicators),
 `migrateTextFieldsAutocompleteDefault()`
 (a pre-existing text field's autocomplete flipped on by the one-time
 backfill, a newly-created inline text field defaulting to it immediately
