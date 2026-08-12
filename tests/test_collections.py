@@ -36,6 +36,17 @@ SEED = {
             "created_at": "2026-03-03T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
             "archived": 0, "needs_review": 0, "deleted": 0,
         },
+        # Doc 4: a member of the manual collection, but archived -- pins the
+        # deliberate decision (see matchesView()'s 'collection-<id>' branch and its
+        # CLAUDE.md note) that collection views include archived/needs-review
+        # documents, unlike the 'all' view's default behavior.
+        {
+            "id": 4, "title": "Archived Warranty", "category": "Home", "document_type": "Receipt",
+            "date": "2026-03-04T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/4_d.pdf", "original_file_path": None,
+            "created_at": "2026-03-04T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 1, "needs_review": 0, "deleted": 0,
+        },
     ],
     "tags": [], "document_tags": [],
     "collections": [
@@ -44,8 +55,20 @@ SEED = {
     ],
     "collection_documents": [
         {"collection_id": 1, "document_id": 3},
+        {"collection_id": 1, "document_id": 4},
     ],
 }
+
+async def route_stub(page):
+    async def route_handler(route):
+        url = route.request.url
+        if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+            await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+        else:
+            await route.continue_()
+    await page.route('**/*', route_handler)
+    stub_js = open('stub_studio2.js').read()
+    await page.add_init_script(stub_js)
 
 async def main():
     async with async_playwright() as p:
@@ -55,15 +78,7 @@ async def main():
         page.on("pageerror", lambda exc: errors.append(str(exc)))
         page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
 
-        async def route_handler(route):
-            url = route.request.url
-            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
-                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
-            else:
-                await route.continue_()
-        await page.route('**/*', route_handler)
-        stub_js = open('stub_studio2.js').read()
-        await page.add_init_script(stub_js)
+        await route_stub(page)
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
@@ -78,11 +93,11 @@ async def main():
         print("Collection nav items, alphabetical:", collection_nav_labels)
 
         # === Scenario 2: clicking the manual collection shows only its member
-        # document (doc 3), regardless of category ===
+        # documents (doc 3 and doc 4), regardless of category ===
         await page.click('#nav-item-collection-1')
         await page.wait_for_timeout(150)
         manual_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("Manual collection shows only doc 3:", manual_row_ids)
+        print("Manual collection shows docs 3 and 4:", sorted(manual_row_ids))
 
         # === Scenario 3: clicking the smart collection live-filters by its saved
         # criteria (Category = Travel) -- docs 1 and 3, not doc 2 ===
@@ -103,11 +118,11 @@ async def main():
 
         # === Scenario 5: switching back to All Documents still shows every
         # non-archived/non-deleted/non-needs-review document, unaffected by having
-        # just been in a collection ===
+        # just been in a collection (doc 4 is archived, so it's excluded here) ===
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
         all_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("All Documents shows all 3 docs:", sorted(all_row_ids))
+        print("All Documents shows docs 1, 2, 3 (doc 4 archived, hidden by default):", sorted(all_row_ids))
 
         # === Scenario 6: Collections section expand/collapse persists via settings,
         # the same way nav_style already does ===
@@ -150,54 +165,41 @@ async def main():
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
 
-        # === Scenario 8: verify nav layout doesn't break sticky header height calibration (tabs mode) ===
-        # Re-expand collections section if it's still collapsed
-        collections_section_class = await page.locator('#nav-collections-section').get_attribute('class')
-        if 'collapsed' in (collections_section_class or ''):
-            await page.click('#nav-collections-toggle')
-            await page.wait_for_timeout(150)
-
-        table_wrap_rect = await page.evaluate("""
-            () => {
-                const el = document.querySelector('#table-wrap');
-                const rect = el.getBoundingClientRect();
-                return { top: rect.top, bottom: rect.bottom, height: rect.height };
-            }
-        """)
-        viewport_height = await page.evaluate("() => window.innerHeight")
-        table_bottom_distance = viewport_height - table_wrap_rect['bottom']
-        print("Table-wrap bottom lands near viewport bottom (tabs mode):", abs(table_bottom_distance) <= 2, f"(distance: {table_bottom_distance}px)")
-
-        # === Scenario 9: verify nav layout works correctly in sidebar mode ===
+        # === Scenario 8: Collections nav section still renders and is reachable
+        # after switching nav style (sidebar <-> tabs) -- the *sticky-header height
+        # calibration* that this toggle affects is covered separately, with a
+        # document seed large enough to actually make it diagnostic (a small seed
+        # never overflows .table-wrap's max-height, so a check against one can't
+        # tell a correct constant from a wrong one) -- see the dedicated scenario
+        # near the end of this file ===
         await page.click('#nav-style-toggle')
         await page.wait_for_timeout(150)
+        collections_after_toggle = await page.locator('#nav-collections-section').count()
+        print("Collections section still visible after switching nav style:", collections_after_toggle == 1)
 
-        table_wrap_rect_sidebar = await page.evaluate("""
-            () => {
-                const el = document.querySelector('#table-wrap');
-                const rect = el.getBoundingClientRect();
-                return { top: rect.top, bottom: rect.bottom, height: rect.height };
-            }
-        """)
-        table_bottom_distance_sidebar = viewport_height - table_wrap_rect_sidebar['bottom']
-        print("Table-wrap bottom lands near viewport bottom (sidebar mode):", abs(table_bottom_distance_sidebar) <= 2, f"(distance: {table_bottom_distance_sidebar}px)")
-
-        # Verify collections section is still visible and functional in sidebar mode
-        sidebar_collections = await page.locator('#nav-collections-section').count()
-        print("Collections section still visible in sidebar mode:", sidebar_collections == 1)
-
-        # === Scenario 7: "Save as Smart Collection" is visible only in All
-        # Documents, not inside a collection's own view ===
+        # === Scenario 9: "Save as Smart Collection" is visible only in All
+        # Documents -- not inside a collection's own view, nor in Inbox, Waste bin,
+        # or Reports. The app's own visibility check has no per-view branching (a
+        # single `currentView === 'all'` comparison), so this exercises all of
+        # those views, not just one example collection view. Also lives in the
+        # Collections nav section now, not .toolbar -- see CLAUDE.md's Collections
+        # note on why (a toolbar-wrap regression, fixed by moving it here). ===
         save_smart_btn_in_all = await page.locator('#save-smart-collection-btn').is_visible()
         print("Save-as-Smart-Collection button visible in All Documents:", save_smart_btn_in_all)
-        await page.click('#nav-item-collection-1')
-        await page.wait_for_timeout(150)
-        save_smart_btn_in_collection = await page.locator('#save-smart-collection-btn').is_visible()
-        print("Save-as-Smart-Collection button hidden inside a collection view:", not save_smart_btn_in_collection)
+        for view_selector, view_label in [
+            ('#nav-item-collection-1', 'a manual collection view'),
+            ('#nav-item-inbox', 'Inbox'),
+            ('#nav-item-trash', 'Waste bin'),
+            ('#nav-item-reports', 'Reports'),
+        ]:
+            await page.click(view_selector)
+            await page.wait_for_timeout(150)
+            visible = await page.locator('#save-smart-collection-btn').is_visible()
+            print(f"Save-as-Smart-Collection button hidden inside {view_label}:", not visible)
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
 
-        # === Scenario 8: setting a category filter and saving creates a new Smart
+        # === Scenario 10: setting a category filter and saving creates a new Smart
         # Collection that live-filters the same way the seeded one does ===
         await page.select_option('#category-filter', 'Food')
         await page.wait_for_timeout(150)
@@ -220,9 +222,9 @@ async def main():
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
 
-        # === Scenario 9: checkbox column exists, selecting rows shows the bulk bar ===
+        # === Scenario 11: checkbox column exists, selecting rows shows the bulk bar ===
         checkbox_count = await page.locator('.row-select-checkbox').count()
-        print("Row checkboxes present, one per visible row:", checkbox_count == 3)
+        print("Row checkboxes present, one per visible row:", checkbox_count == 3)  # doc 4 is archived, hidden by default
 
         await page.check('tr[data-id="1"] .row-select-checkbox')
         await page.check('tr[data-id="2"] .row-select-checkbox')
@@ -235,8 +237,8 @@ async def main():
         modal_open_after_check = await page.locator('#modal-backdrop').count()
         print("Checking a row's checkbox does not open its detail modal:", modal_open_after_check == 0)
 
-        # === Scenario 10: bulk "Add to collection" adds both selected docs to the
-        # existing manual collection (which already had doc 3) ===
+        # === Scenario 12: bulk "Add to collection" adds both selected docs to the
+        # existing manual collection (which already had docs 3 and 4) ===
         await page.click('#bulk-add-to-collection-btn')
         await page.wait_for_timeout(150)
         await page.click('.bulk-collection-option[data-collection-id="1"]')
@@ -248,11 +250,11 @@ async def main():
         await page.click('#nav-item-collection-1')
         await page.wait_for_timeout(150)
         manual_row_ids_after = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("Manual collection now has docs 1, 2, and 3:", sorted(manual_row_ids_after))
+        print("Manual collection now has docs 1, 2, 3, and 4:", sorted(manual_row_ids_after))
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
 
-        # === Scenario 11: selection clears when switching views ===
+        # === Scenario 13: selection clears when switching views ===
         await page.check('tr[data-id="1"] .row-select-checkbox')
         await page.wait_for_timeout(150)
         await page.click('#nav-item-collection-2')
@@ -262,7 +264,7 @@ async def main():
         bulk_bar_after_view_switch = await page.locator('#bulk-action-bar').is_visible()
         print("Selection cleared after switching views:", not bulk_bar_after_view_switch)
 
-        # === Scenario 12: "+ New collection…" flow works end-to-end (tests the inline
+        # === Scenario 14: "+ New collection…" flow works end-to-end (tests the inline
         # form for creating a new manual collection on-the-fly during bulk-add) ===
         await page.check('tr[data-id="2"] .row-select-checkbox')
         await page.check('tr[data-id="3"] .row-select-checkbox')
@@ -294,8 +296,7 @@ async def main():
         checked_count_after_new_coll = await page.locator('.row-select-checkbox:checked').count()
         print("No checkboxes remain checked after new collection creation:", checked_count_after_new_coll == 0)
 
-        # === Scenario 13: select-all checkbox works ===
-        # Click select-all checkbox
+        # === Scenario 15: select-all checkbox works ===
         select_all_checkbox = page.locator('#select-all-checkbox')
         await select_all_checkbox.check()
         await page.wait_for_timeout(150)
@@ -317,7 +318,7 @@ async def main():
         bulk_bar_hidden_after_uncheck = await page.locator('#bulk-action-bar').is_visible()
         print("Bulk bar hidden after unchecking select-all:", not bulk_bar_hidden_after_uncheck)
 
-        # === Scenario 14: detail modal "Add to collection..." action, single document ===
+        # === Scenario 16: detail modal "Add to collection..." action, single document ===
         await page.click('tr[data-id="2"]')
         await page.wait_for_timeout(200)
         add_to_collection_btn_count = await page.locator('#add-to-collection-btn').count()
@@ -334,7 +335,7 @@ async def main():
         manual_after_modal_add = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("Manual collection includes doc 2 after adding from its detail view:", sorted(manual_after_modal_add))
 
-        # === Scenario 15: detail modal "Remove from this collection" appears only
+        # === Scenario 17: detail modal "Remove from this collection" appears only
         # when viewing a document from inside a manual collection's own view, and
         # correctly removes it ===
         await page.click('tr[data-id="2"]')
@@ -359,7 +360,7 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
-        # === Scenario 16: Remove-from-collection hidden when viewing from inside a
+        # === Scenario 18: Remove-from-collection hidden when viewing from inside a
         # smart collection's view, even though doc 3 is a member of a manual collection
         # (doc 3 matches the smart "Travel Category" collection's criteria) ===
         await page.click('#nav-item-collection-2')
@@ -371,7 +372,7 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
-        # === Scenario 17: Manage Collections modal lists every collection with the
+        # === Scenario 19: Manage Collections modal lists every collection with the
         # right kind and document count ===
         await page.click('#manage-collections-btn')
         await page.wait_for_timeout(150)
@@ -382,7 +383,8 @@ async def main():
         travel_count = await page.locator('.manage-collection-row', has_text='Travel Category').locator('.manage-collection-count').inner_text()
         print("Smart Collection's live count reflects current matching docs:", travel_count)
 
-        # === Scenario 18: renaming a collection ===
+        # === Scenario 20: renaming a collection; an empty rename resets the input
+        # back to the real name instead of leaving it blank ===
         manual_row = page.locator('.manage-collection-row', has_text='Manual Trip Folder')
         await manual_row.locator('.manage-collection-rename-input').fill('Trip Docs')
         await manual_row.locator('.manage-collection-rename-input').press('Enter')
@@ -390,14 +392,23 @@ async def main():
         renamed_label = await page.locator('#nav-collections-list .nav-item-label', has_text='Trip Docs').count()
         print("Rename reflected in the nav:", renamed_label == 1)
 
-        # === Scenario 19: "+ New collection" creates an empty manual collection ===
+        renamed_row = page.locator('.manage-collection-row', has_text='Trip Docs')
+        await renamed_row.locator('.manage-collection-rename-input').fill('')
+        await renamed_row.locator('.manage-collection-rename-input').press('Enter')
+        await page.wait_for_timeout(200)
+        reset_value = await renamed_row.locator('.manage-collection-rename-input').input_value()
+        print("Empty rename resets the input back to the real name (not left blank):", reset_value == 'Trip Docs')
+        still_named_in_nav = await page.locator('#nav-collections-list .nav-item-label', has_text='Trip Docs').count()
+        print("Collection is still named 'Trip Docs' in the nav after the empty-rename attempt:", still_named_in_nav == 1)
+
+        # === Scenario 21: "+ New collection" creates an empty manual collection ===
         await page.fill('#manage-new-collection-input', 'Empty Folder')
         await page.click('#manage-new-collection-btn')
         await page.wait_for_timeout(200)
         new_row_count = await page.locator('.manage-collection-row', has_text='Empty Folder').count()
         print("New empty manual collection created:", new_row_count == 1)
 
-        # === Scenario 20: deleting a collection removes it from the nav without
+        # === Scenario 22: deleting a collection removes it from the nav without
         # touching its member documents ===
         await page.locator('.manage-collection-row', has_text='Empty Folder').locator('.manage-collection-delete-btn').click()
         await page.wait_for_timeout(200)
@@ -408,7 +419,116 @@ async def main():
         deleted_nav_count = await page.locator('#nav-collections-list .nav-item-label', has_text='Empty Folder').count()
         print("Deleted collection gone from the nav:", deleted_nav_count == 0)
 
+        # === Scenario 23: an archived document that's a collection member still
+        # shows up in that collection's view -- pins the deliberate decision (see
+        # matchesView()'s 'collection-<id>' branch and CLAUDE.md's own note) that
+        # collection views include archived/needs-review documents, unlike the
+        # 'all' view's default behavior. Doc 4 (archived=1) is a member of the
+        # manual "Trip Docs" collection per the SEED. ===
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        manual_row_ids_with_archived = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("Archived doc 4 still shows up inside its manual collection:", '4' in manual_row_ids_with_archived)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        archived_hidden_from_all = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("...but doc 4 is still hidden from All Documents by default (confirms it's really archived):", '4' not in archived_hidden_from_all)
+
+        # === Scenario 24: deleting the collection currently being viewed falls back
+        # to All Documents instead of leaving a phantom view with nothing selected ===
+        await page.click('#nav-item-collection-2')  # "Travel Category" smart collection
+        await page.wait_for_timeout(150)
+        await page.click('#manage-collections-btn')
+        await page.wait_for_timeout(150)
+        await page.locator('.manage-collection-row', has_text='Travel Category').locator('.manage-collection-delete-btn').click()
+        await page.wait_for_timeout(200)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        all_nav_active = await page.locator('#nav-item-all').get_attribute('class')
+        print("Deleting the currently-viewed collection falls back to All Documents (nav-item-all active):", 'active' in (all_nav_active or ''))
+        count_line_after_delete = await page.locator('#count-line').text_content()
+        print("countLine no longer stuck on the deleted collection's denominator:", 'undefined' not in (count_line_after_delete or ''))
+
         print("JS ERRORS:", errors)
         await browser.close()
+
+    # === Scenario 25: sticky-header height calibration, across all four
+    # combinations of nav style (tabs/sidebar) x bulk-action-bar visibility (hidden/
+    # visible) -- a SEPARATE, larger-seeded page, because the earlier scenarios'
+    # 3-4 document seed never makes .table-wrap's max-height actually binding (its
+    # content is shorter than the max-height, so its rendered bottom edge floats far
+    # above the viewport bottom regardless of whether the CSS constant is right or
+    # wrong -- exactly the "non-diagnostic" gap a prior review of this feature
+    # flagged). 60 documents is comfortably enough to overflow at 1280x720; each
+    # state's own scrollHeight > clientHeight check below proves the constraint is
+    # actually binding before trusting the bottom-edge measurement that follows it. ===
+    async with async_playwright() as p:
+        browser2 = await p.chromium.launch()
+        page2 = await browser2.new_page(viewport={'width': 1280, 'height': 720})
+        errors2 = []
+        page2.on("pageerror", lambda exc: errors2.append(str(exc)))
+
+        await route_stub(page2)
+        await page2.goto(f"file://{APP_PATH}")
+        await page2.wait_for_timeout(200)
+
+        big_docs = [
+            {
+                "id": i, "title": f"Document {i}", "category": "Travel" if i % 2 == 0 else "Food",
+                "document_type": "Receipt", "date": f"2026-03-{(i % 28) + 1:02d}T00:00:00+00:00",
+                "notes": None, "ocr_text": None, "ocr_language": None,
+                "file_path": f"files/{i}_a.pdf", "original_file_path": None,
+                "created_at": "2026-03-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+                "archived": 0, "needs_review": 0, "deleted": 0,
+            }
+            for i in range(1, 61)
+        ]
+        BIG_SEED = {"documents": big_docs, "tags": [], "document_tags": [], "collections": [], "collection_documents": []}
+        await page2.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(BIG_SEED)});")
+        await page2.click("#open-btn")
+        await page2.wait_for_timeout(400)
+
+        async def measure_calibration(label):
+            info = await page2.evaluate("""
+                () => {
+                    const el = document.querySelector('#table-wrap');
+                    const rect = el.getBoundingClientRect();
+                    return {
+                        bottom: rect.bottom, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
+                        viewportHeight: window.innerHeight,
+                    };
+                }
+            """)
+            distance = info['viewportHeight'] - info['bottom']
+            binding = info['scrollHeight'] > info['clientHeight'] + 1
+            print(f"[{label}] max-height constraint actually binding (scrollHeight > clientHeight):", binding)
+            print(f"[{label}] table-wrap bottom lands within 2px of viewport bottom:", abs(distance) <= 2, f"(distance: {distance:.1f}px)")
+
+        # State A: default nav style, bulk bar hidden
+        await measure_calibration("nav style A, bulk bar hidden")
+
+        # State B: default nav style, bulk bar visible
+        await page2.check('tr[data-id="1"] .row-select-checkbox')
+        await page2.check('tr[data-id="2"] .row-select-checkbox')
+        await page2.wait_for_timeout(150)
+        await measure_calibration("nav style A, bulk bar VISIBLE")
+        await page2.click('#bulk-clear-selection-btn')
+        await page2.wait_for_timeout(150)
+
+        # Switch nav style
+        await page2.click('#nav-style-toggle')
+        await page2.wait_for_timeout(200)
+
+        # State C: other nav style, bulk bar hidden
+        await measure_calibration("nav style B, bulk bar hidden")
+
+        # State D: other nav style, bulk bar visible
+        await page2.check('tr[data-id="1"] .row-select-checkbox')
+        await page2.check('tr[data-id="2"] .row-select-checkbox')
+        await page2.wait_for_timeout(150)
+        await measure_calibration("nav style B, bulk bar VISIBLE")
+
+        print("JS ERRORS (calibration page):", errors2)
+        await browser2.close()
 
 asyncio.run(main())
