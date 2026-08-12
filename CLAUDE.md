@@ -961,8 +961,7 @@ version number — only by the schema itself matching).
   was needed.
 - **Collections** (`collections` + `collection_documents` tables,
   `openManageCollectionsModal()`, `createManualCollection()`,
-  `addDocumentsToCollection()`, `removeDocumentsFromCollection()`,
-  `deleteCollection()`) are user-created document groupings, manually
+  `addDocumentsToCollection()`) are user-created document groupings, manually
   curated or automatically matching your current search/filter state as a
   live view. The schema stores only two tables: `collections` (name, type,
   criteria JSON for smart collections) and `collection_documents` (the
@@ -977,21 +976,23 @@ version number — only by the schema itself matching).
   bulk-action toolbar that appears when checkboxes are checked), or one at a
   time from a document's own detail-modal action buttons ("Add to Collection"
   picks which one; "Remove from Collection" appears only when viewing from
-  inside a specific manual collection). The Collections nav section expands
-  and collapses via a toggle button (`#collections-toggle` →
-  `toggleCollectionsNav()`), collapsing by default if no collection exists
-  yet; the list itself (`#collections-list`) is rebuilt whenever a collection
+  inside a specific manual collection). Removing a document from a collection
+  and deleting a collection are both inline `DELETE FROM` statements in their
+  respective click handlers, not named functions. The Collections nav section
+  expands and collapses via a toggle button (`#nav-collections-toggle` →
+  `saveCollectionsNavExpanded()`), collapsing by default if no collection exists
+  yet; the list itself (`#nav-collections-list`) is rebuilt whenever a collection
   is created, deleted, or renamed, not persistently wired. Smart collections
   are created only via the toolbar's "Save as Smart Collection" button
   (visible only in the All Documents view) — the Manage Collections modal's
-  "+ New Collection" creates manual collections only, never smart ones, since
+  "+ New collection" creates manual collections only, never smart ones, since
   a manual collection's starting roster is deliberately chosen by the person
   from the current table state, not captured from filter state. Multi-select
-  checkboxes (`#select-all-checkbox`, per-row checkboxes with
-  `data-doc-id='<id>'`) reset whenever you switch views (`setView()` clears
-  `selectedDocIds` and re-renders the table) or close the library — the
-  selection state never persists across sessions and is scoped to a single
-  view, so switching to a Smart Collection and back to All Documents doesn't
+  checkboxes (`#select-all-checkbox`, per-row checkboxes with class
+  `row-select-checkbox` and `data-id="${d.id}"`) reset whenever you switch views
+  (`setView()` clears `selectedDocIds` and re-renders the table) or close the
+  library — the selection state never persists across sessions and is scoped to a
+  single view, so switching to a Smart Collection and back to All Documents doesn't
   retain your old All Documents selection. Creating a new manual collection
   and adding its first documents happen as one action via the same
   `addDocumentsToCollection()` and `createManualCollection()` functions that
