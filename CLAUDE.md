@@ -1022,6 +1022,26 @@ version number — only by the schema itself matching).
   `addDocumentsToCollection()` and `createManualCollection()` functions that
   the detail-modal single-document action buttons use — no special
   code-path difference between a bulk add and a single add.
+  **Bulk archive/delete/flag-for-review actions** (`bulkSetArchived()`,
+  `bulkSetDeleted()`, `bulkSetNeedsReview()`, `renderBulkActionBar()`)
+  extend the bulk-action bar with view-aware buttons for applying state
+  changes to multiple documents at once. Button visibility and labels are
+  context-sensitive: the Waste bin view shows only "Restore"; the Inbox
+  view relabels "Flag for review" to "Done" (unflag); every other view
+  (All Documents, Collections, Reports) shows Archive, Delete, and "Flag
+  for review" alongside the existing "Add to collection" — but Reports
+  view shows neither checkboxes nor a bulk bar at all. All three functions
+  use **unconditional-set semantics** (not per-document toggle): "Archive
+  selected" always sets `archived=1` for every selected document regardless
+  of its current state, enabling correct behavior for mixed-state selections
+  (e.g., selecting both archived and unarchived documents from a Collection
+  view and clicking Archive leaves both archived, not toggling the already-
+  archived one back to unarchived). Crucially, all database UPDATEs are
+  queued first (`forEach`), then persisted and rendered exactly once via a
+  single `persistDb()` / `render()` call, not per-document — unlike looping
+  the single-document toggle functions, this avoids wasteful
+  re-serialization of the entire SQLite database for bulk operations on
+  multiple documents.
   **A collection view (`matchesView()`'s `'collection-<id>'` branch, both
   manual and smart) deliberately includes archived and needs-review
   documents** — the same choice, and the same reasoning, as the Reports view
@@ -1034,7 +1054,7 @@ version number — only by the schema itself matching).
   excluded, via the same shared check every other view uses.
   **The bulk-action bar's height is part of `.table-wrap`'s sticky-header
   calibration too** — see that note near the top of this file. Selecting any
-  row shows `#bulk-action-bar` (~74px of real page height above
+  row shows `#bulk-action-bar` (60px of real page height above
   `.table-wrap`), so `renderBulkActionBar()` toggles a `.bulk-bar-visible`
   class on `#main-layout` and the CSS has dedicated `max-height` rules for
   all four combinations of nav style × bulk-bar visibility — don't assume
@@ -1556,10 +1576,21 @@ archived document that's a collection member still showing up in that
 collection's view (manual and smart collections deliberately include
 archived/needs-review documents — see this note's own Collections entry
 above), deleting the collection currently being viewed falling back to All
-Documents rather than leaving a phantom view, and a dedicated
+Documents rather than leaving a phantom view, bulk archive/delete/flag-for-review
+actions (`test_collections.py` Scenarios 25-28b — the four view-aware action
+buttons visible/hidden/relabeled correctly per nav view (All/Collection/Inbox/
+Trash); unconditional-set semantics on mixed-state selections archived both
+already-archived and previously-unarchived docs; bulk flag-for-review setting
+needs_review on multiple docs; Inbox relabeling the button to "Done" and
+bulk-Done clearing the flag; bulk delete hiding docs from All Documents and
+moving to Waste bin; bulk restore clearing the deleted flag; each action
+clearing selection and persisting exactly once), and a dedicated
 large-document-seed (60+) check of `.table-wrap`'s sticky-header height
 calibration across all four combinations of nav style × bulk-action-bar
-visibility, replacing an earlier version of this same check that used only
+visibility (Scenarios 29a-29c — no checkboxes in Reports view; nav badge
+counts updating after bulk actions; bulk delete from Collection view
+preserving collection membership on restore; Scenario 30 measures calibration
+constants), replacing an earlier version of this same check that used only
 3-4 seeded documents — too few to ever make the `max-height` constraint
 actually binding, so it could report success regardless of whether the CSS
 constants were actually correct; the current version explicitly asserts

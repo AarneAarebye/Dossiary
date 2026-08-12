@@ -216,8 +216,8 @@
      that feature's own empirical check happened to re-measure it. */
   .table-wrap{ padding:0 32px 40px; overflow:auto; max-height:calc(100vh - 302px); }
   #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 262px); }
-  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 375px); }
-  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 350px); }
+  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 376px); }
+  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 336px); }
   table{ width:100%; border-collapse:collapse; margin-top:18px; min-width:800px; }
   thead th{ text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); font-weight:500; padding:8px 14px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; white-space:nowrap; position:sticky; top:0; background:var(--ink); z-index:10; }
   thead th:hover{ color:var(--phosphor); }
@@ -565,10 +565,10 @@
           <button type="button" id="bulk-new-collection-save-btn">Create &amp; add</button>
           <button type="button" id="bulk-new-collection-cancel-btn">Cancel</button>
         </span>
-        <button type="button" id="bulk-archive-btn">Archive selected</button>
-        <button type="button" id="bulk-delete-btn">Delete selected</button>
-        <button type="button" id="bulk-review-btn">Flag for review selected</button>
-        <button type="button" id="bulk-restore-btn" style="display:none;">Restore selected</button>
+        <button type="button" id="bulk-archive-btn">Archive</button>
+        <button type="button" id="bulk-delete-btn">Delete</button>
+        <button type="button" id="bulk-review-btn">Flag for review</button>
+        <button type="button" id="bulk-restore-btn" style="display:none;">Restore</button>
         <button type="button" id="bulk-clear-selection-btn">Clear selection</button>
       </div>
 
@@ -2731,7 +2731,7 @@
     // action is Done (clear the flag), not Flag for review (set it) -- same
     // relabeling openDetail()'s own single-document review-toggle button already
     // does for an individual document.
-    el('bulk-review-btn').textContent = currentView === 'inbox' ? 'Done' : 'Flag for review selected';
+    el('bulk-review-btn').textContent = currentView === 'inbox' ? 'Done' : 'Flag for review';
   }
 
   searchInput.addEventListener('input', render);

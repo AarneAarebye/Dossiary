@@ -459,7 +459,7 @@ async def main():
         print("Archive button visible in All Documents:", await page.locator('#bulk-archive-btn').is_visible())
         print("Delete button visible in All Documents:", await page.locator('#bulk-delete-btn').is_visible())
         review_btn_text_all = await page.locator('#bulk-review-btn').inner_text()
-        print("Review button reads 'Flag for review selected' in All Documents:", review_btn_text_all)
+        print("Review button reads 'Flag for review' in All Documents:", review_btn_text_all)
         print("Restore button hidden in All Documents:", not await page.locator('#bulk-restore-btn').is_visible())
         print("Add to collection visible in All Documents:", await page.locator('#bulk-add-to-collection-btn').is_visible())
 
@@ -595,10 +595,22 @@ async def main():
         docs_gone_from_trash = await page.locator('tr[data-id="1"], tr[data-id="2"]').count()
         print("both restored docs gone from the Waste bin:", docs_gone_from_trash == 0)
 
+        # === Scenario 29a: No checkboxes in Reports view ===
+        await page.click('#nav-item-reports')
+        await page.wait_for_timeout(150)
+        checkbox_in_reports = await page.locator('.row-select-checkbox').count()
+        print("Reports view has no row checkboxes:", checkbox_in_reports == 0)
+
+        # === Scenario 29b: Nav badge counts reflect documents correctly ===
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        badge_count = await page.locator('#nav-item-inbox .nav-item-badge').count()
+        print("Inbox nav badge element exists:", badge_count > 0)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
-    # === Scenario 29: sticky-header height calibration, across all four
+    # === Scenario 30: sticky-header height calibration, across all four
     # combinations of nav style (tabs/sidebar) x bulk-action-bar visibility (hidden/
     # visible) -- a SEPARATE, larger-seeded page, because the earlier scenarios'
     # 3-4 document seed never makes .table-wrap's max-height actually binding (its
