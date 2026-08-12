@@ -449,10 +449,156 @@ async def main():
         count_line_after_delete = await page.locator('#count-line').text_content()
         print("countLine no longer stuck on the deleted collection's denominator:", 'undefined' not in (count_line_after_delete or ''))
 
+        # === Scenario 25: bulk action buttons visible in All Documents -- Archive,
+        # Delete, Flag for review, and Add to collection all present; Restore absent ===
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        print("Archive button visible in All Documents:", await page.locator('#bulk-archive-btn').is_visible())
+        print("Delete button visible in All Documents:", await page.locator('#bulk-delete-btn').is_visible())
+        review_btn_text_all = await page.locator('#bulk-review-btn').inner_text()
+        print("Review button reads 'Flag for review selected' in All Documents:", review_btn_text_all)
+        print("Restore button hidden in All Documents:", not await page.locator('#bulk-restore-btn').is_visible())
+        print("Add to collection visible in All Documents:", await page.locator('#bulk-add-to-collection-btn').is_visible())
+
+        # === Scenario 26: bulk archive sets unconditionally on a mixed-state
+        # selection -- doc 3 (not archived) and doc 4 (already archived, from SEED)
+        # are both members of the "Manual Trip Folder" collection, so selecting both
+        # there and clicking Archive should leave BOTH archived, not just doc 3 ===
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        await page.check('tr[data-id="3"] .row-select-checkbox')
+        await page.check('tr[data-id="4"] .row-select-checkbox')
+        await page.click('#bulk-archive-btn')
+        await page.wait_for_timeout(200)
+        bulk_bar_hidden_after_archive = await page.locator('#bulk-action-bar').is_visible()
+        print("bulk bar hidden after Archive (selection cleared):", not bulk_bar_hidden_after_archive)
+        persisted_after_archive = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text()).documents;
+            })()
+        """)
+        doc3_archived = next(d for d in persisted_after_archive if d['id'] == 3)['archived']
+        doc4_archived = next(d for d in persisted_after_archive if d['id'] == 4)['archived']
+        print("doc 3 (was not archived) is now archived:", doc3_archived)
+        print("doc 4 (was already archived) is still archived:", doc4_archived)
+
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        doc3_row_in_all = await page.locator('tr[data-id="3"]').count()
+        print("newly-archived doc 3 no longer shows in All Documents by default:", doc3_row_in_all == 0)
+
+        # === Scenario 27: bulk "Flag for review selected" ===
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.click('#bulk-review-btn')
+        await page.wait_for_timeout(200)
+        persisted_after_flag = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text()).documents;
+            })()
+        """)
+        doc1_flagged = next(d for d in persisted_after_flag if d['id'] == 1)['needs_review']
+        doc2_flagged = next(d for d in persisted_after_flag if d['id'] == 2)['needs_review']
+        print("doc 1 flagged for review after bulk action:", doc1_flagged)
+        print("doc 2 flagged for review after bulk action:", doc2_flagged)
+
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        flagged_docs_in_inbox = await page.locator('#doc-tbody tr').count()
+        print("both newly-flagged docs now show in the Inbox view:", flagged_docs_in_inbox)
+
+        # === Scenario 28: Inbox relabels the button to "Done"; Restore stays hidden
+        # there; bulk Done clears the flag ===
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        review_btn_text_inbox = await page.locator('#bulk-review-btn').inner_text()
+        print("Review button reads 'Done' in Inbox view:", review_btn_text_inbox)
+        print("Restore button still hidden in Inbox view:", not await page.locator('#bulk-restore-btn').is_visible())
+        print("Archive button still visible in Inbox view:", await page.locator('#bulk-archive-btn').is_visible())
+
+        await page.click('#bulk-review-btn')
+        await page.wait_for_timeout(200)
+        persisted_after_done = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text()).documents;
+            })()
+        """)
+        doc1_done = next(d for d in persisted_after_done if d['id'] == 1)['needs_review']
+        doc2_done = next(d for d in persisted_after_done if d['id'] == 2)['needs_review']
+        print("doc 1 no longer flagged after bulk Done:", doc1_done)
+        print("doc 2 no longer flagged after bulk Done:", doc2_done)
+
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        docs_back_in_all = await page.locator('tr[data-id="1"], tr[data-id="2"]').count()
+        print("both docs are back in All Documents after Done:", docs_back_in_all)
+
+        # === Scenario 28b: bulk delete, and the Waste bin view showing ONLY Restore
+        # -- matching openDetail()'s own precedent for a deleted document exactly
+        # (Add to collection/Archive/Delete/Flag for review all genuinely absent,
+        # not just disabled) ===
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.click('#bulk-delete-btn')
+        await page.wait_for_timeout(200)
+        persisted_after_delete = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text()).documents;
+            })()
+        """)
+        doc1_deleted = next(d for d in persisted_after_delete if d['id'] == 1)['deleted']
+        doc2_deleted = next(d for d in persisted_after_delete if d['id'] == 2)['deleted']
+        print("doc 1 deleted after bulk action:", doc1_deleted)
+        print("doc 2 deleted after bulk action:", doc2_deleted)
+        docs_gone_from_all = await page.locator('tr[data-id="1"], tr[data-id="2"]').count()
+        print("both deleted docs gone from All Documents:", docs_gone_from_all == 0)
+
+        await page.click('#nav-item-trash')
+        await page.wait_for_timeout(150)
+        docs_in_trash = await page.locator('tr[data-id="1"], tr[data-id="2"]').count()
+        print("both deleted docs show in the Waste bin:", docs_in_trash)
+
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        print("Restore button visible in Waste bin:", await page.locator('#bulk-restore-btn').is_visible())
+        print("Add to collection hidden in Waste bin:", not await page.locator('#bulk-add-to-collection-btn').is_visible())
+        print("Archive button hidden in Waste bin:", not await page.locator('#bulk-archive-btn').is_visible())
+        print("Delete button hidden in Waste bin:", not await page.locator('#bulk-delete-btn').is_visible())
+        print("Review button hidden in Waste bin:", not await page.locator('#bulk-review-btn').is_visible())
+
+        await page.click('#bulk-restore-btn')
+        await page.wait_for_timeout(200)
+        persisted_after_restore = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text()).documents;
+            })()
+        """)
+        doc1_restored = next(d for d in persisted_after_restore if d['id'] == 1)['deleted']
+        doc2_restored = next(d for d in persisted_after_restore if d['id'] == 2)['deleted']
+        print("doc 1 no longer deleted after bulk Restore:", doc1_restored)
+        print("doc 2 no longer deleted after bulk Restore:", doc2_restored)
+        docs_gone_from_trash = await page.locator('tr[data-id="1"], tr[data-id="2"]').count()
+        print("both restored docs gone from the Waste bin:", docs_gone_from_trash == 0)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
-    # === Scenario 25: sticky-header height calibration, across all four
+    # === Scenario 29: sticky-header height calibration, across all four
     # combinations of nav style (tabs/sidebar) x bulk-action-bar visibility (hidden/
     # visible) -- a SEPARATE, larger-seeded page, because the earlier scenarios'
     # 3-4 document seed never makes .table-wrap's max-height actually binding (its
