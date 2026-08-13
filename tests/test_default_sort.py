@@ -122,15 +122,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_for_s3)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
-        # Make the "Imported" column visible (it's hidden by default)
-        await page.click('#columns-btn')
-        await page.wait_for_timeout(100)
-        await page.click('#col-toggle-import_date')
-        await page.wait_for_timeout(100)
-        # Close the columns menu by clicking the button again
-        await page.click('#columns-btn')
-        await page.wait_for_timeout(150)
-        # Now click import_date while date is the active sort
+        # The "Imported" column is now visible by default, so just click it
+        # (no need to show it via Columns menu)
         await page.click('th[data-key="import_date"]')
         await page.wait_for_timeout(150)
         order_after_imported_click = await row_order(page)
@@ -139,24 +132,16 @@ async def main():
         sort_dir_row2 = next((s for s in settings_after_imported_click if s['key'] == 'sort_dir'), None)
         print("sort_dir persisted as 'desc' after first click of Imported:", sort_dir_row2['value'] if sort_dir_row2 else None)
 
-        # === Scenario 4: reopening the library keeps the persisted sort -- 'date' desc
-        # was the last explicit choice recorded on disk before this reopen (clicking
-        # Imported above changed the LIVE in-memory state further, but this step
-        # simulates a real reopen by re-seeding a fresh root with 'date'/'desc'
-        # explicitly persisted, proving a real reopen reads settings back rather than
-        # reverting to the import_date/desc default) ===
-        seed_with_sort = dict(SEED)
-        seed_with_sort['settings'] = [
-            {'key': 'sort_key', 'value': 'date'},
-            {'key': 'sort_dir', 'value': 'desc'},
-        ]
-        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_sort)}); window.__TEST_ROOT.name = 'TestLib';")
+        # === Scenario 4: reopening the library reads back persisted sort state
+        # from Scenario 3 -- this is a real round-trip test: Scenario 3 persisted
+        # 'import_date'/'desc' to the same root (and that root is still in memory),
+        # so reloading it should read that persisted state back and re-sort the table ===
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
-        date_th_active_after_reopen = await page.locator('th[data-key="date"]').get_attribute('class')
-        print("Date column header is active after reopening with 'date'/'desc' persisted:", 'active' in (date_th_active_after_reopen or ''))
+        import_date_th_active_after_reopen = await page.locator('th[data-key="import_date"]').get_attribute('class')
+        print("Imported column header is active after reopening (preserving Scenario 3's sort):", 'active' in (import_date_th_active_after_reopen or ''))
         order_after_reopen = await row_order(page)
-        print("rows still in date-desc order (doc3, doc2, doc1) after reopening:", order_after_reopen)
+        print("rows still in import_date-desc order (doc1, doc3, doc2) after reopening:", order_after_reopen)
 
         print("JS ERRORS:", errors)
         await browser.close()

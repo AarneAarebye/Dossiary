@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (50 scripts) + shared
+tests/                   Playwright regression suite (53 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -1108,6 +1108,28 @@ version number — only by the schema itself matching).
   support depends on the SQLite version sql.js happens to bundle, and
   `INSERT OR REPLACE` has been supported forever), not browser storage —
   keep it that way so the preference travels with the library folder.
+- **Persisted default sort order** (`sortKey`, `sortDir`, `loadSortState()`,
+  `saveSortState()`) mirrors the `nav_style`/`default_currency` pattern exactly:
+  a per-library setting stored in the `settings` table, loaded once on library
+  open via `loadDocumentsFromDb()`, and persisted back on every column-header
+  click via the click handler's fire-and-forget call to `saveSortState()` —
+  the async `persistDb()` happens in the background without blocking `render()`.
+  **Defaults to `import_date` descending (newest-imported-first), not `date`
+  descending**, because `date` (a document's own content date, e.g. invoice date)
+  can be `NULL` for Inbox-imported documents until they're reviewed — sorting
+  by a field that's `NULL` for a significant portion of a library would bury
+  unreviewed documents in raw insertion order at the bottom of the table,
+  making a review queue invisible. `import_date` (when the library imported the
+  file) is always populated. **The "Imported" column is visible by default**
+  specifically so this sort choice has a visible, highlighted header on first
+  open — without seeing `th[data-key="import_date"]` highlighted in
+  phosphor-green, a person has no way to know the table is already sorted. If
+  the person never opens the Columns menu, they never disable this column, so
+  the header stays visible and the sort stays legible. Clicking the header
+  toggles direction (ascending on subsequent clicks); clicking a different
+  column header sets that column as the new sort and defaults `date`/`import_date`
+  to descending, all other columns to ascending — matching the existing click
+  logic for those two special-case columns.
 - **Per-field capability checkboxes** (`toggleFieldCapability()`,
   `capabilitiesHtml()`/`wireCapabilities()` shared helpers inside
   `renderFieldSettingsFieldColumns()`) let a person flip a field's
@@ -1428,7 +1450,7 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **52
+There's a real, runnable Playwright regression suite in `tests/` — **53
 scripts covering most of the app's actual functionality**: capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -1595,8 +1617,12 @@ constants), replacing an earlier version of this same check that used only
 actually binding, so it could report success regardless of whether the CSS
 constants were actually correct; the current version explicitly asserts
 `scrollHeight > clientHeight` first, to prove the constraint is binding
-before trusting the bottom-edge measurement that follows it), and search
-across all of the above. This
+before trusting the bottom-edge measurement that follows it), persisted
+default sort preference (`test_default_sort.py` — table opens sorted by
+`import_date` desc by default when no sort settings exist; clicking Date
+persists the sort choice; clicking Imported (a descending-by-default column
+like Date) persists desc rather than defaulting to asc; reopening reads
+back and applies persisted sort state), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

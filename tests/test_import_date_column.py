@@ -42,9 +42,9 @@ async def main():
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
-        # default: import_date column should be HIDDEN
+        # default: import_date column should be VISIBLE (now that it's the default sort and needs a visible header)
         col_visible = await page.locator('th[data-field="import_date"]').is_visible()
-        print("import_date column visible by default (should be False):", col_visible)
+        print("import_date column visible by default (should be True):", col_visible)
 
         # toggle it on via Columns panel
         await page.click('#columns-btn')

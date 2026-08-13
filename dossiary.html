@@ -720,7 +720,7 @@
     { id: 'document_type', label: 'Type', hasFilter: true, defaultVisible: true },
     { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
     { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
-    { id: 'import_date', label: 'Imported', hasFilter: false, defaultVisible: false },
+    { id: 'import_date', label: 'Imported', hasFilter: false, defaultVisible: true },
     { id: 'amount', label: 'Amount', hasFilter: false, defaultVisible: true },
     { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
   ];
@@ -1515,7 +1515,12 @@
   function loadSortState(){
     const keyRows = queryAll("SELECT value FROM settings WHERE key = 'sort_key'").rows;
     const dirRows = queryAll("SELECT value FROM settings WHERE key = 'sort_dir'").rows;
-    sortKey = keyRows.length ? keyRows[0][0] : 'import_date';
+    // Validate persisted sort_key against known sortable fields; stale/removed keys
+    // fall back to default, same pattern as loadColumnSettings() for column visibility.
+    // Valid keys: fixed columns from FIELD_DEFS, or dynamic field-<id> for show_as_column fields.
+    const validSortKeys = new Set([...FIELD_DEFS.map(f => f.id), ...dynamicColumnDefs().map(f => `field-${f.id}`)]);
+    const persistedKey = keyRows.length ? keyRows[0][0] : 'import_date';
+    sortKey = validSortKeys.has(persistedKey) ? persistedKey : 'import_date';
     sortDir = (dirRows.length && dirRows[0][0] === 'asc') ? 'asc' : 'desc';
   }
 
