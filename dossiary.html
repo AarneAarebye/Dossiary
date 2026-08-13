@@ -766,7 +766,7 @@
   // so it can't outlive the modal it was opened from.
   let openDocCollectionMenu = null;
 
-  let sortKey = 'date';
+  let sortKey = 'import_date'; // overwritten by loadSortState() on every library open -- this is just the pre-library-open starting value
   let sortDir = 'desc';
   let pendingFile = null;
   let pendingOcrText = '';
@@ -1421,6 +1421,7 @@
     loadDefaultDocumentType();
     loadDefaultCurrency();
     loadNavStyle();
+    loadSortState();
     loadCollectionsNavExpanded();
     loadTypeFieldOrder();
     renderColumnsMenu();
@@ -1502,6 +1503,28 @@
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('nav_style', ?)", [navStyle]);
     await persistDb();
     applyNavStyle();
+  }
+
+  // Mirrors loadNavStyle()/saveNavStyle() exactly. Defaults to import_date/desc
+  // when no sort_key/sort_dir rows exist yet -- covers both a fresh library and
+  // an existing library that predates this feature, same as default_document_type/
+  // default_currency's own unset-defaults-quietly behavior. import_date is always
+  // set (unlike date, which Inbox-imported documents leave NULL until reviewed --
+  // see sortDocs()'s own date-branch null handling), so it needs no special
+  // fallback here the way date's own comparator does.
+  function loadSortState(){
+    const keyRows = queryAll("SELECT value FROM settings WHERE key = 'sort_key'").rows;
+    const dirRows = queryAll("SELECT value FROM settings WHERE key = 'sort_dir'").rows;
+    sortKey = keyRows.length ? keyRows[0][0] : 'import_date';
+    sortDir = (dirRows.length && dirRows[0][0] === 'asc') ? 'asc' : 'desc';
+  }
+
+  async function saveSortState(key, dir){
+    sortKey = key;
+    sortDir = dir;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('sort_key', ?)", [key]);
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('sort_dir', ?)", [dir]);
+    await persistDb();
   }
 
   function applyNavStyle(){
@@ -2756,12 +2779,14 @@
   // Delegated (not per-<th>) so dynamically-appended headers for show_as_column
   // custom fields (see renderDynamicTableHead()) sort correctly without needing
   // their own click wiring at creation time.
-  el('doc-thead-row').addEventListener('click', (e) => {
+  el('doc-thead-row').addEventListener('click', async (e) => {
     const th = e.target.closest('th[data-key]');
     if(!th) return;
     const key = th.dataset.key;
-    if(sortKey === key){ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
-    else{ sortKey = key; sortDir = key === 'date' ? 'desc' : 'asc'; }
+    let newKey = sortKey, newDir = sortDir;
+    if(sortKey === key){ newDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+    else{ newKey = key; newDir = (key === 'date' || key === 'import_date') ? 'desc' : 'asc'; }
+    await saveSortState(newKey, newDir);
     render();
   });
 
