@@ -2779,14 +2779,14 @@
   // Delegated (not per-<th>) so dynamically-appended headers for show_as_column
   // custom fields (see renderDynamicTableHead()) sort correctly without needing
   // their own click wiring at creation time.
-  el('doc-thead-row').addEventListener('click', async (e) => {
+  el('doc-thead-row').addEventListener('click', (e) => {
     const th = e.target.closest('th[data-key]');
     if(!th) return;
     const key = th.dataset.key;
     let newKey = sortKey, newDir = sortDir;
     if(sortKey === key){ newDir = sortDir === 'asc' ? 'desc' : 'asc'; }
     else{ newKey = key; newDir = (key === 'date' || key === 'import_date') ? 'desc' : 'asc'; }
-    await saveSortState(newKey, newDir);
+    saveSortState(newKey, newDir);
     render();
   });
 
