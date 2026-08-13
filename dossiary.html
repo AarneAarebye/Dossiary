@@ -1517,8 +1517,10 @@
     const dirRows = queryAll("SELECT value FROM settings WHERE key = 'sort_dir'").rows;
     // Validate persisted sort_key against known sortable fields; stale/removed keys
     // fall back to default, same pattern as loadColumnSettings() for column visibility.
-    // Valid keys: fixed columns from FIELD_DEFS, or dynamic field-<id> for show_as_column fields.
-    const validSortKeys = new Set([...FIELD_DEFS.map(f => f.id), ...dynamicColumnDefs().map(f => `field-${f.id}`)]);
+    // Valid keys: 'title' (sortable but deliberately not in FIELD_DEFS, see its own
+    // note), the other fixed columns from FIELD_DEFS, or dynamicColumnDefs()'s own
+    // ids -- already in 'field-<id>' form, so not re-prefixed here.
+    const validSortKeys = new Set(['title', ...FIELD_DEFS.map(f => f.id), ...dynamicColumnDefs().map(f => f.id)]);
     const persistedKey = keyRows.length ? keyRows[0][0] : 'import_date';
     sortKey = validSortKeys.has(persistedKey) ? persistedKey : 'import_date';
     sortDir = (dirRows.length && dirRows[0][0] === 'asc') ? 'asc' : 'desc';

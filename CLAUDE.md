@@ -1129,7 +1129,15 @@ version number — only by the schema itself matching).
   toggles direction (ascending on subsequent clicks); clicking a different
   column header sets that column as the new sort and defaults `date`/`import_date`
   to descending, all other columns to ascending — matching the existing click
-  logic for those two special-case columns.
+  logic for those two special-case columns. `loadSortState()` validates the
+  persisted `sort_key` against every currently-sortable column — `'title'`
+  (sortable but deliberately absent from `FIELD_DEFS`, see that field's own
+  note above), the rest of `FIELD_DEFS`, and `dynamicColumnDefs()`'s own ids
+  (already in `'field-<id>'` form — don't re-prefix them, that was a real bug
+  caught in review: re-prefixing produces `'field-field-<id>'`, which never
+  matches anything, silently discarding every custom-field sort on reopen) —
+  falling back to `import_date` for a stale or removed key, the same
+  graceful-degradation convention `loadColumnSettings()` already uses.
 - **Per-field capability checkboxes** (`toggleFieldCapability()`,
   `capabilitiesHtml()`/`wireCapabilities()` shared helpers inside
   `renderFieldSettingsFieldColumns()`) let a person flip a field's

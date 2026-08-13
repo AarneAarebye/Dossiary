@@ -46,18 +46,26 @@ async def main():
         col_visible = await page.locator('th[data-field="import_date"]').is_visible()
         print("import_date column visible by default (should be True):", col_visible)
 
-        # toggle it on via Columns panel
+        # The column starts visible now (it's the default sort and needs a visible
+        # header -- see above), so the Columns-menu checkbox starts checked too.
+        # Exercise the toggle in both directions -- uncheck (hide), then re-check
+        # (show) -- rather than a single check() that would now be a no-op.
         await page.click('#columns-btn')
         await page.wait_for_timeout(150)
         checkbox_exists = await page.locator('#col-toggle-import_date').count()
         print("Imported checkbox exists in columns menu:", checkbox_exists)
+        await page.uncheck('#col-toggle-import_date')
+        await page.wait_for_timeout(150)
+        col_visible_after_uncheck = await page.locator('th[data-field="import_date"]').is_visible()
+        print("import_date column hidden after unchecking:", not col_visible_after_uncheck)
+
         await page.check('#col-toggle-import_date')
         await page.wait_for_timeout(150)
 
         col_visible2 = await page.locator('th[data-field="import_date"]').is_visible()
         cell_visible = await page.locator('td[data-field="import_date"]').first.is_visible()
-        print("import_date column visible after toggle:", col_visible2)
-        print("import_date cell visible after toggle:", cell_visible)
+        print("import_date column visible after re-checking:", col_visible2)
+        print("import_date cell visible after re-checking:", cell_visible)
 
         cell_text = await page.locator('td[data-field="import_date"]').first.inner_text()
         print("import_date cell text (should be a real date, not —):", cell_text)

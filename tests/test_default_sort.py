@@ -132,16 +132,26 @@ async def main():
         sort_dir_row2 = next((s for s in settings_after_imported_click if s['key'] == 'sort_dir'), None)
         print("sort_dir persisted as 'desc' after first click of Imported:", sort_dir_row2['value'] if sort_dir_row2 else None)
 
+        # A second click of the already-active Imported header toggles to ascending --
+        # deliberately a NON-default state (the no-settings default is import_date/desc,
+        # same as what we just clicked into above), so Scenario 4's round-trip check
+        # below can actually tell "persistence worked" apart from "loadSortState() just
+        # fell back to the default anyway."
+        await page.click('th[data-key="import_date"]')
+        await page.wait_for_timeout(150)
+        order_after_second_click = await row_order(page)
+        print("rows reorder to import_date-asc order (doc2, doc3, doc1) after second click of Imported:", order_after_second_click)
+
         # === Scenario 4: reopening the library reads back persisted sort state
-        # from Scenario 3 -- this is a real round-trip test: Scenario 3 persisted
-        # 'import_date'/'desc' to the same root (and that root is still in memory),
-        # so reloading it should read that persisted state back and re-sort the table ===
+        # from Scenario 3 -- this is a real round-trip test: the same root (still in
+        # memory) now has 'import_date'/'asc' persisted, a non-default state, so
+        # reloading it should read that persisted state back and re-sort the table ===
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
         import_date_th_active_after_reopen = await page.locator('th[data-key="import_date"]').get_attribute('class')
         print("Imported column header is active after reopening (preserving Scenario 3's sort):", 'active' in (import_date_th_active_after_reopen or ''))
         order_after_reopen = await row_order(page)
-        print("rows still in import_date-desc order (doc1, doc3, doc2) after reopening:", order_after_reopen)
+        print("rows still in import_date-asc order (doc2, doc3, doc1) after reopening:", order_after_reopen)
 
         print("JS ERRORS:", errors)
         await browser.close()
