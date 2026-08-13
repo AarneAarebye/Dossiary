@@ -601,11 +601,71 @@ async def main():
         checkbox_in_reports = await page.locator('.row-select-checkbox').count()
         print("Reports view has no row checkboxes:", checkbox_in_reports == 0)
 
-        # === Scenario 29b: Nav badge counts reflect documents correctly ===
+        # === Scenario 29b: nav badge counts reflect the real, post-bulk-action count
+        # -- not just that a badge element exists. #nav-count-inbox's text is written
+        # by renderNav() from allDocs on every render() call, so bulk-flagging docs 1
+        # & 2 for review should immediately show "2" here, not a stale or missing
+        # count ===
+        await page.click('#nav-item-all')  # Reports (29a, above) renders no table/checkboxes at all
+        await page.wait_for_timeout(150)
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.click('#bulk-review-btn')
+        await page.wait_for_timeout(200)
+        inbox_badge_text = await page.locator('#nav-count-inbox').inner_text()
+        print("Inbox nav badge count reflects the 2 newly-flagged docs:", inbox_badge_text)
+
+        # Done-ing them again so state is clean for Scenario 29c below.
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        await page.check('tr[data-id="1"] .row-select-checkbox')
+        await page.check('tr[data-id="2"] .row-select-checkbox')
+        await page.click('#bulk-review-btn')
+        await page.wait_for_timeout(200)
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
-        badge_count = await page.locator('#nav-item-inbox .nav-item-badge').count()
-        print("Inbox nav badge element exists:", badge_count > 0)
+
+        # === Scenario 29c: bulk delete from inside a Collection view preserves
+        # collection_documents membership -- restoring puts the document straight
+        # back into the collection, matching the existing single-document delete's
+        # behavior exactly, since bulkSetDeleted() only ever touches documents.deleted,
+        # never collection_documents ===
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        await page.check('tr[data-id="3"] .row-select-checkbox')
+        await page.check('tr[data-id="4"] .row-select-checkbox')
+        await page.click('#bulk-delete-btn')
+        await page.wait_for_timeout(200)
+        persisted_after_coll_delete = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                const data = JSON.parse(await f.text());
+                return {documents: data.documents, collection_documents: data.collection_documents};
+            })()
+        """)
+        doc3_deleted = next(d for d in persisted_after_coll_delete['documents'] if d['id'] == 3)['deleted']
+        doc4_deleted = next(d for d in persisted_after_coll_delete['documents'] if d['id'] == 4)['deleted']
+        print("doc 3 deleted after bulk delete from Collection view:", doc3_deleted)
+        print("doc 4 deleted after bulk delete from Collection view:", doc4_deleted)
+
+        membership_rows = [r for r in persisted_after_coll_delete['collection_documents'] if r['document_id'] in (3, 4)]
+        print("collection_documents membership rows for docs 3 & 4 retained through delete:", len(membership_rows))
+
+        await page.click('#nav-item-trash')
+        await page.wait_for_timeout(150)
+        docs_in_trash_from_coll = await page.locator('tr[data-id="3"], tr[data-id="4"]').count()
+        print("both docs show in the Waste bin after bulk delete from Collection view:", docs_in_trash_from_coll)
+
+        await page.check('tr[data-id="3"] .row-select-checkbox')
+        await page.check('tr[data-id="4"] .row-select-checkbox')
+        await page.click('#bulk-restore-btn')
+        await page.wait_for_timeout(200)
+
+        await page.click('#nav-item-collection-1')
+        await page.wait_for_timeout(150)
+        docs_back_in_collection = await page.locator('tr[data-id="3"], tr[data-id="4"]').count()
+        print("both restored docs are back in the collection (membership was preserved):", docs_back_in_collection)
 
         print("JS ERRORS:", errors)
         await browser.close()

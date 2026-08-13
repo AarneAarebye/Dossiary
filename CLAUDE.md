@@ -1054,7 +1054,7 @@ version number — only by the schema itself matching).
   excluded, via the same shared check every other view uses.
   **The bulk-action bar's height is part of `.table-wrap`'s sticky-header
   calibration too** — see that note near the top of this file. Selecting any
-  row shows `#bulk-action-bar` (60px of real page height above
+  row shows `#bulk-action-bar` (~74px of real page height above
   `.table-wrap`), so `renderBulkActionBar()` toggles a `.bulk-bar-visible`
   class on `#main-layout` and the CSS has dedicated `max-height` rules for
   all four combinations of nav style × bulk-bar visibility — don't assume
