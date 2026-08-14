@@ -340,33 +340,29 @@ das dieses Projekt überhaupt erst ausgelöst hat.
    Dokumenten.
 3. Klicken Sie auf **„＋ Add document“**, um etwas Neues zu erfassen.
 
-### Als App installieren (optional)
+### Als App installieren (derzeit nicht verfügbar)
 
-Dossiary bleibt weiterhin die eine Datei — es gibt keinen Installer und
-nichts zu bauen —, aber Chrome und Edge können eine bereits geöffnete Seite
-in etwas verwandeln, das wie eine native App aussieht und startet, mit
-eigenem Symbol und eigenem Fenster (ohne Tabs oder Adressleiste). Das ist
-optional; die Datei direkt in einem Browser-Tab zu öffnen funktioniert genau
-gleich.
+Chrome und Edge haben beide eine Funktion, die eine bereits geöffnete Seite
+in etwas verwandelt, das wie eine native App aussieht und startet — mit
+eigenem Symbol und eigenem Fenster, ohne Tabs oder Adressleiste. Das
+funktionierte früher auch für eine Datei, die direkt von der Festplatte
+geöffnet wurde, aber aktuelle Versionen beider Browser beschränken das auf
+Seiten, die von einem echten `http://`/`https://`-Ursprung ausgeliefert
+werden — öffnet man `dossiary.html` direkt (`file://...`), sind sowohl
+**Create Shortcut…** (Chrome) als auch **Install this site as an app**
+(Edge) ausgegraut, bestätigt in beiden Browsern. Das ist eine
+Browser-seitige Einschränkung des `file://`-Protokolls selbst, kein Fehler
+in dieser App und auch nicht durch ein Manifest zu beheben.
 
-**macOS (Chrome):** Öffnen Sie `dossiary.html` in Chrome, dann **⋮ → Save
-and Share → Create Shortcut…** (ältere Chrome-Versionen: **More Tools →
-Create Shortcut…**). Benennen Sie es in „Dossiary“ um, aktivieren Sie
-**„Open as window“** und klicken Sie auf **Create**. Es wird unter
-`~/Applications/Chrome Apps.localized/` abgelegt und erscheint in Launchpad
-und Spotlight wie jede andere App.
-
-**Windows (Edge):** Öffnen Sie `dossiary.html` in Edge, dann **··· → Apps →
-Install this site as an app**. Benennen Sie es in „Dossiary“ um und klicken
-Sie auf **Install**. Edge legt einen Eintrag im Startmenü an und bietet an,
-es an die Taskleiste oder den Desktop anzuheften.
-
-In beiden Fällen ist es dieselbe Datei wie zuvor — an der Art, wie Ihre
-Bibliothek gespeichert oder gelesen wird, ändert sich nichts; der Browser
-gibt der Seite lediglich einen eigenen Starter und ein eigenes Fenster statt
-eines Tabs. (Da `dossiary.html` kein `<title>`-Tag besitzt, schlagen beide
-Browser standardmäßig „dossiary.html“ als App-Namen vor — das ist der
-einzige Punkt, den es bei der Einrichtung umzubenennen lohnt.)
+Die Datei direkt in einem normalen Browser-Tab zu öffnen funktioniert in
+jedem Fall genau gleich — das war immer nur eine kosmetische Annehmlichkeit,
+nie eine Voraussetzung. Wer den Look eines eigenen Fensters unbedingt haben
+möchte, hat als einzige echte Umgehung die Möglichkeit, die Datei über
+`http://` statt direkt zu öffnen (z. B. `python3 -m http.server` im
+Bibliotheksordner ausführen und dann `http://localhost:8000/dossiary.html`
+öffnen) — das führt aber genau den „braucht einen Server“-Schritt wieder
+ein, den dieses Projekt eigentlich vermeiden soll, und wird hier deshalb
+nicht standardmäßig empfohlen.
 
 ### Von einem anderen Werkzeug wechseln?
 

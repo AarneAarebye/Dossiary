@@ -285,30 +285,26 @@ working" problem that motivated this project in the first place.
    into your existing documents.
 3. Click **"＋ Add document"** to capture something new.
 
-### Installing it as an app (optional)
+### Installing it as an app (currently unavailable)
 
-Dossiary is still just the one file — there's no installer and nothing to
-build — but Chrome and Edge can both turn a page you already have open into
-something that looks and launches like a native app, with its own icon and
-window (no tabs or address bar). This is optional; opening the file directly
-in a browser tab works exactly the same.
+Chrome and Edge both have a feature that turns a page you have open into
+something that looks and launches like a native app — its own icon and
+window, no tabs or address bar. This used to work for a file opened
+directly from disk, but current versions of both browsers restrict it to
+pages served from a real `http://`/`https://` origin — opening
+`dossiary.html` directly (`file://...`) greys out both **Create
+Shortcut…** (Chrome) and **Install this site as an app** (Edge), confirmed
+in both browsers. This is a browser platform restriction on the `file://`
+protocol itself, not a bug in this app or something a manifest could fix.
 
-**macOS (Chrome):** open `dossiary.html` in Chrome, then **⋮ → Save and
-Share → Create Shortcut…** (older Chrome: **More Tools → Create
-Shortcut…**). Rename it to "Dossiary", check **"Open as window"**, and click
-**Create**. It's added to `~/Applications/Chrome Apps.localized/` and shows
-up in Launchpad and Spotlight like any other app.
-
-**Windows (Edge):** open `dossiary.html` in Edge, then **··· → Apps →
-Install this site as an app**. Rename it to "Dossiary" and click
-**Install**. Edge adds a Start Menu entry and offers to pin it to the
-taskbar or desktop.
-
-Either way it's the same file underneath, so nothing about how it stores or
-reads your library changes — the browser is just giving it its own launcher
-and window instead of opening as a tab. (Since `dossiary.html` has no
-`<title>` tag, both browsers will suggest "dossiary.html" as the app name by
-default — that's the one thing worth renaming during setup.)
+Opening the file directly in a regular browser tab works exactly the same
+either way — this was always just a cosmetic convenience, never required.
+If you want the "own window" look badly enough to work around it, the only
+real option is serving the file over `http://` instead of opening it
+directly (e.g. `python3 -m http.server` from the library's folder, then
+opening `http://localhost:8000/dossiary.html`) — but that reintroduces
+exactly the "needs a server" step this project exists to avoid, so it's
+not something recommended here by default.
 
 ### Coming from another tool?
 
