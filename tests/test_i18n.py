@@ -54,6 +54,27 @@ async def main():
         title_after_reload = await page2.locator('#empty-state h2').inner_text()
         print("Scenario 3 -- manual choice persists across reload (overrides de-DE browser locale):", title_after_reload == "No library open")
 
+        # === Scenario 4: date formatting follows the UI language, not just the
+        # browser's OS locale (page2 is currently in English after Scenario 3's
+        # toggle click -- switch back to German and open a seeded document's
+        # detail view to check the date format) ===
+        await page2.click('#lang-toggle')
+        await page2.wait_for_timeout(100)
+        SEED = {"documents": [{
+            "id": 1, "title": "Test Doc", "category": "Finance", "document_type": "Invoice",
+            "date": "2026-03-05T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/1_a.pdf", "original_file_path": None,
+            "created_at": "2026-03-05T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 0, "needs_review": 0, "deleted": 0,
+        }], "tags": [], "document_tags": []}
+        await page2.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
+        await page2.click("#open-btn")
+        await page2.wait_for_timeout(300)
+        await page2.click('tr[data-id="1"]')
+        await page2.wait_for_timeout(200)
+        meta_text = await page2.locator('.modal-meta').inner_text()
+        print("Scenario 4 -- German UI language produces German-formatted date (contains 'März'):", 'März' in meta_text)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
