@@ -3305,7 +3305,17 @@
         const saved = await saveEditedDocument(id);
         if(saved){
           await toggleNeedsReview(id);
-          openDetail(id); // refresh so the modal reflects the cleared flag
+          // Unlike the standalone "Done" button (which reopens the detail
+          // view in place, since someone might use it mid-browse without
+          // wanting to lose their spot), "Save & Done" closes everything
+          // and returns to whatever table was already showing underneath --
+          // the Inbox queue, if that's where the review was happening. No
+          // forced navigation: toggleNeedsReview()'s own render() has
+          // already updated that table (removing the now-finished document
+          // if the active view is 'inbox'), so closing here just reveals
+          // the up-to-date queue, letting someone move straight to the next
+          // item instead of having to close an extra dialog first.
+          closeModal();
         }
       });
     }

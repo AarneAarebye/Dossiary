@@ -209,15 +209,18 @@ async def main():
         await page.fill('#e-title', 'Reviewed Invoice (finished)')
         await page.click('#save-done-btn')
         await page.wait_for_timeout(300)
+        # Unlike the standalone "Done" button (which reopens the detail view in
+        # place), "Save & Done" closes everything and returns straight to the
+        # table that was already showing underneath -- no extra click needed to
+        # dismiss a dialog before moving to the next item in the queue.
         modal_open_after_save_done = await page.locator('#modal-backdrop').count()
-        print("modal still open after Save & Done (shows the detail view, not closed):", modal_open_after_save_done == 1)
-        review_btn_after_save_done = await page.locator('#review-toggle-btn').inner_text()
-        print("detail view's own button now reads 'Flag for review' (flag was cleared):", review_btn_after_save_done)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        print("modal fully closed after Save & Done:", modal_open_after_save_done == 0)
 
         inbox_row_ids_after_save_done = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
-        print("doc 1 no longer in Inbox after Save & Done:", '1' not in inbox_row_ids_after_save_done)
+        print("still on the Inbox view (no forced navigation), doc 1 now gone from it:", '1' not in inbox_row_ids_after_save_done)
+        still_on_inbox_view = await page.locator('#nav-item-inbox.active').count()
+        print("Inbox nav item still the active view:", still_on_inbox_view == 1)
+
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
         main_row_ids_after_save_done = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
