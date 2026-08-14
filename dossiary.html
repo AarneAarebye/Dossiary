@@ -304,6 +304,15 @@
 
   /* modal shared */
   .backdrop{ position:fixed; inset:0; background:rgba(6,9,10,0.75); backdrop-filter:blur(2px); display:flex; align-items:flex-start; justify-content:center; padding:40px 20px; z-index:50; overflow-y:auto; }
+  .drop-overlay{
+    position:fixed; inset:0; z-index:100; pointer-events:none;
+    background:rgba(6,9,10,0.85); display:flex; align-items:center; justify-content:center;
+  }
+  .drop-overlay-box{
+    border:2px dashed var(--phosphor); border-radius:var(--radius); padding:40px 60px;
+    font-family:var(--font-display); font-size:22px; font-weight:600; color:var(--phosphor);
+    text-transform:uppercase; letter-spacing:0.08em;
+  }
   .modal{ background:var(--panel); border:1px solid var(--line); border-radius:6px; max-width:640px; width:100%; padding:26px 28px 28px; position:relative; }
   .modal.wide{ max-width:760px; }
   .modal-close{ position:absolute; top:16px; right:16px; }
@@ -595,6 +604,10 @@
   </div>
 
   <div id="modal-root"></div>
+
+  <div id="drop-overlay" class="drop-overlay" style="display:none;">
+    <div class="drop-overlay-box">Drop to add for review</div>
+  </div>
 
   <footer>
     © 2026 Aarne Aarebye · <span id="app-version-label"></span> · MIT License ·
@@ -4304,22 +4317,24 @@
     }
   }
 
-  // Adds one inbox file as a new document with only the file itself and a
+  // Creates a new document from a raw File with only the file itself and a
   // filename-derived title set -- category/subcategory/payment/amount/date/notes
   // are left blank, and document type is prefilled from default_document_type if
   // one's configured (same intent as the capture form's own default-type prefill),
-  // exactly mirroring the "filed with defaults, cleaned up later" workflow legacy
-  // Mariner Paperless's own ScanSnap watch-folder integration had. No OCR runs here
-  // -- that stays an explicit action from the Edit dialog (runOcrForEdit()), same
-  // as it already is for any other saved document, so a bulk "Add all" doesn't
-  // silently kick off a slow OCR pass per file.
-  async function addInboxFile(name){
-    const entry = pendingInboxFiles.find(f => f.name === name);
-    if(!entry) return;
-    let id;
+  // the "filed with defaults, cleaned up later" pattern legacy Mariner
+  // Paperless's own ScanSnap watch-folder integration had. No OCR runs here --
+  // that stays an explicit action from the Edit dialog (runOcrForEdit()), same
+  // as it already is for any other saved document, so a bulk add doesn't
+  // silently kick off a slow OCR pass per file. Shared by addInboxFile() and
+  // the drag-and-drop handler below, parameterized only by `source` -- the two
+  // differ solely in where the raw File comes from (an already-staged inbox/
+  // entry vs. a File dropped directly onto the page) and in their own
+  // caller-specific cleanup (inbox/ removal + banner update vs. none). Returns
+  // the new document's id and title; throws on failure, having already rolled
+  // back the id reservation, so callers don't need to.
+  async function createReviewDocumentFromFile(file, source){
+    const id = nextDocId++;
     try{
-      id = nextDocId++;
-      const file = await entry.handle.getFile();
       const baseName = safeFilename(file.name.replace(/\.[^.]+$/, ''), 'document');
       const ext = (file.name.match(/\.[^.]+$/) || [''])[0];
       const destName = ext ? `${id}_${baseName}${ext}` : `${id}_${baseName}_file`;
@@ -4329,8 +4344,9 @@
       await writable.close();
 
       // Preserve the untouched original from the moment the document is added --
-      // Inbox never runs OCR automatically, so this document is always
-      // unprocessed at this point (searchable_pdf_built stays 0 below).
+      // neither Inbox nor drag-and-drop ever run OCR automatically, so this
+      // document is always unprocessed at this point (searchable_pdf_built
+      // stays 0 below).
       const originalFilePathForDb = await writeOriginalToSubfolder(id, baseName, file);
 
       // Best-effort, same as saveNewDocument() -- a missing preview isn't fatal.
@@ -4350,8 +4366,8 @@
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
                                 created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built)
-        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, 'scan-inbox', NULL, ?, 1, 0)
-      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb]);
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0)
+      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
       await persistDb();
@@ -4359,10 +4375,24 @@
       allDocs.push({
         id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
-        original_file_path: originalFilePathForDb, created_at: createdAt, source: 'scan-inbox', source_legacy_id: null,
+        original_file_path: originalFilePathForDb, created_at: createdAt, source, source_legacy_id: null,
         thumbnail_path: thumbnailPathForDb, archived: false, needs_review: true, deleted: false,
         customFields: {}, personFieldValues: {}, tags: [], people: [],
       });
+
+      return { id, title };
+    }catch(e){
+      nextDocId--; // roll back the reservation since the add didn't complete
+      throw e;
+    }
+  }
+
+  async function addInboxFile(name){
+    const entry = pendingInboxFiles.find(f => f.name === name);
+    if(!entry) return;
+    try{
+      const file = await entry.handle.getFile();
+      const { id, title } = await createReviewDocumentFromFile(file, 'scan-inbox');
 
       await inboxDirHandle.removeEntry(name);
       pendingInboxFiles = pendingInboxFiles.filter(f => f.name !== name);
@@ -4372,7 +4402,6 @@
       updateInboxBanner();
       setStatus(`Added "${title || 'Document #' + id}" as #${id} from the inbox.`, 'ok');
     }catch(e){
-      if(id !== undefined) nextDocId--; // roll back the reservation since the add didn't complete
       setStatus(`Failed to add "${name}": ${e.message}`, 'err');
     }
   }
@@ -4381,6 +4410,37 @@
     for(const name of pendingInboxFiles.map(f => f.name)){
       await addInboxFile(name);
     }
+  }
+
+  // Drag-and-drop: a file (or several) dropped anywhere on the page, while a
+  // library is open, is added the same way an Inbox file is -- filename-derived
+  // title, needs_review=1, no OCR -- via the same createReviewDocumentFromFile()
+  // both paths share, just with source='dropped' instead of 'scan-inbox' so the
+  // two origins stay distinguishable in the data. One document per file; a
+  // multi-file drop adds all of them in one pass. Renders/persists once at the
+  // end (matching the bulk-action functions' own batching reasoning) rather than
+  // once per file. On any success, jumps to the Inbox nav view so the newly
+  // needs-review-flagged documents are immediately visible, same as Inbox's own
+  // addAllInboxFilesAndShowStatus(); a drop that adds nothing (empty or every
+  // file failed) reports on the status line without navigating anywhere.
+  async function addDroppedFiles(files){
+    let added = 0, failed = 0, lastTitle = null, lastId = null;
+    for(const file of files){
+      try{
+        const { id, title } = await createReviewDocumentFromFile(file, 'dropped');
+        added++; lastId = id; lastTitle = title;
+      }catch(e){ failed++; }
+    }
+    if(!added){
+      setStatus(`Could not add ${failed === 1 ? 'the dropped file' : `any of the ${failed} dropped files`}.`, 'err');
+      return;
+    }
+    renderStats(); populateFilters(); populateDatalists(); render();
+    setView('inbox');
+    const addedMsg = added === 1
+      ? `Added "${lastTitle || 'Document #' + lastId}" as #${lastId} for review.`
+      : `Added ${added} documents for review.`;
+    setStatus(addedMsg + (failed ? ` ${failed} file${failed === 1 ? '' : 's'} could not be added.` : ''), failed ? 'err' : 'ok');
   }
 
   // Waste bin, Inbox (needs_review), All Documents, and Reports are now the four
@@ -4426,6 +4486,39 @@
   // single explicit click, not automatic polling -- keeps the same "no silent
   // writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
+
+  // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
+  // (not a simple "is a drag happening" boolean) is the standard fix for a
+  // well-known quirk: dragenter/dragleave fire on every element boundary a
+  // dragged item crosses, including descendants, so a naive show-on-enter/
+  // hide-on-leave pair flickers the overlay off every time the drag passes
+  // over a child element. Counting enters vs. leaves and only hiding at zero
+  // avoids that. The overlay itself is pointer-events:none (see its CSS) so it
+  // never becomes the dragleave/drop target instead of the real page.
+  let dragCounter = 0;
+  document.addEventListener('dragenter', (e) => {
+    if(!rootDirHandle) return;
+    e.preventDefault();
+    dragCounter++;
+    el('drop-overlay').style.display = 'flex';
+  });
+  document.addEventListener('dragover', (e) => {
+    if(!rootDirHandle) return;
+    e.preventDefault(); // required, or the browser refuses the drop entirely
+  });
+  document.addEventListener('dragleave', (e) => {
+    if(!rootDirHandle) return;
+    dragCounter = Math.max(0, dragCounter - 1);
+    if(dragCounter === 0) el('drop-overlay').style.display = 'none';
+  });
+  document.addEventListener('drop', async (e) => {
+    if(!rootDirHandle) return;
+    e.preventDefault();
+    dragCounter = 0;
+    el('drop-overlay').style.display = 'none';
+    const files = Array.from(e.dataTransfer.files);
+    if(files.length) await addDroppedFiles(files);
+  });
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
     btn.addEventListener('click', () => setView(btn.dataset.view));
   });

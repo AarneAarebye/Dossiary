@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (53 scripts) + shared
+tests/                   Playwright regression suite (54 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -1312,6 +1312,44 @@ version number — only by the schema itself matching).
   since there's no modal anymore; still useful to confirm at a glance that
   `scan_watch.py --library` is pointed at the folder you expect,
   especially with more than one library folder in play.
+- **Drag-and-drop** (`createReviewDocumentFromFile()`, `addDroppedFiles()`,
+  the `dragenter`/`dragover`/`dragleave`/`drop` listeners on `document`,
+  `#drop-overlay`) is a third way to add a needs-review document, alongside
+  capture and Inbox — drop one or more files anywhere on the page (while a
+  library is open) and each becomes its own document with the exact same
+  defaults Inbox uses: filename-derived title, `document_type` prefilled
+  from `default_document_type` if configured, `needs_review = 1`, no OCR.
+  The per-file creation logic (id reservation, file copy, original
+  preservation, thumbnail, sidecar, `INSERT`, `allDocs` push) used to live
+  entirely inside `addInboxFile()`; it's now `createReviewDocumentFromFile
+  (file, source)`, a shared helper both `addInboxFile()` (passing
+  `'scan-inbox'`) and `addDroppedFiles()` (passing `'dropped'`) call —
+  `source` is the one thing that differs between an Inbox-staged file and a
+  dropped one, and keeping it a real, distinct value (not reusing
+  `'scan-inbox'`) keeps the two origins distinguishable in the data, the
+  same reasoning `source` already gets applied for elsewhere (`'captured'`
+  vs `'migrated'` vs `'scan-inbox'`). `addInboxFile()` itself is now a thin
+  wrapper: call the shared helper, then do its own Inbox-specific cleanup
+  (`inboxDirHandle.removeEntry()`, `pendingInboxFiles` filtering,
+  `updateInboxBanner()`) that a dropped file has no equivalent of. A
+  multi-file drop adds every file in one pass, `persistDb()`/`render()`
+  reserved for the very end rather than once per file, for the same reason
+  the bulk-action functions (see their own note above) skip a per-document
+  round-trip. On any success it jumps to the 🚩 Inbox nav view, mirroring
+  `addAllInboxFilesAndShowStatus()`; a drop that adds nothing (an empty
+  drop, or every file failing) reports on the status line without
+  navigating anywhere. **`#drop-overlay` is `pointer-events:none`** —
+  deliberately, so it's purely visual and never itself becomes the
+  `dragleave`/`drop` target instead of the real page underneath it, which
+  is also why the show/hide logic uses a counter (`dragCounter`) rather
+  than a plain boolean: `dragenter`/`dragleave` fire on every element
+  boundary a dragged item crosses, including descendants, so naively
+  showing on enter and hiding on leave flickers the overlay off every time
+  the drag passes over a child element — counting enters against leaves
+  and only hiding at zero is the standard fix. The whole feature is gated
+  on `rootDirHandle` being set (a library open) — dragging over the
+  empty-state screen is a deliberate no-op, not an error, since there's
+  nowhere to save the file yet.
 - **scan_watch.py** is the other half of Inbox, and is intentionally *not*
   part of `dossiary.html` — a stdlib-only Python script (no
   dependency to `pip install`), run separately, that watches a folder your
@@ -1630,7 +1668,17 @@ default sort preference (`test_default_sort.py` — table opens sorted by
 `import_date` desc by default when no sort settings exist; clicking Date
 persists the sort choice; clicking Imported (a descending-by-default column
 like Date) persists desc rather than defaulting to asc; reopening reads
-back and applies persisted sort state), and search across all of the above. This
+back and applies persisted sort state), drag-and-drop (`test_drag_drop.py`
+— the overlay staying hidden and a drop no-oping with no library open; the
+overlay showing on `dragenter` and hiding after a `drop`, using real
+`DragEvent`/`DataTransfer` objects dispatched on `document`, not a stub,
+since both are standard browser APIs already available in a real
+Chromium page; a single dropped file landing as a `source: 'dropped'`
+needs-review document with the status line naming it and the view
+jumping to Inbox; a multi-file drop adding one document per file in a
+single batched persist; and an empty drop — no files in the
+`DataTransfer` — being a real no-op, no navigation and no document
+created), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
