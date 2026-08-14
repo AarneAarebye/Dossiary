@@ -417,6 +417,8 @@
   }
   footer a{ color: var(--text-dim); text-decoration: underline; text-underline-offset: 2px; }
   footer a:hover{ color: var(--phosphor); }
+  #lang-toggle{ font-family:var(--font-mono); font-size:11px; padding:2px 6px; border:1px solid var(--line); border-radius:var(--radius); background:transparent; color:var(--text-dim); cursor:pointer; }
+  #lang-toggle:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
   @media (max-width:640px){
     header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
@@ -548,7 +550,7 @@
       <div class="status" id="status"></div>
 
       <div id="empty-state" class="empty">
-        <h2>No library open</h2>
+        <h2 data-i18n="emptyTitle">No library open</h2>
         <p>Open a Dossiary library folder, or start a brand new one here.
            Everything happens locally in your browser — nothing is uploaded.</p>
         <div id="recent-libraries" style="display:none;"></div>
@@ -618,7 +620,9 @@
   </div>
 
   <footer>
-    © 2026 Aarne Aarebye · <span id="app-version-label"></span> · MIT License ·
+    © 2026 Aarne Aarebye · <span id="app-version-label"></span> ·
+    <button type="button" id="lang-toggle" data-i18n-title="langToggleTitle"></button> ·
+    MIT License ·
     <a href="https://github.com/AarneAarebye/Dossiary" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/Dossiary</a> ·
     <a href="#" id="libraries-link">Libraries</a>
   </footer>
@@ -636,6 +640,64 @@
 <script>
 (function(){
   const APP_VERSION = '1.8.3'; // shown in the footer; bump alongside the matching git tag on release
+
+  // --- i18n ---
+  // See CLAUDE.md's UI language note for the full rationale. Summary: STRINGS is
+  // a flat, two-language dictionary; t() looks a key up in the current language,
+  // falling back to English then to the raw key so a missing/untranslated key
+  // never renders blank. data-i18n* attributes cover fixed markup (applyI18n()
+  // walks them); anything built fresh in JS (table rows, modals, status
+  // messages) calls t() directly in its own template string. Language choice is
+  // in localStorage, not the per-library `settings` table -- the empty-state
+  // "Open library folder" screen has to translate before any library/database
+  // exists, so a per-library setting can't be the only mechanism.
+  const STRINGS = {
+    en: {
+      commonCancel: 'Cancel', commonSave: 'Save', commonDone: 'Done', commonDelete: 'Delete',
+      commonAdd: 'Add', commonClear: 'Clear', commonRemove: 'Remove', commonNone: '— None —',
+      commonDocumentFallback: 'Document #{id}', commonYes: 'Yes', commonNo: 'No',
+      langToggleTitle: 'Switch language',
+      emptyTitle: 'No library open',
+    },
+    de: {
+      commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
+      commonAdd: 'Hinzufügen', commonClear: 'Leeren', commonRemove: 'Entfernen', commonNone: '— Keine —',
+      commonDocumentFallback: 'Dokument Nr. {id}', commonYes: 'Ja', commonNo: 'Nein',
+      langToggleTitle: 'Sprache wechseln',
+      emptyTitle: 'Keine Bibliothek geöffnet',
+    },
+  };
+
+  function t(key, params){
+    let str = STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key;
+    if(params){
+      for(const [k, v] of Object.entries(params)) str = str.replaceAll(`{${k}}`, v);
+    }
+    return str;
+  }
+
+  function applyI18n(){
+    document.querySelectorAll('[data-i18n]').forEach(elm => { elm.textContent = t(elm.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(elm => { elm.placeholder = t(elm.dataset.i18nPlaceholder); });
+    document.querySelectorAll('[data-i18n-title]').forEach(elm => { elm.title = t(elm.dataset.i18nTitle); });
+  }
+
+  function loadLang(){
+    const stored = localStorage.getItem('dossiary_lang');
+    if(stored === 'en' || stored === 'de') return stored;
+    const langs = navigator.languages || [navigator.language || ''];
+    return langs.some(l => l.toLowerCase().startsWith('de')) ? 'de' : 'en';
+  }
+  function saveLang(lang){ localStorage.setItem('dossiary_lang', lang); }
+
+  let currentLang = loadLang();
+
+  function setLang(lang){
+    currentLang = lang;
+    saveLang(lang);
+    applyI18n();
+    if(rootDirHandle){ render(); }
+  }
 
   const SCHEMA = `
     CREATE TABLE IF NOT EXISTS documents (
@@ -1230,6 +1292,12 @@
   el('init-btn').addEventListener('click', initNewLibrary);
   el('libraries-link').addEventListener('click', (e) => { e.preventDefault(); openLibrariesModal(); });
   el('app-version-label').textContent = `v${APP_VERSION}`;
+  el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE'; // shows the language you'd SWITCH TO
+  el('lang-toggle').addEventListener('click', () => {
+    setLang(currentLang === 'de' ? 'en' : 'de');
+    el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE';
+  });
+  applyI18n();
   renderRecentLibraries();
 
   async function openLibrary(){
@@ -1332,7 +1400,7 @@
     if(reportDateFrom) reportDateFrom.value = '';
     if(reportDateTo) reportDateTo.value = '';
     el('inbox-banner').style.display = 'none';
-    subLabel.textContent = 'No library open'; statsEl.innerHTML = ''; setStatus('');
+    subLabel.textContent = t('emptyTitle'); statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
   }
 
