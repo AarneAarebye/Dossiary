@@ -191,6 +191,61 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 7: "Save & Done" (only rendered on a currently-flagged
+        # document) saves the edit AND clears needs_review in one click -- doc 1
+        # is still flagged here (Scenario 4 flagged it, Scenario 5's intermediate
+        # save deliberately left it flagged) ===
+        await page.uncheck('#show-archived-toggle')
+        await page.wait_for_timeout(150)
+        await page.click('#nav-item-inbox')
+        await page.wait_for_timeout(150)
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        save_done_visible_flagged = await page.locator('#save-done-btn').count()
+        print("'Save & Done' button present when editing a flagged document:", save_done_visible_flagged == 1)
+
+        await page.fill('#e-title', 'Reviewed Invoice (finished)')
+        await page.click('#save-done-btn')
+        await page.wait_for_timeout(300)
+        modal_open_after_save_done = await page.locator('#modal-backdrop').count()
+        print("modal still open after Save & Done (shows the detail view, not closed):", modal_open_after_save_done == 1)
+        review_btn_after_save_done = await page.locator('#review-toggle-btn').inner_text()
+        print("detail view's own button now reads 'Flag for review' (flag was cleared):", review_btn_after_save_done)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        inbox_row_ids_after_save_done = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 1 no longer in Inbox after Save & Done:", '1' not in inbox_row_ids_after_save_done)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        main_row_ids_after_save_done = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
+        print("doc 1 now in All Documents:", '1' in main_row_ids_after_save_done)
+
+        persisted_after_save_done = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        doc1_after = next(d for d in persisted_after_save_done['documents'] if d['id'] == 1)
+        print("doc 1's title reflects the Save & Done edit:", doc1_after['title'])
+        print("doc 1's needs_review persisted as cleared:", doc1_after['needs_review'])
+
+        # === Scenario 8: "Save & Done" is absent entirely for an unflagged
+        # document (doc 2, Done-d back in Scenario 3) -- only plain "Save
+        # changes" makes sense there ===
+        await page.click('tr[data-id="2"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        save_done_visible_unflagged = await page.locator('#save-done-btn').count()
+        print("'Save & Done' button absent when editing an unflagged document:", save_done_visible_unflagged == 0)
+        await page.click('#cancel-edit-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

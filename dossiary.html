@@ -3279,7 +3279,8 @@
           </div>
 
           <div class="modal-actions">
-            <button class="primary" id="save-edit-btn">Save changes</button>
+            ${d.needs_review ? `<button class="primary" id="save-done-btn">Save &amp; Done</button>` : ''}
+            <button class="${d.needs_review ? '' : 'primary'}" id="save-edit-btn">Save changes</button>
             <button id="cancel-edit-btn">Cancel</button>
           </div>
           <div class="status" id="edit-status" style="padding:10px 0 0;"></div>
@@ -3291,6 +3292,23 @@
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
+    // Only rendered when d.needs_review is true (same condition the detail
+    // view's own review-toggle button uses) -- saves the edit, and only if
+    // that succeeds, clears the flag the same way the detail view's own
+    // "Done" button does. Never clears the flag on a failed save: this is a
+    // second, distinct explicit action a person chooses instead of "Save
+    // changes", not "saving silently also clears the flag" -- the deliberate
+    // "only an explicit action clears needs_review" rule (see
+    // toggleNeedsReview()'s own note) stays intact either way.
+    if(el('save-done-btn')){
+      el('save-done-btn').addEventListener('click', async () => {
+        const saved = await saveEditedDocument(id);
+        if(saved){
+          await toggleNeedsReview(id);
+          openDetail(id); // refresh so the modal reflects the cleared flag
+        }
+      });
+    }
 
     applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.personFieldValues, true);
     updateAddFieldVisibility('e');
@@ -3455,10 +3473,12 @@
 
       setStatus(`Saved changes to "${title || 'Document #' + id}".`, 'ok');
       openDetail(id);
+      return true;
     }catch(e){
       editStatus.className = 'status err';
       editStatus.textContent = 'Save failed: ' + e.message;
       saveBtn.disabled = false;
+      return false;
     }
   }
 

@@ -782,13 +782,31 @@ version number — only by the schema itself matching).
   navigation" note below for how view membership, badge counts, and
   rendering all work; this note only covers `needs_review`'s own semantics
   and its interaction with `archived`.
-  **`toggleNeedsReview()` has a single call site now** — the detail
-  modal's own toggle button — unlike the old review-queue UI, which also
-  had a queue row's standalone Done button calling it directly; that
-  second call site went away with the old queue rendering, so the
-  function no longer needs to guard against being invoked with no modal
-  open, and it always refreshes in place (`async () => { await
-  toggleNeedsReview(id); openDetail(id); }`).
+  **`toggleNeedsReview()` has two call sites**: the detail modal's own
+  toggle button (`async () => { await toggleNeedsReview(id); openDetail(id);
+  }`), and the edit form's own "Save & Done" button (see its own note
+  below) — both always refresh in place the same way, so the function
+  itself doesn't need to guard against being invoked with no modal open.
+  (An earlier version of this note said "a single call site now," true
+  when the old review-queue UI's standalone Done button went away — no
+  longer accurate once "Save & Done" added a second, legitimate one.)
+  **"Save & Done" (`#save-done-btn`, only rendered inside `openEditForm()`
+  when `d.needs_review` is true — same condition the detail view's own
+  button already uses to decide "Flag for review" vs "Done")** lets someone
+  finish a review in one click instead of two separate actions (Edit →
+  Save changes → back to detail → Done). It does not weaken the "only an
+  explicit action clears the flag, never an implicit save" rule above —
+  it's a second, distinct explicit action a person chooses instead of
+  plain "Save changes," not saving silently clearing the flag as a side
+  effect; plain "Save changes" still never touches `needs_review`, exactly
+  as before. Critically, it only clears the flag if the save actually
+  succeeded: `saveEditedDocument()` used to swallow its own errors
+  internally with no way for a caller to tell success from failure (every
+  existing call site just fired it and moved on) — it now `return`s
+  `true`/`false` from its existing success/catch paths, and "Save & Done"'s
+  own handler checks that before calling `toggleNeedsReview()`, so a failed
+  save leaves the document exactly as a failed plain "Save changes" already
+  did: still flagged, still in the edit form, with the same error message.
   **`needs_review` and `archived` are fully independent flags, with zero
   automatic interaction in either direction** — flagging a document for
   review doesn't touch `archived`, and archiving one doesn't touch
@@ -1554,7 +1572,10 @@ including the one subtle case that actually matters — a document that's
 both stays out of the Inbox view but is still reachable, and toggleable,
 via "Show archived" in the All Documents view, per `matchesView()`'s
 `!d.archived` carve-out described in the review-queue architecture note
-above), the waste bin (`test_waste_bin.py` — a pre-`deleted`-column
+above; "Save & Done" being present only when editing a currently-flagged
+document and absent for an unflagged one; and clicking it both saving the
+edited title and clearing the flag in one action, verified against
+persisted state, not just the DOM), the waste bin (`test_waste_bin.py` — a pre-`deleted`-column
 document reading back as not-deleted rather than erroring; deleting an
 active document hiding it from All Documents even with "Show archived"
 checked; its detail view dropping down to a Restore-only action set with
