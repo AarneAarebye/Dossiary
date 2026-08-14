@@ -35,7 +35,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (54 scripts) + shared
+tests/                   Playwright regression suite (55 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -726,6 +726,26 @@ version number — only by the schema itself matching).
   removed from every document that used it) are left in place rather than
   pruned — they're harmless unused lookup entries and still useful for
   datalist autocomplete; don't add cleanup logic for this without a reason.
+  **Every table row has a hover-revealed `.row-edit-btn` (✎)** next to its
+  checkbox (`.row-edit-col`, a narrow column added specifically for it — see
+  `applyColumnVisibility()`'s sibling `data-field` columns, this one has no
+  `data-field` and is never hideable via the Columns menu) that jumps
+  straight to `openEditForm()`, skipping `openDetail()` entirely — a
+  same-view shortcut for the common case of wanting to edit right away,
+  without a separate click through the detail view first. Present in every
+  nav view uniformly (not just Inbox, where the idea originally came from —
+  editing directly is generically useful regardless of a document's review
+  state), **except deleted documents**, where it's absent entirely, matching
+  the detail view's own precedent of dropping Edit (not just disabling it)
+  for anything already in the Waste bin. The button's own `<td>` carries
+  `onclick="event.stopPropagation()"`, the same pattern the select-checkbox
+  column already uses, so clicking it doesn't also fire the row's own
+  click-to-`openDetail()` handler. **Cancel from an edit reached this way
+  still lands on the detail view**, not back on the table — a deliberate,
+  simplest-option choice: `openEditForm()`/`saveEditedDocument()` don't
+  track how the form was opened, so Cancel keeps its one existing behavior
+  (always `openDetail(id)`) regardless of entry point, rather than adding
+  new state just to make Cancel's destination conditional.
 - **Archiving** (`documents.archived`, `toggleArchived()`, the "Show
   archived" toolbar checkbox) is a reversible "no longer needed" flag, not
   deletion — **this app has no *permanent* delete feature at all** (see the
@@ -784,17 +804,26 @@ version number — only by the schema itself matching).
   and its interaction with `archived`.
   **`toggleNeedsReview()` has two call sites**: the detail modal's own
   toggle button (`async () => { await toggleNeedsReview(id); openDetail(id);
-  }`), and the edit form's own "Save & Done" button (see its own note
-  below) — both always refresh in place the same way, so the function
-  itself doesn't need to guard against being invoked with no modal open.
-  (An earlier version of this note said "a single call site now," true
-  when the old review-queue UI's standalone Done button went away — no
-  longer accurate once "Save & Done" added a second, legitimate one.)
+  }`, which refreshes in place), and the edit form's own "Save & Done"
+  button (see its own note below, which closes the modal entirely instead)
+  — the function itself doesn't need to guard against being invoked with
+  no modal open either way, since both callers already handle their own
+  post-toggle UI update. (An earlier version of this note said "a single
+  call site now," true when the old review-queue UI's standalone Done
+  button went away — no longer accurate once "Save & Done" added a second,
+  legitimate one.)
   **"Save & Done" (`#save-done-btn`, only rendered inside `openEditForm()`
   when `d.needs_review` is true — same condition the detail view's own
   button already uses to decide "Flag for review" vs "Done")** lets someone
   finish a review in one click instead of two separate actions (Edit →
-  Save changes → back to detail → Done). It does not weaken the "only an
+  Save changes → back to detail → Done) — and, unlike the standalone
+  "Done" button (which reopens the detail view in place), it closes the
+  modal entirely on success, revealing whatever table was already showing
+  underneath (typically the Inbox queue, since `toggleNeedsReview()`'s own
+  `render()` has already removed the now-finished document from it by the
+  time the modal closes) — deliberately no forced navigation to the Inbox
+  view specifically, so someone reviewing from a Collection view or
+  elsewhere isn't yanked away from it. It does not weaken the "only an
   explicit action clears the flag, never an implicit save" rule above —
   it's a second, distinct explicit action a person chooses instead of
   plain "Save changes," not saving silently clearing the flag as a side
@@ -1699,7 +1728,14 @@ needs-review document with the status line naming it and the view
 jumping to Inbox; a multi-file drop adding one document per file in a
 single batched persist; and an empty drop — no files in the
 `DataTransfer` — being a real no-op, no navigation and no document
-created), and search across all of the above. This
+created), the row-level edit shortcut (`test_row_edit_shortcut.py` — the
+hover-revealed button opening the Edit form directly rather than the
+detail view, with no lingering detail-view element proving
+`event.stopPropagation()` genuinely stopped the row's own click handler
+from also firing; the same behavior holding in the Inbox view too, not
+just All Documents; Cancel from an edit reached this way landing on the
+detail view; and the button being entirely absent — not just hidden — for
+a deleted document in the Waste bin), and search across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

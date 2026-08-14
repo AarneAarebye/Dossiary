@@ -277,6 +277,13 @@
   .bulk-collection-option, .modal-collection-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
   .bulk-collection-option:hover, .modal-collection-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
   .select-col{ width:32px; text-align:center; padding:11px 8px !important; }
+  .row-edit-col{ width:28px; text-align:center; padding:11px 2px !important; }
+  .row-edit-btn{
+    opacity:0; background:none; border:none; color:var(--text-dim); font-size:14px;
+    line-height:1; padding:4px; cursor:pointer; border-radius:var(--radius);
+  }
+  #doc-tbody tr:hover .row-edit-btn{ opacity:1; }
+  .row-edit-btn:hover{ color:var(--phosphor); background:rgba(79,224,166,0.12); }
   /* .review-queue-row/.review-queue-actions below are NOT scoped to the
      (now-removed) always-visible review-queue banner -- they're generic list-row
      markup independently reused by renderRecentLibraries(), so they stay even
@@ -586,6 +593,7 @@
           <thead>
             <tr id="doc-thead-row">
               <th class="select-col"><input type="checkbox" id="select-all-checkbox" title="Select all visible" /></th>
+              <th class="row-edit-col"></th>
               <th data-key="title">Document</th>
               <th data-key="category" data-field="category">Category</th>
               <th data-key="document_type" data-field="document_type">Type</th>
@@ -2700,6 +2708,7 @@
     tbody.innerHTML = sorted.map(d => `
       <tr data-id="${d.id}">
         <td class="select-col" onclick="event.stopPropagation()"><input type="checkbox" class="row-select-checkbox" data-id="${d.id}" ${selectedDocIds.has(d.id) ? 'checked' : ''} /></td>
+        <td class="row-edit-col" onclick="event.stopPropagation()">${d.deleted ? '' : `<button class="row-edit-btn" data-id="${d.id}" title="Edit">✎</button>`}</td>
         <td>
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
           <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : d.source === 'scan-inbox' ? ' · <span class="pill captured">from inbox</span>' : ''}${d.archived ? ' · <span class="pill archived">archived</span>' : ''}</div>
@@ -2720,6 +2729,15 @@
 
     document.querySelectorAll('thead th[data-key]').forEach(th => th.classList.toggle('active', th.dataset.key === sortKey));
     tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openDetail(Number(tr.dataset.id))));
+    // Hover-revealed shortcut straight to Edit, skipping the detail view --
+    // the row's own td already has onclick="event.stopPropagation()" (same
+    // pattern as the select checkbox) so this doesn't also trigger the row's
+    // own openDetail() click handler above. Absent entirely for deleted
+    // documents (see the markup above), matching the detail view's own
+    // precedent of dropping Edit for anything in the Waste bin.
+    tbody.querySelectorAll('.row-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditForm(Number(btn.dataset.id)));
+    });
     applyColumnVisibility();
 
     document.querySelectorAll('.row-select-checkbox').forEach(cb => {
