@@ -330,6 +330,14 @@ async def main():
         print_btn_text = await page3.locator('#reports-print-btn').inner_text()
         print("Scenario 15 -- Reports print button translated:", print_btn_text == "🖨 Drucken")
 
+        # === Scenario 16: Libraries/licenses modal translates ===
+        await page3.click('#libraries-link')
+        await page3.wait_for_timeout(200)
+        lib_heading = await page3.locator('.modal h2').inner_text()
+        print("Scenario 16 -- Libraries modal heading translated:", lib_heading == "Open-Source-Bibliotheken")
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
