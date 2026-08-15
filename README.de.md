@@ -326,6 +326,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   prüfen, zu korrigieren oder zu löschen. Er erscheint nur dann nicht
   mehr, wenn er einmal gelöscht wurde, oder wenn Sie den Dokumenttyp auf
   etwas ändern, das ihn nicht enthält, und ihn dabei nicht anfassen.
+- **Deutsche/englische Oberfläche** — die gesamte Benutzeroberfläche
+  (nicht nur OCR — siehe „Erfassen" oben) lässt sich über den Schalter in
+  der Fußzeile zwischen Englisch und Deutsch umschalten; sie startet
+  passend zur Sprache Ihres Browsers und merkt sich danach Ihre Wahl.
 
 ## Erste Schritte
 

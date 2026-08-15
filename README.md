@@ -273,6 +273,10 @@ working" problem that motivated this project in the first place.
   have the chance to review, fix, or clear it. It just won't appear again
   once cleared, or once you change the document's type to something that
   doesn't include it and don't touch it.
+- **English/German interface** — the whole UI (not just OCR — see
+  "Capture" above) can be switched between English and German with the
+  toggle in the footer; it starts by matching your browser's own
+  language and remembers whichever you pick from then on.
 
 ## Getting started
 

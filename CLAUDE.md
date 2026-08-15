@@ -1540,11 +1540,131 @@ version number — only by the schema itself matching).
   reference, not a real structured-clone round-trip) since a real
   browser's IndexedDB would silently strip our fake `FileSystemDirectoryHandle`
   class down to a plain data object, unlike what happens to a *real* handle.
+- **UI language support (English/German)** is a flat two-language dictionary
+  (`STRINGS.en` / `STRINGS.de`, ~260 keys each), a lookup helper (`t(key,
+  params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
+  full i18n library, ICU message format, or per-string `.po`/`.json` files;
+  the app's single-file constraint (see "What this project is") rules out
+  pulling in a real i18n framework, and two hardcoded languages don't need
+  one. `t()` falls back `STRINGS[currentLang][key] ?? STRINGS.en[key] ??
+  key` — an unknown/missing key renders as its own literal key string
+  rather than throwing or going blank, so a typo'd or forgotten key is
+  loud and visible in the UI instead of silently disappearing. `params` is
+  a plain `{needle: value}` object, substituted via repeated
+  `replaceAll('{needle}', value)` calls — no positional/plural ICU
+  grammar, deliberately (see the singular/plural note below for how
+  count-dependent strings are handled instead).
+  **Static markup vs. dynamically-built markup use two different
+  mechanisms, split along the same line the rest of this app already
+  splits on** (compare the Configurable columns/dynamic filters notes
+  above, or `renderDynamicTableHead()`): HTML that exists in the page's
+  own source — labels, buttons, modal headings that are always present in
+  the DOM, just hidden/shown — carries a `data-i18n`(`-placeholder`|
+  `-title`|`-aria-label`) attribute naming its key, and `applyI18n()`
+  walks all four attribute kinds once (`textContent`, `.placeholder`,
+  `.title`, `aria-label` respectively) to fill them in. Anything rebuilt
+  from scratch in JS on every render — table rows, the dynamic-fields
+  container, status-line messages, the recent-libraries list, modal
+  bodies assembled via template strings — has no stable DOM node for an
+  attribute to survive on, so those call `t()` directly inline wherever
+  the template string is built, re-evaluated fresh every time that code
+  runs anyway. Neither mechanism is "more correct" than the other; using
+  attributes for content that gets discarded and rebuilt on every
+  `render()` call would be silently inert (the attribute would exist for
+  a few milliseconds before the element carrying it is thrown away), and
+  inline `t()` calls for genuinely static markup would just be more code
+  than a declarative attribute for no benefit.
+  **Persistence is `localStorage` (`dossiary_lang` key), not the
+  per-library `settings` table every other per-library preference in this
+  app uses** (`nav_style`, `default_currency`, sort order, column
+  visibility, ...) — a deliberate exception, not an oversight: the
+  empty-state "Open library folder" screen (`#empty-state`) has to render
+  in the right language *before* any library folder has been picked, so
+  there's no `library.sqlite` open yet for a `settings` row to live in.
+  `localStorage` is the one piece of persisted app state that predates
+  and outlives any single library, the same reason `dossiary-app-db`
+  (IndexedDB, see the Recent libraries note just above) was chosen for
+  recent-library history rather than a `settings` row — both need to
+  exist before/across library selection, not scoped to one library.
+  **Language choice auto-detects once, then a manual toggle permanently
+  overrides it**: `loadLang()` only consults `navigator.language`/
+  `navigator.languages` (checking whether any reported locale starts with
+  `de`) when `localStorage.getItem('dossiary_lang')` has never been set;
+  the moment someone clicks `#lang-toggle` once, `saveLang()` writes an
+  explicit `'en'`/`'de'` value that short-circuits the browser-locale
+  check on every future load, even if the browser's own locale disagrees.
+  This mirrors the general "an explicit person action beats a computed
+  guess" pattern already used elsewhere in this app (compare the Date/
+  Currency `.field-guess` pattern — both are dismissible defaults, not
+  permanent inferences), just at the whole-UI-language level instead of a
+  single form field. `setLang()` (the toggle's click handler) has its own
+  small set of hand-rolled follow-up calls — `applyI18n()`, then
+  conditionally `renderStats()`/`populateFilters()`/`render()` (library
+  open) or `renderRecentLibraries()` (empty-state) — because neither of
+  those functions is invoked from inside `render()`'s own "always run
+  this" chain (see the Collections nav section's own note above for the
+  general pattern of "which dynamic container rebuilds on which trigger"
+  in this codebase); without them, filter-dropdown option text and the
+  recent-libraries list would keep showing whichever language they were
+  last rendered in until the next unrelated document mutation forced a
+  rebuild.
+  **Count-dependent strings use an explicit singular/plural key pair per
+  language** (e.g. `sharedPageCountSingular`/`sharedPageCountPlural`,
+  `dragdropAddedToReviewQueueSingular`/`...Plural`), picked by the same
+  `count === 1 ? t('xSingular', {count}) : t('xPlural', {count})` ternary
+  the English-only code already used before translation — not a real
+  ICU/CLDR plural-rules engine (which would need a real dependency this
+  single-file app doesn't have, and would be overkill for a two-language,
+  binary-plural app in the first place; German, like English, only
+  distinguishes singular from "everything else," so the same ternary that
+  was already correct for English needed no restructuring, just a second
+  language's worth of correctly-inflected phrasing supplied for both
+  branches).
+  **Tested by a deliberate two-file split, one dynamic and one static**:
+  `tests/test_i18n.py` is a real Playwright suite exercising actual toggle
+  behavior across the app — default/auto-detected/manually-overridden
+  language on load and across a reload, date formatting following UI
+  language rather than OS locale, and translated content across the nav,
+  toolbar, table, detail modal, capture/edit forms, Field Settings, Manage
+  Collections, Reports, the Libraries/licenses modal, and drag-and-drop —
+  the same kind of real-browser-driven coverage every other feature in
+  this suite gets. `tests/test_i18n_coverage.py` is a different kind of
+  check entirely: a plain Python script (no Playwright, no browser) that
+  greps `dossiary.html` for every `data-i18n*` attribute value and every
+  `t('key')`/`t("key")` call, and asserts each referenced key exists in
+  *both* `STRINGS.en` and `STRINGS.de` — a static safety net against the
+  one mistake `test_i18n.py`'s scenario-by-scenario clicking can't
+  exhaustively rule out (a key added to English but never given a German
+  translation, or vice versa, anywhere in this ~260-key, hand-maintained
+  dictionary that no single Playwright run touches every corner of).
+  Its own key-extraction regex needed to be **more careful than a naive
+  "key starts a line" pattern**: `STRINGS.en`/`STRINGS.de` pack several
+  `key: 'value',` pairs onto one source line throughout (matching this
+  file's existing dense, wrapped style elsewhere, e.g. `FIELD_DEFS`), so a
+  key is only recognized when it's immediately preceded by `{`, `,`, or a
+  line start *and* immediately followed by `:` plus a quote — otherwise
+  either most keys sharing a line with another key go undetected, or text
+  sitting inside a string *value* that happens to end in `word:` right
+  before that value's own closing quote (e.g. the literal English value
+  `'Important:'`) gets misread as a second, bogus key. The `t()` call-site
+  regex has the same kind of trap: matching bare `t\(` catches any
+  function call whose name simply ends in the letter "t" followed by a
+  quoted argument (`createElement('div')`, `getContext('2d')`,
+  `dispatchEvent(new Event('change'))`, `closest('th...')`, all real calls
+  elsewhere in this file) — a leading `\b` word-boundary before the `t`
+  is what keeps the match scoped to the actual `t()` helper. Both were
+  real false-positive floods hit and fixed while building this check, not
+  hypothetical — worth remembering if this regex is ever extended, since
+  the failure mode (a flood of *fake* missing-key reports burying any
+  *real* one) is the opposite of the usual silent-gap risk this kind of
+  check exists to catch.
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **53
-scripts covering most of the app's actual functionality**: capture, edit,
+There's a real, runnable Playwright regression suite in `tests/` — **57
+scripts covering most of the app's actual functionality** (56 of them
+Playwright-driven; the 57th, `test_i18n_coverage.py`, is a plain static
+check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
 option, including edit-time OCR against every page of a multi-page PDF,
@@ -1735,7 +1855,30 @@ detail view, with no lingering detail-view element proving
 from also firing; the same behavior holding in the Inbox view too, not
 just All Documents; Cancel from an edit reached this way landing on the
 detail view; and the button being entirely absent — not just hidden — for
-a deleted document in the Waste bin), and search across all of the above. This
+a deleted document in the Waste bin), UI language support
+(`test_i18n.py` — default English with no locale signal; auto-detecting
+German from `navigator.language`/`navigator.languages` on first load with
+no stored preference yet; a manual toggle click overriding that and
+persisting across a reload even though the browser's own locale still
+says German; date formatting following the UI language choice rather than
+OS locale; translated content across the nav, toolbar, stats bar, table
+headers/rows, detail modal, capture and edit forms (including the shared
+inline add-field validation message and reused OCR strings), Field
+Settings, Manage Collections, Reports, the Libraries/licenses modal, and
+the drag-and-drop overlay; the recent-libraries list and empty-state
+screen re-translating live on toggle, not just on next load; and two
+regressions caught by inspecting raw `innerHTML` rather than
+`inner_text()` alone — a duplicated "Important:"/"Wichtig:" label and a
+nested `<b><b>...</b></b>` from double-wrapping a substituted name), and a
+static i18n key-coverage check (`test_i18n_coverage.py` — no Playwright,
+just a grep-based Python script confirming every `data-i18n`/
+`data-i18n-placeholder`/`data-i18n-title`/`data-i18n-aria-label`
+attribute value and every `t('key')` call argument in `dossiary.html`
+exists in both `STRINGS.en` and `STRINGS.de`; verified during development
+to actually catch a real regression, not just trivially pass, by
+temporarily renaming one `STRINGS.de` key and confirming the script
+failed with that exact key reported missing, then reverting), and search
+across all of the above. This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
