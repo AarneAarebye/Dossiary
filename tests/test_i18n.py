@@ -255,6 +255,47 @@ async def main():
         await page3.click('#cancel-doc-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 12: edit form ("Edit document" modal), its Save flow,
+        # and edit-time OCR button/status translate, including reused
+        # capture-form keys (reuses page3, still German, capture modal
+        # already closed by Scenario 11's Cancel click) ===
+        await page3.click('tr[data-id="1"]')
+        await page3.wait_for_timeout(200)
+        await page3.click('#edit-doc-btn')
+        await page3.wait_for_timeout(200)
+        edit_heading = await page3.locator('.modal h2').inner_text()
+        print("Scenario 12 -- edit modal heading translated:", edit_heading == "Dokument bearbeiten")
+        save_changes_text = await page3.locator('#save-edit-btn').inner_text()
+        print("Scenario 12 -- edit save-changes button translated:", save_changes_text == "Änderungen speichern")
+        # .field label is CSS text-transform:uppercase, so inner_text() reports
+        # "DOKUMENTTYP" even though the actual DOM/source text is "Dokumenttyp"
+        # -- same quirk the Scenario 7/8/9/11 uppercase-header checks already
+        # live with.
+        edit_doc_type_label = await page3.locator('label[for="e-type"]').inner_text()
+        print("Scenario 12 -- edit document type label translated:", edit_doc_type_label == "DOKUMENTTYP")
+        # Task 8's own reviewer found that wireAddFieldControls()'s dynamic
+        # toggle re-labeling was already translated (shared with capture), but
+        # the edit form's own STATIC "+ Add a custom field" button markup was
+        # still hardcoded English -- confirm that gap is now closed. The
+        # seeded doc has document_type "Invoice" set, so updateAddFieldVisibility('e')
+        # has already made the wrap visible by this point.
+        add_field_toggle_text = await page3.locator('#e-add-field-toggle').inner_text()
+        print("Scenario 12 -- edit add-field toggle (static markup) translated:", add_field_toggle_text == "+ Benutzerdefiniertes Feld hinzufügen")
+        run_ocr_text = await page3.locator('#e-run-ocr-btn').inner_text()
+        print("Scenario 12 -- edit Run OCR button (reused capture key) translated:", run_ocr_text == "OCR ausführen")
+        # This seeded doc's file_path has no backing file in the fake
+        # filesystem (__makeSeededRoot only creates library.sqlite + an empty
+        # files/ dir), so clicking Run OCR here would only exercise the
+        # already-covered ocrFailedStatus error path, not the new
+        # ocrDone/ocrLoadingPdf/ocrRecognizingPage/editOcrPdfDone keys --
+        # test_edit_ocr.py's own doc-with-a-real-file scenarios are a more
+        # reliable place to exercise that success path if ever needed; here
+        # we only confirm the German label/status wiring is in place.
+        await page3.click('#cancel-edit-btn')
+        await page3.wait_for_timeout(150)
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

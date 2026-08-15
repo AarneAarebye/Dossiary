@@ -755,6 +755,15 @@
       captureOcrDoneNoWords: 'Done, but no words with position data were found.',
       ocrFailedStatus: 'OCR failed: {error}', statusSaving: 'Saving…',
       captureSavedStatus: 'Saved "{title}" as #{id}.', statusSaveFailed: 'Save failed: {error}',
+      editTitle: 'Edit document', editDocTypeLabel: 'Document type', editDocTypePlaceholder: 'Determines which fields show below',
+      editDocTypeHint: "Not in the list? Type a new one — it'll be created.", editTitleLabel: 'Title', editDateLabel: 'Date',
+      editCategoryLabel: 'Category', editSubcategoryLabel: 'Subcategory',
+      editSubcategoryPlaceholder: 'Independent of category, not a child of it',
+      editOcrTextLabel: 'OCR / extracted text', editSaveAndDone: 'Save & Done', editSaveChanges: 'Save changes',
+      editSavedStatus: 'Saved changes to "{title}".',
+      ocrDone: 'Done.', ocrLoadingPdf: 'Loading PDF…', ocrRecognizingPage: 'Recognizing page {page} of {total}…',
+      editOcrPdfDoneSingular: 'Done — {count} page recognized.', editOcrPdfDonePlural: 'Done — {count} pages recognized.',
+      editOcrUnsupportedType: "Can't run OCR on this file type ({type}).",
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -859,6 +868,15 @@
       captureOcrDoneNoWords: 'Fertig, aber es wurden keine Wörter mit Positionsdaten gefunden.',
       ocrFailedStatus: 'OCR fehlgeschlagen: {error}', statusSaving: 'Wird gespeichert…',
       captureSavedStatus: '"{title}" als #{id} gespeichert.', statusSaveFailed: 'Speichern fehlgeschlagen: {error}',
+      editTitle: 'Dokument bearbeiten', editDocTypeLabel: 'Dokumenttyp', editDocTypePlaceholder: 'Bestimmt, welche Felder unten angezeigt werden',
+      editDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.', editTitleLabel: 'Titel', editDateLabel: 'Datum',
+      editCategoryLabel: 'Kategorie', editSubcategoryLabel: 'Unterkategorie',
+      editSubcategoryPlaceholder: 'Unabhängig von der Kategorie, keine Unterordnung',
+      editOcrTextLabel: 'OCR / erkannter Text', editSaveAndDone: 'Speichern & Fertig', editSaveChanges: 'Änderungen speichern',
+      editSavedStatus: 'Änderungen an "{title}" gespeichert.',
+      ocrDone: 'Fertig.', ocrLoadingPdf: 'PDF wird geladen…', ocrRecognizingPage: 'Seite {page} von {total} wird erkannt…',
+      editOcrPdfDoneSingular: 'Fertig — {count} Seite erkannt.', editOcrPdfDonePlural: 'Fertig — {count} Seiten erkannt.',
+      editOcrUnsupportedType: 'OCR ist für diesen Dateityp ({type}) nicht möglich.',
     },
   };
 
@@ -3512,67 +3530,67 @@
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
-          <h2>Edit document</h2>
+          <h2>${t('editTitle')}</h2>
 
           <div class="field field-prominent">
-            <label for="e-type">Document type</label>
+            <label for="e-type">${t('editDocTypeLabel')}</label>
             <div class="field-with-clear">
-              <input type="text" id="e-type" list="type-list" value="${escapeHtml(d.document_type || '')}" placeholder="Determines which fields show below" />
+              <input type="text" id="e-type" list="type-list" value="${escapeHtml(d.document_type || '')}" placeholder="${t('editDocTypePlaceholder')}" />
               <button type="button" class="clear-btn" id="e-type-clear" title="Clear" aria-label="Clear document type">✕</button>
             </div>
-            <div class="field-hint">Not in the list? Type a new one — it'll be created.</div>
+            <div class="field-hint">${t('editDocTypeHint')}</div>
           </div>
 
           <div class="field-row">
-            <div class="field"><label for="e-title">Title</label><input type="text" id="e-title" value="${escapeHtml(d.title || '')}" /></div>
-            <div class="field"><label for="e-date">Date</label><input type="date" id="e-date" value="${escapeHtml((d.date || '').slice(0, 10))}" /></div>
+            <div class="field"><label for="e-title">${t('editTitleLabel')}</label><input type="text" id="e-title" value="${escapeHtml(d.title || '')}" /></div>
+            <div class="field"><label for="e-date">${t('editDateLabel')}</label><input type="date" id="e-date" value="${escapeHtml((d.date || '').slice(0, 10))}" /></div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="e-category">Category</label>
+              <label for="e-category">${t('editCategoryLabel')}</label>
               <div class="field-with-clear">
                 <input type="text" id="e-category" list="category-list" value="${escapeHtml(d.category || '')}" />
                 <button type="button" class="clear-btn" id="e-category-clear" title="Clear" aria-label="Clear category">✕</button>
               </div>
             </div>
             <div class="field">
-              <label for="e-subcategory">Subcategory</label>
+              <label for="e-subcategory">${t('editSubcategoryLabel')}</label>
               <div class="field-with-clear">
-                <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="Independent of category, not a child of it" />
+                <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="${t('editSubcategoryPlaceholder')}" />
                 <button type="button" class="clear-btn" id="e-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
               </div>
             </div>
           </div>
           <div id="dynamic-fields-e"></div>
           <div class="add-field-wrap" id="e-add-field-wrap" style="display:none;">
-            <button type="button" class="scan-toggle" id="e-add-field-toggle">+ Add a custom field</button>
+            <button type="button" class="scan-toggle" id="e-add-field-toggle">${t('captureAddFieldToggleCollapsed')}</button>
             <div class="add-field-form" id="e-new-field-form" style="display:none;">
-              <input type="text" id="e-new-field-name" placeholder="Field name" />
+              <input type="text" id="e-new-field-name" placeholder="${t('captureAddFieldNamePlaceholder')}" />
               <select id="e-new-field-type">
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="date">Date</option>
-                <option value="checkbox">Checkbox</option>
-                <option value="person">Person</option>
+                <option value="text">${t('captureAddFieldTypeText')}</option>
+                <option value="number">${t('captureAddFieldTypeNumber')}</option>
+                <option value="date">${t('captureAddFieldTypeDate')}</option>
+                <option value="checkbox">${t('captureAddFieldTypeCheckbox')}</option>
+                <option value="person">${t('captureAddFieldTypePerson')}</option>
               </select>
-              <button type="button" id="e-new-field-btn">Add</button>
+              <button type="button" id="e-new-field-btn">${t('commonAdd')}</button>
             </div>
-            <div class="field-hint" id="e-new-field-currency-hint" style="display:none;">Need a monetary value? Use the built-in Amount field (with its own Currency) instead.</div>
+            <div class="field-hint" id="e-new-field-currency-hint" style="display:none;">${t('captureAddFieldAmountHint')}</div>
             <div class="add-field-status" id="e-new-field-status"></div>
           </div>
           <div class="field">
-            <label for="e-tags">Tags (comma-separated)</label>
+            <label for="e-tags">${t('captureTagsLabel')}</label>
             <div class="field-with-clear">
-              <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="e.g. medical, insurance" />
+              <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="${t('captureTagsPlaceholder')}" />
               <button type="button" class="clear-btn" id="e-tags-clear" title="Clear" aria-label="Clear tags">✕</button>
             </div>
           </div>
           <div class="field">
-            <label for="e-notes">Notes</label>
+            <label for="e-notes">${t('captureNotesLabel')}</label>
             <textarea id="e-notes" rows="3">${escapeHtml(d.notes || '')}</textarea>
           </div>
           <div class="field">
-            <label for="e-ocr-text">OCR / extracted text</label>
+            <label for="e-ocr-text">${t('editOcrTextLabel')}</label>
             <div class="doc-sub" id="e-page-count"></div>
             <div class="ocr-row">
               <select id="e-ocr-lang">
@@ -3584,16 +3602,16 @@
                 <option value="chi_sim">Chinese (Simplified) only</option>
                 <option value="chi_tra">Chinese (Traditional / Cantonese) only</option>
               </select>
-              <button type="button" id="e-run-ocr-btn">Run OCR</button>
+              <button type="button" id="e-run-ocr-btn">${t('captureRunOcr')}</button>
               <span id="e-ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
             </div>
             <textarea id="e-ocr-text" rows="5">${escapeHtml(d.ocr_text || '')}</textarea>
           </div>
 
           <div class="modal-actions">
-            ${d.needs_review ? `<button class="primary" id="save-done-btn">Save &amp; Done</button>` : ''}
-            <button class="${d.needs_review ? '' : 'primary'}" id="save-edit-btn">Save changes</button>
-            <button id="cancel-edit-btn">Cancel</button>
+            ${d.needs_review ? `<button class="primary" id="save-done-btn">${t('editSaveAndDone')}</button>` : ''}
+            <button class="${d.needs_review ? '' : 'primary'}" id="save-edit-btn">${t('editSaveChanges')}</button>
+            <button id="cancel-edit-btn">${t('commonCancel')}</button>
           </div>
           <div class="status" id="edit-status" style="padding:10px 0 0;"></div>
         </div>
@@ -3653,7 +3671,7 @@
           if(file.type !== 'application/pdf') return;
           const count = await getPdfPageCount(file);
           const countEl = el('e-page-count');
-          if(countEl && count != null) countEl.textContent = `${count} page${count === 1 ? '' : 's'}`;
+          if(countEl && count != null) countEl.textContent = count === 1 ? t('sharedPageCountSingular', {count}) : t('sharedPageCountPlural', {count});
         }catch(e){ /* leave the note blank -- file may have moved, not worth erroring the whole dialog over */ }
       })();
     }
@@ -3673,7 +3691,7 @@
     const saveBtn = el('save-edit-btn');
     saveBtn.disabled = true;
     editStatus.className = 'status busy';
-    editStatus.innerHTML = '<span class="spinner"></span> Saving…';
+    editStatus.innerHTML = '<span class="spinner"></span> ' + t('statusSaving');
 
     try{
       const d = allDocs.find(x => x.id === id);
@@ -3793,12 +3811,12 @@
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
-      setStatus(`Saved changes to "${title || 'Document #' + id}".`, 'ok');
+      setStatus(t('editSavedStatus', {title: title || t('commonDocumentFallback', {id})}), 'ok');
       openDetail(id);
       return true;
     }catch(e){
       editStatus.className = 'status err';
-      editStatus.textContent = 'Save failed: ' + e.message;
+      editStatus.textContent = t('statusSaveFailed', {error: e.message});
       saveBtn.disabled = false;
       return false;
     }
@@ -4301,21 +4319,21 @@
     const statusEl = el('e-ocr-status');
     const btn = el('e-run-ocr-btn');
     btn.disabled = true;
-    statusEl.innerHTML = '<span class="spinner"></span> Loading OCR engine…';
+    statusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingEngine');
     try{
       const fh = await resolveFileHandle(d.file_path, false);
       const file = await fh.getFile();
 
       if(file.type.startsWith('image/')){
         const Tesseract = await ensureTesseract();
-        statusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
+        statusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrRecognizing');
         const worker = await Tesseract.createWorker(lang.split('+'));
         const { data } = await worker.recognize(file);
         await worker.terminate();
         el('e-ocr-text').value = data.text || '';
-        statusEl.textContent = 'Done.';
+        statusEl.textContent = t('ocrDone');
       }else if(file.type === 'application/pdf'){
-        statusEl.innerHTML = '<span class="spinner"></span> Loading PDF…';
+        statusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingPdf');
         const pdfjsLib = await ensurePdfJs();
         const buf = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
@@ -4323,19 +4341,21 @@
         const worker = await Tesseract.createWorker(lang.split('+'));
         const pageTexts = [];
         for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
-          statusEl.innerHTML = `<span class="spinner"></span> Recognizing page ${pageNum} of ${pdf.numPages}…`;
+          statusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrRecognizingPage', {page: pageNum, total: pdf.numPages});
           const canvas = await renderPdfPageToCanvas(pdf, pageNum, 2);
           const { data } = await worker.recognize(canvas);
           pageTexts.push(data.text || '');
         }
         await worker.terminate();
         el('e-ocr-text').value = pageTexts.join('\n\n').trim();
-        statusEl.textContent = `Done — ${pdf.numPages} page${pdf.numPages === 1 ? '' : 's'} recognized.`;
+        statusEl.textContent = pdf.numPages === 1
+          ? t('editOcrPdfDoneSingular', {count: pdf.numPages})
+          : t('editOcrPdfDonePlural', {count: pdf.numPages});
       }else{
-        statusEl.textContent = `Can't run OCR on this file type (${file.type || 'unknown'}).`;
+        statusEl.textContent = t('editOcrUnsupportedType', {type: file.type || 'unknown'});
       }
     }catch(e){
-      statusEl.textContent = 'OCR failed: ' + e.message;
+      statusEl.textContent = t('ocrFailedStatus', {error: e.message});
     }finally{
       btn.disabled = false;
     }
