@@ -75,6 +75,26 @@ async def main():
         meta_text = await page2.locator('.modal-meta').inner_text()
         print("Scenario 4 -- German UI language produces German-formatted date (contains 'März'):", 'März' in meta_text)
 
+        # === Scenario 5: nav, toolbar, and stats switch to German ===
+        page3 = await browser.new_page()
+        await page3.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page3.add_init_script(stub_js)
+        await page3.goto(f"file://{APP_PATH}")
+        await page3.wait_for_timeout(200)
+        await page3.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
+        await page3.click("#open-btn")
+        await page3.wait_for_timeout(300)
+        await page3.click('#lang-toggle')
+        await page3.wait_for_timeout(150)
+        nav_all_text = await page3.locator('#nav-item-all .nav-item-label').inner_text()
+        add_btn_text = await page3.locator('#add-btn').inner_text()
+        stats_text = await page3.locator('#stats').inner_text()
+        print("Scenario 5 -- nav item translated:", nav_all_text == "Alle Dokumente")
+        print("Scenario 5 -- toolbar button translated:", "Dokument hinzufügen" in add_btn_text)
+        print("Scenario 5 -- stats bar translated:", "Dokumente" in stats_text)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
