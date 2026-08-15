@@ -558,7 +558,7 @@
         <div class="hint">
           <span data-i18n="emptyHintBrowser">Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).</span><br/>
           <span data-i18n="emptyHintWriteAccess">This app needs write access to save new documents, so pick "Edit"/allow when your browser asks.</span><br/><br/>
-          <b style="color:var(--text)">Important:</b> <span data-i18n="emptyHintImportant">open this file directly in your browser (not inside a chat
+          <b style="color:var(--text)" data-i18n="emptyHintImportantLabel">Important:</b> <span data-i18n="emptyHintImportant">open this file directly in your browser (not inside a chat
           preview pane) — folder write access is blocked inside embedded frames.</span>
         </div>
       </div>
@@ -680,7 +680,8 @@
       emptyOpenButton: 'Open library folder',
       emptyHintBrowser: "Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).",
       emptyHintWriteAccess: 'This app needs write access to save new documents, so pick "Edit"/allow when your browser asks.',
-      emptyHintImportant: 'Important: open this file directly in your browser (not inside a chat preview pane) — folder write access is blocked inside embedded frames.',
+      emptyHintImportantLabel: 'Important:',
+      emptyHintImportant: 'open this file directly in your browser (not inside a chat preview pane) — folder write access is blocked inside embedded frames.',
       initTitle: 'Empty folder', initMessageDefault: 'No <code>library.sqlite</code> found in that folder.',
       initMessageWithName: 'No <code>library.sqlite</code> found in "<b>{name}</b>".',
       initButton: 'Initialize a new library here', initPickAgain: 'Choose a different folder',
@@ -724,7 +725,8 @@
       emptyOpenButton: 'Bibliotheksordner öffnen',
       emptyHintBrowser: 'Erfordert Chrome oder Edge (die File System Access API wird in Safari/Firefox nicht unterstützt).',
       emptyHintWriteAccess: 'Diese App benötigt Schreibzugriff, um neue Dokumente zu speichern — wähle "Bearbeiten"/Erlauben, wenn dein Browser danach fragt.',
-      emptyHintImportant: 'Wichtig: Öffne diese Datei direkt in deinem Browser (nicht in einer eingebetteten Chat-Vorschau) — Schreibzugriff auf Ordner ist in eingebetteten Frames blockiert.',
+      emptyHintImportantLabel: 'Wichtig:',
+      emptyHintImportant: 'Öffne diese Datei direkt in deinem Browser (nicht in einer eingebetteten Chat-Vorschau) — Schreibzugriff auf Ordner ist in eingebetteten Frames blockiert.',
       initTitle: 'Leerer Ordner', initMessageDefault: 'Keine <code>library.sqlite</code> in diesem Ordner gefunden.',
       initMessageWithName: 'Keine <code>library.sqlite</code> in "<b>{name}</b>" gefunden.',
       initButton: 'Neue Bibliothek hier anlegen', initPickAgain: 'Anderen Ordner wählen',
@@ -782,7 +784,7 @@
     // Restore the personalized version here, the same way
     // proceedWithRootDirHandle() itself sets it.
     if(initState.style.display !== 'none' && rootDirHandle){
-      el('init-message').innerHTML = t('initMessageWithName', {name: `<b>${escapeHtml(rootDirHandle.name)}</b>`});
+      el('init-message').innerHTML = t('initMessageWithName', {name: escapeHtml(rootDirHandle.name)}); // the <b> wrap lives inside the STRINGS value itself (initMessageWithName), not here -- don't re-wrap and produce nested <b><b>...</b></b>
     }
     // renderStats()/populateFilters() aren't called from inside render() (they're
     // only invoked from the handful of call sites that actually change the
@@ -1436,7 +1438,7 @@
     }catch(e){
       emptyState.style.display = 'none';
       initState.style.display = 'block';
-      el('init-message').innerHTML = t('initMessageWithName', {name: `<b>${escapeHtml(rootDirHandle.name)}</b>`});
+      el('init-message').innerHTML = t('initMessageWithName', {name: escapeHtml(rootDirHandle.name)}); // the <b> wrap lives inside the STRINGS value itself (initMessageWithName), not here -- don't re-wrap and produce nested <b><b>...</b></b>
       setStatus('');
     }
   }

@@ -112,6 +112,15 @@ async def main():
         await page4.wait_for_timeout(200)
         open_btn_text = await page4.locator('#open-btn').inner_text()
         print("Scenario 6 -- empty-state open button translated:", open_btn_text == "Bibliotheksordner öffnen")
+        # The static "Important:"/"Wichtig:" <b> label and the translated
+        # emptyHintImportant span sit side by side in the markup -- an earlier
+        # version of emptyHintImportant's own STRINGS value redundantly
+        # repeated the label text ("Wichtig: Öffne diese Datei..."), which
+        # rendered as "Wichtig: Wichtig: ..." and wasn't caught by inner_text()
+        # equality checks elsewhere in this file (they collapse markup, not
+        # duplicated plain text). Assert the label appears exactly once.
+        hint_text = await page4.locator('#empty-state .hint').inner_text()
+        print("Scenario 6 -- empty-state hint's 'Wichtig:' label is not duplicated:", hint_text.count('Wichtig:') == 1)
         await page4.evaluate("window.__TEST_ROOT = window.__makeEmptyRoot();") # empty folder, no library.sqlite
         await page4.click("#open-btn")
         await page4.wait_for_timeout(300)
@@ -119,6 +128,13 @@ async def main():
         print("Scenario 6 -- init-state (no library.sqlite) translated:", init_title == "Leerer Ordner")
         init_message_text = await page4.locator('#init-message').inner_text()
         print("Scenario 6 -- init-message names the folder (German wrapper text):", "EmptyLibrary" in init_message_text and "Keine" in init_message_text)
+        # initMessageWithName's own STRINGS value already wraps {name} in
+        # <b>...</b> -- the call site must not ALSO wrap the substituted value
+        # in <b>...</b>, which would produce redundant nested <b><b>...</b></b>
+        # (invisible to an inner_text() check, since browsers collapse nested
+        # bold tags visually; only inspecting the actual innerHTML catches it).
+        init_message_html = await page4.locator('#init-message').inner_html()
+        print("Scenario 6 -- init-message has no nested <b><b> tags:", '<b><b>' not in init_message_html and '<b></b>' not in init_message_html)
 
         # === Scenario 7: recent-libraries list (on the empty-state screen) is
         # rebuilt via t() calls baked into a template string, not data-i18n
