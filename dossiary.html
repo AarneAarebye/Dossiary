@@ -594,16 +594,16 @@
         <table id="doc-table">
           <thead>
             <tr id="doc-thead-row">
-              <th class="select-col"><input type="checkbox" id="select-all-checkbox" title="Select all visible" /></th>
+              <th class="select-col"><input type="checkbox" id="select-all-checkbox" data-i18n-title="tableSelectAllTitle" title="Select all visible" /></th>
               <th class="row-edit-col"></th>
-              <th data-key="title">Document</th>
-              <th data-key="category" data-field="category">Category</th>
-              <th data-key="document_type" data-field="document_type">Type</th>
-              <th data-field="people">People</th>
-              <th data-key="date" data-field="date">Date</th>
-              <th data-key="import_date" data-field="import_date">Imported</th>
-              <th data-key="amount" data-field="amount">Amount</th>
-              <th data-field="tags">Tags</th>
+              <th data-key="title" data-i18n="tableColDocument">Document</th>
+              <th data-key="category" data-field="category" data-i18n="tableColCategory">Category</th>
+              <th data-key="document_type" data-field="document_type" data-i18n="tableColType">Type</th>
+              <th data-field="people" data-i18n="tableColPeople">People</th>
+              <th data-key="date" data-field="date" data-i18n="tableColDate">Date</th>
+              <th data-key="import_date" data-field="import_date" data-i18n="tableColImported">Imported</th>
+              <th data-key="amount" data-field="amount" data-i18n="tableColAmount">Amount</th>
+              <th data-field="tags" data-i18n="tableColTags">Tags</th>
             </tr>
           </thead>
           <tbody id="doc-tbody"></tbody>
@@ -696,6 +696,11 @@
       statusCouldNotInitLibrary: 'Could not initialize a new library: {error}',
       statusLoadingSqliteEngine: 'Loading SQLite engine…', statusReadingLibrary: 'Reading library.sqlite…',
       statusOpenedLibrary: 'Opened {count} documents from {name}.',
+      tableColDocument: 'Document', tableColCategory: 'Category', tableColType: 'Type', tableColPeople: 'People',
+      tableColDate: 'Date', tableColImported: 'Imported', tableColAmount: 'Amount', tableColTags: 'Tags',
+      tableSelectAllTitle: 'Select all visible', tableRowEditTitle: 'Edit',
+      tablePillNew: 'new', tablePillFromInbox: 'from inbox', tablePillArchived: 'archived',
+      tableShowingCount: 'Showing {shown} of {total} documents', tableNoValue: '—',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -741,6 +746,11 @@
       statusCouldNotInitLibrary: 'Neue Bibliothek konnte nicht angelegt werden: {error}',
       statusLoadingSqliteEngine: 'SQLite-Engine wird geladen…', statusReadingLibrary: 'library.sqlite wird gelesen…',
       statusOpenedLibrary: '{count} Dokumente aus {name} geöffnet.',
+      tableColDocument: 'Dokument', tableColCategory: 'Kategorie', tableColType: 'Typ', tableColPeople: 'Personen',
+      tableColDate: 'Datum', tableColImported: 'Importiert', tableColAmount: 'Betrag', tableColTags: 'Tags',
+      tableSelectAllTitle: 'Alle sichtbaren auswählen', tableRowEditTitle: 'Bearbeiten',
+      tablePillNew: 'neu', tablePillFromInbox: 'aus Posteingang', tablePillArchived: 'archiviert',
+      tableShowingCount: '{shown} von {total} Dokumenten angezeigt', tableNoValue: '—',
     },
   };
 
@@ -2878,27 +2888,27 @@
     } else {
       denominator = navCounts[currentView];
     }
-    countLine.textContent = `Showing ${sorted.length} of ${denominator} documents`;
+    countLine.textContent = t('tableShowingCount', {shown: sorted.length, total: denominator});
 
     const dynDefs = dynamicColumnDefs();
     tbody.innerHTML = sorted.map(d => `
       <tr data-id="${d.id}">
         <td class="select-col" onclick="event.stopPropagation()"><input type="checkbox" class="row-select-checkbox" data-id="${d.id}" ${selectedDocIds.has(d.id) ? 'checked' : ''} /></td>
-        <td class="row-edit-col" onclick="event.stopPropagation()">${d.deleted ? '' : `<button class="row-edit-btn" data-id="${d.id}" title="Edit">✎</button>`}</td>
+        <td class="row-edit-col" onclick="event.stopPropagation()">${d.deleted ? '' : `<button class="row-edit-btn" data-id="${d.id}" title="${t('tableRowEditTitle')}">✎</button>`}</td>
         <td>
           <div class="doc-title">${escapeHtml(displayName(d))}</div>
-          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ' · <span class="pill captured">new</span>' : d.source === 'scan-inbox' ? ' · <span class="pill captured">from inbox</span>' : ''}${d.archived ? ' · <span class="pill archived">archived</span>' : ''}</div>
+          <div class="doc-sub"><span class="id">#${d.id}</span>${d.source === 'captured' ? ` · <span class="pill captured">${t('tablePillNew')}</span>` : d.source === 'scan-inbox' ? ` · <span class="pill captured">${t('tablePillFromInbox')}</span>` : ''}${d.archived ? ` · <span class="pill archived">${t('tablePillArchived')}</span>` : ''}</div>
         </td>
-        <td data-field="category">${d.category ? escapeHtml(d.category) : '<span class="doc-sub">—</span>'}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
-        <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : '—'}</td>
-        <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
+        <td data-field="category">${d.category ? escapeHtml(d.category) : `<span class="doc-sub">${t('tableNoValue')}</span>`}${d.subcategory ? `<div class="doc-sub">${escapeHtml(d.subcategory)}</div>` : ''}</td>
+        <td data-field="document_type">${d.document_type ? `<span class="pill type">${escapeHtml(d.document_type)}</span>` : t('tableNoValue')}</td>
+        <td data-field="people">${(d.people||[]).map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>
         <td class="date" data-field="date">${formatDate(d.date)}</td>
         <td class="date" data-field="import_date">${formatDate(d.import_date)}</td>
         <td class="amount" data-field="amount">${formatAmount(d)}</td>
-        <td data-field="tags">${(d.tags||[]).map(t => `<span class="pill">${escapeHtml(t)}</span>`).join('') || '<span class="doc-sub">—</span>'}</td>
+        <td data-field="tags">${(d.tags||[]).map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('') || `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>
         ${dynDefs.map(f => {
           const raw = (d.customFields || {})[f.label];
-          return `<td data-field="${f.id}">${raw != null && raw !== '' ? escapeHtml(formatCustomFieldValue(f.label, raw)) : '<span class="doc-sub">—</span>'}</td>`;
+          return `<td data-field="${f.id}">${raw != null && raw !== '' ? escapeHtml(formatCustomFieldValue(f.label, raw)) : `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>`;
         }).join('')}
       </tr>
     `).join('');

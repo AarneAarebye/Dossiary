@@ -171,6 +171,20 @@ async def main():
         recent_status_after = await page5.locator('[id^="recent-lib-status-"]').inner_text()
         print("Scenario 7 -- recent-libraries 'Last opened' line retranslates live:", "Zuletzt geöffnet:" in recent_status_after)
 
+        # === Scenario 8: table headers and row content translate (reuses
+        # page3 from Scenario 5, already open with the seeded library and
+        # toggled to German) ===
+        # thead th is CSS text-transform:uppercase, so inner_text() reports
+        # "DOKUMENT" even though the actual DOM/source text is "Dokument" --
+        # same quirk the Scenario 7 recent-libraries heading check already
+        # lives with.
+        col_header_text = await page3.locator('th[data-key="title"]').inner_text()
+        print("Scenario 8 -- table column header translated:", col_header_text == "DOKUMENT")
+        row_edit_title = await page3.locator('tr[data-id="1"] .row-edit-btn').get_attribute('title')
+        print("Scenario 8 -- row-edit button title translated:", row_edit_title == "Bearbeiten")
+        count_line_text = await page3.locator('#count-line').inner_text()
+        print("Scenario 8 -- showing-count line translated:", "von" in count_line_text and "Dokumenten" in count_line_text)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
