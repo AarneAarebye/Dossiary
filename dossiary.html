@@ -733,12 +733,18 @@
     currentLang = lang;
     saveLang(lang);
     applyI18n();
-    // renderStats() isn't called from inside render() (it's only invoked from the
-    // handful of call sites that actually change the document set -- see its own
-    // call sites), so switching language needs its own explicit call here or the
-    // stats bar's "documents"/"categories"/"captured here" labels would stay in
-    // whatever language they were last rendered in until the next mutation.
-    if(rootDirHandle){ renderStats(); render(); }
+    // renderStats()/populateFilters() aren't called from inside render() (they're
+    // only invoked from the handful of call sites that actually change the
+    // document set -- see their own call sites, e.g. the
+    // "renderStats(); populateFilters(); populateDatalists(); render();" group
+    // after a save/delete/inbox-add), so switching language needs its own
+    // explicit calls here. Without populateFilters(), the Category/Type/People
+    // filter dropdowns' default options and the dynamic "All {label}" custom-field
+    // option bake their translated text directly into freshly-generated <option>
+    // elements at render time (no data-i18n attribute survives the rebuild), so
+    // they'd stay in whatever language they were last rendered in until the next
+    // document mutation -- same failure mode renderStats() had, one function over.
+    if(rootDirHandle){ renderStats(); populateFilters(); render(); }
   }
 
   const SCHEMA = `

@@ -91,9 +91,11 @@ async def main():
         nav_all_text = await page3.locator('#nav-item-all .nav-item-label').inner_text()
         add_btn_text = await page3.locator('#add-btn').inner_text()
         stats_text = await page3.locator('#stats').inner_text()
+        category_filter_text = await page3.locator('#category-filter option[value=""]').inner_text()
         print("Scenario 5 -- nav item translated:", nav_all_text == "Alle Dokumente")
         print("Scenario 5 -- toolbar button translated:", "Dokument hinzufügen" in add_btn_text)
         print("Scenario 5 -- stats bar translated:", "Dokumente" in stats_text)
+        print("Scenario 5 -- category filter default option translated:", category_filter_text == "Alle Kategorien")
 
         print("JS ERRORS:", errors)
         await browser.close()
