@@ -764,6 +764,16 @@
       ocrDone: 'Done.', ocrLoadingPdf: 'Loading PDF…', ocrRecognizingPage: 'Recognizing page {page} of {total}…',
       editOcrPdfDoneSingular: 'Done — {count} page recognized.', editOcrPdfDonePlural: 'Done — {count} pages recognized.',
       editOcrUnsupportedType: "Can't run OCR on this file type ({type}).",
+      fieldSettingsTitle: 'Field settings',
+      fieldSettingsDefaultDocTypeLabel: 'Default document type (pre-fills "Add document")',
+      fieldSettingsDefaultCurrencyLabel: 'Default currency (guessed on new captures, e.g. EUR)',
+      fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
+      fieldSettingsNoDocTypes: 'No document types in use yet. Type one into the Add/Edit document form first.',
+      fieldSettingsSelectDocType: 'Select a document type.', fieldSettingsColumnCheckbox: 'Column',
+      fieldSettingsAutocompleteCheckbox: 'Autocomplete', fieldSettingsAddToDisplayTitle: 'Add to Display Fields',
+      fieldSettingsAllFieldsShown: 'All fields are already shown for this type.',
+      fieldSettingsMoveUpTitle: 'Move up', fieldSettingsMoveDownTitle: 'Move down', fieldSettingsRemoveTitle: 'Remove',
+      fieldSettingsNoFieldsShown: 'No fields shown for this type yet — add some from the left.',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -877,6 +887,16 @@
       ocrDone: 'Fertig.', ocrLoadingPdf: 'PDF wird geladen…', ocrRecognizingPage: 'Seite {page} von {total} wird erkannt…',
       editOcrPdfDoneSingular: 'Fertig — {count} Seite erkannt.', editOcrPdfDonePlural: 'Fertig — {count} Seiten erkannt.',
       editOcrUnsupportedType: 'OCR ist für diesen Dateityp ({type}) nicht möglich.',
+      fieldSettingsTitle: 'Feldeinstellungen',
+      fieldSettingsDefaultDocTypeLabel: 'Standard-Dokumenttyp (füllt "Dokument hinzufügen" vor)',
+      fieldSettingsDefaultCurrencyLabel: 'Standardwährung (wird bei neuen Erfassungen vorgeschlagen, z. B. EUR)',
+      fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
+      fieldSettingsNoDocTypes: 'Noch keine Dokumenttypen in Verwendung. Gib zuerst einen im Formular "Dokument hinzufügen/bearbeiten" ein.',
+      fieldSettingsSelectDocType: 'Wähle einen Dokumenttyp aus.', fieldSettingsColumnCheckbox: 'Spalte',
+      fieldSettingsAutocompleteCheckbox: 'Autovervollständigung', fieldSettingsAddToDisplayTitle: 'Zu Anzeigefeldern hinzufügen',
+      fieldSettingsAllFieldsShown: 'Für diesen Typ werden bereits alle Felder angezeigt.',
+      fieldSettingsMoveUpTitle: 'Nach oben', fieldSettingsMoveDownTitle: 'Nach unten', fieldSettingsRemoveTitle: 'Entfernen',
+      fieldSettingsNoFieldsShown: 'Für diesen Typ werden noch keine Felder angezeigt — füge links welche hinzu.',
     },
   };
 
@@ -3838,36 +3858,36 @@
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
-          <h2>Field settings</h2>
+          <h2>${t('fieldSettingsTitle')}</h2>
           <div class="field-row">
             <div class="field">
-              <label for="fs-default-type">Default document type (pre-fills "Add document")</label>
+              <label for="fs-default-type">${t('fieldSettingsDefaultDocTypeLabel')}</label>
               <select id="fs-default-type">
-                <option value="">— None —</option>
+                <option value="">${t('commonNone')}</option>
                 ${usedTypes.map(t => `<option value="${escapeHtml(t)}" ${t === defaultDocumentType ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
               </select>
             </div>
             <div class="field">
-              <label for="fs-default-currency">Default currency (guessed on new captures, e.g. EUR)</label>
-              <input type="text" id="fs-default-currency" list="currency-list" value="${escapeHtml(defaultCurrency || '')}" placeholder="— None —" />
+              <label for="fs-default-currency">${t('fieldSettingsDefaultCurrencyLabel')}</label>
+              <input type="text" id="fs-default-currency" list="currency-list" value="${escapeHtml(defaultCurrency || '')}" placeholder="${t('commonNone')}" />
             </div>
           </div>
           <div class="fs-columns">
             <div class="fs-col">
-              <h3>Document Types</h3>
+              <h3>${t('fieldSettingsColDocTypes')}</h3>
               <div class="fs-list" id="fs-type-list"></div>
             </div>
             <div class="fs-col">
-              <h3>Fields</h3>
+              <h3>${t('fieldSettingsColFields')}</h3>
               <div class="fs-list" id="fs-available-list"></div>
             </div>
             <div class="fs-col">
-              <h3>Display Fields</h3>
+              <h3>${t('fieldSettingsColDisplayFields')}</h3>
               <div class="fs-list" id="fs-display-list"></div>
             </div>
           </div>
           <div class="modal-actions" style="margin-top:16px;">
-            <button id="fs-done-btn">Done</button>
+            <button id="fs-done-btn">${t('commonDone')}</button>
           </div>
         </div>
       </div>
@@ -3887,7 +3907,7 @@
     const usedTypes = getUsedDocumentTypes();
     const listEl = el('fs-type-list');
     if(!usedTypes.length){
-      listEl.innerHTML = `<div class="fs-list-empty">No document types in use yet. Type one into the Add/Edit document form first.</div>`;
+      listEl.innerHTML = `<div class="fs-list-empty">${t('fieldSettingsNoDocTypes')}</div>`;
       return;
     }
     listEl.innerHTML = usedTypes.map(t => `
@@ -3906,8 +3926,8 @@
     const availableEl = el('fs-available-list');
     const displayEl = el('fs-display-list');
     if(!fsSelectedType){
-      availableEl.innerHTML = `<div class="fs-list-empty">Select a document type.</div>`;
-      displayEl.innerHTML = `<div class="fs-list-empty">Select a document type.</div>`;
+      availableEl.innerHTML = `<div class="fs-list-empty">${t('fieldSettingsSelectDocType')}</div>`;
+      displayEl.innerHTML = `<div class="fs-list-empty">${t('fieldSettingsSelectDocType')}</div>`;
       return;
     }
 
@@ -3937,8 +3957,8 @@
       if(!fieldDef || fieldDef.type === 'person' || fieldName === 'Amount' || fieldName === 'Currency') return '';
       return `
         <div class="fs-field-capabilities">
-          <label><input type="checkbox" class="fs-col-toggle" ${fieldDef.showAsColumn ? 'checked' : ''} /> Column</label>
-          ${fieldDef.type === 'text' ? `<label><input type="checkbox" class="fs-autocomplete-toggle" ${fieldDef.autocomplete ? 'checked' : ''} /> Autocomplete</label>` : ''}
+          <label><input type="checkbox" class="fs-col-toggle" ${fieldDef.showAsColumn ? 'checked' : ''} /> ${t('fieldSettingsColumnCheckbox')}</label>
+          ${fieldDef.type === 'text' ? `<label><input type="checkbox" class="fs-autocomplete-toggle" ${fieldDef.autocomplete ? 'checked' : ''} /> ${t('fieldSettingsAutocompleteCheckbox')}</label>` : ''}
         </div>
       `;
     }
@@ -3954,12 +3974,12 @@
           <div class="fs-list-item fs-field-item" data-field="${escapeHtml(n)}">
             <div class="fs-field-row">
               <span>${escapeHtml(n)}</span>
-              <span class="fs-item-actions"><button type="button" class="fs-add" title="Add to Display Fields">+</button></span>
+              <span class="fs-item-actions"><button type="button" class="fs-add" title="${t('fieldSettingsAddToDisplayTitle')}">+</button></span>
             </div>
             ${capabilitiesHtml(n)}
           </div>
         `).join('')
-      : `<div class="fs-list-empty">All fields are already shown for this type.</div>`;
+      : `<div class="fs-list-empty">${t('fieldSettingsAllFieldsShown')}</div>`;
     availableEl.querySelectorAll('.fs-list-item').forEach(itemEl => {
       const fieldName = itemEl.dataset.field;
       itemEl.querySelector('.fs-add').addEventListener('click', () => addFieldToType(fieldName));
@@ -3972,15 +3992,15 @@
             <div class="fs-field-row">
               <span>${escapeHtml(entry.field)}</span>
               <span class="fs-item-actions">
-                <button type="button" class="fs-up" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
-                <button type="button" class="fs-down" title="Move down" ${i === currentEntries.length - 1 ? 'disabled' : ''}>↓</button>
-                <button type="button" class="fs-remove" title="Remove">✕</button>
+                <button type="button" class="fs-up" title="${t('fieldSettingsMoveUpTitle')}" ${i === 0 ? 'disabled' : ''}>↑</button>
+                <button type="button" class="fs-down" title="${t('fieldSettingsMoveDownTitle')}" ${i === currentEntries.length - 1 ? 'disabled' : ''}>↓</button>
+                <button type="button" class="fs-remove" title="${t('fieldSettingsRemoveTitle')}">✕</button>
               </span>
             </div>
             ${capabilitiesHtml(entry.field)}
           </div>
         `).join('')
-      : `<div class="fs-list-empty">No fields shown for this type yet — add some from the left.</div>`;
+      : `<div class="fs-list-empty">${t('fieldSettingsNoFieldsShown')}</div>`;
     displayEl.querySelectorAll('.fs-list-item').forEach(itemEl => {
       const fieldName = itemEl.dataset.field;
       itemEl.querySelector('.fs-remove').addEventListener('click', () => removeFieldFromType(fieldName));

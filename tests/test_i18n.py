@@ -296,6 +296,22 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 13: Field Settings modal translates (reuses page3,
+        # still German; no modal open at this point since Scenario 12 closed
+        # both the edit form via Cancel and the detail view via modal-close-btn) ===
+        await page3.click('#manage-fields-btn')
+        await page3.wait_for_timeout(200)
+        fs_heading = await page3.locator('.modal h2').inner_text()
+        print("Scenario 13 -- Field Settings heading translated:", fs_heading == "Feldeinstellungen")
+        # .fs-col h3 is CSS text-transform:uppercase (see line ~152), so
+        # inner_text() reports "DOKUMENTTYPEN" even though the actual
+        # DOM/source text is "Dokumenttypen" -- same quirk the Scenario
+        # 7/8/9/11/12 uppercase-header checks already live with.
+        col_heading = await page3.locator('.fs-col h3').first.inner_text()
+        print("Scenario 13 -- Field Settings column heading translated:", col_heading == "DOKUMENTTYPEN")
+        await page3.click('#fs-done-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
