@@ -225,6 +225,36 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 11: capture form ("Add document" modal), scan hint, and
+        # capture-time OCR flow translate (reuses page3, still German, capture
+        # modal not open there since Scenario 10 closed it) ===
+        await page3.click('#add-btn')
+        await page3.wait_for_timeout(200)
+        modal_heading = await page3.locator('.modal h2').inner_text()
+        print("Scenario 11 -- capture modal heading translated:", modal_heading == "Dokument hinzufügen")
+        save_btn_text = await page3.locator('#save-doc-btn').inner_text()
+        print("Scenario 11 -- capture save button translated:", save_btn_text == "Dokument speichern")
+        file_drop_text = await page3.locator('#file-drop').inner_text()
+        print("Scenario 11 -- file-drop label translated:", "Klicken, um eine Datei auszuwählen" in file_drop_text)
+        # scanHintHtml() is only wired up as visible-toggle content; click the
+        # toggle to reveal it, then check the German intro/body/outro compose
+        # correctly (this also exercises detectOS()'s branching -- whichever
+        # branch fires, the surrounding intro/outro text is always present).
+        await page3.click('#scan-hint-toggle')
+        await page3.wait_for_timeout(100)
+        scan_hint_text = await page3.locator('#scan-hint').inner_text()
+        print("Scenario 11 -- scan-hint intro/outro translated:", "Diese App kann deinen Scanner nicht direkt öffnen" in scan_hint_text and "Klicken, um eine Datei auszuwählen" in scan_hint_text)
+        # .field label is CSS text-transform:uppercase, so inner_text() reports
+        # "DOKUMENTTYP" even though the actual DOM/source text is "Dokumenttyp"
+        # -- same quirk the Scenario 7/8/9 uppercase-header checks already live
+        # with.
+        doc_type_label_text = await page3.locator('label[for="f-type"]').inner_text()
+        print("Scenario 11 -- document type label translated:", doc_type_label_text == "DOKUMENTTYP")
+        tags_label_text = await page3.locator('label[for="f-tags"]').inner_text()
+        print("Scenario 11 -- tags label translated:", tags_label_text == "TAGS (DURCH KOMMA GETRENNT)")
+        await page3.click('#cancel-doc-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

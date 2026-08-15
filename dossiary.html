@@ -724,6 +724,37 @@
       fieldValidationPickDocType: 'Pick a document type first.', fieldValidationEnterName: 'Enter a field name.',
       fieldValidationReservedName: '"{name}" is a built-in field — use ⚙ Manage fields to add it for this type.',
       fieldValidationDuplicateName: '"{name}" already exists — use ⚙ Manage fields to add it to this type.',
+      captureTitle: 'Add document', captureFileDropLabel: 'Click to choose a file (PDF or image)',
+      captureScanToggle: 'Need to scan a paper document first?',
+      captureOcrTextLabel: 'Extracted / notes text (editable)', captureOcrTextPlaceholder: 'Runs after OCR, or type/paste manually',
+      captureRunOcr: 'Run OCR', captureDocTypeLabel: 'Document type',
+      captureDocTypePlaceholder: 'Pick this first — it determines which fields show below',
+      captureDocTypeHint: "Not in the list? Type a new one — it'll be created.",
+      captureTitleLabel: 'Title', captureDateLabel: 'Date',
+      captureDateGuessHint: "Defaulted to today — check this is the document's actual date",
+      captureCategoryLabel: 'Category', captureSubcategoryLabel: 'Subcategory',
+      captureSubcategoryPlaceholder: 'Independent of category, not a child of it',
+      captureAddFieldToggleCollapsed: '+ Add a custom field', captureAddFieldToggleExpanded: '− Add a custom field',
+      captureAddFieldNamePlaceholder: 'Field name', captureAddFieldTypeText: 'Text', captureAddFieldTypeNumber: 'Number',
+      captureAddFieldTypeDate: 'Date', captureAddFieldTypeCheckbox: 'Checkbox', captureAddFieldTypePerson: 'Person',
+      captureAddFieldAmountHint: 'Need a monetary value? Use the built-in Amount field (with its own Currency) instead.',
+      captureTagsLabel: 'Tags (comma-separated)', captureTagsPlaceholder: 'e.g. medical, insurance',
+      captureNotesLabel: 'Notes', captureSaveButton: 'Save document',
+      scanHintIntro: "This app can't open your scanner directly — browsers aren't allowed to control hardware or launch other apps. Instead: ",
+      scanHintOutro: ' Then come back and use "Click to choose a file" above to pick that scan.',
+      scanHintMac: 'open <b>Image Capture</b> (⌘Space, type "Image Capture") or Preview\'s <b>File → Import from Scanner</b>, scan the document, and save it somewhere you\'ll find it (e.g. the Desktop).',
+      scanHintWindows: 'open the <b>Windows Scan</b> app (search "Scan" in the Start menu) or your scanner\'s own software, scan the document, and save it somewhere you\'ll find it (e.g. Documents or the Desktop).',
+      scanHintOther: "use your scanner's own software to scan the document and save it somewhere you'll find it.",
+      pickedOcrPdfNote: 'Running OCR will build a searchable PDF (image + invisible text layer); the original stays alongside it.',
+      pickedOcrOtherImageNote: 'OCR text will be extracted, but a searchable PDF can only be built from JPEG/PNG — this file will be saved as-is.',
+      pickedOcrNotAvailablePdf: ' · OCR not available for PDFs yet, add notes manually',
+      pickedFileSizeKb: '{size} KB', sharedPageCountSingular: '{count} page', sharedPageCountPlural: '{count} pages',
+      ocrLoadingEngine: 'Loading OCR engine…', ocrRecognizing: 'Recognizing text…',
+      captureOcrDoneWordsSingular: 'Done — {count} word positioned for a searchable PDF.',
+      captureOcrDoneWordsPlural: 'Done — {count} words positioned for a searchable PDF.',
+      captureOcrDoneNoWords: 'Done, but no words with position data were found.',
+      ocrFailedStatus: 'OCR failed: {error}', statusSaving: 'Saving…',
+      captureSavedStatus: 'Saved "{title}" as #{id}.', statusSaveFailed: 'Save failed: {error}',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -797,6 +828,37 @@
       fieldValidationPickDocType: 'Wähle zuerst einen Dokumenttyp aus.', fieldValidationEnterName: 'Gib einen Feldnamen ein.',
       fieldValidationReservedName: '"{name}" ist ein eingebautes Feld — nutze ⚙ Felder verwalten, um es für diesen Typ hinzuzufügen.',
       fieldValidationDuplicateName: '"{name}" existiert bereits — nutze ⚙ Felder verwalten, um es zu diesem Typ hinzuzufügen.',
+      captureTitle: 'Dokument hinzufügen', captureFileDropLabel: 'Klicken, um eine Datei auszuwählen (PDF oder Bild)',
+      captureScanToggle: 'Musst du zuerst ein Papierdokument scannen?',
+      captureOcrTextLabel: 'Erkannter Text / Notizen (bearbeitbar)', captureOcrTextPlaceholder: 'Wird nach OCR ausgefüllt, oder manuell eintippen/einfügen',
+      captureRunOcr: 'OCR ausführen', captureDocTypeLabel: 'Dokumenttyp',
+      captureDocTypePlaceholder: 'Zuerst auswählen — bestimmt, welche Felder unten angezeigt werden',
+      captureDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.',
+      captureTitleLabel: 'Titel', captureDateLabel: 'Datum',
+      captureDateGuessHint: 'Auf heute voreingestellt — prüfe, ob dies das tatsächliche Datum des Dokuments ist',
+      captureCategoryLabel: 'Kategorie', captureSubcategoryLabel: 'Unterkategorie',
+      captureSubcategoryPlaceholder: 'Unabhängig von der Kategorie, keine Unterordnung',
+      captureAddFieldToggleCollapsed: '+ Benutzerdefiniertes Feld hinzufügen', captureAddFieldToggleExpanded: '− Benutzerdefiniertes Feld hinzufügen',
+      captureAddFieldNamePlaceholder: 'Feldname', captureAddFieldTypeText: 'Text', captureAddFieldTypeNumber: 'Zahl',
+      captureAddFieldTypeDate: 'Datum', captureAddFieldTypeCheckbox: 'Kontrollkästchen', captureAddFieldTypePerson: 'Person',
+      captureAddFieldAmountHint: 'Brauchst du einen Geldbetrag? Nutze stattdessen das eingebaute Feld "Betrag" (mit eigener Währung).',
+      captureTagsLabel: 'Tags (durch Komma getrennt)', captureTagsPlaceholder: 'z. B. medizinisch, Versicherung',
+      captureNotesLabel: 'Notizen', captureSaveButton: 'Dokument speichern',
+      scanHintIntro: 'Diese App kann deinen Scanner nicht direkt öffnen — Browser dürfen keine Hardware steuern oder andere Programme starten. Stattdessen: ',
+      scanHintOutro: ' Komm danach zurück und wähle den Scan oben über "Klicken, um eine Datei auszuwählen" aus.',
+      scanHintMac: 'öffne <b>Digitale Bilder</b> (⌘Leertaste, "Digitale Bilder" eintippen) oder in der Vorschau <b>Ablage → Vom Scanner importieren</b>, scanne das Dokument und speichere es an einem Ort, den du wiederfindest (z. B. den Schreibtisch).',
+      scanHintWindows: 'öffne die App <b>Windows-Scannen</b> (im Startmenü nach "Scannen" suchen) oder die eigene Software deines Scanners, scanne das Dokument und speichere es an einem Ort, den du wiederfindest (z. B. Dokumente oder den Schreibtisch).',
+      scanHintOther: 'nutze die eigene Software deines Scanners, um das Dokument zu scannen und es an einem Ort zu speichern, den du wiederfindest.',
+      pickedOcrPdfNote: 'Beim Ausführen von OCR wird ein durchsuchbares PDF erzeugt (Bild + unsichtbare Textebene); das Original bleibt daneben erhalten.',
+      pickedOcrOtherImageNote: 'Der OCR-Text wird extrahiert, aber ein durchsuchbares PDF kann nur aus JPEG/PNG erzeugt werden — diese Datei wird unverändert gespeichert.',
+      pickedOcrNotAvailablePdf: ' · OCR für PDFs noch nicht verfügbar, Notizen manuell eintragen',
+      pickedFileSizeKb: '{size} KB', sharedPageCountSingular: '{count} Seite', sharedPageCountPlural: '{count} Seiten',
+      ocrLoadingEngine: 'OCR-Engine wird geladen…', ocrRecognizing: 'Text wird erkannt…',
+      captureOcrDoneWordsSingular: 'Fertig — {count} Wort für ein durchsuchbares PDF positioniert.',
+      captureOcrDoneWordsPlural: 'Fertig — {count} Wörter für ein durchsuchbares PDF positioniert.',
+      captureOcrDoneNoWords: 'Fertig, aber es wurden keine Wörter mit Positionsdaten gefunden.',
+      ocrFailedStatus: 'OCR fehlgeschlagen: {error}', statusSaving: 'Wird gespeichert…',
+      captureSavedStatus: '"{title}" als #{id} gespeichert.', statusSaveFailed: 'Speichern fehlgeschlagen: {error}',
     },
   };
 
@@ -2317,7 +2379,7 @@
       const show = form.style.display === 'none';
       form.style.display = show ? 'flex' : 'none';
       hint.style.display = show ? 'block' : 'none';
-      toggleBtn.textContent = show ? '− Add a custom field' : '+ Add a custom field';
+      toggleBtn.textContent = show ? t('captureAddFieldToggleExpanded') : t('captureAddFieldToggleCollapsed');
     });
     el(`${prefix}-new-field-btn`).addEventListener('click', () => addInlineCustomField(prefix));
     el(`${prefix}-new-field-name`).addEventListener('keydown', (e) => { if(e.key === 'Enter') addInlineCustomField(prefix); });
@@ -3989,15 +4051,10 @@
   // fallback rather than guessing at a specific app that may not exist there.
   function scanHintHtml(){
     const os = detectOS();
-    const intro = `This app can't open your scanner directly — browsers aren't allowed to control hardware or launch other apps. Instead: `;
-    const outro = ` Then come back and use "Click to choose a file" above to pick that scan.`;
-    if(os === 'macOS'){
-      return intro + `open <b>Image Capture</b> (⌘Space, type "Image Capture") or Preview's <b>File → Import from Scanner</b>, scan the document, and save it somewhere you'll find it (e.g. the Desktop).` + outro;
-    }
-    if(os === 'Windows'){
-      return intro + `open the <b>Windows Scan</b> app (search "Scan" in the Start menu) or your scanner's own software, scan the document, and save it somewhere you'll find it (e.g. Documents or the Desktop).` + outro;
-    }
-    return intro + `use your scanner's own software to scan the document and save it somewhere you'll find it.` + outro;
+    const intro = t('scanHintIntro');
+    const outro = t('scanHintOutro');
+    const body = os === 'macOS' ? t('scanHintMac') : os === 'Windows' ? t('scanHintWindows') : t('scanHintOther');
+    return `${intro}${body}${outro}`;
   }
 
   function openCaptureModal(){
@@ -4009,13 +4066,13 @@
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
-          <h2>Add document</h2>
+          <h2>${t('captureTitle')}</h2>
 
           <div class="file-drop" id="file-drop">
-            Click to choose a file (PDF or image)
+            ${t('captureFileDropLabel')}
             <input type="file" id="file-input" accept="application/pdf,image/*" style="display:none" />
           </div>
-          <button type="button" class="scan-toggle" id="scan-hint-toggle">Need to scan a paper document first?</button>
+          <button type="button" class="scan-toggle" id="scan-hint-toggle">${t('captureScanToggle')}</button>
           <div class="scan-hint" id="scan-hint" style="display:none;">
             ${scanHintHtml()}
           </div>
@@ -4031,80 +4088,80 @@
               <option value="chi_sim">Chinese (Simplified) only</option>
               <option value="chi_tra">Chinese (Traditional / Cantonese) only</option>
             </select>
-            <button id="run-ocr-btn" disabled>Run OCR</button>
+            <button id="run-ocr-btn" disabled>${t('captureRunOcr')}</button>
             <span id="ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
           </div>
 
           <div class="field">
-            <label for="f-ocr-text">Extracted / notes text (editable)</label>
-            <textarea id="f-ocr-text" rows="5" placeholder="Runs after OCR, or type/paste manually"></textarea>
+            <label for="f-ocr-text">${t('captureOcrTextLabel')}</label>
+            <textarea id="f-ocr-text" rows="5" placeholder="${t('captureOcrTextPlaceholder')}"></textarea>
           </div>
 
           <div class="field field-prominent">
-            <label for="f-type">Document type</label>
+            <label for="f-type">${t('captureDocTypeLabel')}</label>
             <div class="field-with-clear">
-              <input type="text" id="f-type" list="type-list" value="${escapeHtml(defaultDocumentType || '')}" placeholder="Pick this first — it determines which fields show below" />
+              <input type="text" id="f-type" list="type-list" value="${escapeHtml(defaultDocumentType || '')}" placeholder="${t('captureDocTypePlaceholder')}" />
               <button type="button" class="clear-btn" id="f-type-clear" title="Clear" aria-label="Clear document type">✕</button>
             </div>
-            <div class="field-hint">Not in the list? Type a new one — it'll be created.</div>
+            <div class="field-hint">${t('captureDocTypeHint')}</div>
           </div>
 
           <div class="field-row">
-            <div class="field"><label for="f-title">Title</label><input type="text" id="f-title" /></div>
+            <div class="field"><label for="f-title">${t('captureTitleLabel')}</label><input type="text" id="f-title" /></div>
             <div class="field">
-              <label for="f-date">Date</label>
+              <label for="f-date">${t('captureDateLabel')}</label>
               <input type="date" id="f-date" class="field-guess" value="${todayIsoDate()}" />
-              <div class="field-guess-hint" id="f-date-hint">Defaulted to today — check this is the document's actual date</div>
+              <div class="field-guess-hint" id="f-date-hint">${t('captureDateGuessHint')}</div>
             </div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="f-category">Category</label>
+              <label for="f-category">${t('captureCategoryLabel')}</label>
               <div class="field-with-clear">
                 <input type="text" id="f-category" list="category-list" />
                 <button type="button" class="clear-btn" id="f-category-clear" title="Clear" aria-label="Clear category">✕</button>
               </div>
             </div>
             <div class="field">
-              <label for="f-subcategory">Subcategory</label>
+              <label for="f-subcategory">${t('captureSubcategoryLabel')}</label>
               <div class="field-with-clear">
-                <input type="text" id="f-subcategory" list="subcategory-list" placeholder="Independent of category, not a child of it" />
+                <input type="text" id="f-subcategory" list="subcategory-list" placeholder="${t('captureSubcategoryPlaceholder')}" />
                 <button type="button" class="clear-btn" id="f-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
               </div>
             </div>
           </div>
           <div id="dynamic-fields-f"></div>
           <div class="add-field-wrap" id="f-add-field-wrap" style="display:none;">
-            <button type="button" class="scan-toggle" id="f-add-field-toggle">+ Add a custom field</button>
+            <button type="button" class="scan-toggle" id="f-add-field-toggle">${t('captureAddFieldToggleCollapsed')}</button>
             <div class="add-field-form" id="f-new-field-form" style="display:none;">
-              <input type="text" id="f-new-field-name" placeholder="Field name" />
+              <input type="text" id="f-new-field-name" placeholder="${t('captureAddFieldNamePlaceholder')}" />
               <select id="f-new-field-type">
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="date">Date</option>
-                <option value="checkbox">Checkbox</option>
-                <option value="person">Person</option>
+                <option value="text">${t('captureAddFieldTypeText')}</option>
+                <option value="number">${t('captureAddFieldTypeNumber')}</option>
+                <option value="date">${t('captureAddFieldTypeDate')}</option>
+                <option value="checkbox">${t('captureAddFieldTypeCheckbox')}</option>
+                <option value="person">${t('captureAddFieldTypePerson')}</option>
               </select>
-              <button type="button" id="f-new-field-btn">Add</button>
+              <button type="button" id="f-new-field-btn">${t('commonAdd')}</button>
             </div>
-            <div class="field-hint" id="f-new-field-currency-hint" style="display:none;">Need a monetary value? Use the built-in Amount field (with its own Currency) instead.</div>
+            <div class="field-hint" id="f-new-field-currency-hint" style="display:none;">${t('captureAddFieldAmountHint')}</div>
             <div class="add-field-status" id="f-new-field-status"></div>
           </div>
           <div class="field">
-            <label for="f-tags">Tags (comma-separated)</label>
+            <label for="f-tags">${t('captureTagsLabel')}</label>
             <div class="field-with-clear">
-              <input type="text" id="f-tags" list="tag-list" placeholder="e.g. medical, insurance" />
+              <input type="text" id="f-tags" list="tag-list" placeholder="${t('captureTagsPlaceholder')}" />
               <button type="button" class="clear-btn" id="f-tags-clear" title="Clear" aria-label="Clear tags">✕</button>
             </div>
           </div>
           <div class="field">
-            <label for="f-notes">Notes</label>
+            <label for="f-notes">${t('captureNotesLabel')}</label>
             <textarea id="f-notes" rows="3"></textarea>
           </div>
 
           <div class="modal-actions">
-            <button class="primary" id="save-doc-btn" disabled>Save document</button>
-            <button id="cancel-doc-btn">Cancel</button>
+            <button class="primary" id="save-doc-btn" disabled>${t('captureSaveButton')}</button>
+            <button id="cancel-doc-btn">${t('commonCancel')}</button>
           </div>
           <div class="status" id="capture-status" style="padding:10px 0 0;"></div>
         </div>
@@ -4160,18 +4217,18 @@
     if(isImage){
       const url = URL.createObjectURL(file);
       const pdfNote = (file.type === 'image/jpeg' || file.type === 'image/png')
-        ? 'Running OCR will build a searchable PDF (image + invisible text layer); the original stays alongside it.'
-        : 'OCR text will be extracted, but a searchable PDF can only be built from JPEG/PNG — this file will be saved as-is.';
-      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB</div><div class="doc-sub">${pdfNote}</div></div></div>`;
+        ? t('pickedOcrPdfNote')
+        : t('pickedOcrOtherImageNote');
+      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}</div><div class="doc-sub">${pdfNote}</div></div></div>`;
     }else{
-      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${(file.size/1024).toFixed(0)} KB${file.type === 'application/pdf' ? ' · OCR not available for PDFs yet, add notes manually' : ''}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
+      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}${file.type === 'application/pdf' ? t('pickedOcrNotAvailablePdf') : ''}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
       if(file.type === 'application/pdf'){
         // Fire-and-forget: don't block showing the rest of the preview on this.
         // Guarded by pendingFile === file so a fast pick-another-file doesn't let a
         // stale count land on the new file's preview after this one resolves late.
         getPdfPageCount(file).then(count => {
           const countEl = el('f-page-count');
-          if(countEl && count != null && pendingFile === file) countEl.textContent = `${count} page${count === 1 ? '' : 's'}`;
+          if(countEl && count != null && pendingFile === file) countEl.textContent = count === 1 ? t('sharedPageCountSingular', {count}) : t('sharedPageCountPlural', {count});
         });
       }
     }
@@ -4183,10 +4240,10 @@
     const lang = el('ocr-lang').value;
     const ocrStatusEl = el('ocr-status');
     el('run-ocr-btn').disabled = true;
-    ocrStatusEl.innerHTML = '<span class="spinner"></span> Loading OCR engine…';
+    ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingEngine');
     try{
       const Tesseract = await ensureTesseract();
-      ocrStatusEl.innerHTML = '<span class="spinner"></span> Recognizing text…';
+      ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrRecognizing');
       const worker = await Tesseract.createWorker(lang.split('+'));
       // Request the {blocks:true} output specifically -- by default Tesseract.js v5+
       // only returns plain text, not the per-word bounding boxes a searchable PDF needs.
@@ -4200,10 +4257,12 @@
       pendingImageDims = await loadImageDimensions(dataUrl);
 
       ocrStatusEl.textContent = pendingOcrWords.length
-        ? `Done — ${pendingOcrWords.length} words positioned for a searchable PDF.`
-        : 'Done, but no words with position data were found.';
+        ? (pendingOcrWords.length === 1
+          ? t('captureOcrDoneWordsSingular', {count: pendingOcrWords.length})
+          : t('captureOcrDoneWordsPlural', {count: pendingOcrWords.length}))
+        : t('captureOcrDoneNoWords');
     }catch(e){
-      ocrStatusEl.textContent = 'OCR failed: ' + e.message;
+      ocrStatusEl.textContent = t('ocrFailedStatus', {error: e.message});
     }finally{
       el('run-ocr-btn').disabled = false;
     }
@@ -4312,7 +4371,7 @@
     const saveBtn = el('save-doc-btn');
     saveBtn.disabled = true;
     captureStatus.className = 'status busy';
-    captureStatus.innerHTML = '<span class="spinner"></span> Saving…';
+    captureStatus.innerHTML = '<span class="spinner"></span> ' + t('statusSaving');
 
     try{
       const id = nextDocId++;
@@ -4455,10 +4514,10 @@
       subLabel.textContent = rootDirHandle.name;
 
       closeModal();
-      setStatus(`Saved "${title || 'Document #' + id}" as #${id}.`, 'ok');
+      setStatus(t('captureSavedStatus', {title: title || t('commonDocumentFallback', {id}), id}), 'ok');
     }catch(e){
       captureStatus.className = 'status err';
-      captureStatus.textContent = 'Save failed: ' + e.message;
+      captureStatus.textContent = t('statusSaveFailed', {error: e.message});
       saveBtn.disabled = false;
       nextDocId--; // roll back the reservation since the save didn't complete
     }
