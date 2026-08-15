@@ -185,6 +185,24 @@ async def main():
         count_line_text = await page3.locator('#count-line').inner_text()
         print("Scenario 8 -- showing-count line translated:", "von" in count_line_text and "Dokumenten" in count_line_text)
 
+        # === Scenario 9: detail modal translates (reuses page3, still German,
+        # detail modal not yet open there -- click a row) ===
+        await page3.click('tr[data-id="1"]')
+        await page3.wait_for_timeout(200)
+        edit_btn_text = await page3.locator('#edit-doc-btn').inner_text()
+        print("Scenario 9 -- detail modal Edit button translated:", edit_btn_text == "Bearbeiten")
+        # .modal-section h3 is CSS text-transform:uppercase, so inner_text()
+        # reports e.g. "PERSONEN" even though the actual DOM/source text is
+        # "Personen" -- same quirk the Scenario 7/8 uppercase-header checks
+        # already live with. Which heading renders first depends on whether
+        # this seeded doc has any non-Amount/Currency/Payment-method custom
+        # field values (it doesn't), so People/Tags are the plausible ones,
+        # not Fields.
+        fields_heading = await page3.locator('.modal-section h3').first.inner_text()
+        print("Scenario 9 -- detail modal section heading translated:", fields_heading in ("FELDER", "PERSONEN"))
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

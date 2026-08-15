@@ -701,6 +701,22 @@
       tableSelectAllTitle: 'Select all visible', tableRowEditTitle: 'Edit',
       tablePillNew: 'new', tablePillFromInbox: 'from inbox', tablePillArchived: 'archived',
       tableShowingCount: 'Showing {shown} of {total} documents', tableNoValue: '—',
+      detailOpenFile: 'Open file', detailOpenOriginal: 'Open original file', detailEdit: 'Edit',
+      detailRegeneratePreview: 'Regenerate preview', detailGeneratePreview: 'Generate preview',
+      detailUnarchive: 'Unarchive', detailArchive: 'Archive',
+      detailAddToCollection: 'Add to collection…', detailRemoveFromCollection: 'Remove from this collection',
+      detailNoPreviewYet: 'No preview yet', detailPreviewMissing: 'Preview file missing',
+      detailCloseAriaLabel: 'Close', detailLabelCategory: 'Category', detailLabelType: 'Type', detailLabelDate: 'Date',
+      detailLabelAmount: 'Amount', detailLabelPayment: 'Payment', detailLabelPages: 'Pages',
+      detailLabelImported: 'Imported', detailLabelId: 'ID', detailLabelSource: 'Source',
+      detailLabelFile: 'File', detailLabelOriginal: 'Original', detailCopyButton: 'Copy', detailCopiedButton: 'Copied!',
+      detailNoFileRecorded: 'No file recorded for this document', detailSectionFields: 'Fields',
+      detailSectionPeople: 'People', detailSectionTags: 'Tags', detailSectionNotes: 'Notes',
+      detailSectionOcrText: 'OCR text', detailCopyClipboardError: 'Could not copy to clipboard: {error}',
+      detailOpenFileError: 'Could not open file: {error}', detailGeneratingPreview: 'Generating preview…',
+      detailNoFileForPreview: 'This document has no file to generate a preview from.',
+      detailUnsupportedPreviewType: "Can't generate a preview from this file type ({type}).",
+      detailPreviewGenerationFailed: 'Could not generate preview: {error}',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -751,6 +767,22 @@
       tableSelectAllTitle: 'Alle sichtbaren auswählen', tableRowEditTitle: 'Bearbeiten',
       tablePillNew: 'neu', tablePillFromInbox: 'aus Posteingang', tablePillArchived: 'archiviert',
       tableShowingCount: '{shown} von {total} Dokumenten angezeigt', tableNoValue: '—',
+      detailOpenFile: 'Datei öffnen', detailOpenOriginal: 'Originaldatei öffnen', detailEdit: 'Bearbeiten',
+      detailRegeneratePreview: 'Vorschau neu erzeugen', detailGeneratePreview: 'Vorschau erzeugen',
+      detailUnarchive: 'Aus Archiv holen', detailArchive: 'Archivieren',
+      detailAddToCollection: 'Zu Sammlung hinzufügen…', detailRemoveFromCollection: 'Aus dieser Sammlung entfernen',
+      detailNoPreviewYet: 'Noch keine Vorschau', detailPreviewMissing: 'Vorschaudatei fehlt',
+      detailCloseAriaLabel: 'Schließen', detailLabelCategory: 'Kategorie', detailLabelType: 'Typ', detailLabelDate: 'Datum',
+      detailLabelAmount: 'Betrag', detailLabelPayment: 'Zahlung', detailLabelPages: 'Seiten',
+      detailLabelImported: 'Importiert', detailLabelId: 'ID', detailLabelSource: 'Quelle',
+      detailLabelFile: 'Datei', detailLabelOriginal: 'Original', detailCopyButton: 'Kopieren', detailCopiedButton: 'Kopiert!',
+      detailNoFileRecorded: 'Für dieses Dokument ist keine Datei hinterlegt', detailSectionFields: 'Felder',
+      detailSectionPeople: 'Personen', detailSectionTags: 'Tags', detailSectionNotes: 'Notizen',
+      detailSectionOcrText: 'OCR-Text', detailCopyClipboardError: 'Konnte nicht in die Zwischenablage kopieren: {error}',
+      detailOpenFileError: 'Datei konnte nicht geöffnet werden: {error}', detailGeneratingPreview: 'Vorschau wird erzeugt…',
+      detailNoFileForPreview: 'Für dieses Dokument gibt es keine Datei, aus der eine Vorschau erzeugt werden könnte.',
+      detailUnsupportedPreviewType: 'Aus diesem Dateityp ({type}) kann keine Vorschau erzeugt werden.',
+      detailPreviewGenerationFailed: 'Vorschau konnte nicht erzeugt werden: {error}',
     },
   };
 
@@ -3069,11 +3101,11 @@
     try{
       await navigator.clipboard.writeText(text);
       const original = btnEl.textContent;
-      btnEl.textContent = 'Copied!';
+      btnEl.textContent = t('detailCopiedButton');
       btnEl.classList.add('copied');
       setTimeout(() => { btnEl.textContent = original; btnEl.classList.remove('copied'); }, 1500);
     }catch(e){
-      alert('Could not copy to clipboard: ' + e.message);
+      alert(t('detailCopyClipboardError', {error: e.message}));
     }
   }
 
@@ -3083,36 +3115,36 @@
 
     const actions = [];
     const manualCollections = collections.filter(c => c.kind === 'manual');
-    if(d.file_path) actions.push(`<button class="primary" id="open-file-btn">Open file</button>`);
-    if(d.original_file_path) actions.push(`<button id="open-original-btn">Open original file</button>`);
+    if(d.file_path) actions.push(`<button class="primary" id="open-file-btn">${t('detailOpenFile')}</button>`);
+    if(d.original_file_path) actions.push(`<button id="open-original-btn">${t('detailOpenOriginal')}</button>`);
     // A deleted document only offers Restore -- editing, archiving, and flagging a
     // document that's sitting in the waste bin don't make sense (it isn't reachable
     // anywhere those would matter until it's restored), so those buttons are left out
     // entirely rather than shown disabled. See toggleDeleted()'s own comment for why
     // "deleted" is the strongest of the three staging flags.
     if(!d.deleted){
-      actions.push(`<button id="edit-doc-btn">Edit</button>`);
-      actions.push(`<button id="regen-thumb-btn">${d.thumbnail_path ? 'Regenerate' : 'Generate'} preview</button>`);
-      actions.push(`<button id="archive-toggle-btn">${d.archived ? 'Unarchive' : 'Archive'}</button>`);
-      actions.push(`<button id="review-toggle-btn">${d.needs_review ? 'Done' : 'Flag for review'}</button>`);
-      if(manualCollections.length) actions.push(`<button id="add-to-collection-btn">Add to collection…</button>`);
+      actions.push(`<button id="edit-doc-btn">${t('detailEdit')}</button>`);
+      actions.push(`<button id="regen-thumb-btn">${d.thumbnail_path ? t('detailRegeneratePreview') : t('detailGeneratePreview')}</button>`);
+      actions.push(`<button id="archive-toggle-btn">${d.archived ? t('detailUnarchive') : t('detailArchive')}</button>`);
+      actions.push(`<button id="review-toggle-btn">${d.needs_review ? t('commonDone') : t('bulkFlagForReview')}</button>`);
+      if(manualCollections.length) actions.push(`<button id="add-to-collection-btn">${t('detailAddToCollection')}</button>`);
       if(currentView.startsWith('collection-')){
         const viewedCollection = collections.find(c => c.id === Number(currentView.slice('collection-'.length)));
-        if(viewedCollection && viewedCollection.kind === 'manual') actions.push(`<button id="remove-from-collection-btn">Remove from this collection</button>`);
+        if(viewedCollection && viewedCollection.kind === 'manual') actions.push(`<button id="remove-from-collection-btn">${t('detailRemoveFromCollection')}</button>`);
       }
-      actions.push(`<button class="danger" id="delete-toggle-btn">Delete</button>`);
+      actions.push(`<button class="danger" id="delete-toggle-btn">${t('commonDelete')}</button>`);
     } else {
-      actions.push(`<button class="primary" id="delete-toggle-btn">Restore</button>`);
+      actions.push(`<button class="primary" id="delete-toggle-btn">${t('bulkRestore')}</button>`);
     }
 
-    let thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">No preview yet</div>`;
+    let thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailNoPreviewYet')}</div>`;
     if(d.thumbnail_path){
       try{
         const fh = await resolveFileHandle(d.thumbnail_path, false);
         const file = await fh.getFile();
         thumbHtml = `<img class="modal-thumb" id="modal-thumb-slot" src="${URL.createObjectURL(file)}" alt="Document preview" />`;
       }catch(e){
-        thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">Preview file missing</div>`;
+        thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailPreviewMissing')}</div>`;
       }
     }
 
@@ -3144,24 +3176,24 @@
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <div class="modal-head">
             ${thumbHtml}
             <div>
               <h2 style="margin:0 0 12px;">${escapeHtml(displayName(d))}</h2>
               <div class="modal-meta">
-                <div><b>Category</b> ${escapeHtml(d.category || '—')}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>Type</b> ${escapeHtml(d.document_type || '—')}</div>
-                <div><b>Date</b> ${formatDate(d.date)}${hasAmountForHeader ? ' · <b>Amount</b> ' + formatAmount(d) : ''}</div>
-                ${paymentMethodForHeader ? `<div><b>Payment</b> ${escapeHtml(paymentMethodForHeader)}</div>` : ''}
-                ${pageCount != null ? `<div><b>Pages</b> ${pageCount}</div>` : ''}
-                <div><b>Imported</b> ${formatDate(d.import_date)}</div>
-                <div><b>ID</b> #${d.id} · <b>Source</b> ${escapeHtml(d.source || '—')}</div>
-                ${fileFullPath ? `<div><b>File</b> <code>${escapeHtml(fileFullPath)}</code><button type="button" class="copy-path-btn" id="copy-file-path-btn">Copy</button></div>` : ''}
-                ${originalFullPath ? `<div><b>Original</b> <code>${escapeHtml(originalFullPath)}</code><button type="button" class="copy-path-btn" id="copy-original-path-btn">Copy</button></div>` : ''}
+                <div><b>${t('detailLabelCategory')}</b> ${escapeHtml(d.category || t('tableNoValue'))}${d.subcategory ? ' / ' + escapeHtml(d.subcategory) : ''} · <b>${t('detailLabelType')}</b> ${escapeHtml(d.document_type || t('tableNoValue'))}</div>
+                <div><b>${t('detailLabelDate')}</b> ${formatDate(d.date)}${hasAmountForHeader ? ' · <b>' + t('detailLabelAmount') + '</b> ' + formatAmount(d) : ''}</div>
+                ${paymentMethodForHeader ? `<div><b>${t('detailLabelPayment')}</b> ${escapeHtml(paymentMethodForHeader)}</div>` : ''}
+                ${pageCount != null ? `<div><b>${t('detailLabelPages')}</b> ${pageCount}</div>` : ''}
+                <div><b>${t('detailLabelImported')}</b> ${formatDate(d.import_date)}</div>
+                <div><b>${t('detailLabelId')}</b> #${d.id} · <b>${t('detailLabelSource')}</b> ${escapeHtml(d.source || t('tableNoValue'))}</div>
+                ${fileFullPath ? `<div><b>${t('detailLabelFile')}</b> <code>${escapeHtml(fileFullPath)}</code><button type="button" class="copy-path-btn" id="copy-file-path-btn">${t('detailCopyButton')}</button></div>` : ''}
+                ${originalFullPath ? `<div><b>${t('detailLabelOriginal')}</b> <code>${escapeHtml(originalFullPath)}</code><button type="button" class="copy-path-btn" id="copy-original-path-btn">${t('detailCopyButton')}</button></div>` : ''}
               </div>
             </div>
           </div>
-          <div class="modal-actions">${actions.join('')}${(!d.file_path && !d.original_file_path) ? '<span class="doc-sub" style="align-self:center;">No file recorded for this document</span>' : ''}</div>
+          <div class="modal-actions">${actions.join('')}${(!d.file_path && !d.original_file_path) ? `<span class="doc-sub" style="align-self:center;">${t('detailNoFileRecorded')}</span>` : ''}</div>
           <div class="status" id="thumb-status" style="padding:8px 0 0;"></div>
           ${(() => {
             // Amount/Currency/Payment method already have their own dedicated
@@ -3169,9 +3201,9 @@
             // <b>Payment</b> line) even though they're stored in customFields like
             // any other field now; exclude them here so they don't show twice.
             const entries = Object.entries(d.customFields || {}).filter(([name]) => name !== 'Amount' && name !== 'Currency' && name !== 'Payment method');
-            return entries.length ? `<div class="modal-section"><h3>Fields</h3><div class="modal-meta">${entries.map(([name, value]) => `<div><b>${escapeHtml(name)}</b> ${escapeHtml(formatCustomFieldValue(name, value))}</div>`).join('')}</div></div>` : '';
+            return entries.length ? `<div class="modal-section"><h3>${t('detailSectionFields')}</h3><div class="modal-meta">${entries.map(([name, value]) => `<div><b>${escapeHtml(name)}</b> ${escapeHtml(formatCustomFieldValue(name, value))}</div>`).join('')}</div></div>` : '';
           })()}
-          <div class="modal-section"><h3>People</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || '—'}</p></div>
+          <div class="modal-section"><h3>${t('detailSectionPeople')}</h3><p>${(d.people||[]).map(p=>`<span class="pill">${escapeHtml(p)}</span>`).join('') || t('tableNoValue')}</p></div>
           ${(() => {
             // Every other person-type field (Author, Collaborator, ...) gets its own
             // pills section, same style as People just above -- People keeps its own
@@ -3182,9 +3214,9 @@
             const otherPersonFields = Object.entries(d.personFieldValues || {}).filter(([name, names]) => name !== 'People' && names && names.length);
             return otherPersonFields.map(([name, names]) => `<div class="modal-section"><h3>${escapeHtml(name)}</h3><p>${names.map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('')}</p></div>`).join('');
           })()}
-          <div class="modal-section"><h3>Tags</h3><p>${(d.tags||[]).map(t=>`<span class="pill">${escapeHtml(t)}</span>`).join('') || '—'}</p></div>
-          ${d.notes ? `<div class="modal-section"><h3>Notes</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
-          ${d.ocr_text ? `<div class="modal-section"><h3>OCR text</h3><div class="ocr-box">${escapeHtml(d.ocr_text)}</div></div>` : ''}
+          <div class="modal-section"><h3>${t('detailSectionTags')}</h3><p>${(d.tags||[]).map(tag=>`<span class="pill">${escapeHtml(tag)}</span>`).join('') || t('tableNoValue')}</p></div>
+          ${d.notes ? `<div class="modal-section"><h3>${t('detailSectionNotes')}</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
+          ${d.ocr_text ? `<div class="modal-section"><h3>${t('detailSectionOcrText')}</h3><div class="ocr-box">${escapeHtml(d.ocr_text)}</div></div>` : ''}
         </div>
       </div>
     `;
@@ -3198,7 +3230,7 @@
           const fh = await resolveFileHandle(d.file_path, false);
           const file = await fh.getFile();
           window.open(URL.createObjectURL(file), '_blank');
-        }catch(e){ alert('Could not open file: ' + e.message); }
+        }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
       });
     }
     if(d.original_file_path){
@@ -3207,7 +3239,7 @@
           const fh = await resolveFileHandle(d.original_file_path, false);
           const file = await fh.getFile();
           window.open(URL.createObjectURL(file), '_blank');
-        }catch(e){ alert('Could not open file: ' + e.message); }
+        }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
       });
     }
     if(fileFullPath) el('copy-file-path-btn').addEventListener('click', (e) => copyPathToClipboard(fileFullPath, e.target));
@@ -3366,16 +3398,16 @@
     const btn = el('regen-thumb-btn');
     btn.disabled = true;
     statusEl.className = 'status busy';
-    statusEl.innerHTML = '<span class="spinner"></span> Generating preview…';
+    statusEl.innerHTML = `<span class="spinner"></span> ${t('detailGeneratingPreview')}`;
 
     try{
-      if(!d.file_path) throw new Error('This document has no file to generate a preview from.');
+      if(!d.file_path) throw new Error(t('detailNoFileForPreview'));
       const fh = await resolveFileHandle(d.file_path, false);
       const file = await fh.getFile();
       const thumbBytes = await generateThumbnail(file);
       if(!thumbBytes){
         statusEl.className = 'status err';
-        statusEl.textContent = `Can't generate a preview from this file type (${file.type || 'unknown'}).`;
+        statusEl.textContent = t('detailUnsupportedPreviewType', {type: file.type || 'unknown'});
         btn.disabled = false;
         return;
       }
@@ -3389,7 +3421,7 @@
       openDetail(id); // refresh the modal to show the new thumbnail
     }catch(e){
       statusEl.className = 'status err';
-      statusEl.textContent = 'Could not generate preview: ' + e.message;
+      statusEl.textContent = t('detailPreviewGenerationFailed', {error: e.message});
       btn.disabled = false;
     }
   }
