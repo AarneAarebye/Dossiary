@@ -203,6 +203,28 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 10: shared field-rendering validation messages
+        # translate (reuses page3, still German) -- renderPersonFieldHtml()/
+        # renderGenericFieldHtml()/addInlineCustomField() are shared by both
+        # the capture and edit forms; exercised here via the capture form's
+        # own "+ Add a custom field" flow. The toggle/mini-form only become
+        # visible once a document type is entered (updateAddFieldVisibility()),
+        # so a type is filled in first -- leaving the new field's name blank
+        # then reaches the "Enter a field name" validation message ===
+        await page3.click('#add-btn')
+        await page3.wait_for_timeout(200)
+        await page3.fill('#f-type', 'Invoice')
+        await page3.locator('#f-type').blur()
+        await page3.wait_for_timeout(100)
+        await page3.click('#f-add-field-toggle')
+        await page3.wait_for_timeout(100)
+        await page3.click('#f-new-field-btn')  # no name entered
+        await page3.wait_for_timeout(100)
+        validation_text = await page3.locator('#f-new-field-status').inner_text()
+        print("Scenario 10 -- inline add-field validation message translated:", validation_text == "Gib einen Feldnamen ein.")
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

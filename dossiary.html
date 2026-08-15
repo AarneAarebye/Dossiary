@@ -717,6 +717,13 @@
       detailNoFileForPreview: 'This document has no file to generate a preview from.',
       detailUnsupportedPreviewType: "Can't generate a preview from this file type ({type}).",
       detailPreviewGenerationFailed: 'Could not generate preview: {error}',
+      fieldPersonLabelSuffix: '{name} (comma-separated)', fieldPersonPlaceholder: 'e.g. Arne, Jana',
+      fieldClearTitle: 'Clear', fieldClearAriaLabel: 'Clear {name}',
+      fieldOrphanedHint: 'Not shown for this document type — edit or clear it here if needed',
+      fieldCurrencyGuessHint: 'Defaulted to {currency} — change if this document uses a different currency',
+      fieldValidationPickDocType: 'Pick a document type first.', fieldValidationEnterName: 'Enter a field name.',
+      fieldValidationReservedName: '"{name}" is a built-in field — use ⚙ Manage fields to add it for this type.',
+      fieldValidationDuplicateName: '"{name}" already exists — use ⚙ Manage fields to add it to this type.',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -783,6 +790,13 @@
       detailNoFileForPreview: 'Für dieses Dokument gibt es keine Datei, aus der eine Vorschau erzeugt werden könnte.',
       detailUnsupportedPreviewType: 'Aus diesem Dateityp ({type}) kann keine Vorschau erzeugt werden.',
       detailPreviewGenerationFailed: 'Vorschau konnte nicht erzeugt werden: {error}',
+      fieldPersonLabelSuffix: '{name} (durch Komma getrennt)', fieldPersonPlaceholder: 'z. B. Arne, Jana',
+      fieldClearTitle: 'Leeren', fieldClearAriaLabel: '{name} leeren',
+      fieldOrphanedHint: 'Für diesen Dokumenttyp nicht angezeigt — hier bei Bedarf bearbeiten oder leeren',
+      fieldCurrencyGuessHint: 'Auf {currency} voreingestellt — ändern, falls dieses Dokument eine andere Währung verwendet',
+      fieldValidationPickDocType: 'Wähle zuerst einen Dokumenttyp aus.', fieldValidationEnterName: 'Gib einen Feldnamen ein.',
+      fieldValidationReservedName: '"{name}" ist ein eingebautes Feld — nutze ⚙ Felder verwalten, um es für diesen Typ hinzuzufügen.',
+      fieldValidationDuplicateName: '"{name}" existiert bereits — nutze ⚙ Felder verwalten, um es zu diesem Typ hinzuzufügen.',
     },
   };
 
@@ -2106,12 +2120,12 @@
     const inputId = `${prefix}-field-${field.id}`;
     return `
       <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
-        <label for="${inputId}">${escapeHtml(field.name)} (comma-separated)</label>
+        <label for="${inputId}">${t('fieldPersonLabelSuffix', {name: escapeHtml(field.name)})}</label>
         <div class="field-with-clear">
-          <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="e.g. Arne, Jana" />
-          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear ${escapeHtml(field.name)}">✕</button>
+          <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="${t('fieldPersonPlaceholder')}" />
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: escapeHtml(field.name)})}">✕</button>
         </div>
-        ${orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : ''}
+        ${orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : ''}
       </div>
     `;
   }
@@ -2146,7 +2160,7 @@
   function renderGenericFieldHtml(prefix, field, existingValue, orphaned, amountFilled){
     const inputId = `${prefix}-field-${field.id}`;
     const orphanedClass = orphaned ? ' field-orphaned' : '';
-    const orphanedHint = orphaned ? `<div class="field-orphaned-hint">Not shown for this document type — edit or clear it here if needed</div>` : '';
+    const orphanedHint = orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : '';
     if(field.type === 'checkbox'){
       const checked = existingValue === '1' ? 'checked' : '';
       return `
@@ -2171,7 +2185,7 @@
     else if(field.autocomplete && field.type === 'text') listAttr = `list="field-${field.id}-list"`;
 
     const guessHint = isCurrencyGuess
-      ? `<div class="field-guess-hint" id="${inputId}-hint">Defaulted to ${escapeHtml(defaultCurrency)} — change if this document uses a different currency</div>`
+      ? `<div class="field-guess-hint" id="${inputId}-hint">${t('fieldCurrencyGuessHint', {currency: escapeHtml(defaultCurrency)})}</div>`
       : '';
 
     return `
@@ -2179,7 +2193,7 @@
         <label for="${inputId}">${escapeHtml(field.name)}</label>
         <div class="field-with-clear">
           <input type="${inputType}" id="${inputId}" ${extra} ${listAttr} class="${isCurrencyGuess ? 'field-guess' : ''}" value="${escapeHtml(String(value))}" />
-          <button type="button" class="clear-btn" id="${inputId}-clear" title="Clear" aria-label="Clear ${escapeHtml(field.name)}">✕</button>
+          <button type="button" class="clear-btn" id="${inputId}-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: escapeHtml(field.name)})}">✕</button>
         </div>
         ${guessHint}
         ${orphanedHint}
@@ -2334,14 +2348,14 @@
     const typeSelect = el(`${prefix}-new-field-type`);
     const statusEl = el(`${prefix}-new-field-status`);
     const name = nameInput.value.trim();
-    if(!typeName){ statusEl.textContent = 'Pick a document type first.'; return; }
-    if(!name){ statusEl.textContent = 'Enter a field name.'; return; }
+    if(!typeName){ statusEl.textContent = t('fieldValidationPickDocType'); return; }
+    if(!name){ statusEl.textContent = t('fieldValidationEnterName'); return; }
     if(['People', 'Amount', 'Payment method'].includes(name)){
-      statusEl.textContent = `"${name}" is a built-in field — use ⚙ Manage fields to add it for this type.`;
+      statusEl.textContent = t('fieldValidationReservedName', {name});
       return;
     }
     if(fieldNameToId[name] !== undefined){
-      statusEl.textContent = `"${name}" already exists — use ⚙ Manage fields to add it to this type.`;
+      statusEl.textContent = t('fieldValidationDuplicateName', {name});
       return;
     }
 
