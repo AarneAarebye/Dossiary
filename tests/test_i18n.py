@@ -322,6 +322,14 @@ async def main():
         await page3.click('#mc-done-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 15: Reports view translates (reuses page3, still German;
+        # no modal open at this point since Scenario 14 closed the Manage
+        # Collections modal) ===
+        await page3.click('#nav-item-reports')
+        await page3.wait_for_timeout(200)
+        print_btn_text = await page3.locator('#reports-print-btn').inner_text()
+        print("Scenario 15 -- Reports print button translated:", print_btn_text == "🖨 Drucken")
+
         print("JS ERRORS:", errors)
         await browser.close()
 

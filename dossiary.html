@@ -776,6 +776,11 @@
       fieldSettingsNoFieldsShown: 'No fields shown for this type yet — add some from the left.',
       collectionsTitle: 'Manage collections', collectionsNewNamePlaceholder: 'New collection name',
       collectionsNewButton: '+ New collection',
+      reportsNone: '(none)', reportsNoCurrencySet: 'No currency set',
+      reportsMultiValueCaption: "Documents with more than one {label} are counted once per name, so this breakdown's row totals may not add up to the Grand total below.",
+      reportsColCount: 'Count', reportsColTotal: 'Total', reportsGrandTotal: 'Grand total',
+      reportsNoDocuments: 'No documents match the current filters.', reportsPrintButton: '🖨 Print',
+      reportsBreakdownCategory: 'Category', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'People',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -901,6 +906,11 @@
       fieldSettingsNoFieldsShown: 'Für diesen Typ werden noch keine Felder angezeigt — füge links welche hinzu.',
       collectionsTitle: 'Sammlungen verwalten', collectionsNewNamePlaceholder: 'Neuer Sammlungsname',
       collectionsNewButton: '+ Neue Sammlung',
+      reportsNone: '(keine)', reportsNoCurrencySet: 'Keine Währung angegeben',
+      reportsMultiValueCaption: 'Dokumente mit mehr als einem/einer {label} werden pro Name einmal gezählt, daher stimmen die Zeilensummen dieser Aufschlüsselung möglicherweise nicht mit der Gesamtsumme unten überein.',
+      reportsColCount: 'Anzahl', reportsColTotal: 'Summe', reportsGrandTotal: 'Gesamtsumme',
+      reportsNoDocuments: 'Keine Dokumente entsprechen den aktuellen Filtern.', reportsPrintButton: '🖨 Drucken',
+      reportsBreakdownCategory: 'Kategorie', reportsBreakdownType: 'Typ', reportsBreakdownPeople: 'Personen',
     },
   };
 
@@ -2688,9 +2698,9 @@
   // field returns a one-element array (possibly [null]), a multi-valued field
   // (People, or a custom person-type field) returns every name, or [null] if empty.
   function reportBreakdownFieldInfo(fieldId){
-    if(fieldId === 'category') return { label: 'Category', multiValued: false, getValues: d => [d.category || null] };
-    if(fieldId === 'document_type') return { label: 'Type', multiValued: false, getValues: d => [d.document_type || null] };
-    if(fieldId === 'people') return { label: 'People', multiValued: true, getValues: d => (d.people && d.people.length) ? d.people : [null] };
+    if(fieldId === 'category') return { label: t('reportsBreakdownCategory'), multiValued: false, getValues: d => [d.category || null] };
+    if(fieldId === 'document_type') return { label: t('reportsBreakdownType'), multiValued: false, getValues: d => [d.document_type || null] };
+    if(fieldId === 'people') return { label: t('reportsBreakdownPeople'), multiValued: true, getValues: d => (d.people && d.people.length) ? d.people : [null] };
     if(fieldId.startsWith('field-')){
       const id = Number(fieldId.slice('field-'.length));
       const def = fieldDefs.find(f => f.id === id);
@@ -2745,7 +2755,7 @@
       for(const d of group.docs){
         const amount = numericAmount(d);
         for(const rawValue of info.getValues(d)){
-          const label = (rawValue == null || rawValue === '') ? '(none)' : rawValue;
+          const label = (rawValue == null || rawValue === '') ? t('reportsNone') : rawValue;
           const row = (rows[label] = rows[label] || { label, count: 0, total: 0 });
           row.count += 1;
           if(amount != null) row.total += amount;
@@ -2768,18 +2778,18 @@
     const groups = computeReportGroups(docs, fieldId);
     const groupsHtml = groups.length ? groups.map(g => `
       <div class="report-currency-group">
-        <h3>${g.currency ? escapeHtml(g.currency) : 'No currency set'}</h3>
-        ${g.multiValued ? `<p class="report-caption">Documents with more than one ${escapeHtml(g.breakdownLabel)} are counted once per name, so this breakdown's row totals may not add up to the Grand total below.</p>` : ''}
+        <h3>${g.currency ? escapeHtml(g.currency) : t('reportsNoCurrencySet')}</h3>
+        ${g.multiValued ? `<p class="report-caption">${t('reportsMultiValueCaption', {label: escapeHtml(g.breakdownLabel)})}</p>` : ''}
         <table class="report-table">
-          <thead><tr><th>${escapeHtml(g.breakdownLabel)}</th><th>Count</th><th>Total</th></tr></thead>
+          <thead><tr><th>${escapeHtml(g.breakdownLabel)}</th><th>${t('reportsColCount')}</th><th>${t('reportsColTotal')}</th></tr></thead>
           <tbody>
             ${g.rows.map(r => `<tr><td>${escapeHtml(r.label)}</td><td>${r.count}</td><td>${r.total.toFixed(2)}</td></tr>`).join('')}
           </tbody>
-          <tfoot><tr><td>Grand total</td><td>${g.documentCount}</td><td>${g.grandTotal.toFixed(2)}</td></tr></tfoot>
+          <tfoot><tr><td>${t('reportsGrandTotal')}</td><td>${g.documentCount}</td><td>${g.grandTotal.toFixed(2)}</td></tr></tfoot>
         </table>
       </div>
-    `).join('') : '<p id="reports-empty">No documents match the current filters.</p>';
-    reportsView.innerHTML = `<button type="button" id="reports-print-btn" class="report-print-btn">🖨 Print</button>` + groupsHtml;
+    `).join('') : `<p id="reports-empty">${t('reportsNoDocuments')}</p>`;
+    reportsView.innerHTML = `<button type="button" id="reports-print-btn" class="report-print-btn">${t('reportsPrintButton')}</button>` + groupsHtml;
     el('reports-print-btn').addEventListener('click', () => window.print());
   }
 
@@ -2789,7 +2799,7 @@
   function formatCustomFieldValue(fieldName, rawValue){
     const def = fieldDefs.find(f => f.name === fieldName);
     if(!def) return rawValue;
-    if(def.type === 'checkbox') return rawValue === '1' ? 'Yes' : 'No';
+    if(def.type === 'checkbox') return rawValue === '1' ? t('commonYes') : t('commonNo');
     if(def.type === 'date') return formatDate(rawValue);
     return rawValue;
   }
