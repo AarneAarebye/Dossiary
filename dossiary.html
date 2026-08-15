@@ -774,6 +774,8 @@
       fieldSettingsAllFieldsShown: 'All fields are already shown for this type.',
       fieldSettingsMoveUpTitle: 'Move up', fieldSettingsMoveDownTitle: 'Move down', fieldSettingsRemoveTitle: 'Remove',
       fieldSettingsNoFieldsShown: 'No fields shown for this type yet — add some from the left.',
+      collectionsTitle: 'Manage collections', collectionsNewNamePlaceholder: 'New collection name',
+      collectionsNewButton: '+ New collection',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -897,6 +899,8 @@
       fieldSettingsAllFieldsShown: 'Für diesen Typ werden bereits alle Felder angezeigt.',
       fieldSettingsMoveUpTitle: 'Nach oben', fieldSettingsMoveDownTitle: 'Nach unten', fieldSettingsRemoveTitle: 'Entfernen',
       fieldSettingsNoFieldsShown: 'Für diesen Typ werden noch keine Felder angezeigt — füge links welche hinzu.',
+      collectionsTitle: 'Sammlungen verwalten', collectionsNewNamePlaceholder: 'Neuer Sammlungsname',
+      collectionsNewButton: '+ Neue Sammlung',
     },
   };
 
@@ -4570,20 +4574,20 @@
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
-          <h2>Manage collections</h2>
+          <h2>${t('collectionsTitle')}</h2>
           <div id="manage-collections-list"></div>
           <div class="add-field-form" style="margin-top:16px;">
-            <input type="text" id="manage-new-collection-input" placeholder="New collection name" />
-            <button type="button" id="manage-new-collection-btn">+ New collection</button>
+            <input type="text" id="manage-new-collection-input" placeholder="${t('collectionsNewNamePlaceholder')}" />
+            <button type="button" id="manage-new-collection-btn">${t('collectionsNewButton')}</button>
           </div>
           <div class="modal-actions" style="margin-top:16px;">
-            <button id="manage-collections-done-btn">Done</button>
+            <button id="mc-done-btn">${t('commonDone')}</button>
           </div>
         </div>
       </div>
     `;
     el('modal-close-btn').addEventListener('click', closeModal);
-    el('manage-collections-done-btn').addEventListener('click', closeModal);
+    el('mc-done-btn').addEventListener('click', closeModal);
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
     el('manage-new-collection-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') el('manage-new-collection-btn').click(); });
@@ -4615,7 +4619,7 @@
           <input type="text" class="manage-collection-rename-input" value="${escapeHtml(c.name)}" />
           <span class="manage-collection-name" style="display:none;">${escapeHtml(c.name)}</span>
           <span class="manage-collection-count">${count}</span>
-          <button type="button" class="manage-collection-delete-btn">Delete</button>
+          <button type="button" class="manage-collection-delete-btn">${t('commonDelete')}</button>
         </div>
       `;
     }).join('');

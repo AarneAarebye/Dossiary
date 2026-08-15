@@ -312,6 +312,16 @@ async def main():
         await page3.click('#fs-done-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 14: Manage Collections modal translates (reuses page3,
+        # still German; no modal open at this point since Scenario 13 closed
+        # the Field Settings modal) ===
+        await page3.click('#manage-collections-btn')
+        await page3.wait_for_timeout(200)
+        mc_heading = await page3.locator('.modal h2').inner_text()
+        print("Scenario 14 -- Manage Collections heading translated:", mc_heading == "Sammlungen verwalten")
+        await page3.click('#mc-done-btn')
+        await page3.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
