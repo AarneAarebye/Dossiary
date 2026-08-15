@@ -551,23 +551,23 @@
 
       <div id="empty-state" class="empty">
         <h2 data-i18n="emptyTitle">No library open</h2>
-        <p>Open a Dossiary library folder, or start a brand new one here.
+        <p data-i18n="emptyBody">Open a Dossiary library folder, or start a brand new one here.
            Everything happens locally in your browser — nothing is uploaded.</p>
         <div id="recent-libraries" style="display:none;"></div>
-        <button class="primary" id="open-btn">Open library folder</button>
+        <button class="primary" id="open-btn" data-i18n="emptyOpenButton">Open library folder</button>
         <div class="hint">
-          Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).<br/>
-          This app needs write access to save new documents, so pick <b>"Edit"</b>/allow when your browser asks.<br/><br/>
-          <b style="color:var(--text)">Important:</b> open this file directly in your browser (not inside a chat
-          preview pane) — folder write access is blocked inside embedded frames.
+          <span data-i18n="emptyHintBrowser">Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).</span><br/>
+          <span data-i18n="emptyHintWriteAccess">This app needs write access to save new documents, so pick "Edit"/allow when your browser asks.</span><br/><br/>
+          <b style="color:var(--text)">Important:</b> <span data-i18n="emptyHintImportant">open this file directly in your browser (not inside a chat
+          preview pane) — folder write access is blocked inside embedded frames.</span>
         </div>
       </div>
 
       <div id="init-state" class="empty" style="display:none;">
-        <h2>Empty folder</h2>
-        <p id="init-message">No <code>library.sqlite</code> found in that folder.</p>
-        <button class="primary" id="init-btn">Initialize a new library here</button>
-        <button id="pick-again-btn">Choose a different folder</button>
+        <h2 data-i18n="initTitle">Empty folder</h2>
+        <p id="init-message" data-i18n="initMessageDefault">No <code>library.sqlite</code> found in that folder.</p>
+        <button class="primary" id="init-btn" data-i18n="initButton">Initialize a new library here</button>
+        <button id="pick-again-btn" data-i18n="initPickAgain">Choose a different folder</button>
       </div>
 
       <div class="count-line" id="count-line" style="display:none;"></div>
@@ -676,6 +676,25 @@
       bulkRestore: 'Restore', bulkClearSelection: 'Clear selection', bulkSelectedCount: '{count} selected',
       bulkNewCollectionMenuItem: '+ New collection…',
       statsDocuments: 'documents', statsCategories: 'categories', statsCapturedHere: 'captured here',
+      emptyBody: 'Open a Dossiary library folder, or start a brand new one here. Everything happens locally in your browser — nothing is uploaded.',
+      emptyOpenButton: 'Open library folder',
+      emptyHintBrowser: "Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).",
+      emptyHintWriteAccess: 'This app needs write access to save new documents, so pick "Edit"/allow when your browser asks.',
+      emptyHintImportant: 'Important: open this file directly in your browser (not inside a chat preview pane) — folder write access is blocked inside embedded frames.',
+      initTitle: 'Empty folder', initMessageDefault: 'No <code>library.sqlite</code> found in that folder.',
+      initMessageWithName: 'No <code>library.sqlite</code> found in "<b>{name}</b>".',
+      initButton: 'Initialize a new library here', initPickAgain: 'Choose a different folder',
+      recentLibrariesHeading: 'Recent libraries', recentLibrariesLastOpened: 'Last opened {date}',
+      recentLibrariesRemoveTitle: 'Remove', recentLibrariesRemoveAriaLabel: 'Remove {name} from recent libraries',
+      recentLibrariesReopenDenied: "Couldn't reopen — access was denied.",
+      recentLibrariesReopenFailed: "Couldn't reopen — folder may have moved or access was denied.",
+      statusNoFsaSupport: 'Your browser does not support the File System Access API. Use Chrome or Edge.',
+      statusOpeningFolderPicker: 'Opening folder picker…', statusFolderSelectionCancelled: 'Folder selection cancelled.',
+      statusCouldNotOpenFolder: 'Could not open that folder: {error}', statusCheckingForLibrary: 'Checking for library.sqlite…',
+      statusSettingUpSqlite: 'Setting up SQLite engine…', statusInitializedNewLibrary: 'Initialized a new empty library.',
+      statusCouldNotInitLibrary: 'Could not initialize a new library: {error}',
+      statusLoadingSqliteEngine: 'Loading SQLite engine…', statusReadingLibrary: 'Reading library.sqlite…',
+      statusOpenedLibrary: 'Opened {count} documents from {name}.',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -701,6 +720,25 @@
       bulkRestore: 'Wiederherstellen', bulkClearSelection: 'Auswahl aufheben', bulkSelectedCount: '{count} ausgewählt',
       bulkNewCollectionMenuItem: '+ Neue Sammlung…',
       statsDocuments: 'Dokumente', statsCategories: 'Kategorien', statsCapturedHere: 'hier erfasst',
+      emptyBody: 'Öffne einen Dossiary-Bibliotheksordner oder starte hier eine ganz neue Bibliothek. Alles geschieht lokal in deinem Browser — nichts wird hochgeladen.',
+      emptyOpenButton: 'Bibliotheksordner öffnen',
+      emptyHintBrowser: 'Erfordert Chrome oder Edge (die File System Access API wird in Safari/Firefox nicht unterstützt).',
+      emptyHintWriteAccess: 'Diese App benötigt Schreibzugriff, um neue Dokumente zu speichern — wähle "Bearbeiten"/Erlauben, wenn dein Browser danach fragt.',
+      emptyHintImportant: 'Wichtig: Öffne diese Datei direkt in deinem Browser (nicht in einer eingebetteten Chat-Vorschau) — Schreibzugriff auf Ordner ist in eingebetteten Frames blockiert.',
+      initTitle: 'Leerer Ordner', initMessageDefault: 'Keine <code>library.sqlite</code> in diesem Ordner gefunden.',
+      initMessageWithName: 'Keine <code>library.sqlite</code> in "<b>{name}</b>" gefunden.',
+      initButton: 'Neue Bibliothek hier anlegen', initPickAgain: 'Anderen Ordner wählen',
+      recentLibrariesHeading: 'Zuletzt geöffnete Bibliotheken', recentLibrariesLastOpened: 'Zuletzt geöffnet: {date}',
+      recentLibrariesRemoveTitle: 'Entfernen', recentLibrariesRemoveAriaLabel: '{name} aus zuletzt geöffneten Bibliotheken entfernen',
+      recentLibrariesReopenDenied: 'Konnte nicht erneut geöffnet werden — Zugriff wurde verweigert.',
+      recentLibrariesReopenFailed: 'Konnte nicht erneut geöffnet werden — Ordner wurde möglicherweise verschoben oder Zugriff wurde verweigert.',
+      statusNoFsaSupport: 'Dein Browser unterstützt die File System Access API nicht. Verwende Chrome oder Edge.',
+      statusOpeningFolderPicker: 'Ordnerauswahl wird geöffnet…', statusFolderSelectionCancelled: 'Ordnerauswahl abgebrochen.',
+      statusCouldNotOpenFolder: 'Ordner konnte nicht geöffnet werden: {error}', statusCheckingForLibrary: 'Suche nach library.sqlite…',
+      statusSettingUpSqlite: 'SQLite-Engine wird eingerichtet…', statusInitializedNewLibrary: 'Neue, leere Bibliothek angelegt.',
+      statusCouldNotInitLibrary: 'Neue Bibliothek konnte nicht angelegt werden: {error}',
+      statusLoadingSqliteEngine: 'SQLite-Engine wird geladen…', statusReadingLibrary: 'library.sqlite wird gelesen…',
+      statusOpenedLibrary: '{count} Dokumente aus {name} geöffnet.',
     },
   };
 
@@ -733,6 +771,19 @@
     currentLang = lang;
     saveLang(lang);
     applyI18n();
+    // init-message is set via .innerHTML directly in proceedWithRootDirHandle()
+    // (see that function's own note), not through applyI18n()'s textContent
+    // walk above -- but the <p> still carries data-i18n="initMessageDefault"
+    // for its initial static content, so if the init-state ("no library.sqlite
+    // found in <folder>") screen happens to be showing when language is
+    // toggled, the applyI18n() call above just clobbered its personalized,
+    // name-bearing message with the generic default string (and rendered its
+    // literal <code> tags as text, since textContent doesn't parse markup).
+    // Restore the personalized version here, the same way
+    // proceedWithRootDirHandle() itself sets it.
+    if(initState.style.display !== 'none' && rootDirHandle){
+      el('init-message').innerHTML = t('initMessageWithName', {name: `<b>${escapeHtml(rootDirHandle.name)}</b>`});
+    }
     // renderStats()/populateFilters() aren't called from inside render() (they're
     // only invoked from the handful of call sites that actually change the
     // document set -- see their own call sites, e.g. the
@@ -745,6 +796,13 @@
     // they'd stay in whatever language they were last rendered in until the next
     // document mutation -- same failure mode renderStats() had, one function over.
     if(rootDirHandle){ renderStats(); populateFilters(); render(); }
+    // renderRecentLibraries() likewise builds its whole markup (heading,
+    // "Last opened" dates, the remove button's title/aria-label) via t() calls
+    // baked into a template string at render time, not data-i18n attributes --
+    // it's only ever shown on the empty-state screen (no library open yet), so
+    // re-render it here whenever that's the case, mirroring the rootDirHandle
+    // branch above for the library-open case.
+    if(!rootDirHandle){ renderRecentLibraries(); }
   }
 
   const SCHEMA = `
@@ -1283,12 +1341,12 @@
       let perm = await handle.queryPermission({ mode: 'readwrite' });
       if(perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
       if(perm !== 'granted'){
-        if(statusLine) statusLine.textContent = "Couldn't reopen — access was denied.";
+        if(statusLine) statusLine.textContent = t('recentLibrariesReopenDenied');
         return;
       }
       await proceedWithRootDirHandle(handle);
     }catch(e){
-      if(statusLine) statusLine.textContent = "Couldn't reopen — folder may have moved or access was denied.";
+      if(statusLine) statusLine.textContent = t('recentLibrariesReopenFailed');
     }
   }
 
@@ -1301,7 +1359,7 @@
     if(!entries.length){ container.innerHTML = ''; container.style.display = 'none'; return; }
     container.style.display = 'block';
     container.innerHTML = `
-      <h3>Recent libraries</h3>
+      <h3>${t('recentLibrariesHeading')}</h3>
       <div id="recent-libraries-list">
         ${entries.map(entry => `
           <div class="review-queue-row" data-id="${entry.id}">
@@ -1309,11 +1367,11 @@
               <div class="file-icon">DIR</div>
               <div style="flex:1;">
                 <div class="doc-title">${escapeHtml(entry.name)}</div>
-                <div class="doc-sub" id="recent-lib-status-${entry.id}">Last opened ${formatDate(entry.lastOpenedAt)}</div>
+                <div class="doc-sub" id="recent-lib-status-${entry.id}">${t('recentLibrariesLastOpened', {date: formatDate(entry.lastOpenedAt)})}</div>
               </div>
             </div>
             <div class="review-queue-actions">
-              <button type="button" class="recent-lib-remove-btn" data-id="${entry.id}" title="Remove" aria-label="Remove ${escapeHtml(entry.name)} from recent libraries">✕</button>
+              <button type="button" class="recent-lib-remove-btn" data-id="${entry.id}" title="${t('recentLibrariesRemoveTitle')}" aria-label="${t('recentLibrariesRemoveAriaLabel', {name: escapeHtml(entry.name)})}">✕</button>
             </div>
           </div>
         `).join('')}
@@ -1350,16 +1408,16 @@
 
   async function openLibrary(){
     if(typeof window.showDirectoryPicker !== 'function'){
-      setStatus('Your browser does not support the File System Access API. Use Chrome or Edge.', 'err');
+      setStatus(t('statusNoFsaSupport'), 'err');
       return;
     }
     try{
-      setStatus('Opening folder picker…');
+      setStatus(t('statusOpeningFolderPicker'));
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       await proceedWithRootDirHandle(handle);
     }catch(e){
-      if(e.name === 'AbortError'){ setStatus('Folder selection cancelled.'); }
-      else{ setStatus('Could not open that folder: ' + e.message, 'err'); }
+      if(e.name === 'AbortError'){ setStatus(t('statusFolderSelectionCancelled')); }
+      else{ setStatus(t('statusCouldNotOpenFolder', {error: e.message}), 'err'); }
     }
   }
 
@@ -1369,7 +1427,7 @@
   // handle, open it" means.
   async function proceedWithRootDirHandle(handle){
     rootDirHandle = handle;
-    setStatus('Checking for library.sqlite…');
+    setStatus(t('statusCheckingForLibrary'));
     try{
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
@@ -1378,14 +1436,14 @@
     }catch(e){
       emptyState.style.display = 'none';
       initState.style.display = 'block';
-      el('init-message').innerHTML = `No <code>library.sqlite</code> found in "<b>${escapeHtml(rootDirHandle.name)}</b>".`;
+      el('init-message').innerHTML = t('initMessageWithName', {name: `<b>${escapeHtml(rootDirHandle.name)}</b>`});
       setStatus('');
     }
   }
 
   async function initNewLibrary(){
     try{
-      setStatus('Setting up SQLite engine…');
+      setStatus(t('statusSettingUpSqlite'));
       await ensureSqlJs();
       db = new SQL.Database();
       db.run(SCHEMA);
@@ -1398,17 +1456,17 @@
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
       await rootDirHandle.getDirectoryHandle('inbox', { create: true }); // see openLibrary()'s matching call for why
       initState.style.display = 'none';
-      setStatus('Initialized a new empty library.', 'ok');
+      setStatus(t('statusInitializedNewLibrary'), 'ok');
       afterDbReady();
     }catch(e){
-      setStatus('Could not initialize a new library: ' + e.message, 'err');
+      setStatus(t('statusCouldNotInitLibrary', {error: e.message}), 'err');
     }
   }
 
   async function loadDb(){
-    setStatus('Loading SQLite engine…');
+    setStatus(t('statusLoadingSqliteEngine'));
     await ensureSqlJs();
-    setStatus('Reading library.sqlite…');
+    setStatus(t('statusReadingLibrary'));
     const file = await dbFileHandle.getFile();
     const buf = await file.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
@@ -1426,7 +1484,7 @@
     emptyState.style.display = 'none';
     initState.style.display = 'none';
     loadDocumentsFromDb();
-    setStatus(`Opened ${allDocs.length} documents from ${rootDirHandle.name}.`, 'ok');
+    setStatus(t('statusOpenedLibrary', {count: allDocs.length, name: rootDirHandle.name}), 'ok');
     checkInbox(); // fire-and-forget -- best effort, doesn't block the library from opening
     recordRecentLibrary(rootDirHandle); // fire-and-forget, same reasoning as checkInbox() above
   }

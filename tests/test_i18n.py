@@ -97,6 +97,64 @@ async def main():
         print("Scenario 5 -- stats bar translated:", "Dokumente" in stats_text)
         print("Scenario 5 -- category filter default option translated:", category_filter_text == "Alle Kategorien")
 
+        # === Scenario 6: empty-state body, init-state (no library.sqlite),
+        # and library-open status messages translate ===
+        page4 = await browser.new_page()
+        await page4.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'de-DE' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['de-DE', 'de'] });
+        """)
+        await page4.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page4.add_init_script(stub_js)
+        await page4.goto(f"file://{APP_PATH}")
+        await page4.wait_for_timeout(200)
+        open_btn_text = await page4.locator('#open-btn').inner_text()
+        print("Scenario 6 -- empty-state open button translated:", open_btn_text == "Bibliotheksordner öffnen")
+        await page4.evaluate("window.__TEST_ROOT = window.__makeEmptyRoot();") # empty folder, no library.sqlite
+        await page4.click("#open-btn")
+        await page4.wait_for_timeout(300)
+        init_title = await page4.locator('#init-state h2').inner_text()
+        print("Scenario 6 -- init-state (no library.sqlite) translated:", init_title == "Leerer Ordner")
+        init_message_text = await page4.locator('#init-message').inner_text()
+        print("Scenario 6 -- init-message names the folder (German wrapper text):", "EmptyLibrary" in init_message_text and "Keine" in init_message_text)
+
+        # === Scenario 7: recent-libraries list (on the empty-state screen) is
+        # rebuilt via t() calls baked into a template string, not data-i18n
+        # attributes -- confirm the language toggle re-renders it live, not
+        # just on next page load. Open a seeded library (recording a recent-
+        # libraries entry), then use the "Switch library" button with
+        # __TEST_ROOT cleared (the same simulated-cancel pattern
+        # test_recent_libraries.py uses) to land back on the empty-state
+        # screen with the recent-libraries list populated ===
+        page5 = await browser.new_page()
+        await page5.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page5.add_init_script(stub_js)
+        await page5.goto(f"file://{APP_PATH}")
+        await page5.wait_for_timeout(200)
+        EMPTY_SEED = {"documents": [], "tags": [], "document_tags": []}
+        await page5.evaluate("window.__TEST_ROOT = window.__makeSeededRoot(%s); window.__TEST_ROOT.name = 'LibraryA';" % json.dumps(EMPTY_SEED))
+        await page5.click("#open-btn")
+        await page5.wait_for_timeout(300)
+        await page5.evaluate("window.__TEST_ROOT = null;")  # simulate cancelling the picker on "Switch library"
+        await page5.click("#reload-btn")
+        await page5.wait_for_timeout(200)
+        # #recent-libraries h3 is CSS text-transform:uppercase, so inner_text()
+        # reports "RECENT LIBRARIES" even though the actual DOM/source text is
+        # "Recent libraries" -- same quirk test_person_type_field.py's own
+        # ".modal-section h3" check already lives with.
+        recent_heading_before = await page5.locator('#recent-libraries h3').inner_text()
+        print("Scenario 7 -- recent-libraries heading starts English:", recent_heading_before == "RECENT LIBRARIES")
+        await page5.click('#lang-toggle')
+        await page5.wait_for_timeout(150)
+        recent_heading_after = await page5.locator('#recent-libraries h3').inner_text()
+        print("Scenario 7 -- recent-libraries heading retranslates live on toggle (not just next load):", recent_heading_after == "ZULETZT GEÖFFNETE BIBLIOTHEKEN")
+        recent_status_after = await page5.locator('[id^="recent-lib-status-"]').inner_text()
+        print("Scenario 7 -- recent-libraries 'Last opened' line retranslates live:", "Zuletzt geöffnet:" in recent_status_after)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
