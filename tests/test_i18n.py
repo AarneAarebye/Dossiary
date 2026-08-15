@@ -338,6 +338,10 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 17: drag-and-drop overlay text translates ===
+        overlay_text = await page3.locator('.drop-overlay-box').inner_text()
+        print("Scenario 17 -- drop overlay text translated:", overlay_text == "Zum Prüfen ablegen")
+
         print("JS ERRORS:", errors)
         await browser.close()
 

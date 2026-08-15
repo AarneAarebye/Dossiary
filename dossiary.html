@@ -616,7 +616,7 @@
   <div id="modal-root"></div>
 
   <div id="drop-overlay" class="drop-overlay" style="display:none;">
-    <div class="drop-overlay-box">Drop to add for review</div>
+    <div class="drop-overlay-box" data-i18n="dragdropOverlayText">Drop to add for review</div>
   </div>
 
   <footer>
@@ -787,6 +787,24 @@
       librariesUseTesseract: 'OCR text extraction',
       librariesUseJsPdf: 'Building the searchable PDF layer for captured images',
       librariesUsePdfJs: 'Rendering PDF pages (first page for previews, every page for edit-time OCR)',
+      dragdropOverlayText: 'Drop to add for review',
+      dragdropInboxBannerWaitingSingular: '{count} document waiting in the inbox folder.',
+      dragdropInboxBannerWaitingPlural: '{count} documents waiting in the inbox folder.',
+      dragdropAddedFromInboxStatus: 'Added "{title}" as #{id} from the inbox.',
+      dragdropAddFailedStatus: 'Failed to add "{name}": {error}',
+      dragdropDropFailedSingle: 'Could not add the dropped file.',
+      dragdropDropFailedMulti: 'Could not add any of the {count} dropped files.',
+      dragdropAddedSingleForReview: 'Added "{title}" as #{id} for review.',
+      dragdropAddedMultiForReview: 'Added {count} documents for review.',
+      dragdropPartialFailureSingular: ' {count} file could not be added.',
+      dragdropPartialFailurePlural: ' {count} files could not be added.',
+      dragdropNoFilesWaiting: 'No files waiting in {folder}.',
+      dragdropCouldNotAddAnyOfCountSingular: 'Could not add any of the {count} file in {folder}.',
+      dragdropCouldNotAddAnyOfCountPlural: 'Could not add any of the {count} files in {folder}.',
+      dragdropAddedToReviewQueueSingular: 'Added {count} document to the review queue from {folder}.',
+      dragdropAddedToReviewQueuePlural: 'Added {count} documents to the review queue from {folder}.',
+      dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
+      dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -923,6 +941,24 @@
       librariesUseTesseract: 'OCR-Texterkennung',
       librariesUseJsPdf: 'Erzeugen der durchsuchbaren PDF-Ebene für erfasste Bilder',
       librariesUsePdfJs: 'Rendern von PDF-Seiten (erste Seite für Vorschauen, jede Seite für OCR beim Bearbeiten)',
+      dragdropOverlayText: 'Zum Prüfen ablegen',
+      dragdropInboxBannerWaitingSingular: '{count} Dokument wartet im Posteingangsordner.',
+      dragdropInboxBannerWaitingPlural: '{count} Dokumente warten im Posteingangsordner.',
+      dragdropAddedFromInboxStatus: '"{title}" als #{id} aus dem Posteingang hinzugefügt.',
+      dragdropAddFailedStatus: '"{name}" konnte nicht hinzugefügt werden: {error}',
+      dragdropDropFailedSingle: 'Die abgelegte Datei konnte nicht hinzugefügt werden.',
+      dragdropDropFailedMulti: 'Keine der {count} abgelegten Dateien konnte hinzugefügt werden.',
+      dragdropAddedSingleForReview: '"{title}" als #{id} zur Prüfung hinzugefügt.',
+      dragdropAddedMultiForReview: '{count} Dokumente zur Prüfung hinzugefügt.',
+      dragdropPartialFailureSingular: ' {count} Datei konnte nicht hinzugefügt werden.',
+      dragdropPartialFailurePlural: ' {count} Dateien konnten nicht hinzugefügt werden.',
+      dragdropNoFilesWaiting: 'Keine Dateien warten in {folder}.',
+      dragdropCouldNotAddAnyOfCountSingular: 'Konnte keine der {count} Datei in {folder} hinzufügen.',
+      dragdropCouldNotAddAnyOfCountPlural: 'Konnte keine der {count} Dateien in {folder} hinzufügen.',
+      dragdropAddedToReviewQueueSingular: '{count} Dokument aus {folder} zur Prüfung hinzugefügt.',
+      dragdropAddedToReviewQueuePlural: '{count} Dokumente aus {folder} zur Prüfung hinzugefügt.',
+      dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
+      dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
     },
   };
 
@@ -4713,8 +4749,9 @@
     const banner = el('inbox-banner');
     if(pendingInboxFiles.length){
       banner.style.display = 'flex';
-      el('inbox-banner-text').textContent =
-        `${pendingInboxFiles.length} document${pendingInboxFiles.length === 1 ? '' : 's'} waiting in the inbox folder.`;
+      el('inbox-banner-text').textContent = pendingInboxFiles.length === 1
+        ? t('dragdropInboxBannerWaitingSingular', {count: pendingInboxFiles.length})
+        : t('dragdropInboxBannerWaitingPlural', {count: pendingInboxFiles.length});
     }else{
       banner.style.display = 'none';
     }
@@ -4803,9 +4840,9 @@
       renderStats(); populateFilters(); populateDatalists(); render();
       subLabel.textContent = rootDirHandle.name;
       updateInboxBanner();
-      setStatus(`Added "${title || 'Document #' + id}" as #${id} from the inbox.`, 'ok');
+      setStatus(t('dragdropAddedFromInboxStatus', {title: title || t('commonDocumentFallback', {id}), id}), 'ok');
     }catch(e){
-      setStatus(`Failed to add "${name}": ${e.message}`, 'err');
+      setStatus(t('dragdropAddFailedStatus', {name, error: e.message}), 'err');
     }
   }
 
@@ -4835,15 +4872,20 @@
       }catch(e){ failed++; }
     }
     if(!added){
-      setStatus(`Could not add ${failed === 1 ? 'the dropped file' : `any of the ${failed} dropped files`}.`, 'err');
+      setStatus(failed === 1 ? t('dragdropDropFailedSingle') : t('dragdropDropFailedMulti', {count: failed}), 'err');
       return;
     }
     renderStats(); populateFilters(); populateDatalists(); render();
     setView('inbox');
     const addedMsg = added === 1
-      ? `Added "${lastTitle || 'Document #' + lastId}" as #${lastId} for review.`
-      : `Added ${added} documents for review.`;
-    setStatus(addedMsg + (failed ? ` ${failed} file${failed === 1 ? '' : 's'} could not be added.` : ''), failed ? 'err' : 'ok');
+      ? t('dragdropAddedSingleForReview', {title: lastTitle || t('commonDocumentFallback', {id: lastId}), id: lastId})
+      : t('dragdropAddedMultiForReview', {count: added});
+    const failedMsg = failed
+      ? (failed === 1
+          ? t('dragdropPartialFailureSingular', {count: failed})
+          : t('dragdropPartialFailurePlural', {count: failed}))
+      : '';
+    setStatus(addedMsg + failedMsg, failed ? 'err' : 'ok');
   }
 
   // Waste bin, Inbox (needs_review), All Documents, and Reports are now the four
@@ -4864,20 +4906,31 @@
     const count = pendingInboxFiles.length;
     const folderLabel = `${rootDirHandle.name}/inbox/`;
     if(!count){
-      setStatus(`No files waiting in ${folderLabel}.`, 'ok');
+      setStatus(t('dragdropNoFilesWaiting', {folder: folderLabel}), 'ok');
       return;
     }
     await addAllInboxFiles();
     const added = count - pendingInboxFiles.length;
     if(!added){
-      setStatus(`Could not add any of the ${count} file${count === 1 ? '' : 's'} in ${folderLabel}.`, 'err');
+      setStatus(
+        count === 1
+          ? t('dragdropCouldNotAddAnyOfCountSingular', {count, folder: folderLabel})
+          : t('dragdropCouldNotAddAnyOfCountPlural', {count, folder: folderLabel}),
+        'err'
+      );
       return;
     }
     setView('inbox');
     const failed = count - added;
-    setStatus(`Added ${added} document${added === 1 ? '' : 's'} to the review queue from ${folderLabel}.`
-      + (failed ? ` ${failed} file${failed === 1 ? '' : 's'} could not be added and ${failed === 1 ? 'is' : 'are'} still there.` : ''),
-      failed ? 'err' : 'ok');
+    const addedPart = added === 1
+      ? t('dragdropAddedToReviewQueueSingular', {count: added, folder: folderLabel})
+      : t('dragdropAddedToReviewQueuePlural', {count: added, folder: folderLabel});
+    const failedPart = failed
+      ? (failed === 1
+          ? t('dragdropPartialFailureStillThereSingular', {count: failed})
+          : t('dragdropPartialFailureStillTherePlural', {count: failed}))
+      : '';
+    setStatus(addedPart + failedPart, failed ? 'err' : 'ok');
   }
 
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
