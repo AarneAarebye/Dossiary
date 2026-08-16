@@ -4,7 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))
 
-import asyncio, json
+import asyncio, json, base64
 from playwright.async_api import async_playwright
 
 async def main():
@@ -341,6 +341,223 @@ async def main():
         # === Scenario 17: drag-and-drop overlay text translates ===
         overlay_text = await page3.locator('.drop-overlay-box').inner_text()
         print("Scenario 17 -- drop overlay text translated:", overlay_text == "Zum Prüfen ablegen")
+
+        # === Scenario 18: localStorage access blocked (privacy settings, enterprise
+        # policy, etc.) must not crash the whole app -- loadLang()/saveLang() run at
+        # module-init time, before #open-btn's own click handler is wired up, so an
+        # uncaught throw here would abort the entire top-level IIFE, not just language
+        # detection. Replace window.localStorage with an object whose getItem/setItem
+        # both throw (the same shape a real blocked-storage browser exposes), confirm
+        # the page still renders and #open-btn still works, and confirm the auto-detect
+        # fallback (navigator.language) and the manual toggle both still work in-memory
+        # despite every persistence call failing silently underneath them ===
+        page6 = await browser.new_page()
+        errors6 = []
+        page6.on("pageerror", lambda exc: errors6.append(str(exc)))
+        await page6.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'de-DE' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['de-DE', 'de'] });
+            Object.defineProperty(window, 'localStorage', {
+                configurable: true,
+                value: {
+                    getItem: () => { throw new DOMException('blocked', 'SecurityError'); },
+                    setItem: () => { throw new DOMException('blocked', 'SecurityError'); },
+                },
+            });
+        """)
+        await page6.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page6.add_init_script(stub_js)
+        await page6.goto(f"file://{APP_PATH}")
+        await page6.wait_for_timeout(200)
+        title_text_blocked = await page6.locator('#empty-state h2').inner_text()
+        print("Scenario 18 -- blocked localStorage doesn't abort init; page still renders, falling back to de-DE auto-detect:", title_text_blocked == "Keine Bibliothek geöffnet")
+        print("Scenario 18 -- no uncaught JS errors from the blocked localStorage calls:", errors6 == [])
+        # #open-btn's click handler must still be wired -- if the top-level IIFE had
+        # actually aborted, this click would silently do nothing instead of opening
+        # the (fake) picked folder.
+        await page6.evaluate("window.__TEST_ROOT = window.__makeSeededRoot(%s);" % json.dumps({"documents": [], "tags": [], "document_tags": []}))
+        await page6.click("#open-btn")
+        await page6.wait_for_timeout(300)
+        opened_ok = await page6.locator('#toolbar').is_visible()
+        print("Scenario 18 -- open-btn's click handler still wired (library opens) despite blocked localStorage:", opened_ok)
+        # Toggling language with localStorage blocked must not throw either -- saveLang()
+        # fails silently, but the in-memory language still switches for this session.
+        await page6.click('#lang-toggle')
+        await page6.wait_for_timeout(150)
+        nav_all_text_toggled = await page6.locator('#nav-item-all .nav-item-label').inner_text()
+        print("Scenario 18 -- toggling language still works in-memory despite blocked localStorage (no throw):", nav_all_text_toggled == "All Documents")
+        print("Scenario 18 -- still no uncaught JS errors after the toggle:", errors6 == [])
+
+        # === Scenario 19: #sub-label (the empty-state screen's own subtitle) retranslates
+        # live on toggle, not just the recent-libraries list Scenario 7 already checks --
+        # setLang()'s empty-state branch used to call only renderRecentLibraries(), leaving
+        # #sub-label (visible on that exact same screen) stuck in whatever language it was
+        # last set in. Reuses page5's DOM state exactly as Scenario 7 left it -- German,
+        # empty-state screen, right after that scenario's own #lang-toggle click -- so this
+        # assertion needs no fresh interaction of its own to be meaningful ===
+        sub_label_after_toggle = await page5.locator('#sub-label').inner_text()
+        print("Scenario 19 -- empty-state sub-label retranslates live on toggle (not just the recent-libraries list):", sub_label_after_toggle == "Keine Bibliothek geöffnet")
+
+        # === Scenario 20: FIELD_DEFS-derived labels (Columns menu, Reports breakdown
+        # dropdown) and the static OCR-language <option> lists (capture + edit forms)
+        # translate -- two separate plan gaps the final review found (FIELD_DEFS itself
+        # hardcoded English `label`s with no labelKey at all, and #ocr-lang/#e-ocr-lang
+        # were never wired to t() in either form), checked together since both are plain
+        # option-text lookups. Back to the All Documents view first (page3 has been on
+        # Reports since Scenario 15, where the table rows Scenario 20's own edit-form
+        # check needs aren't rendered) -- still German ===
+        await page3.click('#nav-item-all')
+        await page3.wait_for_timeout(150)
+        await page3.click('#columns-btn')
+        await page3.wait_for_timeout(150)
+        columns_menu_text = await page3.locator('#columns-menu').inner_text()
+        print("Scenario 20 -- Columns menu's built-in field labels translated:", "Kategorie" in columns_menu_text and "Datum" in columns_menu_text and "Tags" in columns_menu_text)
+        await page3.click('#columns-btn')
+        await page3.wait_for_timeout(100)
+        # The seeded library's migrateSentinelFieldsToGeneric() backfill also creates a
+        # 'Payment method' field flagged show_as_column, which dynamicColumnDefs() (real
+        # user data, deliberately never translated -- see FIELD_DEFS's own comment) tacks
+        # on after the three fixed, translatable entries -- so check just the fixed
+        # prefix rather than exact list equality.
+        breakdown_options = await page3.locator('#report-breakdown-field option').all_inner_texts()
+        print("Scenario 20 -- Reports breakdown dropdown's fixed options translated:", breakdown_options[:3] == ["Kategorie", "Typ", "Personen"])
+
+        ocr_lang_de = ["Automatisch (Deutsch + Englisch)", "Nur Deutsch", "Nur Englisch", "Nur Französisch",
+                        "Nur Spanisch", "Nur Chinesisch (Vereinfacht)", "Nur Chinesisch (Traditionell / Kantonesisch)"]
+        await page3.click('#add-btn')
+        await page3.wait_for_timeout(200)
+        capture_ocr_lang_options = await page3.locator('#ocr-lang option').all_inner_texts()
+        print("Scenario 20 -- capture-form OCR language dropdown options translated:", capture_ocr_lang_options == ocr_lang_de)
+        await page3.click('#cancel-doc-btn')
+        await page3.wait_for_timeout(150)
+        await page3.click('tr[data-id="1"]')
+        await page3.wait_for_timeout(200)
+        await page3.click('#edit-doc-btn')
+        await page3.wait_for_timeout(200)
+        edit_ocr_lang_options = await page3.locator('#e-ocr-lang option').all_inner_texts()
+        print("Scenario 20 -- edit-form OCR language dropdown options translated:", edit_ocr_lang_options == ocr_lang_de)
+        await page3.click('#cancel-edit-btn')
+        await page3.wait_for_timeout(150)
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
+
+        # === Scenario 21: #lang-toggle is inert while a modal is open -- a mouse click
+        # is already blocked by the modal's own backdrop, but keyboard Tab-through can
+        # still reach and activate the button (Enter/Space fires a real click event the
+        # same as a mouse click would), and re-rendering an open modal in place isn't
+        # safe (would discard in-progress capture/edit work). Confirm the click while a
+        # modal's open is a genuine no-op -- no language change, modal content
+        # untouched -- and that the toggle isn't permanently broken, only inert while a
+        # modal happens to be open (reuses page3, still German, no modal open after
+        # Scenario 20's own cleanup) ===
+        await page3.click('#add-btn')
+        await page3.wait_for_timeout(200)
+        toggle_label_before_guard = await page3.locator('#lang-toggle').inner_text()
+        modal_heading_before_guard = await page3.locator('.modal h2').inner_text()
+        # A plain click() here would just time out -- the backdrop genuinely intercepts
+        # pointer events for a real mouse click (Playwright confirms the same thing a
+        # human mouse user would hit), which is exactly the existing protection this
+        # fix doesn't need to touch. force=True skips that hit-testing and dispatches
+        # the click event directly on the button, the same way a keyboard Enter/Space
+        # activation would (no hit-testing involved either) -- this is the actual gap
+        # the click handler's own guard exists to close.
+        await page3.click('#lang-toggle', force=True)
+        await page3.wait_for_timeout(150)
+        toggle_label_after_guard = await page3.locator('#lang-toggle').inner_text()
+        modal_heading_after_guard = await page3.locator('.modal h2').inner_text()
+        print("Scenario 21 -- lang-toggle click while a modal is open is a no-op (toggle label unchanged):", toggle_label_before_guard == toggle_label_after_guard == "EN")
+        print("Scenario 21 -- the open modal's own language is untouched by the blocked toggle:", modal_heading_before_guard == modal_heading_after_guard == "Dokument hinzufügen")
+        await page3.click('#cancel-doc-btn')
+        await page3.wait_for_timeout(150)
+        # Once the modal is closed, the toggle works normally again -- confirming this
+        # is a scoped-to-open-modal guard, not a general regression in the button.
+        await page3.click('#lang-toggle')
+        await page3.wait_for_timeout(150)
+        toggle_label_after_close = await page3.locator('#lang-toggle').inner_text()
+        print("Scenario 21 -- lang-toggle works again once the modal is closed:", toggle_label_after_close == "DE")
+        # Switch back to German so the reused-page3 scenarios below see what they expect.
+        await page3.click('#lang-toggle')
+        await page3.wait_for_timeout(150)
+
+        # === Scenario 22: the remaining minor-severity gaps from the final review --
+        # thumbnail/file-preview alt text, the 5 modal close-button aria-labels that
+        # still hardcoded "Close" instead of reusing detailCloseAriaLabel (Libraries,
+        # edit, Field Settings, capture, Manage Collections), the 8 built-in (non-
+        # dynamic) field clear buttons' title/aria-label, and the footer's "Libraries"
+        # link text. All four are the same class of "still-hardcoded-English" gap,
+        # checked together in one pass (reuses page3, back to German after Scenario
+        # 21's own toggle probe) ===
+        footer_libraries_text = await page3.locator('#libraries-link').inner_text()
+        print("Scenario 22 -- footer Libraries link translated:", footer_libraries_text == "Bibliotheken")
+
+        await page3.click('#libraries-link')
+        await page3.wait_for_timeout(200)
+        lib_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
+        print("Scenario 22 -- Libraries modal close button aria-label translated:", lib_close_aria == "Schließen")
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
+
+        await page3.click('#manage-fields-btn')
+        await page3.wait_for_timeout(200)
+        fs_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
+        print("Scenario 22 -- Field Settings modal close button aria-label translated:", fs_close_aria == "Schließen")
+        await page3.click('#fs-done-btn')
+        await page3.wait_for_timeout(150)
+
+        await page3.click('#manage-collections-btn')
+        await page3.wait_for_timeout(200)
+        mc_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
+        print("Scenario 22 -- Manage Collections modal close button aria-label translated:", mc_close_aria == "Schließen")
+        await page3.click('#mc-done-btn')
+        await page3.wait_for_timeout(150)
+
+        await page3.click('#add-btn')
+        await page3.wait_for_timeout(200)
+        capture_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
+        print("Scenario 22 -- capture modal close button aria-label translated:", capture_close_aria == "Schließen")
+        f_type_clear_title = await page3.locator('#f-type-clear').get_attribute('title')
+        f_type_clear_aria = await page3.locator('#f-type-clear').get_attribute('aria-label')
+        print("Scenario 22 -- capture Document Type clear button translated:", f_type_clear_title == "Leeren" and f_type_clear_aria == "Dokumenttyp leeren")
+        f_category_clear_aria = await page3.locator('#f-category-clear').get_attribute('aria-label')
+        print("Scenario 22 -- capture Category clear button translated:", f_category_clear_aria == "Kategorie leeren")
+        f_subcategory_clear_aria = await page3.locator('#f-subcategory-clear').get_attribute('aria-label')
+        print("Scenario 22 -- capture Subcategory clear button translated:", f_subcategory_clear_aria == "Unterkategorie leeren")
+        f_tags_clear_aria = await page3.locator('#f-tags-clear').get_attribute('aria-label')
+        print("Scenario 22 -- capture Tags clear button translated:", f_tags_clear_aria == "Tags leeren")
+        # The file-picker preview <img alt> only renders once a file is actually picked --
+        # write a real (tiny) PNG to disk and pick it, same pattern test_copy_path.py uses.
+        png_bytes = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        with open('i18nfixpreview.png', 'wb') as f:
+            f.write(png_bytes)
+        await page3.set_input_files('#file-input', 'i18nfixpreview.png')
+        await page3.wait_for_timeout(150)
+        preview_alt = await page3.locator('#file-preview-area img').get_attribute('alt')
+        print("Scenario 22 -- capture file-preview alt text translated:", preview_alt == "Dokumentvorschau")
+        await page3.click('#cancel-doc-btn')
+        await page3.wait_for_timeout(150)
+
+        await page3.click('tr[data-id="1"]')
+        await page3.wait_for_timeout(200)
+        await page3.click('#edit-doc-btn')
+        await page3.wait_for_timeout(200)
+        edit_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
+        print("Scenario 22 -- edit modal close button aria-label translated:", edit_close_aria == "Schließen")
+        e_type_clear_aria = await page3.locator('#e-type-clear').get_attribute('aria-label')
+        print("Scenario 22 -- edit Document Type clear button translated:", e_type_clear_aria == "Dokumenttyp leeren")
+        e_category_clear_aria = await page3.locator('#e-category-clear').get_attribute('aria-label')
+        print("Scenario 22 -- edit Category clear button translated:", e_category_clear_aria == "Kategorie leeren")
+        e_subcategory_clear_aria = await page3.locator('#e-subcategory-clear').get_attribute('aria-label')
+        print("Scenario 22 -- edit Subcategory clear button translated:", e_subcategory_clear_aria == "Unterkategorie leeren")
+        e_tags_clear_aria = await page3.locator('#e-tags-clear').get_attribute('aria-label')
+        print("Scenario 22 -- edit Tags clear button translated:", e_tags_clear_aria == "Tags leeren")
+        await page3.click('#cancel-edit-btn')
+        await page3.wait_for_timeout(150)
+        await page3.click('#modal-close-btn')
+        await page3.wait_for_timeout(150)
 
         print("JS ERRORS:", errors)
         await browser.close()

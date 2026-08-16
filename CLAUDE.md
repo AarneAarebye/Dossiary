@@ -1574,6 +1574,41 @@ version number — only by the schema itself matching).
   a few milliseconds before the element carrying it is thrown away), and
   inline `t()` calls for genuinely static markup would just be more code
   than a declarative attribute for no benefit.
+  **A handful of elements landed on the wrong side of this split in the
+  original translation pass and were corrected in a later final-review
+  fix round**: the modal close button's `aria-label`, the capture/edit
+  forms' built-in (non-dynamic) field clear buttons' `title`/`aria-label`,
+  and the file/thumbnail preview `<img alt>` all live inside `modalRoot`
+  template strings rebuilt fresh on every modal open — `applyI18n()` is
+  only ever called at page-init and from `setLang()` (and, per the toggle-
+  guard note above, `setLang()` now never runs while a modal is open at
+  all), so a `data-i18n-aria-label`/`data-i18n-title` attribute on one of
+  these would never actually get resolved; the fix was inline `t()` calls
+  at template-build time, matching what the detail modal's own close
+  button and the dynamic per-field clear buttons already did correctly
+  from the start. All of them **reuse existing keys** rather than minting
+  near-duplicates — `detailCloseAriaLabel` (despite its name, a generic
+  "Close" label, not detail-modal-specific) for every modal's close
+  button, and `fieldClearTitle`/`fieldClearAriaLabel` (the same pair
+  `renderGenericFieldHtml()`'s dynamic fields already use) for the 8
+  built-in clear buttons, substituting each field's own existing label key
+  (`captureDocTypeLabel`/`editCategoryLabel`/etc., or `tableColTags` for
+  the two Tags clear buttons, which have no dedicated plain-"Tags" label
+  key of their own) as `{name}`. `FIELD_DEFS`' own `label` values (feeding
+  the Columns menu and the Reports breakdown dropdown) got the same
+  reuse-not-duplicate treatment: each entry gained a `labelKey` pointing
+  at the exact same `tableColCategory`-family keys the static `<th>`
+  headers already carry as `data-i18n`, rather than new `columnLabel*`
+  keys with identical English/German text. `dynamicColumnDefs()` entries
+  (real user-typed field names, e.g. "Organization") deliberately have no
+  `labelKey` at all and must never get one — `fieldDefLabel(f)` (shared by
+  both display sites) falls back to the raw `label` for those. Because the
+  Columns menu is only otherwise rebuilt at library-open time and from
+  Field Settings' own field-list-changed call sites — neither of which
+  fires on a language toggle — `renderColumnsMenu()` was added to
+  `setLang()`'s own follow-up-calls list (see above) so these labels
+  retranslate live, the same reasoning that already justified
+  `populateFilters()`'s presence there.
   **Persistence is `localStorage` (`dossiary_lang` key), not the
   per-library `settings` table every other per-library preference in this
   app uses** (`nav_style`, `default_currency`, sort order, column
@@ -1599,15 +1634,59 @@ version number — only by the schema itself matching).
   permanent inferences), just at the whole-UI-language level instead of a
   single form field. `setLang()` (the toggle's click handler) has its own
   small set of hand-rolled follow-up calls — `applyI18n()`, then
-  conditionally `renderStats()`/`populateFilters()`/`render()` (library
-  open) or `renderRecentLibraries()` (empty-state) — because neither of
-  those functions is invoked from inside `render()`'s own "always run
-  this" chain (see the Collections nav section's own note above for the
-  general pattern of "which dynamic container rebuilds on which trigger"
-  in this codebase); without them, filter-dropdown option text and the
-  recent-libraries list would keep showing whichever language they were
-  last rendered in until the next unrelated document mutation forced a
-  rebuild.
+  conditionally `renderStats()`/`populateFilters()`/`renderColumnsMenu()`/
+  `render()` (library open, `subLabel.textContent = rootDirHandle.name` set
+  separately by those same call sites) or `subLabel.textContent =
+  t('emptyTitle')` plus `renderRecentLibraries()` (empty-state) — because
+  none of those functions/assignments is invoked from inside `render()`'s
+  own "always run this" chain (see the Collections nav section's own note
+  above for the general pattern of "which dynamic container rebuilds on
+  which trigger" in this codebase); without them, filter-dropdown option
+  text, the Columns menu's own built-in-field checkbox labels, the
+  empty-state screen's subtitle, and the recent-libraries list would each
+  keep showing whichever language they were last rendered in until the
+  next unrelated document mutation (or, for `#sub-label` specifically, the
+  next `resetAll()`/library-open) forced a rebuild. `#sub-label` itself
+  deliberately carries no `data-i18n="emptyTitle"` attribute — it's reused
+  for the folder name once a library is open, and `applyI18n()`'s own
+  blind textContent walk would clobber that name the next time language is
+  toggled while a library happens to be open; setting it explicitly here,
+  gated on `!rootDirHandle`, avoids that collision the same way the
+  Amount/Currency header-line and conditional-field notes elsewhere in
+  this file avoid overreaching a general mechanism into a case it doesn't
+  fit.
+  **A mouse click on `#lang-toggle` is already blocked by a modal's own
+  backdrop while a modal is open, but keyboard Tab-through can still reach
+  and activate it** (Enter/Space fires a real `click` event without any of
+  the backdrop's spatial hit-testing) — and no modal's content re-renders
+  in place when that happens, since none of `setLang()`'s follow-up calls
+  above touch `modalRoot`. Re-rendering the open modal to fix that isn't
+  safe in general: capture/edit would discard whatever's already been
+  typed into the form, the exact same in-progress-work hazard
+  `applyDynamicFieldsForType()`'s own note above documents for switching
+  document types mid-edit, and there's no reliable way to tell which
+  modal is open or safely rebuild it in place from `setLang()` alone. The
+  resolution is a **toggle guard, not a re-render**: `#lang-toggle`'s
+  click handler returns early — no language change, `saveLang()` never
+  called — whenever `modalRoot.innerHTML !== ''` (the same "is a modal
+  open" signal `closeModal()`'s own `modalRoot.innerHTML = ''` implies),
+  making the toggle inert for the keyboard path too, matching what a
+  mouse user already experiences via the backdrop rather than attempting
+  a re-render that would be safe for some modals and destructive for
+  others.
+  **`loadLang()`/`saveLang()` wrap their `localStorage` calls in their own
+  try/catch, independently of each other** — `localStorage` access can
+  throw (blocked by browser privacy settings, enterprise policy, private-
+  browsing quota edge cases), and `let currentLang = loadLang()` runs at
+  module-init time, before `#open-btn` or anything else in the app is
+  wired up; an uncaught throw here would abort the entire top-level IIFE,
+  not just language detection, taking the whole app down before it ever
+  renders. A blocked read falls through to the existing
+  `navigator.language` auto-detect (skipping only the stored-preference
+  check, not detection itself); a blocked write fails silently, so the
+  language still works correctly for the rest of that session, purely
+  in-memory — it just won't survive a reload, same as if the browser had
+  never stored a preference at all.
   **Count-dependent strings use an explicit singular/plural key pair per
   language** (e.g. `sharedPageCountSingular`/`sharedPageCountPlural`,
   `dragdropAddedToReviewQueueSingular`/`...Plural`), picked by the same
@@ -1628,15 +1707,35 @@ version number — only by the schema itself matching).
   toolbar, table, detail modal, capture/edit forms, Field Settings, Manage
   Collections, Reports, the Libraries/licenses modal, and drag-and-drop —
   the same kind of real-browser-driven coverage every other feature in
-  this suite gets. `tests/test_i18n_coverage.py` is a different kind of
-  check entirely: a plain Python script (no Playwright, no browser) that
-  greps `dossiary.html` for every `data-i18n*` attribute value and every
-  `t('key')`/`t("key")` call, and asserts each referenced key exists in
-  *both* `STRINGS.en` and `STRINGS.de` — a static safety net against the
-  one mistake `test_i18n.py`'s scenario-by-scenario clicking can't
-  exhaustively rule out (a key added to English but never given a German
-  translation, or vice versa, anywhere in this ~260-key, hand-maintained
-  dictionary that no single Playwright run touches every corner of).
+  this suite gets. A later final-whole-branch-review fix round added
+  Scenarios 18-22, each targeting a gap the review found via manual/live
+  testing rather than a failing automated check: 18 blocks
+  `window.localStorage` entirely (`getItem`/`setItem` both throwing) and
+  confirms the app still renders and `#open-btn` is still wired, rather
+  than the whole top-level IIFE having silently aborted at
+  `loadLang()`/`saveLang()`; 19 confirms `#sub-label` retranslates live on
+  the empty-state screen, not just the neighboring recent-libraries list
+  Scenario 7 already covers; 20 confirms `FIELD_DEFS`' new `labelKey`
+  wiring (Columns menu, Reports breakdown dropdown, tolerant of the
+  migration-added "Payment method" dynamic column riding along
+  untranslated) and the `#ocr-lang`/`#e-ocr-lang` `<option>` lists in both
+  forms; 21 confirms `#lang-toggle` is a genuine no-op while a modal is
+  open (dispatched via `force=True`, since a real un-forced click already
+  correctly times out against the backdrop — the same protection this fix
+  doesn't touch) and works again once the modal closes; 22 sweeps the
+  remaining minor gaps (modal close-button `aria-label`s across 5 modals,
+  the 8 built-in clear buttons' `title`/`aria-label`, the file-preview
+  `<img alt>`, and the footer's "Libraries" link) in one pass over freshly
+  rebuilt forms and modals. `tests/test_i18n_coverage.py` is a different
+  kind of check entirely: a plain Python script (no Playwright, no
+  browser) that greps `dossiary.html` for every `data-i18n*` attribute
+  value and every `t('key')`/`t("key")` call, and asserts each referenced
+  key exists in *both* `STRINGS.en` and `STRINGS.de` — a static safety net
+  against the one mistake `test_i18n.py`'s scenario-by-scenario clicking
+  can't exhaustively rule out (a key added to English but never given a
+  German translation, or vice versa, anywhere in this ~270-key,
+  hand-maintained dictionary that no single Playwright run touches every
+  corner of).
   Its own key-extraction regex needed to be **more careful than a naive
   "key starts a line" pattern**: `STRINGS.en`/`STRINGS.de` pack several
   `key: 'value',` pairs onto one source line throughout (matching this

@@ -624,7 +624,7 @@
     <button type="button" id="lang-toggle" data-i18n-title="langToggleTitle"></button> ·
     MIT License ·
     <a href="https://github.com/AarneAarebye/Dossiary" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/Dossiary</a> ·
-    <a href="#" id="libraries-link">Libraries</a>
+    <a href="#" id="libraries-link" data-i18n="footerLibrariesLink">Libraries</a>
   </footer>
 </div>
 
@@ -656,7 +656,7 @@
       commonCancel: 'Cancel', commonSave: 'Save', commonDone: 'Done', commonDelete: 'Delete',
       commonAdd: 'Add', commonClear: 'Clear', commonRemove: 'Remove', commonNone: '— None —',
       commonDocumentFallback: 'Document #{id}', commonYes: 'Yes', commonNo: 'No',
-      langToggleTitle: 'Switch language',
+      langToggleTitle: 'Switch language', footerLibrariesLink: 'Libraries',
       emptyTitle: 'No library open',
       navAllDocuments: 'All Documents', navInbox: 'Inbox', navWasteBin: 'Waste bin', navReports: 'Reports',
       navCollections: 'Collections', navSaveSmartCollection: '☆ Save as Smart Collection',
@@ -749,7 +749,11 @@
       pickedOcrOtherImageNote: 'OCR text will be extracted, but a searchable PDF can only be built from JPEG/PNG — this file will be saved as-is.',
       pickedOcrNotAvailablePdf: ' · OCR not available for PDFs yet, add notes manually',
       pickedFileSizeKb: '{size} KB', sharedPageCountSingular: '{count} page', sharedPageCountPlural: '{count} pages',
+      sharedDocumentPreviewAlt: 'Document preview',
       ocrLoadingEngine: 'Loading OCR engine…', ocrRecognizing: 'Recognizing text…',
+      ocrLangAuto: 'Auto (German + English)', ocrLangGerman: 'German only', ocrLangEnglish: 'English only',
+      ocrLangFrench: 'French only', ocrLangSpanish: 'Spanish only',
+      ocrLangChineseSimplified: 'Chinese (Simplified) only', ocrLangChineseTraditional: 'Chinese (Traditional / Cantonese) only',
       captureOcrDoneWordsSingular: 'Done — {count} word positioned for a searchable PDF.',
       captureOcrDoneWordsPlural: 'Done — {count} words positioned for a searchable PDF.',
       captureOcrDoneNoWords: 'Done, but no words with position data were found.',
@@ -810,7 +814,7 @@
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
       commonAdd: 'Hinzufügen', commonClear: 'Leeren', commonRemove: 'Entfernen', commonNone: '— Keine —',
       commonDocumentFallback: 'Dokument Nr. {id}', commonYes: 'Ja', commonNo: 'Nein',
-      langToggleTitle: 'Sprache wechseln',
+      langToggleTitle: 'Sprache wechseln', footerLibrariesLink: 'Bibliotheken',
       emptyTitle: 'Keine Bibliothek geöffnet',
       navAllDocuments: 'Alle Dokumente', navInbox: 'Posteingang', navWasteBin: 'Papierkorb', navReports: 'Berichte',
       navCollections: 'Sammlungen', navSaveSmartCollection: '☆ Als intelligente Sammlung speichern',
@@ -903,7 +907,11 @@
       pickedOcrOtherImageNote: 'Der OCR-Text wird extrahiert, aber ein durchsuchbares PDF kann nur aus JPEG/PNG erzeugt werden — diese Datei wird unverändert gespeichert.',
       pickedOcrNotAvailablePdf: ' · OCR für PDFs noch nicht verfügbar, Notizen manuell eintragen',
       pickedFileSizeKb: '{size} KB', sharedPageCountSingular: '{count} Seite', sharedPageCountPlural: '{count} Seiten',
+      sharedDocumentPreviewAlt: 'Dokumentvorschau',
       ocrLoadingEngine: 'OCR-Engine wird geladen…', ocrRecognizing: 'Text wird erkannt…',
+      ocrLangAuto: 'Automatisch (Deutsch + Englisch)', ocrLangGerman: 'Nur Deutsch', ocrLangEnglish: 'Nur Englisch',
+      ocrLangFrench: 'Nur Französisch', ocrLangSpanish: 'Nur Spanisch',
+      ocrLangChineseSimplified: 'Nur Chinesisch (Vereinfacht)', ocrLangChineseTraditional: 'Nur Chinesisch (Traditionell / Kantonesisch)',
       captureOcrDoneWordsSingular: 'Fertig — {count} Wort für ein durchsuchbares PDF positioniert.',
       captureOcrDoneWordsPlural: 'Fertig — {count} Wörter für ein durchsuchbares PDF positioniert.',
       captureOcrDoneNoWords: 'Fertig, aber es wurden keine Wörter mit Positionsdaten gefunden.',
@@ -977,13 +985,25 @@
     document.querySelectorAll('[data-i18n-aria-label]').forEach(elm => { elm.setAttribute('aria-label', t(elm.dataset.i18nAriaLabel)); });
   }
 
+  // localStorage.getItem/setItem can throw (blocked by browser privacy settings,
+  // enterprise policy, private-browsing quota edge cases, etc.) -- and loadLang()
+  // runs at module-init time (see `let currentLang = loadLang()` right below), before
+  // #open-btn or anything else is wired up, so an uncaught throw here would abort the
+  // whole top-level IIFE and leave the entire app dead on load, not just language
+  // detection. Both directions are guarded independently: a blocked read falls through
+  // to the existing navigator.language auto-detect (don't skip detection just because
+  // the stored-preference check failed), and a blocked write fails silently (the
+  // language still works for the rest of the session, purely in-memory -- it just
+  // won't survive a reload, same as if the person's browser never had a stored
+  // preference at all).
   function loadLang(){
-    const stored = localStorage.getItem('dossiary_lang');
+    let stored = null;
+    try{ stored = localStorage.getItem('dossiary_lang'); }catch(e){ stored = null; }
     if(stored === 'en' || stored === 'de') return stored;
     const langs = navigator.languages || [navigator.language || ''];
     return langs.some(l => l.toLowerCase().startsWith('de')) ? 'de' : 'en';
   }
-  function saveLang(lang){ localStorage.setItem('dossiary_lang', lang); }
+  function saveLang(lang){ try{ localStorage.setItem('dossiary_lang', lang); }catch(e){ /* in-memory only for this session */ } }
 
   let currentLang = loadLang();
 
@@ -1015,14 +1035,24 @@
     // elements at render time (no data-i18n attribute survives the rebuild), so
     // they'd stay in whatever language they were last rendered in until the next
     // document mutation -- same failure mode renderStats() had, one function over.
-    if(rootDirHandle){ renderStats(); populateFilters(); render(); }
+    // renderColumnsMenu() is the same story again for the Columns menu's own built-in
+    // (FIELD_DEFS) checkbox labels, now that those carry a labelKey (see FIELD_DEFS'
+    // own comment) -- it's only otherwise invoked at library-open time and from Field
+    // Settings' own field-list-changed call sites, neither of which fires on a language
+    // toggle.
+    if(rootDirHandle){ renderStats(); populateFilters(); renderColumnsMenu(); render(); }
     // renderRecentLibraries() likewise builds its whole markup (heading,
     // "Last opened" dates, the remove button's title/aria-label) via t() calls
     // baked into a template string at render time, not data-i18n attributes --
     // it's only ever shown on the empty-state screen (no library open yet), so
     // re-render it here whenever that's the case, mirroring the rootDirHandle
-    // branch above for the library-open case.
-    if(!rootDirHandle){ renderRecentLibraries(); }
+    // branch above for the library-open case. #sub-label itself deliberately does NOT
+    // carry a data-i18n="emptyTitle" attribute -- applyI18n()'s own textContent walk
+    // above would then clobber the *other* thing #sub-label shows once a library is
+    // open (the folder name, set directly via `subLabel.textContent = rootDirHandle.name`
+    // at each of its other call sites), so the empty-state text is set explicitly here
+    // instead, only in the branch where there's genuinely no library open.
+    if(!rootDirHandle){ subLabel.textContent = t('emptyTitle'); renderRecentLibraries(); }
   }
 
   const SCHEMA = `
@@ -1124,26 +1154,39 @@
   // populateFilters()). Amount stays here deliberately: its column keeps combining
   // Amount+Currency into one "123.45 EUR" display, a narrow exception to the
   // generic system (see formatAmount()), so it isn't itself show-as-column-flagged.
+  // `label` is a plain-English fallback (used only if labelKey's own lookup ever
+  // misses -- see fieldDefLabel() below); `labelKey` names the STRINGS key that
+  // actually drives display in both languages. These reuse the exact same keys the
+  // static table headers already carry as data-i18n (tableColCategory and friends,
+  // see the <th> markup) rather than minting duplicate columnLabel* keys with
+  // identical English/German text -- one string pair per built-in column, not two.
   const FIELD_DEFS = [
-    { id: 'category', label: 'Category', hasFilter: true, defaultVisible: true },
-    { id: 'document_type', label: 'Type', hasFilter: true, defaultVisible: true },
-    { id: 'people', label: 'People', hasFilter: true, defaultVisible: true },
-    { id: 'date', label: 'Date', hasFilter: false, defaultVisible: true },
-    { id: 'import_date', label: 'Imported', hasFilter: false, defaultVisible: true },
-    { id: 'amount', label: 'Amount', hasFilter: false, defaultVisible: true },
-    { id: 'tags', label: 'Tags', hasFilter: false, defaultVisible: true },
+    { id: 'category', label: 'Category', labelKey: 'tableColCategory', hasFilter: true, defaultVisible: true },
+    { id: 'document_type', label: 'Type', labelKey: 'tableColType', hasFilter: true, defaultVisible: true },
+    { id: 'people', label: 'People', labelKey: 'tableColPeople', hasFilter: true, defaultVisible: true },
+    { id: 'date', label: 'Date', labelKey: 'tableColDate', hasFilter: false, defaultVisible: true },
+    { id: 'import_date', label: 'Imported', labelKey: 'tableColImported', hasFilter: false, defaultVisible: true },
+    { id: 'amount', label: 'Amount', labelKey: 'tableColAmount', hasFilter: false, defaultVisible: true },
+    { id: 'tags', label: 'Tags', labelKey: 'tableColTags', hasFilter: false, defaultVisible: true },
   ];
   // Any field flagged show_as_column=1 (toggled per-field in Field Settings) becomes
   // a dynamic table column/filter/sort target, appended after the fixed ones above.
   // Filter dropdowns only get built for text/checkbox fields -- a dropdown listing
   // every distinct number/date value wouldn't be useful, matching how Date/Imported/
-  // Amount already have no filter dropdown among the built-ins.
+  // Amount already have no filter dropdown among the built-ins. Deliberately no
+  // labelKey here -- f.name is a real user-typed field name (e.g. "Organization"),
+  // not app chrome, and must never be run through t().
   function dynamicColumnDefs(){
     return fieldDefs.filter(f => f.showAsColumn).map(f => ({
       id: `field-${f.id}`, label: f.name,
       hasFilter: f.type === 'text' || f.type === 'checkbox', defaultVisible: false,
     }));
   }
+  // Shared by every display site that renders a FIELD_DEFS/dynamicColumnDefs() entry's
+  // label (Columns menu, Reports breakdown dropdown) -- built-in fields translate via
+  // their labelKey, dynamicColumnDefs() fields fall back to their own (untranslated,
+  // user-supplied) label since they have no labelKey at all.
+  function fieldDefLabel(f){ return f.labelKey ? t(f.labelKey) : f.label; }
 
   let visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
   let typeFieldOrder = {}; // { "Medical Referral": [{field:"Organization To",position:0}, {field:"People",position:1}], ... }
@@ -1620,6 +1663,17 @@
   el('app-version-label').textContent = `v${APP_VERSION}`;
   el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE'; // shows the language you'd SWITCH TO
   el('lang-toggle').addEventListener('click', () => {
+    // A mouse click on this button is already blocked by a modal's own backdrop while
+    // one is open, but keyboard Tab-through can still reach and activate it (Enter/Space
+    // fires a real click event same as a mouse click would). Re-rendering the open modal
+    // in place to retranslate it isn't safe in general -- capture/edit would lose
+    // whatever's already been typed into the form, the exact same in-progress-work
+    // hazard applyDynamicFieldsForType()'s own note documents for switching document
+    // types mid-edit -- so the fix here is to make the toggle inert while any modal is
+    // open, matching what a mouse user already experiences via the backdrop, rather than
+    // attempting a safe-everywhere re-render. modalRoot.innerHTML is '' exactly when no
+    // modal is open (see closeModal()); this reads the same signal.
+    if(modalRoot.innerHTML !== '') return;
     setLang(currentLang === 'de' ? 'en' : 'de');
     el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE';
   });
@@ -2591,7 +2645,7 @@
     menu.innerHTML = allDefs.map(f => `
       <div class="columns-menu-item">
         <input type="checkbox" id="col-toggle-${f.id}" ${visibleColumns.has(f.id) ? 'checked' : ''} />
-        <label for="col-toggle-${f.id}">${escapeHtml(f.label)}</label>
+        <label for="col-toggle-${f.id}">${escapeHtml(fieldDefLabel(f))}</label>
       </div>
     `).join('');
     allDefs.forEach(f => {
@@ -2658,7 +2712,7 @@
     if(breakdownSelect){
       const previousValue = breakdownSelect.value;
       const options = reportBreakdownFields();
-      breakdownSelect.innerHTML = options.map(f => `<option value="${f.id}">${escapeHtml(f.label)}</option>`).join('');
+      breakdownSelect.innerHTML = options.map(f => `<option value="${f.id}">${escapeHtml(fieldDefLabel(f))}</option>`).join('');
       breakdownSelect.value = options.some(f => f.id === previousValue) ? previousValue : (options[0] ? options[0].id : '');
       // Unlike the dynamic-filters selects above (freshly created elements every
       // call, so they must be re-wired each time), #report-breakdown-field is
@@ -3245,7 +3299,7 @@
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('librariesTitle')}</h2>
           <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 16px;">
             ${t('librariesIntro')}
@@ -3316,7 +3370,7 @@
       try{
         const fh = await resolveFileHandle(d.thumbnail_path, false);
         const file = await fh.getFile();
-        thumbHtml = `<img class="modal-thumb" id="modal-thumb-slot" src="${URL.createObjectURL(file)}" alt="Document preview" />`;
+        thumbHtml = `<img class="modal-thumb" id="modal-thumb-slot" src="${URL.createObjectURL(file)}" alt="${t('sharedDocumentPreviewAlt')}" />`;
       }catch(e){
         thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailPreviewMissing')}</div>`;
       }
@@ -3609,14 +3663,14 @@
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('editTitle')}</h2>
 
           <div class="field field-prominent">
             <label for="e-type">${t('editDocTypeLabel')}</label>
             <div class="field-with-clear">
               <input type="text" id="e-type" list="type-list" value="${escapeHtml(d.document_type || '')}" placeholder="${t('editDocTypePlaceholder')}" />
-              <button type="button" class="clear-btn" id="e-type-clear" title="Clear" aria-label="Clear document type">✕</button>
+              <button type="button" class="clear-btn" id="e-type-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('editDocTypeLabel')})}">✕</button>
             </div>
             <div class="field-hint">${t('editDocTypeHint')}</div>
           </div>
@@ -3630,14 +3684,14 @@
               <label for="e-category">${t('editCategoryLabel')}</label>
               <div class="field-with-clear">
                 <input type="text" id="e-category" list="category-list" value="${escapeHtml(d.category || '')}" />
-                <button type="button" class="clear-btn" id="e-category-clear" title="Clear" aria-label="Clear category">✕</button>
+                <button type="button" class="clear-btn" id="e-category-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('editCategoryLabel')})}">✕</button>
               </div>
             </div>
             <div class="field">
               <label for="e-subcategory">${t('editSubcategoryLabel')}</label>
               <div class="field-with-clear">
                 <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="${t('editSubcategoryPlaceholder')}" />
-                <button type="button" class="clear-btn" id="e-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
+                <button type="button" class="clear-btn" id="e-subcategory-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('editSubcategoryLabel')})}">✕</button>
               </div>
             </div>
           </div>
@@ -3662,7 +3716,7 @@
             <label for="e-tags">${t('captureTagsLabel')}</label>
             <div class="field-with-clear">
               <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="${t('captureTagsPlaceholder')}" />
-              <button type="button" class="clear-btn" id="e-tags-clear" title="Clear" aria-label="Clear tags">✕</button>
+              <button type="button" class="clear-btn" id="e-tags-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('tableColTags')})}">✕</button>
             </div>
           </div>
           <div class="field">
@@ -3674,13 +3728,13 @@
             <div class="doc-sub" id="e-page-count"></div>
             <div class="ocr-row">
               <select id="e-ocr-lang">
-                <option value="eng+deu">Auto (German + English)</option>
-                <option value="deu">German only</option>
-                <option value="eng">English only</option>
-                <option value="fra">French only</option>
-                <option value="spa">Spanish only</option>
-                <option value="chi_sim">Chinese (Simplified) only</option>
-                <option value="chi_tra">Chinese (Traditional / Cantonese) only</option>
+                <option value="eng+deu">${t('ocrLangAuto')}</option>
+                <option value="deu">${t('ocrLangGerman')}</option>
+                <option value="eng">${t('ocrLangEnglish')}</option>
+                <option value="fra">${t('ocrLangFrench')}</option>
+                <option value="spa">${t('ocrLangSpanish')}</option>
+                <option value="chi_sim">${t('ocrLangChineseSimplified')}</option>
+                <option value="chi_tra">${t('ocrLangChineseTraditional')}</option>
               </select>
               <button type="button" id="e-run-ocr-btn">${t('captureRunOcr')}</button>
               <span id="e-ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
@@ -3917,7 +3971,7 @@
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('fieldSettingsTitle')}</h2>
           <div class="field-row">
             <div class="field">
@@ -4163,7 +4217,7 @@
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('captureTitle')}</h2>
 
           <div class="file-drop" id="file-drop">
@@ -4178,13 +4232,13 @@
 
           <div class="ocr-row">
             <select id="ocr-lang" disabled>
-              <option value="eng+deu">Auto (German + English)</option>
-              <option value="deu">German only</option>
-              <option value="eng">English only</option>
-              <option value="fra">French only</option>
-              <option value="spa">Spanish only</option>
-              <option value="chi_sim">Chinese (Simplified) only</option>
-              <option value="chi_tra">Chinese (Traditional / Cantonese) only</option>
+              <option value="eng+deu">${t('ocrLangAuto')}</option>
+              <option value="deu">${t('ocrLangGerman')}</option>
+              <option value="eng">${t('ocrLangEnglish')}</option>
+              <option value="fra">${t('ocrLangFrench')}</option>
+              <option value="spa">${t('ocrLangSpanish')}</option>
+              <option value="chi_sim">${t('ocrLangChineseSimplified')}</option>
+              <option value="chi_tra">${t('ocrLangChineseTraditional')}</option>
             </select>
             <button id="run-ocr-btn" disabled>${t('captureRunOcr')}</button>
             <span id="ocr-status" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);"></span>
@@ -4199,7 +4253,7 @@
             <label for="f-type">${t('captureDocTypeLabel')}</label>
             <div class="field-with-clear">
               <input type="text" id="f-type" list="type-list" value="${escapeHtml(defaultDocumentType || '')}" placeholder="${t('captureDocTypePlaceholder')}" />
-              <button type="button" class="clear-btn" id="f-type-clear" title="Clear" aria-label="Clear document type">✕</button>
+              <button type="button" class="clear-btn" id="f-type-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('captureDocTypeLabel')})}">✕</button>
             </div>
             <div class="field-hint">${t('captureDocTypeHint')}</div>
           </div>
@@ -4217,14 +4271,14 @@
               <label for="f-category">${t('captureCategoryLabel')}</label>
               <div class="field-with-clear">
                 <input type="text" id="f-category" list="category-list" />
-                <button type="button" class="clear-btn" id="f-category-clear" title="Clear" aria-label="Clear category">✕</button>
+                <button type="button" class="clear-btn" id="f-category-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('captureCategoryLabel')})}">✕</button>
               </div>
             </div>
             <div class="field">
               <label for="f-subcategory">${t('captureSubcategoryLabel')}</label>
               <div class="field-with-clear">
                 <input type="text" id="f-subcategory" list="subcategory-list" placeholder="${t('captureSubcategoryPlaceholder')}" />
-                <button type="button" class="clear-btn" id="f-subcategory-clear" title="Clear" aria-label="Clear subcategory">✕</button>
+                <button type="button" class="clear-btn" id="f-subcategory-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('captureSubcategoryLabel')})}">✕</button>
               </div>
             </div>
           </div>
@@ -4249,7 +4303,7 @@
             <label for="f-tags">${t('captureTagsLabel')}</label>
             <div class="field-with-clear">
               <input type="text" id="f-tags" list="tag-list" placeholder="${t('captureTagsPlaceholder')}" />
-              <button type="button" class="clear-btn" id="f-tags-clear" title="Clear" aria-label="Clear tags">✕</button>
+              <button type="button" class="clear-btn" id="f-tags-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('tableColTags')})}">✕</button>
             </div>
           </div>
           <div class="field">
@@ -4317,7 +4371,7 @@
       const pdfNote = (file.type === 'image/jpeg' || file.type === 'image/png')
         ? t('pickedOcrPdfNote')
         : t('pickedOcrOtherImageNote');
-      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="preview"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}</div><div class="doc-sub">${pdfNote}</div></div></div>`;
+      previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="${t('sharedDocumentPreviewAlt')}"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}</div><div class="doc-sub">${pdfNote}</div></div></div>`;
     }else{
       previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}${file.type === 'application/pdf' ? t('pickedOcrNotAvailablePdf') : ''}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
       if(file.type === 'application/pdf'){
@@ -4629,7 +4683,7 @@
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="Close">✕</button>
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('collectionsTitle')}</h2>
           <div id="manage-collections-list"></div>
           <div class="add-field-form" style="margin-top:16px;">
