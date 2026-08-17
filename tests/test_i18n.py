@@ -600,6 +600,24 @@ async def main():
         print("Scenario 24 -- dropdown shows 'es' as the selected value:", es_lang_value == "es")
         await page_es.close()
 
+        # === Scenario 25: French auto-detects and translates ===
+        page_fr = await browser.new_page()
+        await page_fr.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'fr-FR' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['fr-FR', 'fr'] });
+        """)
+        await page_fr.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page_fr.add_init_script(stub_js)
+        await page_fr.goto(f"file://{APP_PATH}")
+        await page_fr.wait_for_timeout(200)
+        fr_title = await page_fr.locator('#empty-state h2').inner_text()
+        print("Scenario 25 -- fr-FR browser locale auto-detects French:", fr_title == "Aucune bibliothèque ouverte")
+        fr_lang_value = await page_fr.locator('#lang-select').input_value()
+        print("Scenario 25 -- dropdown shows 'fr' as the selected value:", fr_lang_value == "fr")
+        await page_fr.close()
+
         print("JS ERRORS:", errors)
         await browser.close()
 
