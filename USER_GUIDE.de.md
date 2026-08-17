@@ -5,7 +5,7 @@ Details — Datenbankschema, Migrationsinterna, Testaufbau? Dann findest du
 sie in der [README.md](README.md) (English) bzw. [README.de.md](README.de.md).
 Diese Anleitung ist bewusst nicht-technisch gehalten.*
 
-*[This guide in English](USER_GUIDE.md)*
+*[This guide in English](USER_GUIDE.md) · [Esta guía en español](USER_GUIDE.es.md)*
 
 ## Was ist Dossiary?
 
