@@ -98,6 +98,39 @@ was scripted. These screenshots are manually refreshed if the UI changes
 meaningfully — same maintenance model as any other static doc image in
 this repo, no visual-regression tooling involved.
 
+**This same per-language screenshot pattern extended to four more guides**
+once Spanish, French, and both Chinese scripts joined English/German as UI
+languages — `USER_GUIDE.es.md`, `USER_GUIDE.fr.md`, `USER_GUIDE.zh-Hans.md`,
+and `USER_GUIDE.zh-Hant.md`, each showing its own language's UI under its
+own `docs/user-guide/<lang>/` folder, captured the same server-and-toggle
+way described above. The two Chinese guides in particular get fully
+independent screenshot sets rather than sharing one — see the OpenCC-
+derivation note under "UI language support" further below for why a
+`zh-Hans` screenshot can't stand in for `zh-Hant`, or vice versa, the way
+it safely could between, say, two regional variants of the same script.
+
+**The footer's own "User Guide" link (`#user-guide-link`,
+`updateUserGuideLink()`) resolves to a per-language file via a second,
+deliberately separate array — `USER_GUIDE_LANGS`, currently `['de', 'es',
+'fr', 'zh-Hans', 'zh-Hant']`** — not `SUPPORTED_LANGS` itself.
+`userGuideUrl()` appends `.${currentLang}` to the linked filename only
+when `currentLang` is in `USER_GUIDE_LANGS`; otherwise the link points at
+plain `USER_GUIDE.md` (English, suffix-less, matching the file-naming
+convention every other translated doc in this repo already uses —
+`README.de.md`, `MIGRATION.de.md`, etc.). The two arrays are kept
+separate on purpose: `SUPPORTED_LANGS` is "languages the *app's UI* can
+render in," `USER_GUIDE_LANGS` is "languages that additionally have their
+*own guide file* to link to" — a UI language could in principle ship
+before its guide does (or a guide could theoretically lag behind, if one
+were ever retired or delayed), and the fallback exists specifically to
+keep the footer link never broken in that gap, rather than assuming the
+two lists always match. With all four new guides landing in the same
+project that added their languages, there's no currently-live language
+that actually falls into the fallback case today — but the fallback
+branch is still real, exercised code (`tests/test_i18n.py`'s own coverage
+of the footer link), not dead weight to prune, since a future language
+added with its guide following in a later change would hit it again.
+
 ## Versioning
 
 `dossiary.html` and `scan_watch.py` share one version number (`1.8.3` as of
@@ -1806,6 +1839,120 @@ version number — only by the schema itself matching).
   the failure mode (a flood of *fake* missing-key reports burying any
   *real* one) is the opposite of the usual silent-gap risk this kind of
   check exists to catch.
+  **Generalized from two languages to six** (`SUPPORTED_LANGS = ['en', 'de',
+  'es', 'fr', 'zh-Hans', 'zh-Hant']`, plus `NATIVE_LANG_NAMES` — each code's
+  own name for itself, `简体中文`/`繁體中文` etc., deliberately never run
+  through `t()`, since a language's name for itself in its own script is
+  what belongs in a language picker no matter which language is currently
+  active — `LANG_AUTODETECT`, and `DATE_LOCALE`) once Spanish, French, and
+  both Chinese scripts were added on top of the original English/German
+  implementation described above. None of the dictionary/lookup-helper/
+  `applyI18n()` shape above had to change to support this: `STRINGS` simply
+  grew from two top-level keys to six (272 keys apiece now, not ~260), and
+  `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
+  fallback chain already generalizes for free, since it was never
+  hardcoded to specifically `en`/`de` in the first place.
+  `tests/test_i18n_coverage.py` loops over `SUPPORTED_LANGS` the same
+  way now, rather than a hardcoded `STRINGS.en`/`STRINGS.de` pair — going
+  from two languages to six changed that check's loop bound, not its
+  underlying logic.
+  **The old `EN | DE` two-state `#lang-toggle` button was replaced by a
+  `<select id="lang-select">`** listing all six languages via
+  `NATIVE_LANG_NAMES`, since a two-state toggle has no way to generalize
+  past two options. `setLang(lang)` itself didn't change — same
+  signature, same conditional follow-up calls described above — only the
+  control invoking it did, from a click handler alternating between two
+  hardcoded values to a `change` handler reading `event.target.value`.
+  This forced a real fix to the existing modal-open guard, not just a
+  handler rewire: the old button's guard could get away with simply
+  skipping `setLang()` and doing nothing else while a modal was open,
+  because a *button* has no displayed state of its own to desync from
+  `currentLang` — nothing on screen changes until the click handler
+  actually runs. A native `<select>` is a strictly harder case: choosing a
+  new option visually commits that option as the control's own displayed
+  value *immediately* and *synchronously* — mouse or keyboard — before any
+  `change` handler even runs, and nothing can intercept that part. So
+  `#lang-select`'s guard has to do more than the old button's guard did:
+  when a modal is open, it actively resets `e.target.value = currentLang`
+  back to the still-active language, on top of skipping `setLang()` —
+  otherwise the dropdown would sit there visibly showing a language the
+  app never actually switched to, silently lying about the current state
+  until the next real change goes through. The keyboard-Tab-through hazard
+  and the reasoning for why re-rendering the open modal in place isn't a
+  safe alternative (both described above for the old button) carry over
+  unchanged to the new control.
+  **Chinese does not inflect for grammatical number**, so the existing
+  singular/plural key-pair convention (`sharedPageCountSingular`/
+  `...Plural`, picked by the same `count === 1 ? t('xSingular', {count}) :
+  t('xPlural', {count})` ternary described above) needed no new no-plural
+  code path for `zh-Hans`/`zh-Hant` — both simply carry *identical* text in
+  both slots of every existing pair. This is the same "only distinguishes
+  singular from everything else" reasoning already noted above for German,
+  taken one step further: Chinese doesn't distinguish grammatical number at
+  all, so its two slots just happen to always agree.
+  **Chinese needs real region disambiguation that German/Spanish/French
+  don't**, because `navigator.language`/`navigator.languages` report a
+  region code (`zh-CN`, `zh-TW`, ...) or occasionally an explicit script
+  subtag (`zh-Hans`, `zh-Hant`), not something that reliably indicates
+  simplified vs. traditional on its own the way a bare `de`/`es`/`fr`
+  prefix check already does for those. `LANG_AUTODETECT` (an ordered array
+  of `{code, test}` rules, first match wins) resolves this: a `CN`/`SG`/
+  `MY` region or explicit `Hans` script → `zh-Hans`; a `TW`/`HK`/`MO`
+  region or explicit `Hant` script → `zh-Hant`; a bare `zh` with no
+  recognizable region or script at all defaults to `zh-Hans` (more widely
+  read globally — the same "best guess, dismissible by the existing
+  manual-override-wins rule" spirit as every other auto-detect default in
+  this app, e.g. the Date/Currency `.field-guess` pattern noted elsewhere
+  in this file). **Order inside `LANG_AUTODETECT` is load-bearing here,
+  not cosmetic**: `zh-Hant`'s rule is listed *before* `zh-Hans`'s,
+  deliberately, because `loadLang()` evaluates `langs.some(test)` per rule
+  against the *whole* `navigator.languages` array, not per language across
+  every rule in turn — so with a realistic browser fallback chain like
+  `navigator.languages = ['zh-TW', 'zh']`, `zh-Hans`'s own permissive
+  bare-`zh` catch-all would incorrectly match against the array's second
+  element before `zh-Hant`'s more specific `zh-TW` rule was ever reached,
+  had `zh-Hans` been checked first. Listing `zh-Hant` first fixes that
+  without weakening the bare-`zh` fallback: a locale array with nothing
+  `zh-Hant`-shaped in it (`['zh-CN']`, or plain `['zh']`) still correctly
+  falls through to `zh-Hans`, since `zh-Hant`'s more specific rule simply
+  never matches those. This was verified two ways, not just asserted: a
+  direct code trace during review, and `tests/test_i18n.py`'s own Scenario
+  27, which sets `navigator.languages = ['zh-TW', 'zh']` and confirms the
+  dropdown lands on Chinese Traditional, not Simplified.
+  **`STRINGS['zh-Hant']` is derived programmatically from the finished
+  `STRINGS['zh-Hans']` block, not translated independently a second time**
+  — using `opencc-python-reimplemented`'s `s2t` (Simplified→Traditional)
+  conversion profile, the same OpenCC engine Wikipedia and other major
+  projects use for this exact conversion, run once at authoring time as a
+  local script whose *output* (the literal `STRINGS['zh-Hant']` object)
+  was committed to `dossiary.html` as plain text — a one-time authoring
+  tool, never a runtime dependency; the app itself has no OpenCC
+  dependency, and nothing about its zero-dependency, single-file nature
+  changed. Simplified and Traditional Chinese are the same language with
+  two different character sets, not two different languages, which is
+  what makes derivation the right call specifically here — nothing else in
+  `SUPPORTED_LANGS` has an equivalent relationship; Spanish and French were
+  each translated independently, the ordinary way. Converting is both
+  faster than a second from-scratch translation pass and, more
+  importantly, *guarantees* the two scripts stay in lockstep — no risk of
+  `zh-Hans` and `zh-Hant` drifting to say subtly different things for the
+  same key over time, the way two independently-maintained translations
+  could. The accepted tradeoff is that `zh-Hant`'s wording is exactly
+  `zh-Hans`'s wording rendered in a different script, with no room for
+  Traditional-specific phrasing choices (e.g. regional vocabulary
+  differences between Taiwan and mainland usage) that an independent
+  translation might have made — judged acceptable for this app's UI
+  strings, which lean short and functional rather than idiomatic prose.
+  `USER_GUIDE.zh-Hant.md` (see the User Guide vs. README note above) was
+  derived the same way, for the same lockstep-consistency reason, from the
+  finished `USER_GUIDE.zh-Hans.md` prose — with its embedded image paths
+  corrected afterward by hand (from `docs/user-guide/zh-Hans/` to
+  `docs/user-guide/zh-Hant/`, since converting prose doesn't touch
+  relative image links correctly on its own) and its own
+  independently-captured screenshot set, **not** shared with the
+  Simplified guide's own screenshots — the running app renders different
+  characters in each language state, so a screenshot captured under
+  `zh-Hans` would show the wrong script if reused under `zh-Hant`.
 
 ## How this was tested (useful context for future changes)
 
