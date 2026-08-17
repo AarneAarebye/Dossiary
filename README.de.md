@@ -2,6 +2,10 @@
 
 *[Read this in English](README.md)*
 
+**Neu hier? Starten Sie stattdessen mit dem [Benutzerhandbuch](USER_GUIDE.de.md)**
+— diese README behandelt die technischen Interna (Schema, Architektur,
+Tests).
+
 Eine konsequent lokale, browserbasierte Dokumentenablage: Dokumente
 erfassen, per OCR erkennen, verschlagworten und durchsuchen — kein Server,
 kein Konto, kein Upload. Alles liegt in einer einzigen SQLite-Datenbank und

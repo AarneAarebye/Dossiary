@@ -2,6 +2,9 @@
 
 *[Diese Anleitung auf Deutsch lesen](README.de.md)*
 
+**New here? Start with the [User Guide](USER_GUIDE.md) instead** — this
+README covers the technical internals (schema, architecture, testing).
+
 A local-first, browser-based document archive: capture, OCR, tag, and browse
 your own documents — no server, no account, no upload. Everything lives in
 one SQLite database and a folder of files on your own disk, opened and

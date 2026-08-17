@@ -29,6 +29,11 @@ dossiary.html            The entire app (single file: HTML + CSS + JS)
 scan_watch.py            Standalone watched-folder helper -- see its own note below
 README.md                Usage docs, schema, and known limitations
 README.de.md             German translation of README.md
+USER_GUIDE.md            Non-technical beginner guide, linked from README.md
+USER_GUIDE.de.md         German translation of USER_GUIDE.md
+docs/user-guide/         Screenshots for USER_GUIDE.md (en/) and
+                          USER_GUIDE.de.md (de/) -- see that section's own
+                          note below for how they were captured
 MIGRATION.md             Migrating from Mariner Paperless, linked from README.md
 MIGRATION.de.md          German translation of MIGRATION.md
 CLAUDE.md                This file
@@ -48,6 +53,50 @@ repo: it's a separate, optional, stdlib-only companion script that never
 gets loaded by the app and has no effect if you never run it — see its own
 architecture note below for why it exists outside `dossiary.html`
 rather than being folded into it.
+
+## User Guide vs. README
+
+`USER_GUIDE.md`/`USER_GUIDE.de.md` exist because `README.md`/`README.de.md`
+are, deliberately, written for people who want to understand the
+internals (schema, architecture, testing, known limitations) — not for
+someone who just wants to start using the app. That's the right audience
+for the README (a technical document for a technical project), but it
+left no on-ramp for a non-technical first-time user, so the User Guide
+was added as a separate, narrower document rather than trying to soften
+the README's own tone in place. The two READMEs gained a one-line pointer
+near the top rather than being restructured, so neither document's own
+scope changed.
+
+The User Guide's scope is deliberately narrow: a first-time user starting
+from physical paper with no existing digital archive, covering the core
+capture/find/Inbox loop plus a brief, screenshot-light tour of
+Collections/Reports/Archive/custom fields — not a Mariner Paperless
+migration guide (that stays `MIGRATION.md`'s job, linked from the User
+Guide's own "Where to go next" section) and not a replacement for the
+README's own feature-by-feature depth.
+
+**Screenshots are static PNGs under `docs/user-guide/en/` and
+`docs/user-guide/de/`, each guide showing its own language's UI** (the
+German guide's screenshots show the German-toggled app, not reused
+English images) — captured from a small, fabricated demo library (a
+synthetic invoice, letter, and receipt, generated as plain images with no
+real personal data) driven through the actual app via browser automation,
+toggling Dossiary's own in-app language control between passes rather
+than needing two separate app builds. `file://` pages can't be scripted
+by the browser-automation tooling used to capture them (a security
+boundary of the automation layer itself, not something particular to
+this app), so capture was done by serving the repo directory over
+`python3 -m http.server` and driving `http://localhost:<port>/dossiary.html`
+instead — the File System Access API works identically over a `localhost`
+origin, which counts as a secure context the same way `file://` does, so
+this required no code changes to test against. The native
+"choose a folder" picker can't be automated by design (same reasoning as
+this file's own "no direct scanner integration" note — a browser
+extension has no path to script a native OS dialog); a person had to
+click through it once per capture session, after which everything else
+was scripted. These screenshots are manually refreshed if the UI changes
+meaningfully — same maintenance model as any other static doc image in
+this repo, no visual-regression tooling involved.
 
 ## Versioning
 
