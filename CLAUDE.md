@@ -170,40 +170,58 @@ version number — only by the schema itself matching).
   instead of a guarantee. Both bugs are the kind that "work fine" in quick
   testing and then fail unpredictably for someone else — keep both lines.
 - **`.table-wrap` is a deliberate, bounded scroll container** (`overflow:auto`
-  + `max-height:calc(100vh - Xpx)`, `X` now nav-style-dependent — see below),
-  not just "the table with horizontal scroll" it looks like at a glance. This
-  exists specifically so `thead th`'s `position:sticky; top:0;` has something
-  correct to stick to. The original version only had `overflow-x:auto` (no
-  `overflow-y` set at all) — which looks harmless, but per the CSS Overflow
-  spec, if one axis is anything other than `visible` and the other is left as
-  `visible`, the browser silently forces the `visible` one to compute as
-  `auto` too. That turned `.table-wrap` into an unintended vertical scroll
-  container, which broke the sticky header — it stuck to the top of
-  `.table-wrap`'s own (never-scrolling, since the *page* was scrolling
-  instead) box rather than the viewport, so it just scrolled away like
-  nothing was sticky at all. Setting `overflow-y: visible` explicitly does
-  **not** fix this — the spec doesn't allow "one visible, one not" as a
+  + `max-height:calc(100vh - Xpx)`, `X` now nav-style- and footer-dependent —
+  see below), not just "the table with horizontal scroll" it looks like at a
+  glance. This exists specifically so `thead th`'s `position:sticky; top:0;`
+  has something correct to stick to. The original version only had
+  `overflow-x:auto` (no `overflow-y` set at all) — which looks harmless, but
+  per the CSS Overflow spec, if one axis is anything other than `visible` and
+  the other is left as `visible`, the browser silently forces the `visible`
+  one to compute as `auto` too. That turned `.table-wrap` into an unintended
+  vertical scroll container, which broke the sticky header — it stuck to the
+  top of `.table-wrap`'s own (never-scrolling, since the *page* was
+  scrolling instead) box rather than the viewport, so it just scrolled away
+  like nothing was sticky at all. Setting `overflow-y: visible` explicitly
+  does **not** fix this — the spec doesn't allow "one visible, one not" as a
   computed combination, so the browser overrides it back to `auto`
   regardless of what's literally written. The actual fix was to stop
   fighting that rule and lean into it: make `.table-wrap` an intentional,
   bounded scroll container for both axes, so sticky has exactly one clear,
-  correctly-scrolling ancestor. **`X` is `295` by default (top-tab nav) and
-  `256` when `#main-layout` has the `.nav-style-sidebar` class** (see the
-  "Top-level nav" note below) — the tab strip sits *above* `.table-wrap` in
-  the tabs layout, adding real height to the stack, while the sidebar sits
-  *beside* it, contributing none. Both numbers were verified empirically
-  (`getBoundingClientRect()` on `#table-wrap` itself, confirming its
-  rendered bottom edge lands exactly at the viewport bottom) while building
-  the nav feature — worth restating since that same check caught the
-  *sidebar* case's inherited value having already silently drifted stale
-  (real value `256`, not the `230` a straight "no extra height, so reuse the
-  old number unchanged" assumption would have kept) from unrelated
-  header/toolbar changes made elsewhere, well before the nav existed. If you
-  ever adjust the header/toolbar/nav layout, recalibrate the same way —
-  verify empirically, e.g. checking `getBoundingClientRect()` on `thead th`
-  before/after a large internal scroll stays roughly constant, or that
-  `#table-wrap`'s own bottom edge lands at the viewport bottom — rather than
-  assuming a nearby value, or an old comment's value, is still correct.
+  correctly-scrolling ancestor. **`X` is `364` by default (top-tab nav),
+  `324` with `.nav-style-sidebar`, `438` with `.bulk-bar-visible`, and `398`
+  with both** (see the "Top-level nav" and "Collections" notes below for the
+  nav-style/bulk-bar dimensions) — the tab strip sits *above* `.table-wrap`
+  in the tabs layout, adding real height to the stack, while the sidebar
+  sits *beside* it, contributing none; the bulk-action bar adds its own
+  ~114px whenever any row is selected, regardless of nav style. **Since the
+  footer became fixed, permanently-visible chrome (`position: fixed; bottom:
+  0;`, see the footer's own note elsewhere in this file), all four numbers
+  above also include its rendered height (62px at normal widths)** — the
+  footer now consumes part of this budget exactly the way the header/nav/
+  toolbar/bulk-bar already did, and at the app's one mobile breakpoint
+  (`max-width: 640px`, where the footer wraps across more lines and can run
+  up to 97px tall) there are four further `.table-wrap` max-height overrides
+  scoped to that media query, using the same four base numbers (`302`/`262`/
+  `376`/`336` — i.e. *without* the desktop footer height already baked in)
+  plus that larger mobile footer height instead. All of these numbers were
+  verified empirically (`getBoundingClientRect()` on `#table-wrap` and
+  `footer`, confirming `#table-wrap`'s rendered bottom edge lands exactly at
+  the *footer's* top edge — no longer literally "the viewport bottom" now
+  that the footer occupies the last stretch of it) — worth restating since
+  that same class of check has already caught real drift twice: once when
+  the *sidebar* nav-style's inherited value had silently gone stale (real
+  value `256`, not the `230` a straight "no extra height, so reuse the old
+  number unchanged" assumption would have kept) from unrelated
+  header/toolbar changes made well before the nav existed, and again when
+  this file's own `295`/`256` figures, quoted in this very note, had drifted
+  from the code's actual `302`/`262` by the time the footer-pinning feature
+  touched this area — a small, real example of exactly the staleness this
+  note already warns about below. If you ever adjust the header/toolbar/nav/
+  footer layout, recalibrate the same way — verify empirically, e.g.
+  checking `getBoundingClientRect()` on `thead th` before/after a large
+  internal scroll stays roughly constant, or that `#table-wrap`'s own bottom
+  edge lands at the fixed footer's top edge — rather than assuming a nearby
+  value, or an old comment's value, is still correct.
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, plus sql.js
