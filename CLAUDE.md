@@ -31,8 +31,14 @@ README.md                Usage docs, schema, and known limitations
 README.de.md             German translation of README.md
 USER_GUIDE.md            Non-technical beginner guide, linked from README.md
 USER_GUIDE.de.md         German translation of USER_GUIDE.md
-docs/user-guide/         Screenshots for USER_GUIDE.md (en/) and
-                          USER_GUIDE.de.md (de/) -- see that section's own
+USER_GUIDE.es.md         Spanish translation of USER_GUIDE.md
+USER_GUIDE.fr.md         French translation of USER_GUIDE.md
+USER_GUIDE.zh-Hans.md    Simplified Chinese translation of USER_GUIDE.md
+USER_GUIDE.zh-Hant.md    Traditional Chinese translation of USER_GUIDE.md,
+                          derived from USER_GUIDE.zh-Hans.md via OpenCC
+docs/user-guide/         Screenshots for each USER_GUIDE.<lang>.md, one
+                          subfolder per language (en/, de/, es/, fr/,
+                          zh-Hans/, zh-Hant/) -- see that section's own
                           note below for how they were captured
 MIGRATION.md             Migrating from Mariner Paperless, linked from README.md
 MIGRATION.de.md          German translation of MIGRATION.md
@@ -40,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (55 scripts) + shared
+tests/                   Playwright regression suite (57 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
