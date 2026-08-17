@@ -6,7 +6,7 @@ la configuración de pruebas? Consulta [README.md](README.md) (en inglés)
 o [README.de.md](README.de.md) (en alemán). Esta guía es deliberadamente
 no técnica.*
 
-*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md)*
+*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Ce guide en français](USER_GUIDE.fr.md)*
 
 ## ¿Qué es Dossiary?
 
