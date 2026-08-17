@@ -581,6 +581,25 @@ async def main():
         user_guide_text_en = await page3.locator('#user-guide-link').inner_text()
         print("Scenario 23 -- User Guide link text back to English:", user_guide_text_en == "User Guide")
 
+        # === Scenario 24: Spanish auto-detects and translates (new page,
+        # es-ES browser locale, no stored preference yet) ===
+        page_es = await browser.new_page()
+        await page_es.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'es-ES' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['es-ES', 'es'] });
+        """)
+        await page_es.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page_es.add_init_script(stub_js)
+        await page_es.goto(f"file://{APP_PATH}")
+        await page_es.wait_for_timeout(200)
+        es_title = await page_es.locator('#empty-state h2').inner_text()
+        print("Scenario 24 -- es-ES browser locale auto-detects Spanish:", es_title == "Ninguna biblioteca abierta")
+        es_lang_value = await page_es.locator('#lang-select').input_value()
+        print("Scenario 24 -- dropdown shows 'es' as the selected value:", es_lang_value == "es")
+        await page_es.close()
+
         print("JS ERRORS:", errors)
         await browser.close()
 
