@@ -69,10 +69,11 @@ Haz clic en **+ Añadir documento**. Esto abre el formulario de captura:
    escaneado, el enlace "¿Necesitas escanear primero un documento en
    papel?" te da indicaciones rápidas según tu sistema operativo.)
 2. Una vez elegido el archivo, haz clic en **Ejecutar OCR**. Esto extrae
-   el texto de la imagen para que luego sea buscable — Dossiary
-   reconoce español, inglés y alemán por defecto (hay más idiomas
-   disponibles). Espera unos segundos; el texto extraído aparece en el
-   cuadro de abajo, editable si el OCR se equivocó en algo:
+   el texto de la imagen para que luego sea buscable — por defecto,
+   Dossiary reconoce inglés y alemán (español y otros idiomas también
+   están disponibles, seleccionándolos en el desplegable). Espera unos
+   segundos; el texto extraído aparece en el cuadro de abajo, editable si
+   el OCR se equivocó en algo:
 
    ![OCR terminado, con el texto reconocido ya rellenado](docs/user-guide/es/04-capture-ocr.png)
 
