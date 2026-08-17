@@ -618,6 +618,40 @@ async def main():
         print("Scenario 25 -- dropdown shows 'fr' as the selected value:", fr_lang_value == "fr")
         await page_fr.close()
 
+        # === Scenario 26: Chinese Simplified auto-detects (zh-CN browser
+        # locale) and a bare "zh" locale also defaults to Simplified ===
+        page_zhs = await browser.new_page()
+        await page_zhs.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'zh-CN' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh'] });
+        """)
+        await page_zhs.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page_zhs.add_init_script(stub_js)
+        await page_zhs.goto(f"file://{APP_PATH}")
+        await page_zhs.wait_for_timeout(200)
+        zhs_title = await page_zhs.locator('#empty-state h2').inner_text()
+        print("Scenario 26 -- zh-CN browser locale auto-detects Chinese Simplified:", zhs_title == "未打开资料库")
+        zhs_lang_value = await page_zhs.locator('#lang-select').input_value()
+        print("Scenario 26 -- dropdown shows 'zh-Hans' as the selected value:", zhs_lang_value == "zh-Hans")
+        await page_zhs.close()
+
+        page_zh_bare = await browser.new_page()
+        await page_zh_bare.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'zh' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['zh'] });
+        """)
+        await page_zh_bare.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page_zh_bare.add_init_script(stub_js)
+        await page_zh_bare.goto(f"file://{APP_PATH}")
+        await page_zh_bare.wait_for_timeout(200)
+        zh_bare_lang_value = await page_zh_bare.locator('#lang-select').input_value()
+        print("Scenario 26 -- bare 'zh' locale (no region) defaults to Simplified:", zh_bare_lang_value == "zh-Hans")
+        await page_zh_bare.close()
+
         print("JS ERRORS:", errors)
         await browser.close()
 
