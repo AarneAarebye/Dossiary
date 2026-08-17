@@ -1,0 +1,36 @@
+name: Attach release assets
+
+# Dossiary's whole premise is "download one file, open it, it works" (see
+# CLAUDE.md's "Repository layout" section) -- but a GitHub Release's
+# auto-generated "Source code (zip)"/"(tar.gz)" links bundle the entire
+# repo (tests/, docs/, everything), which is not what a standard user
+# wants. This workflow attaches just the two files a person actually
+# needs -- dossiary.html and scan_watch.py -- directly to the release as
+# individually downloadable assets, alongside (not instead of) GitHub's
+# own source archives. It does not create releases or write release
+# notes; that stays a manual step (gh release create / the web UI), same
+# as it always has been -- this only runs once a release is published.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  attach-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Upload dossiary.html and scan_watch.py to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            dossiary.html scan_watch.py \
+            --repo "${{ github.repository }}" \
+            --clobber
