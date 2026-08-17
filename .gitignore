@@ -1,6 +1,9 @@
 # OS
 .DS_Store
 
+# Git worktrees used for isolated agent workspaces
+.worktrees/
+
 # Python
 __pycache__/
 *.pyc
