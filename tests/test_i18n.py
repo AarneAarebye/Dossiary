@@ -45,7 +45,7 @@ async def main():
 
         # === Scenario 3: clicking the toggle switches the empty-state title,
         # and the choice persists across reload, overriding navigator.language ===
-        await page2.click('#lang-toggle')
+        await page2.select_option('#lang-select', 'en')
         await page2.wait_for_timeout(100)
         title_after_toggle = await page2.locator('#empty-state h2').inner_text()
         print("Scenario 3 -- toggle switches to English:", title_after_toggle == "No library open")
@@ -58,7 +58,7 @@ async def main():
         # browser's OS locale (page2 is currently in English after Scenario 3's
         # toggle click -- switch back to German and open a seeded document's
         # detail view to check the date format) ===
-        await page2.click('#lang-toggle')
+        await page2.select_option('#lang-select', 'de')
         await page2.wait_for_timeout(100)
         SEED = {"documents": [{
             "id": 1, "title": "Test Doc", "category": "Finance", "document_type": "Invoice",
@@ -86,7 +86,7 @@ async def main():
         await page3.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page3.click("#open-btn")
         await page3.wait_for_timeout(300)
-        await page3.click('#lang-toggle')
+        await page3.select_option('#lang-select', 'de')
         await page3.wait_for_timeout(150)
         nav_all_text = await page3.locator('#nav-item-all .nav-item-label').inner_text()
         add_btn_text = await page3.locator('#add-btn').inner_text()
@@ -164,7 +164,7 @@ async def main():
         # ".modal-section h3" check already lives with.
         recent_heading_before = await page5.locator('#recent-libraries h3').inner_text()
         print("Scenario 7 -- recent-libraries heading starts English:", recent_heading_before == "RECENT LIBRARIES")
-        await page5.click('#lang-toggle')
+        await page5.select_option('#lang-select', 'de')
         await page5.wait_for_timeout(150)
         recent_heading_after = await page5.locator('#recent-libraries h3').inner_text()
         print("Scenario 7 -- recent-libraries heading retranslates live on toggle (not just next load):", recent_heading_after == "ZULETZT GEÖFFNETE BIBLIOTHEKEN")
@@ -384,7 +384,7 @@ async def main():
         print("Scenario 18 -- open-btn's click handler still wired (library opens) despite blocked localStorage:", opened_ok)
         # Toggling language with localStorage blocked must not throw either -- saveLang()
         # fails silently, but the in-memory language still switches for this session.
-        await page6.click('#lang-toggle')
+        await page6.select_option('#lang-select', 'en')
         await page6.wait_for_timeout(150)
         nav_all_text_toggled = await page6.locator('#nav-item-all .nav-item-label').inner_text()
         print("Scenario 18 -- toggling language still works in-memory despite blocked localStorage (no throw):", nav_all_text_toggled == "All Documents")
@@ -395,7 +395,7 @@ async def main():
         # setLang()'s empty-state branch used to call only renderRecentLibraries(), leaving
         # #sub-label (visible on that exact same screen) stuck in whatever language it was
         # last set in. Reuses page5's DOM state exactly as Scenario 7 left it -- German,
-        # empty-state screen, right after that scenario's own #lang-toggle click -- so this
+        # empty-state screen, right after that scenario's own #lang-select change -- so this
         # assertion needs no fresh interaction of its own to be meaningful ===
         sub_label_after_toggle = await page5.locator('#sub-label').inner_text()
         print("Scenario 19 -- empty-state sub-label retranslates live on toggle (not just the recent-libraries list):", sub_label_after_toggle == "Keine Bibliothek geöffnet")
@@ -443,42 +443,45 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
-        # === Scenario 21: #lang-toggle is inert while a modal is open -- a mouse click
-        # is already blocked by the modal's own backdrop, but keyboard Tab-through can
-        # still reach and activate the button (Enter/Space fires a real click event the
-        # same as a mouse click would), and re-rendering an open modal in place isn't
-        # safe (would discard in-progress capture/edit work). Confirm the click while a
-        # modal's open is a genuine no-op -- no language change, modal content
-        # untouched -- and that the toggle isn't permanently broken, only inert while a
-        # modal happens to be open (reuses page3, still German, no modal open after
-        # Scenario 20's own cleanup) ===
+        # === Scenario 21: #lang-select is inert while a modal is open -- a mouse click
+        # on the old button was already blocked by the modal's own backdrop, but keyboard
+        # Tab-through could still reach and activate it (Enter/Space fires a real click
+        # event the same as a mouse click would), and a native <select> is reachable and
+        # changeable the same way, with no backdrop able to intercept it at all. Re-
+        # rendering an open modal in place isn't safe (would discard in-progress
+        # capture/edit work). Confirm the change while a modal's open is a genuine no-op
+        # -- no language change, modal content untouched, dropdown value reverted -- and
+        # that the dropdown isn't permanently broken, only inert while a modal happens to
+        # be open (reuses page3, still German, no modal open after Scenario 20's own
+        # cleanup) ===
         await page3.click('#add-btn')
         await page3.wait_for_timeout(200)
-        toggle_label_before_guard = await page3.locator('#lang-toggle').inner_text()
+        lang_value_before_guard = await page3.locator('#lang-select').input_value()
         modal_heading_before_guard = await page3.locator('.modal h2').inner_text()
-        # A plain click() here would just time out -- the backdrop genuinely intercepts
-        # pointer events for a real mouse click (Playwright confirms the same thing a
-        # human mouse user would hit), which is exactly the existing protection this
-        # fix doesn't need to touch. force=True skips that hit-testing and dispatches
-        # the click event directly on the button, the same way a keyboard Enter/Space
-        # activation would (no hit-testing involved either) -- this is the actual gap
-        # the click handler's own guard exists to close.
-        await page3.click('#lang-toggle', force=True)
+        # A plain select_option() call is itself already blocked by nothing -- unlike
+        # the old button, a native <select> has no backdrop that can intercept a pointer
+        # event on it, so this exercises the "activated while a modal is open" case
+        # directly via force=True (skips Playwright's own actionability checks), the
+        # same case the button's own guard was built for. The change handler's guard
+        # (dossiary.html) must reset the select's value back to currentLang, not just
+        # skip acting on it, or the dropdown would visually show a language the app
+        # never actually switched to.
+        await page3.select_option('#lang-select', 'en', force=True)
         await page3.wait_for_timeout(150)
-        toggle_label_after_guard = await page3.locator('#lang-toggle').inner_text()
+        lang_value_after_guard = await page3.locator('#lang-select').input_value()
         modal_heading_after_guard = await page3.locator('.modal h2').inner_text()
-        print("Scenario 21 -- lang-toggle click while a modal is open is a no-op (toggle label unchanged):", toggle_label_before_guard == toggle_label_after_guard == "EN")
+        print("Scenario 21 -- lang-select change while a modal is open is a no-op (value reverted):", lang_value_before_guard == lang_value_after_guard == "de")
         print("Scenario 21 -- the open modal's own language is untouched by the blocked toggle:", modal_heading_before_guard == modal_heading_after_guard == "Dokument hinzufügen")
         await page3.click('#cancel-doc-btn')
         await page3.wait_for_timeout(150)
-        # Once the modal is closed, the toggle works normally again -- confirming this
-        # is a scoped-to-open-modal guard, not a general regression in the button.
-        await page3.click('#lang-toggle')
+        # Once the modal is closed, the dropdown works normally again -- confirming
+        # this is a scoped-to-open-modal guard, not a general regression in the control.
+        await page3.select_option('#lang-select', 'en')
         await page3.wait_for_timeout(150)
-        toggle_label_after_close = await page3.locator('#lang-toggle').inner_text()
-        print("Scenario 21 -- lang-toggle works again once the modal is closed:", toggle_label_after_close == "DE")
+        lang_value_after_close = await page3.locator('#lang-select').input_value()
+        print("Scenario 21 -- lang-select works again once the modal is closed:", lang_value_after_close == "en")
         # Switch back to German so the reused-page3 scenarios below see what they expect.
-        await page3.click('#lang-toggle')
+        await page3.select_option('#lang-select', 'de')
         await page3.wait_for_timeout(150)
 
         # === Scenario 22: the remaining minor-severity gaps from the final review --
@@ -570,7 +573,7 @@ async def main():
         user_guide_text_de = await page3.locator('#user-guide-link').inner_text()
         print("Scenario 23 -- User Guide link text translated:", user_guide_text_de == "Benutzerhandbuch")
 
-        await page3.click('#lang-toggle')
+        await page3.select_option('#lang-select', 'en')
         await page3.wait_for_timeout(150)
         user_guide_href_en = await page3.locator('#user-guide-link').get_attribute('href')
         print("Scenario 23 -- User Guide link updates to the English guide after toggling to English:",

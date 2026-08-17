@@ -417,8 +417,8 @@
   }
   footer a{ color: var(--text-dim); text-decoration: underline; text-underline-offset: 2px; }
   footer a:hover{ color: var(--phosphor); }
-  #lang-toggle{ font-family:var(--font-mono); font-size:11px; padding:2px 6px; border:1px solid var(--line); border-radius:var(--radius); background:transparent; color:var(--text-dim); cursor:pointer; }
-  #lang-toggle:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  #lang-select{ font-family:var(--font-mono); font-size:11px; padding:2px 6px; border:1px solid var(--line); border-radius:var(--radius); background:transparent; color:var(--text-dim); cursor:pointer; color-scheme:dark; }
+  #lang-select:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
   @media (max-width:640px){
     header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
@@ -621,7 +621,7 @@
 
   <footer>
     © 2026 Aarne Aarebye · <span id="app-version-label"></span> ·
-    <button type="button" id="lang-toggle" data-i18n-title="langToggleTitle"></button> ·
+    <select id="lang-select" data-i18n-title="langToggleTitle"></select> ·
     MIT License ·
     <a href="https://github.com/AarneAarebye/Dossiary" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/Dossiary</a> ·
     <a href="#" id="libraries-link" data-i18n="footerLibrariesLink">Libraries</a> ·
@@ -652,6 +652,14 @@
   // in localStorage, not the per-library `settings` table -- the empty-state
   // "Open library folder" screen has to translate before any library/database
   // exists, so a per-library setting can't be the only mechanism.
+  const SUPPORTED_LANGS = ['en', 'de']; // grows by one entry per new-language task
+  const NATIVE_LANG_NAMES = { en: 'English', de: 'Deutsch' }; // each language's own name for itself -- shown in the dropdown regardless of currentLang, so these are never run through t()
+  // Auto-detect rules, checked in order, first match wins. Each new
+  // SUPPORTED_LANGS entry's own task adds one entry here.
+  const LANG_AUTODETECT = [
+    { code: 'de', test: l => l.startsWith('de') },
+  ];
+  const DATE_LOCALE = { en: 'en-US', de: 'de-DE' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
       commonCancel: 'Cancel', commonSave: 'Save', commonDone: 'Done', commonDelete: 'Delete',
@@ -1002,9 +1010,12 @@
   function loadLang(){
     let stored = null;
     try{ stored = localStorage.getItem('dossiary_lang'); }catch(e){ stored = null; }
-    if(stored === 'en' || stored === 'de') return stored;
-    const langs = navigator.languages || [navigator.language || ''];
-    return langs.some(l => l.toLowerCase().startsWith('de')) ? 'de' : 'en';
+    if(SUPPORTED_LANGS.includes(stored)) return stored;
+    const langs = (navigator.languages || [navigator.language || '']).map(l => l.toLowerCase());
+    for(const {code, test} of LANG_AUTODETECT){
+      if(langs.some(test)) return code;
+    }
+    return 'en';
   }
   function saveLang(lang){ try{ localStorage.setItem('dossiary_lang', lang); }catch(e){ /* in-memory only for this session */ } }
 
@@ -1681,21 +1692,30 @@
   el('init-btn').addEventListener('click', initNewLibrary);
   el('libraries-link').addEventListener('click', (e) => { e.preventDefault(); openLibrariesModal(); });
   el('app-version-label').textContent = `v${APP_VERSION}`;
-  el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE'; // shows the language you'd SWITCH TO
-  el('lang-toggle').addEventListener('click', () => {
-    // A mouse click on this button is already blocked by a modal's own backdrop while
-    // one is open, but keyboard Tab-through can still reach and activate it (Enter/Space
-    // fires a real click event same as a mouse click would). Re-rendering the open modal
-    // in place to retranslate it isn't safe in general -- capture/edit would lose
-    // whatever's already been typed into the form, the exact same in-progress-work
-    // hazard applyDynamicFieldsForType()'s own note documents for switching document
-    // types mid-edit -- so the fix here is to make the toggle inert while any modal is
-    // open, matching what a mouse user already experiences via the backdrop, rather than
-    // attempting a safe-everywhere re-render. modalRoot.innerHTML is '' exactly when no
-    // modal is open (see closeModal()); this reads the same signal.
-    if(modalRoot.innerHTML !== '') return;
-    setLang(currentLang === 'de' ? 'en' : 'de');
-    el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE';
+  function populateLangSelect(){
+    const sel = el('lang-select');
+    sel.innerHTML = SUPPORTED_LANGS.map(l => `<option value="${l}">${NATIVE_LANG_NAMES[l]}</option>`).join('');
+    sel.value = currentLang;
+  }
+  populateLangSelect();
+  el('lang-select').addEventListener('change', (e) => {
+    // A mouse click on the old button was already blocked by a modal's own backdrop
+    // while one was open, but keyboard Tab-through could still reach and activate it.
+    // A native <select> is a stricter case than the old button: picking an option
+    // changes the control's own displayed value immediately, keyboard or mouse, with
+    // no backdrop able to intercept that the way it blocks a button click -- so this
+    // guard must actively RESET the select's value, not just skip acting on it, or
+    // the dropdown would visually show a language the app never actually switched to.
+    // Re-rendering the open modal in place instead isn't safe in general -- capture/edit
+    // would lose whatever's already been typed into the form, the exact same in-progress-
+    // work hazard applyDynamicFieldsForType()'s own note documents for switching document
+    // types mid-edit. modalRoot.innerHTML is '' exactly when no modal is open (see
+    // closeModal()); this reads the same signal the old button's guard used.
+    if(modalRoot.innerHTML !== ''){
+      e.target.value = currentLang;
+      return;
+    }
+    setLang(e.target.value);
   });
   applyI18n();
   updateUserGuideLink();
@@ -2779,7 +2799,7 @@
     if(!iso) return '—';
     const d = new Date(iso);
     if(isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString(currentLang === 'de' ? 'de-DE' : 'en-US', { year:'numeric', month:'short', day:'2-digit' });
+    return d.toLocaleDateString(DATE_LOCALE[currentLang] || 'en-US', { year:'numeric', month:'short', day:'2-digit' });
   }
   function currentReportDateRange(){
     return { dateFrom: reportDateFrom ? reportDateFrom.value : '', dateTo: reportDateTo ? reportDateTo.value : '' };
