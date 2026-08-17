@@ -652,6 +652,25 @@ async def main():
         print("Scenario 26 -- bare 'zh' locale (no region) defaults to Simplified:", zh_bare_lang_value == "zh-Hans")
         await page_zh_bare.close()
 
+        # === Scenario 27: Chinese Traditional auto-detects (zh-TW browser
+        # locale) -- and, since zh-Hans's own auto-detect rule matches bare
+        # "zh" (Scenario 26), confirm zh-TW correctly picks Traditional
+        # instead, proving the two rules don't shadow each other ===
+        page_zht = await browser.new_page()
+        await page_zht.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'zh-TW' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['zh-TW', 'zh'] });
+        """)
+        await page_zht.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page_zht.add_init_script(stub_js)
+        await page_zht.goto(f"file://{APP_PATH}")
+        await page_zht.wait_for_timeout(200)
+        zht_lang_value = await page_zht.locator('#lang-select').input_value()
+        print("Scenario 27 -- zh-TW browser locale auto-detects Chinese Traditional (not Simplified):", zht_lang_value == "zh-Hant")
+        await page_zht.close()
+
         print("JS ERRORS:", errors)
         await browser.close()
 
