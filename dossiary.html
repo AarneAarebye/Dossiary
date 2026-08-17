@@ -624,7 +624,8 @@
     <button type="button" id="lang-toggle" data-i18n-title="langToggleTitle"></button> ·
     MIT License ·
     <a href="https://github.com/AarneAarebye/Dossiary" target="_blank" rel="noopener noreferrer">github.com/AarneAarebye/Dossiary</a> ·
-    <a href="#" id="libraries-link" data-i18n="footerLibrariesLink">Libraries</a>
+    <a href="#" id="libraries-link" data-i18n="footerLibrariesLink">Libraries</a> ·
+    <a href="https://github.com/AarneAarebye/Dossiary/blob/main/USER_GUIDE.md" id="user-guide-link" data-i18n="footerUserGuideLink" target="_blank" rel="noopener noreferrer">User Guide</a>
   </footer>
 </div>
 
@@ -657,6 +658,7 @@
       commonAdd: 'Add', commonClear: 'Clear', commonRemove: 'Remove', commonNone: '— None —',
       commonDocumentFallback: 'Document #{id}', commonYes: 'Yes', commonNo: 'No',
       langToggleTitle: 'Switch language', footerLibrariesLink: 'Libraries',
+      footerUserGuideLink: 'User Guide',
       emptyTitle: 'No library open',
       navAllDocuments: 'All Documents', navInbox: 'Inbox', navWasteBin: 'Waste bin', navReports: 'Reports',
       navCollections: 'Collections', navSaveSmartCollection: '☆ Save as Smart Collection',
@@ -815,6 +817,7 @@
       commonAdd: 'Hinzufügen', commonClear: 'Leeren', commonRemove: 'Entfernen', commonNone: '— Keine —',
       commonDocumentFallback: 'Dokument Nr. {id}', commonYes: 'Ja', commonNo: 'Nein',
       langToggleTitle: 'Sprache wechseln', footerLibrariesLink: 'Bibliotheken',
+      footerUserGuideLink: 'Benutzerhandbuch',
       emptyTitle: 'Keine Bibliothek geöffnet',
       navAllDocuments: 'Alle Dokumente', navInbox: 'Posteingang', navWasteBin: 'Papierkorb', navReports: 'Berichte',
       navCollections: 'Sammlungen', navSaveSmartCollection: '☆ Als intelligente Sammlung speichern',
@@ -1053,7 +1056,24 @@
     // at each of its other call sites), so the empty-state text is set explicitly here
     // instead, only in the branch where there's genuinely no library open.
     if(!rootDirHandle){ subLabel.textContent = t('emptyTitle'); renderRecentLibraries(); }
+    updateUserGuideLink();
   }
+
+  // The footer's User Guide link is a real external link (GitHub's rendered
+  // blob view, not a raw-file link -- raw markdown wouldn't render the
+  // screenshots or formatting), deliberately not something embedded in the
+  // page: dossiary.html stays a single file with no bundled docs, so this
+  // is a shortcut out to the guide's own repo file, not a copy of its
+  // content. Points at USER_GUIDE.<lang>.md for any language that actually
+  // has a translated guide; languages without one fall back to the English
+  // file rather than a 404. This mirrors t()'s own English-first fallback
+  // chain, just for a URL instead of a string.
+  const USER_GUIDE_LANGS = ['de']; // languages with their own USER_GUIDE.<lang>.md; English has no suffix
+  function userGuideUrl(){
+    const suffix = USER_GUIDE_LANGS.includes(currentLang) ? `.${currentLang}` : '';
+    return `https://github.com/AarneAarebye/Dossiary/blob/main/USER_GUIDE${suffix}.md`;
+  }
+  function updateUserGuideLink(){ el('user-guide-link').href = userGuideUrl(); }
 
   const SCHEMA = `
     CREATE TABLE IF NOT EXISTS documents (
@@ -1678,6 +1698,7 @@
     el('lang-toggle').textContent = currentLang === 'de' ? 'EN' : 'DE';
   });
   applyI18n();
+  updateUserGuideLink();
   renderRecentLibraries();
 
   async function openLibrary(){

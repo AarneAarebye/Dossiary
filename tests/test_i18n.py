@@ -559,6 +559,25 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
+        # === Scenario 23: footer "User Guide" link opens the right language's guide,
+        # in a new tab, and updates live when the language is toggled (reuses page3,
+        # currently German from Scenario 22's own setup) ===
+        user_guide_target = await page3.locator('#user-guide-link').get_attribute('target')
+        print("Scenario 23 -- User Guide link opens in a new tab:", user_guide_target == "_blank")
+        user_guide_href_de = await page3.locator('#user-guide-link').get_attribute('href')
+        print("Scenario 23 -- User Guide link points at the German guide while UI is German:",
+              user_guide_href_de.endswith('/USER_GUIDE.de.md'))
+        user_guide_text_de = await page3.locator('#user-guide-link').inner_text()
+        print("Scenario 23 -- User Guide link text translated:", user_guide_text_de == "Benutzerhandbuch")
+
+        await page3.click('#lang-toggle')
+        await page3.wait_for_timeout(150)
+        user_guide_href_en = await page3.locator('#user-guide-link').get_attribute('href')
+        print("Scenario 23 -- User Guide link updates to the English guide after toggling to English:",
+              user_guide_href_en.endswith('/USER_GUIDE.md') and not user_guide_href_en.endswith('/USER_GUIDE.de.md'))
+        user_guide_text_en = await page3.locator('#user-guide-link').inner_text()
+        print("Scenario 23 -- User Guide link text back to English:", user_guide_text_en == "User Guide")
+
         print("JS ERRORS:", errors)
         await browser.close()
 
