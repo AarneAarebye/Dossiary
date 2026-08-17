@@ -198,30 +198,82 @@ version number — only by the schema itself matching).
   0;`, see the footer's own note elsewhere in this file), all four numbers
   above also include its rendered height (62px at normal widths)** — the
   footer now consumes part of this budget exactly the way the header/nav/
-  toolbar/bulk-bar already did, and at the app's one mobile breakpoint
-  (`max-width: 640px`, where the footer wraps across more lines and can run
-  up to 97px tall) there are four further `.table-wrap` max-height overrides
-  scoped to that media query, using the same four base numbers (`302`/`262`/
-  `376`/`336` — i.e. *without* the desktop footer height already baked in)
-  plus that larger mobile footer height instead. All of these numbers were
-  verified empirically (`getBoundingClientRect()` on `#table-wrap` and
-  `footer`, confirming `#table-wrap`'s rendered bottom edge lands exactly at
-  the *footer's* top edge — no longer literally "the viewport bottom" now
-  that the footer occupies the last stretch of it) — worth restating since
-  that same class of check has already caught real drift twice: once when
-  the *sidebar* nav-style's inherited value had silently gone stale (real
-  value `256`, not the `230` a straight "no extra height, so reuse the old
-  number unchanged" assumption would have kept) from unrelated
-  header/toolbar changes made well before the nav existed, and again when
-  this file's own `295`/`256` figures, quoted in this very note, had drifted
-  from the code's actual `302`/`262` by the time the footer-pinning feature
-  touched this area — a small, real example of exactly the staleness this
-  note already warns about below. If you ever adjust the header/toolbar/nav/
-  footer layout, recalibrate the same way — verify empirically, e.g.
-  checking `getBoundingClientRect()` on `thead th` before/after a large
-  internal scroll stays roughly constant, or that `#table-wrap`'s own bottom
-  edge lands at the fixed footer's top edge — rather than assuming a nearby
-  value, or an old comment's value, is still correct.
+  toolbar/bulk-bar already did. **At the app's one mobile breakpoint
+  (`max-width: 640px`) there are four further `.table-wrap` max-height
+  overrides scoped to that media query, and their constants (`718`/`742`/
+  `820`/`844`) are NOT simply the four desktop base numbers plus a mobile
+  footer-height delta** — an earlier attempt at this calibration made
+  exactly that mistake (reusing `302`/`262`/`376`/`336` plus a ~97px footer
+  delta, giving `399`/`359`/`473`/`433`) and it was wrong, because it never
+  re-measured how much taller the header/toolbar/nav chrome itself renders
+  at mobile widths — `.toolbar` wraps across many more rows at narrow
+  widths than it ever does on desktop, so the real combined chrome height
+  above `.table-wrap` is far taller at mobile widths, not the same as the
+  desktop chrome height. The correct `718`/`742`/`820`/`844` were measured
+  as the actual combined "everything above `.table-wrap`, plus the mobile
+  footer's own height" total, directly via `getBoundingClientRect()`, not
+  derived from the desktop numbers at all. These four also use the
+  **worst-case (320px-width) measurement across the whole 320–640px
+  breakpoint range** — both the chrome height and the footer's own height
+  shrink as the viewport widens within that range (less toolbar wrapping,
+  a shorter-wrapping footer), so a single constant picked from the
+  narrowest, tallest-chrome end of the range means a deliberate, growing
+  safety-margin gap (not overlap) toward the wider end of it — the same
+  "accept extra gap, never accept overlap" principle already established
+  above for the nav-style/bulk-bar desktop numbers.
+  **One further, genuinely unavoidable wrinkle, found while verifying this
+  fix**: `.table-wrap` has its own mobile `padding-bottom` (`32px`), and
+  CSS padding can't be compressed below its declared value by `max-height`
+  — a box whose `max-height` computes smaller than its own padding sum
+  still renders at (at least) that padding sum, never the smaller
+  `max-height` value (confirmed directly: a minimal `overflow:auto;
+  padding-bottom:32px; max-height:6px` box renders at `32px`, not `6px`).
+  This mattered concretely for the `.bulk-bar-visible` mobile variants:
+  at in-between mobile widths (e.g. 375px) where there's actually a few
+  pixels of real slack once you use the single 320px-worst-case constant,
+  that slack could still be smaller than the 32px padding floor, producing
+  a few pixels of real, measured overlap purely from the padding, not from
+  `max-height` being wrong. The fix: `#main-layout.bulk-bar-visible
+  .table-wrap` and `#main-layout.nav-style-sidebar.bulk-bar-visible
+  .table-wrap`'s mobile rules also set `padding-bottom: 0` (overriding the
+  general mobile `32px`), removing that floor so the box can actually
+  shrink all the way down to whatever `max-height` says. **This does not
+  fully eliminate overlap at the single narrowest, shortest corner
+  (320px width, ~800px-or-shorter viewport height, bulk-action bar
+  visible)** — at that exact combination, the header+toolbar+nav+bulk-bar
+  chrome *by itself*, before `.table-wrap` renders anything at all, is
+  already taller (measured `723px` tabs / `747px` sidebar at 320px width)
+  than the room left once the fixed footer (`97px` at that width) reserves
+  its own space in a viewport that short — `.table-wrap`'s own top
+  position is set entirely by everything rendered above it, so no
+  `.table-wrap` CSS (padding, `max-height`, or otherwise) can move that
+  starting point. This is a real, structural finding distinct from the
+  calibration-constant bug this whole note is about — fixing it would mean
+  shrinking the mobile chrome/bulk-bar itself, or making the footer
+  non-fixed at extremely short viewports, neither of which is in scope for
+  `.table-wrap`'s own calibration; flagged here rather than silently
+  worked around.
+  All of these numbers were verified empirically
+  (`getBoundingClientRect()` on `#table-wrap` and `footer`, confirming
+  `#table-wrap`'s rendered bottom edge lands exactly at the *footer's* top
+  edge in every case where there's actually enough room for it to) — worth
+  restating since that same class of check has already caught real drift
+  more than once: the *sidebar* nav-style's inherited value silently going
+  stale (real value `256`, not the `230` a straight "no extra height, so
+  reuse the old number unchanged" assumption would have kept) from
+  unrelated header/toolbar changes made well before the nav existed; this
+  file's own `295`/`256` figures, quoted in an earlier version of this
+  note, having drifted from the code's actual `302`/`262` by the time the
+  footer-pinning feature touched this area; and the mobile constants
+  described just above being derived from the wrong base entirely on the
+  first attempt at this same feature, only caught by re-measuring rather
+  than trusting the earlier arithmetic. If you ever adjust the
+  header/toolbar/nav/footer layout, recalibrate the same way — verify
+  empirically, e.g. checking `getBoundingClientRect()` on `thead th`
+  before/after a large internal scroll stays roughly constant, or that
+  `#table-wrap`'s own bottom edge lands at the fixed footer's top edge —
+  rather than assuming a nearby value, or an old comment's value, is still
+  correct.
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, plus sql.js
