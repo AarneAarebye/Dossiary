@@ -28,7 +28,22 @@ for m in lang_block_re.finditer(strings_body):
 print(f"Found {len(lang_keys)} language block(s): {sorted(lang_keys)}")
 for lang_code, keys in sorted(lang_keys.items()):
     print(f"  STRINGS.{lang_code} has {len(keys)} keys")
-assert 'en' in lang_keys and 'de' in lang_keys, "Expected at least 'en' and 'de' language blocks"
+
+# SUPPORTED_LANGS (the dropdown's own source of truth) must match STRINGS'
+# block set exactly -- a language added to the dropdown without a matching
+# STRINGS block would otherwise pass this check silently, then crash the
+# entire app for anyone auto-detected or manually switched to it: t() does
+# STRINGS[currentLang][key], which throws on `undefined`, and t() is reached
+# from applyI18n() at module-init time, so an uncaught throw there kills the
+# whole top-level IIFE.
+supported_langs_match = re.search(r"const SUPPORTED_LANGS = \[(.*?)\];", html)
+assert supported_langs_match, "Could not locate SUPPORTED_LANGS in dossiary.html"
+supported_langs = re.findall(r"'([\w-]+)'", supported_langs_match.group(1))
+print(f"SUPPORTED_LANGS: {supported_langs}")
+assert set(supported_langs) == set(lang_keys.keys()), (
+    f"SUPPORTED_LANGS and STRINGS' language blocks must match exactly -- "
+    f"SUPPORTED_LANGS: {sorted(set(supported_langs))}, STRINGS blocks: {sorted(set(lang_keys.keys()))}"
+)
 
 # Every referenced key -- from data-i18n*="key" attributes and t('key'...)/t("key"...) calls.
 attr_keys = set(re.findall(r'data-i18n(?:-placeholder|-title|-aria-label)?="([a-zA-Z0-9]+)"', html))

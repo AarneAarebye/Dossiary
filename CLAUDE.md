@@ -1628,13 +1628,16 @@ version number — only by the schema itself matching).
   reference, not a real structured-clone round-trip) since a real
   browser's IndexedDB would silently strip our fake `FileSystemDirectoryHandle`
   class down to a plain data object, unlike what happens to a *real* handle.
-- **UI language support (English/German)** is a flat two-language dictionary
-  (`STRINGS.en` / `STRINGS.de`, ~260 keys each), a lookup helper (`t(key,
+- **UI language support (started as English/German, later generalized to
+  six languages — English, German, Spanish, French, Chinese Simplified,
+  Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
+  `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
+  `STRINGS['zh-Hant']`, 272 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
-  pulling in a real i18n framework, and two hardcoded languages don't need
-  one. `t()` falls back `STRINGS[currentLang][key] ?? STRINGS.en[key] ??
+  pulling in a real i18n framework, and a handful of hardcoded languages
+  don't need one. `t()` falls back `STRINGS[currentLang][key] ?? STRINGS.en[key] ??
   key` — an unknown/missing key renders as its own literal key string
   rather than throwing or going blank, so a typo'd or forgotten key is
   loud and visible in the UI instead of silently disappearing. `params` is
@@ -1818,12 +1821,15 @@ version number — only by the schema itself matching).
   kind of check entirely: a plain Python script (no Playwright, no
   browser) that greps `dossiary.html` for every `data-i18n*` attribute
   value and every `t('key')`/`t("key")` call, and asserts each referenced
-  key exists in *both* `STRINGS.en` and `STRINGS.de` — a static safety net
-  against the one mistake `test_i18n.py`'s scenario-by-scenario clicking
-  can't exhaustively rule out (a key added to English but never given a
-  German translation, or vice versa, anywhere in this ~270-key,
-  hand-maintained dictionary that no single Playwright run touches every
-  corner of).
+  key exists in *every* supported language's own `STRINGS` block (looped
+  over `SUPPORTED_LANGS` itself, not a hardcoded language pair — see the
+  "Generalized from two languages to six" note just below), and that each
+  language's key set matches `STRINGS.en`'s exactly, not just "referenced
+  key present" — a static safety net against the one mistake
+  `test_i18n.py`'s scenario-by-scenario clicking can't exhaustively rule
+  out (a key added to English but never given a translation in some other
+  language, or vice versa, anywhere in this ~270-key, hand-maintained
+  dictionary that no single Playwright run touches every corner of).
   Its own key-extraction regex needed to be **more careful than a naive
   "key starts a line" pattern**: `STRINGS.en`/`STRINGS.de` pack several
   `key: 'value',` pairs onto one source line throughout (matching this
@@ -1909,22 +1915,32 @@ version number — only by the schema itself matching).
   read globally — the same "best guess, dismissible by the existing
   manual-override-wins rule" spirit as every other auto-detect default in
   this app, e.g. the Date/Currency `.field-guess` pattern noted elsewhere
-  in this file). **Order inside `LANG_AUTODETECT` is load-bearing here,
-  not cosmetic**: `zh-Hant`'s rule is listed *before* `zh-Hans`'s,
-  deliberately, because `loadLang()` evaluates `langs.some(test)` per rule
-  against the *whole* `navigator.languages` array, not per language across
-  every rule in turn — so with a realistic browser fallback chain like
-  `navigator.languages = ['zh-TW', 'zh']`, `zh-Hans`'s own permissive
-  bare-`zh` catch-all would incorrectly match against the array's second
-  element before `zh-Hant`'s more specific `zh-TW` rule was ever reached,
-  had `zh-Hans` been checked first. Listing `zh-Hant` first fixes that
-  without weakening the bare-`zh` fallback: a locale array with nothing
-  `zh-Hant`-shaped in it (`['zh-CN']`, or plain `['zh']`) still correctly
-  falls through to `zh-Hans`, since `zh-Hant`'s more specific rule simply
-  never matches those. This was verified two ways, not just asserted: a
-  direct code trace during review, and `tests/test_i18n.py`'s own Scenario
-  27, which sets `navigator.languages = ['zh-TW', 'zh']` and confirms the
-  dropdown lands on Chinese Traditional, not Simplified.
+  in this file). **`loadLang()` is locale-major, not rule-major**: it
+  iterates the user's own `navigator.languages` array in order (outermost
+  loop), and for each locale string in turn checks it against every
+  `LANG_AUTODETECT` rule (innermost loop), returning on the first rule
+  that matches — so the user's own preference order decides ties between
+  languages, and no `LANG_AUTODETECT` rule can shadow another rule against
+  a *different* locale string earlier in the user's own list. (An earlier
+  version of `loadLang()` was rule-major instead — checking each rule
+  against the *whole* array before moving to the next rule — which broke
+  in two ways: `navigator.languages = ['zh-TW', 'zh']` could pick
+  `zh-Hans` over `zh-Hant` depending on which rule happened to be listed
+  first, and, worse, a browser reporting `['en-US', 'zh-CN', 'zh']` — an
+  ordinary machine with Chinese added as a secondary input language —
+  auto-detected Chinese over the user's own first-listed English, since
+  there was no explicit `en` rule participating in the same matching loop
+  at all, only an implicit final fallback. Both were real, fixed
+  regressions, not hypothetical.) `zh-Hant`'s rule is still listed before
+  `zh-Hans`'s purely for readability now — the two rules test disjoint
+  locale strings (a `TW`/`HK`/`MO` region or explicit `Hant` script vs.
+  bare `zh`/`CN`/`SG`/`MY`/`Hans`), so within a single locale string
+  there's no shadowing risk left to order around either way. This was
+  verified two ways, not just asserted: a direct code trace during
+  review, and `tests/test_i18n.py`'s own Scenario 27 (`navigator.languages
+  = ['zh-TW', 'zh']` still correctly lands on Chinese Traditional, not
+  Simplified) plus the new Scenario 28 (`['en-US', 'zh-CN', 'zh']`
+  correctly lands on English, not Chinese).
   **`STRINGS['zh-Hant']` is derived programmatically from the finished
   `STRINGS['zh-Hans']` block, not translated independently a second time**
   — using `opencc-python-reimplemented`'s `s2t` (Simplified→Traditional)
@@ -2159,24 +2175,43 @@ detail view; and the button being entirely absent — not just hidden — for
 a deleted document in the Waste bin), UI language support
 (`test_i18n.py` — default English with no locale signal; auto-detecting
 German from `navigator.language`/`navigator.languages` on first load with
-no stored preference yet; a manual toggle click overriding that and
-persisting across a reload even though the browser's own locale still
-says German; date formatting following the UI language choice rather than
-OS locale; translated content across the nav, toolbar, stats bar, table
+no stored preference yet; selecting a language from the `<select
+id="lang-select">` dropdown overriding that and persisting across a
+reload even though the browser's own locale still says German; date
+formatting following the UI language choice rather than OS locale;
+translated content across the nav, toolbar, stats bar, table
 headers/rows, detail modal, capture and edit forms (including the shared
 inline add-field validation message and reused OCR strings), Field
 Settings, Manage Collections, Reports, the Libraries/licenses modal, and
 the drag-and-drop overlay; the recent-libraries list and empty-state
-screen re-translating live on toggle, not just on next load; and two
+screen re-translating live on toggle, not just on next load; two
 regressions caught by inspecting raw `innerHTML` rather than
 `inner_text()` alone — a duplicated "Important:"/"Wichtig:" label and a
-nested `<b><b>...</b></b>` from double-wrapping a substituted name), and a
-static i18n key-coverage check (`test_i18n_coverage.py` — no Playwright,
+nested `<b><b>...</b></b>` from double-wrapping a substituted name); and,
+once the app grew from two supported languages to six, auto-detection for
+each of the other four (Scenarios 24-27 — Spanish from an `es-ES` locale,
+French from `fr-FR`, Chinese Simplified from `zh-CN` and from a bare `zh`
+locale with no region, and Chinese Traditional from `zh-TW`, specifically
+confirmed to win over Chinese Simplified's own bare-`zh` catch-all rather
+than being shadowed by it) plus a dedicated regression scenario (28) for
+the case that motivated making `loadLang()` locale-major instead of
+rule-major — `navigator.languages = ['en-US', 'zh-CN', 'zh']` (English
+first, Chinese as a secondary input language) correctly resolving to
+English rather than Chinese — which doubles as a check of `#lang-select`'s
+full option list, not just its currently-selected value: exactly the six
+expected language codes, with native names (e.g. `简体中文`) rendering
+correctly. Also a static i18n key-coverage check (`test_i18n_coverage.py` — no Playwright,
 just a grep-based Python script confirming every `data-i18n`/
 `data-i18n-placeholder`/`data-i18n-title`/`data-i18n-aria-label`
 attribute value and every `t('key')` call argument in `dossiary.html`
-exists in both `STRINGS.en` and `STRINGS.de`; verified during development
-to actually catch a real regression, not just trivially pass, by
+exists in every one of the six languages' own `STRINGS` block — looped
+over `SUPPORTED_LANGS` itself (parsed straight out of `dossiary.html`,
+not hardcoded), so a language added to the dropdown without a matching
+`STRINGS` block fails this check loudly instead of silently crashing the
+app for whoever gets auto-detected or manually switched into it — and
+that each language's key set matches `STRINGS.en`'s exactly, not just
+"referenced key present"; verified during development to actually catch a
+real regression, not just trivially pass, by
 temporarily renaming one `STRINGS.de` key and confirming the script
 failed with that exact key reported missing, then reverting), and search
 across all of the above. This

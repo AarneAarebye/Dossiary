@@ -671,6 +671,44 @@ async def main():
         print("Scenario 27 -- zh-TW browser locale auto-detects Chinese Traditional (not Simplified):", zht_lang_value == "zh-Hant")
         await page_zht.close()
 
+        # === Scenario 28: English isn't deprioritized below a secondary input
+        # language -- navigator.languages = ['en-US', 'zh-CN', 'zh'] (an ordinary
+        # US machine with Chinese added as a secondary input language) must
+        # auto-detect English, since it's the user's own first-listed preference.
+        # The old rule-major loadLang() (checking each LANG_AUTODETECT rule against
+        # the whole navigator.languages array, rule by rule, before moving to the
+        # next rule) got this wrong: zh-Hans's bare-"zh" rule would match somewhere
+        # in the array before ever falling through to the implicit 'en' fallback,
+        # since there was no explicit 'en' rule participating in the loop at all.
+        # The fix makes loadLang() locale-major (iterate the user's own languages
+        # array in order, checking all rules per locale) with an explicit 'en' rule,
+        # so 'en-us' -- the user's own first preference -- matches before 'zh-cn'/
+        # 'zh' are ever consulted. This also doubles as a dropdown-contents check
+        # (item 6): the six SUPPORTED_LANGS option values and native names, not just
+        # the currently-selected value every other scenario above checks ===
+        page28 = await browser.new_page()
+        await page28.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'en-US' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'zh-CN', 'zh'] });
+        """)
+        await page28.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page28.add_init_script(stub_js)
+        await page28.goto(f"file://{APP_PATH}")
+        await page28.wait_for_timeout(200)
+        en_title_28 = await page28.locator('#empty-state h2').inner_text()
+        en_lang_value_28 = await page28.locator('#lang-select').input_value()
+        print("Scenario 28 -- ['en-US', 'zh-CN', 'zh'] auto-detects English, not Chinese:",
+              en_title_28 == "No library open" and en_lang_value_28 == "en")
+        lang_option_values_28 = await page28.eval_on_selector_all('#lang-select option', 'els => els.map(e => e.value)')
+        lang_option_labels_28 = await page28.locator('#lang-select option').all_inner_texts()
+        print("Scenario 28 -- #lang-select has exactly the six expected language codes:",
+              lang_option_values_28 == ['en', 'de', 'es', 'fr', 'zh-Hans', 'zh-Hant'])
+        print("Scenario 28 -- dropdown labels include the native Simplified Chinese name (简体中文):",
+              '简体中文' in lang_option_labels_28)
+        await page28.close()
+
         print("JS ERRORS:", errors)
         await browser.close()
 

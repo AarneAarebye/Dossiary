@@ -654,23 +654,23 @@
   // exists, so a per-library setting can't be the only mechanism.
   const SUPPORTED_LANGS = ['en', 'de', 'es', 'fr', 'zh-Hans', 'zh-Hant']; // grows by one entry per new-language task
   const NATIVE_LANG_NAMES = { en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', 'zh-Hans': '简体中文', 'zh-Hant': '繁體中文' }; // each language's own name for itself -- shown in the dropdown regardless of currentLang, so these are never run through t()
-  // Auto-detect rules, checked in order, first match wins. Each new
-  // SUPPORTED_LANGS entry's own task adds one entry here.
+  // Auto-detect rules. loadLang() below iterates the user's OWN
+  // navigator.languages array in order (outermost loop) and, for each locale
+  // in turn, checks it against every rule here (innermost loop), returning on
+  // the first rule that matches -- so the user's own preference order is what
+  // decides ties between languages, not the order rules happen to be listed
+  // in this array. Each new SUPPORTED_LANGS entry's own task adds one entry
+  // here. zh-Hant is still listed before zh-Hans purely for readability (they
+  // test different, non-overlapping locale strings, so within a single locale
+  // string their relative order no longer matters either way) -- zh-Hant's
+  // specific tests (zh-TW/zh-HK/zh-MO/zh-Hant) and zh-Hans's own bare-"zh"
+  // catch-all never both match the same locale string, so there's no
+  // shadowing risk left to order around.
   const LANG_AUTODETECT = [
+    { code: 'en', test: l => l.startsWith('en') },
     { code: 'de', test: l => l.startsWith('de') },
     { code: 'es', test: l => l.startsWith('es') },
     { code: 'fr', test: l => l.startsWith('fr') },
-    // zh-Hant's specific test MUST be checked before zh-Hans's: loadLang()
-    // below evaluates `langs.some(test)` per RULE (across the whole
-    // navigator.languages array), not per language across all rules, so
-    // zh-Hans's own bare-"zh" catch-all would otherwise match first against
-    // a fallback "zh" entry that trails a specific "zh-TW"/"zh-HK" primary
-    // locale (e.g. navigator.languages = ['zh-TW', 'zh']) before zh-Hant's
-    // own, more specific rule is ever reached. Verified empirically: with
-    // zh-Hans listed first, a zh-TW locale incorrectly auto-detects as
-    // zh-Hans; with zh-Hant listed first (as here), it correctly picks
-    // zh-Hant, and zh-CN/bare-"zh" locales still correctly fall through to
-    // zh-Hans since zh-Hant's rule never matches those.
     { code: 'zh-Hant', test: l => l.startsWith('zh-tw') || l.startsWith('zh-hk') || l.startsWith('zh-mo') || l.startsWith('zh-hant') },
     { code: 'zh-Hans', test: l => l === 'zh' || l.startsWith('zh-cn') || l.startsWith('zh-sg') || l.startsWith('zh-my') || l.startsWith('zh-hans') },
   ];
@@ -1748,7 +1748,7 @@
   };
 
   function t(key, params){
-    let str = STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key;
+    let str = (STRINGS[currentLang] || STRINGS.en)[key] ?? STRINGS.en[key] ?? key;
     if(params){
       for(const [k, v] of Object.entries(params)) str = str.replaceAll(`{${k}}`, v);
     }
@@ -1778,8 +1778,10 @@
     try{ stored = localStorage.getItem('dossiary_lang'); }catch(e){ stored = null; }
     if(SUPPORTED_LANGS.includes(stored)) return stored;
     const langs = (navigator.languages || [navigator.language || '']).map(l => l.toLowerCase());
-    for(const {code, test} of LANG_AUTODETECT){
-      if(langs.some(test)) return code;
+    for(const l of langs){
+      for(const {code, test} of LANG_AUTODETECT){
+        if(test(l)) return code;
+      }
     }
     return 'en';
   }
@@ -1789,6 +1791,7 @@
 
   function setLang(lang){
     currentLang = lang;
+    document.documentElement.lang = lang;
     saveLang(lang);
     applyI18n();
     // init-message is set via .innerHTML directly in proceedWithRootDirHandle()
@@ -2464,6 +2467,7 @@
     sel.value = currentLang;
   }
   populateLangSelect();
+  document.documentElement.lang = currentLang;
   el('lang-select').addEventListener('change', (e) => {
     // A mouse click on the old button was already blocked by a modal's own backdrop
     // while one was open, but keyboard Tab-through could still reach and activate it.
