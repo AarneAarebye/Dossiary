@@ -4,12 +4,22 @@ name: Attach release assets
 # CLAUDE.md's "Repository layout" section) -- but a GitHub Release's
 # auto-generated "Source code (zip)"/"(tar.gz)" links bundle the entire
 # repo (tests/, docs/, everything), which is not what a standard user
-# wants. This workflow attaches just the two files a person actually
-# needs -- dossiary.html and scan_watch.py -- directly to the release as
-# individually downloadable assets, alongside (not instead of) GitHub's
-# own source archives. It does not create releases or write release
-# notes; that stays a manual step (gh release create / the web UI), same
-# as it always has been -- this only runs once a release is published.
+# wants. This workflow attaches just the files a person actually needs --
+# dossiary.html, scan_watch.py, and the two User Guides -- directly to
+# the release as individually downloadable assets, alongside (not
+# instead of) GitHub's own source archives. It does not create releases
+# or write release notes; that stays a manual step (gh release create /
+# the web UI), same as it always has been -- this only runs once a
+# release is published.
+#
+# The User Guides' own screenshots (docs/user-guide/) are NOT attached --
+# a standalone USER_GUIDE.md downloaded on its own will show broken
+# image links, since its screenshots are referenced by relative path
+# assuming the full repo layout. Attaching the whole docs/user-guide/
+# folder alongside would defeat the "not the whole repo" point this
+# workflow exists for; reading the guide with working images means
+# viewing it on GitHub (where relative links resolve) or cloning the
+# repo, same as any other in-repo doc with images.
 
 on:
   release:
@@ -26,11 +36,11 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Upload dossiary.html and scan_watch.py to the release
+      - name: Upload dossiary.html, scan_watch.py, and the User Guides to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            dossiary.html scan_watch.py \
+            dossiary.html scan_watch.py USER_GUIDE.md USER_GUIDE.de.md \
             --repo "${{ github.repository }}" \
             --clobber
