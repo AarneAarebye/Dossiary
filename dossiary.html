@@ -1845,7 +1845,7 @@
   // has a translated guide; languages without one fall back to the English
   // file rather than a 404. This mirrors t()'s own English-first fallback
   // chain, just for a URL instead of a string.
-  const USER_GUIDE_LANGS = ['de', 'es', 'fr', 'zh-Hans']; // languages with their own USER_GUIDE.<lang>.md; English has no suffix
+  const USER_GUIDE_LANGS = ['de', 'es', 'fr', 'zh-Hans', 'zh-Hant']; // languages with their own USER_GUIDE.<lang>.md; English has no suffix
   function userGuideUrl(){
     const suffix = USER_GUIDE_LANGS.includes(currentLang) ? `.${currentLang}` : '';
     return `https://github.com/AarneAarebye/Dossiary/blob/main/USER_GUIDE${suffix}.md`;

@@ -4,7 +4,7 @@
 测试配置？请查阅 [README.md](README.md)（英文）或 [README.de.md](README.de.md)
 （德文）。本指南刻意保持非技术性。*
 
-*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [Ce guide en français](USER_GUIDE.fr.md)*
+*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [Ce guide en français](USER_GUIDE.fr.md) · [繁體中文版](USER_GUIDE.zh-Hant.md)*
 
 ## Dossiary 是什么？
 

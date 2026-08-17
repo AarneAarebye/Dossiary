@@ -4,7 +4,7 @@
 database schema, migration internals, testing setup? See
 [README.md](README.md) instead. This guide is deliberately non-technical.*
 
-*[Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [Ce guide en français](USER_GUIDE.fr.md) · [简体中文版](USER_GUIDE.zh-Hans.md)*
+*[Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [Ce guide en français](USER_GUIDE.fr.md) · [简体中文版](USER_GUIDE.zh-Hans.md) · [繁體中文版](USER_GUIDE.zh-Hant.md)*
 
 ## What is Dossiary?
 
