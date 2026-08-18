@@ -205,10 +205,19 @@
      header/toolbar/nav/bulk-bar/footer layout changes again -- don't assume
      only what you touched drifted.
      Four MORE .table-wrap max-height overrides -- using their own,
-     separately-derived constants, NOT these four plus a simple mobile-
-     footer-height delta -- live inside `@media (max-width:640px)` further
-     down this file (~line 424); see CLAUDE.md for why that shortcut
-     doesn't work. */
+     separately-derived constants (392/416/494/518, not these four plus a
+     simple mobile-footer-height delta) -- live inside
+     `@media (max-width:640px)` further down this file (~line 419); see
+     CLAUDE.md for why that shortcut doesn't work. Those four constants
+     dropped sharply (from 718/742/820/844) once .toolbar itself was capped
+     to a single horizontally-scrollable row (flex-wrap:nowrap plus
+     flex-shrink:0 on its children, right next to those four rules) --
+     .toolbar wrapping onto many rows at narrow widths, not the bulk-action
+     bar, was the real driver of the old worst-case mobile numbers, so
+     chrome height no longer varies nearly as dramatically across the
+     320-640px range now that it's fixed at one row. See CLAUDE.md for the
+     full story, including a now-closed 320px+bulk-bar footer-overlap
+     corner that this fix resolved as a side effect. */
   .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 364px); }
   #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 324px); }
   #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 438px); }
@@ -417,10 +426,11 @@
   #lang-select{ font-family:var(--font-mono); font-size:11px; padding:2px 6px; border:1px solid var(--line); border-radius:var(--radius); background:transparent; color:var(--text-dim); cursor:pointer; color-scheme:dark; }
   #lang-select:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
   @media (max-width:640px){
-    header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; } .table-wrap{ padding:0 16px 32px; max-height:calc(100vh - 718px); }
-    #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 742px); }
-    #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 820px); padding-bottom:0; }
-    #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 844px); padding-bottom:0; }
+    header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; flex-wrap:nowrap; overflow-x:auto; } .table-wrap{ padding:0 16px 32px; max-height:calc(100vh - 392px); }
+    .toolbar > *{ flex-shrink:0; }
+    #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 416px); }
+    #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 494px); padding-bottom:0; }
+    #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 518px); padding-bottom:0; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
     footer{ padding:16px 16px 20px; } .inbox-banner{ margin:0 16px 14px; flex-direction:column; align-items:flex-start; }
     .app-nav{ padding:0 16px; overflow-x:auto; }

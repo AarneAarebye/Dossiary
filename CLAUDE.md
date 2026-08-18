@@ -194,7 +194,7 @@ version number — only by the schema itself matching).
   in the tabs layout, adding real height to the stack, while the sidebar
   sits *beside* it, contributing none; the bulk-action bar adds its own
   **74px** on desktop (`438 - 364 = 74`, `398 - 324 = 74`) and **102px** on
-  mobile (`820 - 718 = 102`, `844 - 742 = 102`) whenever any row is
+  mobile (`494 - 392 = 102`, `518 - 416 = 102`) whenever any row is
   selected, regardless of nav style — derivable directly from the constants
   quoted here and in the mobile note below, not a separately-measured
   figure. **Since the
@@ -204,74 +204,69 @@ version number — only by the schema itself matching).
   footer now consumes part of this budget exactly the way the header/nav/
   toolbar/bulk-bar already did. **At the app's one mobile breakpoint
   (`max-width: 640px`) there are four further `.table-wrap` max-height
-  overrides scoped to that media query, and their constants (`718`/`742`/
-  `820`/`844`) are NOT simply the four desktop base numbers plus a mobile
+  overrides scoped to that media query, and their constants (`392`/`416`/
+  `494`/`518`) are NOT simply the four desktop base numbers plus a mobile
   footer-height delta** — an earlier attempt at this calibration made
   exactly that mistake (reusing `302`/`262`/`376`/`336` plus a ~97px footer
   delta, giving `399`/`359`/`473`/`433`) and it was wrong, because it never
   re-measured how much taller the header/toolbar/nav chrome itself renders
-  at mobile widths — `.toolbar` wraps across many more rows at narrow
-  widths than it ever does on desktop, so the real combined chrome height
-  above `.table-wrap` is far taller at mobile widths, not the same as the
-  desktop chrome height. The correct `718`/`742`/`820`/`844` were measured
+  at mobile widths. The correct `392`/`416`/`494`/`518` were measured
   as the actual combined "everything above `.table-wrap`, plus the mobile
   footer's own height" total, directly via `getBoundingClientRect()`, not
   derived from the desktop numbers at all. These four also use the
   **worst-case (320px-width) measurement across the whole 320–640px
   breakpoint range** — both the chrome height and the footer's own height
-  shrink as the viewport widens within that range (less toolbar wrapping,
-  a shorter-wrapping footer), so a single constant picked from the
-  narrowest, tallest-chrome end of the range means growing extra room (not
-  overlap) toward the wider end of it — the same "accept extra gap, never
-  accept overlap" principle already established above for the
-  nav-style/bulk-bar desktop numbers. Be honest about the real magnitude of
-  that extra room, though: this is not just "a few extra pixels of
-  margin" — at 640px width (the wide end of the mobile range) `.table-wrap`
-  renders as little as ~58px tall, roughly one visible row, with ~269px of
-  unused blank space below it. In practice the table is close to unusable
-  at that end of the range, not merely a little more generously spaced;
-  fixing that properly means a real intermediate breakpoint (or a
-  continuous/`clamp()`-based constant), not a documentation wording change
-  — out of scope for the fix that corrected this wording, tracked as a
-  known, accepted gap rather than silently softened. Worth keeping in
-  proportion, though: the File System Access API this whole app depends on
-  (see that note further below) isn't available on iOS Safari or Chrome
-  for Android, so this mobile breakpoint mostly matters for someone
-  narrowing a desktop browser window, not an actual phone — which is also
-  why the 320px-width residual-overlap finding described just below is
-  worth fixing eventually but isn't an urgent phone-user-facing problem.
-  **One further, genuinely unavoidable wrinkle, found while verifying this
-  fix**: `.table-wrap` has its own mobile `padding-bottom` (`32px`), and
-  CSS padding can't be compressed below its declared value by `max-height`
+  shrink as the viewport widens within that range, so a single constant
+  picked from the narrowest, tallest-chrome end of the range means growing
+  extra room (not overlap) toward the wider end of it — the same "accept
+  extra gap, never accept overlap" principle already established above for
+  the nav-style/bulk-bar desktop numbers. Be honest about the real
+  magnitude of that extra room, though: this is not just "a few extra
+  pixels of margin" — at 640px width (the wide end of the mobile range)
+  `.table-wrap` renders as little as ~58px tall, roughly one visible row,
+  with plenty of unused blank space below it. In practice the table is
+  close to unusable at that end of the range, not merely a little more
+  generously spaced; fixing that properly means a real intermediate
+  breakpoint (or a continuous/`clamp()`-based constant), not a
+  documentation wording change — out of scope here, tracked as a known,
+  accepted gap rather than silently softened. Worth keeping in proportion,
+  though: the File System Access API this whole app depends on (see that
+  note further below) isn't available on iOS Safari or Chrome for Android,
+  so this mobile breakpoint mostly matters for someone narrowing a desktop
+  browser window, not an actual phone.
+  **`.table-wrap` also has its own mobile `padding-bottom` (`32px`), and
+  CSS padding can't be compressed below its declared value by `max-height`**
   — a box whose `max-height` computes smaller than its own padding sum
   still renders at (at least) that padding sum, never the smaller
   `max-height` value (confirmed directly: a minimal `overflow:auto;
   padding-bottom:32px; max-height:6px` box renders at `32px`, not `6px`).
-  This mattered concretely for the `.bulk-bar-visible` mobile variants:
-  at in-between mobile widths (e.g. 375px) where there's actually a few
-  pixels of real slack once you use the single 320px-worst-case constant,
-  that slack could still be smaller than the 32px padding floor, producing
-  a few pixels of real, measured overlap purely from the padding, not from
-  `max-height` being wrong. The fix: `#main-layout.bulk-bar-visible
-  .table-wrap` and `#main-layout.nav-style-sidebar.bulk-bar-visible
-  .table-wrap`'s mobile rules also set `padding-bottom: 0` (overriding the
-  general mobile `32px`), removing that floor so the box can actually
-  shrink all the way down to whatever `max-height` says. **This does not
-  fully eliminate overlap at the single narrowest, shortest corner
-  (320px width, ~800px-or-shorter viewport height, bulk-action bar
-  visible)** — at that exact combination, the header+toolbar+nav+bulk-bar
-  chrome *by itself*, before `.table-wrap` renders anything at all, is
-  already taller (measured `723px` tabs / `747px` sidebar at 320px width)
-  than the room left once the fixed footer (`97px` at that width) reserves
-  its own space in a viewport that short — `.table-wrap`'s own top
-  position is set entirely by everything rendered above it, so no
-  `.table-wrap` CSS (padding, `max-height`, or otherwise) can move that
-  starting point. This is a real, structural finding distinct from the
-  calibration-constant bug this whole note is about — fixing it would mean
-  shrinking the mobile chrome/bulk-bar itself, or making the footer
-  non-fixed at extremely short viewports, neither of which is in scope for
-  `.table-wrap`'s own calibration; flagged here rather than silently
-  worked around.
+  This mattered concretely for the `.bulk-bar-visible` mobile variants, so
+  `#main-layout.bulk-bar-visible .table-wrap` and
+  `#main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap`'s mobile
+  rules also set `padding-bottom: 0` (overriding the general mobile
+  `32px`), removing that floor so the box can actually shrink all the way
+  down to whatever `max-height` says.
+  **The mobile calibration used to have one further, genuinely unavoidable
+  wrinkle at the single narrowest, shortest corner (320px width, ~800px-or-
+  shorter viewport height, bulk-action bar visible)**: the header+toolbar+
+  nav+bulk-bar chrome *by itself*, before `.table-wrap` rendered anything
+  at all, used to be taller (measured `723px` tabs / `747px` sidebar at
+  320px width) than the room left once the fixed footer reserved its own
+  space in a viewport that short, producing a small, structural overlap no
+  `.table-wrap` CSS alone could fix. **This corner was closed outright**
+  by capping `.toolbar` to a single horizontally-scrollable row
+  (`flex-wrap:nowrap` plus `flex-shrink:0` on its children — see the
+  `.toolbar` CSS and its own comment in `dossiary.html`'s mobile media
+  query) rather than by further `.table-wrap` tuning: `.toolbar` wrapping
+  onto many rows at narrow widths, not the bulk-action bar, was the real
+  driver of the old worst-case mobile chrome height, and pinning it to one
+  row shrank that chrome enough that the corner no longer occurs — verified
+  empirically (see below) at `gap=0.0px`, not overlapping, across all four
+  nav-style × bulk-bar combinations at 320px width. Worth keeping as
+  institutional memory in case a future change to the toolbar's contents
+  (e.g. adding enough new buttons that even a single scrollable row grows
+  taller than expected) reintroduces tall chrome here and this needs
+  revisiting.
   All of these numbers were verified empirically
   (`getBoundingClientRect()` on `#table-wrap` and `footer`, confirming
   `#table-wrap`'s rendered bottom edge lands exactly at the *footer's* top
