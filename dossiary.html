@@ -1845,6 +1845,19 @@
     // instead, only in the branch where there's genuinely no library open.
     if(!rootDirHandle){ subLabel.textContent = t('emptyTitle'); renderRecentLibraries(); }
     updateUserGuideLink();
+    // The status line (#status) is set via setStatusT() at every point something
+    // just happened (library opened, document saved, inbox file added, ...) and,
+    // unlike the containers re-rendered above, is never touched again until the
+    // NEXT such event -- so a message set while one language was active (most
+    // commonly "Opened N documents from X", the first thing shown right after
+    // opening a library, and the most likely one to still be on screen when
+    // someone goes to change the language) stayed baked in that language even
+    // after switching, regardless of what was picked. Re-render it here from its
+    // remembered key/params, if any (see setStatusT()'s own note); a status
+    // message set with the plain setStatus() (composite messages built by
+    // concatenating more than one t() result, and the explicit "clear the status
+    // line" calls) leaves no remembered key, so this is correctly a no-op then.
+    if(lastStatusKey){ setStatusT(lastStatusKey, lastStatusParams, lastStatusKind); }
   }
 
   // The footer's User Guide link is a real external link (GitHub's rendered
@@ -2056,7 +2069,19 @@
   const appNav = el('app-nav');
   const modalRoot = el('modal-root');
 
-  function setStatus(msg, kind){ statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
+  // setStatusT() remembers which t() key/params produced the current status text (in
+  // lastStatusKey/lastStatusParams/lastStatusKind) so setLang() can re-render it in the
+  // newly selected language -- without this, a status message set while one language was
+  // active (e.g. "Opened N documents from X", the very first thing shown after opening a
+  // library) stays baked in that language forever, even after switching languages, since
+  // nothing else ever re-invokes it. A plain setStatus() call (used for the handful of
+  // composite messages built by concatenating more than one t() result, and for the
+  // explicit "clear the status line" calls) intentionally clears the remembered key, so a
+  // later language switch doesn't wrongly resurrect a stale single-key translation onto a
+  // message it didn't actually produce.
+  let lastStatusKey = null, lastStatusParams = null, lastStatusKind = null;
+  function setStatus(msg, kind){ lastStatusKey = null; lastStatusParams = null; statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
+  function setStatusT(key, params, kind){ setStatus(t(key, params), kind); lastStatusKey = key; lastStatusParams = params || null; lastStatusKind = kind; }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function nowIso(){ return new Date().toISOString(); }
   function todayIsoDate(){ return nowIso().slice(0, 10); } // YYYY-MM-DD, matches <input type="date">
@@ -2501,16 +2526,16 @@
 
   async function openLibrary(){
     if(typeof window.showDirectoryPicker !== 'function'){
-      setStatus(t('statusNoFsaSupport'), 'err');
+      setStatusT('statusNoFsaSupport', null, 'err');
       return;
     }
     try{
-      setStatus(t('statusOpeningFolderPicker'));
+      setStatusT('statusOpeningFolderPicker', null);
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       await proceedWithRootDirHandle(handle);
     }catch(e){
-      if(e.name === 'AbortError'){ setStatus(t('statusFolderSelectionCancelled')); }
-      else{ setStatus(t('statusCouldNotOpenFolder', {error: e.message}), 'err'); }
+      if(e.name === 'AbortError'){ setStatusT('statusFolderSelectionCancelled', null); }
+      else{ setStatusT('statusCouldNotOpenFolder', {error: e.message}, 'err'); }
     }
   }
 
@@ -2520,7 +2545,7 @@
   // handle, open it" means.
   async function proceedWithRootDirHandle(handle){
     rootDirHandle = handle;
-    setStatus(t('statusCheckingForLibrary'));
+    setStatusT('statusCheckingForLibrary', null);
     try{
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
@@ -2536,7 +2561,7 @@
 
   async function initNewLibrary(){
     try{
-      setStatus(t('statusSettingUpSqlite'));
+      setStatusT('statusSettingUpSqlite', null);
       await ensureSqlJs();
       db = new SQL.Database();
       db.run(SCHEMA);
@@ -2549,17 +2574,17 @@
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
       await rootDirHandle.getDirectoryHandle('inbox', { create: true }); // see openLibrary()'s matching call for why
       initState.style.display = 'none';
-      setStatus(t('statusInitializedNewLibrary'), 'ok');
+      setStatusT('statusInitializedNewLibrary', null, 'ok');
       afterDbReady();
     }catch(e){
-      setStatus(t('statusCouldNotInitLibrary', {error: e.message}), 'err');
+      setStatusT('statusCouldNotInitLibrary', {error: e.message}, 'err');
     }
   }
 
   async function loadDb(){
-    setStatus(t('statusLoadingSqliteEngine'));
+    setStatusT('statusLoadingSqliteEngine', null);
     await ensureSqlJs();
-    setStatus(t('statusReadingLibrary'));
+    setStatusT('statusReadingLibrary', null);
     const file = await dbFileHandle.getFile();
     const buf = await file.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
@@ -2577,7 +2602,7 @@
     emptyState.style.display = 'none';
     initState.style.display = 'none';
     loadDocumentsFromDb();
-    setStatus(t('statusOpenedLibrary', {count: allDocs.length, name: rootDirHandle.name}), 'ok');
+    setStatusT('statusOpenedLibrary', {count: allDocs.length, name: rootDirHandle.name}, 'ok');
     checkInbox(); // fire-and-forget -- best effort, doesn't block the library from opening
     recordRecentLibrary(rootDirHandle); // fire-and-forget, same reasoning as checkInbox() above
   }
@@ -4764,7 +4789,7 @@
       });
       renderStats(); populateFilters(); populateDatalists(); render();
 
-      setStatus(t('editSavedStatus', {title: title || t('commonDocumentFallback', {id})}), 'ok');
+      setStatusT('editSavedStatus', {title: title || t('commonDocumentFallback', {id})}, 'ok');
       openDetail(id);
       return true;
     }catch(e){
@@ -5487,7 +5512,7 @@
       subLabel.textContent = rootDirHandle.name;
 
       closeModal();
-      setStatus(t('captureSavedStatus', {title: title || t('commonDocumentFallback', {id}), id}), 'ok');
+      setStatusT('captureSavedStatus', {title: title || t('commonDocumentFallback', {id}), id}, 'ok');
     }catch(e){
       captureStatus.className = 'status err';
       captureStatus.textContent = t('statusSaveFailed', {error: e.message});
@@ -5713,9 +5738,9 @@
       renderStats(); populateFilters(); populateDatalists(); render();
       subLabel.textContent = rootDirHandle.name;
       updateInboxBanner();
-      setStatus(t('dragdropAddedFromInboxStatus', {title: title || t('commonDocumentFallback', {id}), id}), 'ok');
+      setStatusT('dragdropAddedFromInboxStatus', {title: title || t('commonDocumentFallback', {id}), id}, 'ok');
     }catch(e){
-      setStatus(t('dragdropAddFailedStatus', {name, error: e.message}), 'err');
+      setStatusT('dragdropAddFailedStatus', {name, error: e.message}, 'err');
     }
   }
 
@@ -5745,7 +5770,8 @@
       }catch(e){ failed++; }
     }
     if(!added){
-      setStatus(failed === 1 ? t('dragdropDropFailedSingle') : t('dragdropDropFailedMulti', {count: failed}), 'err');
+      if(failed === 1) setStatusT('dragdropDropFailedSingle', null, 'err');
+      else setStatusT('dragdropDropFailedMulti', {count: failed}, 'err');
       return;
     }
     renderStats(); populateFilters(); populateDatalists(); render();
@@ -5779,7 +5805,7 @@
     const count = pendingInboxFiles.length;
     const folderLabel = `${rootDirHandle.name}/inbox/`;
     if(!count){
-      setStatus(t('dragdropNoFilesWaiting', {folder: folderLabel}), 'ok');
+      setStatusT('dragdropNoFilesWaiting', {folder: folderLabel}, 'ok');
       return;
     }
     await addAllInboxFiles();
