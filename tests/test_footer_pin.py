@@ -82,10 +82,10 @@ async def measure_last_row_not_clipped(page, label):
     print(f"[{label}] last row clip={clip:.1f}px (<=2px accepted): PASS")
 
 async def measure(page, label, min_gap):
-    """min_gap: the smallest acceptable gap in px. 0 means "no overlap
-    allowed" (the normal case); a negative value documents a known, bounded,
-    accepted overlap (only used for the single structurally-unavoidable
-    320px+bulk-bar corner) so the test still catches it getting WORSE."""
+    """min_gap: the smallest acceptable gap in px, applied uniformly across
+    all scenarios in this file. -2 allows for ~2px tolerance to account for
+    sub-pixel rendering precision, matching the "no real overlap" expectation
+    throughout."""
     info = await page.evaluate("""
         () => {
             const twEl = document.querySelector('#table-wrap');
@@ -137,10 +137,10 @@ async def main():
     # === Mobile breakpoint (max-width: 640px): the mobile calibration uses a
     # single worst-case (320px-width) constant per combination, so the gap is
     # tight only at 320px and grows to a deliberate safety margin at wider
-    # mobile widths -- min_gap=-2 (no overlap) everywhere EXCEPT the one
-    # documented, structurally-unavoidable corner (320px + bulk bar visible,
-    # both nav styles), where a small bounded overlap is accepted (see
-    # CLAUDE.md's .table-wrap note) but must not silently get worse. ===
+    # mobile widths. The 320px+bulk-bar corner was once a known, structurally-
+    # unavoidable overlap, but Task 1 fixed it by capping .toolbar to a single
+    # horizontally-scrollable row, reducing chrome height enough to eliminate it.
+    # All scenarios now expect tight, uniform min_gap=-2 everywhere. ===
     async with async_playwright() as p:
         browser2 = await p.chromium.launch()
         page2 = await browser2.new_page()
