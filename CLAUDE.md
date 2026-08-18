@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (57 scripts) + shared
+tests/                   Playwright regression suite (58 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2048,9 +2048,9 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **57
-scripts covering most of the app's actual functionality** (56 of them
-Playwright-driven; the 57th, `test_i18n_coverage.py`, is a plain static
+There's a real, runnable Playwright regression suite in `tests/` — **58
+scripts covering most of the app's actual functionality** (57 of them
+Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
 check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
@@ -2284,7 +2284,25 @@ that each language's key set matches `STRINGS.en`'s exactly, not just
 real regression, not just trivially pass, by
 temporarily renaming one `STRINGS.de` key and confirming the script
 failed with that exact key reported missing, then reverting), and search
-across all of the above. This
+across all of the above. Also the fixed-footer/`.table-wrap` calibration
+itself (`test_footer_pin.py` — a 60-document seed, the same
+non-diagnostic-gap-avoiding size `test_collections.py`'s own Scenario 30
+uses, confirming `#table-wrap`'s bottom edge lands with no overlap against
+the fixed footer's top edge across all four nav-style x bulk-bar-visible
+combinations at a 1280x720 desktop viewport, plus the app's one mobile
+breakpoint at 320x800 (both nav styles, bulk bar hidden and visible),
+375x800 (tabs, bulk bar hidden and visible), and 640x800 (sidebar, bulk
+bar hidden and visible) — and that the footer itself is always fully
+within the viewport, needing no scroll to reach. The mobile checks
+deliberately don't all assert zero overlap: the 320px-width,
+bulk-bar-visible corner (both nav styles) has a small, real, structurally
+unavoidable overlap — see this file's own `.table-wrap` note above for why
+no `.table-wrap` CSS can fix it — so those two scenarios instead assert a
+bounded ceiling on it (no more than 30px/55px) rather than either
+demanding an impossible zero or ignoring the defect outright, so the test
+still catches it getting worse. Vacuousness was confirmed by temporarily
+re-widening the base desktop constant and confirming the test then fails
+with a large, clearly-wrong gap). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
