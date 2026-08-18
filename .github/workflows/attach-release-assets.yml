@@ -5,7 +5,7 @@ name: Attach release assets
 # auto-generated "Source code (zip)"/"(tar.gz)" links bundle the entire
 # repo (tests/, docs/, everything), which is not what a standard user
 # wants. This workflow attaches just the files a person actually needs --
-# dossiary.html, scan_watch.py, and the two User Guides -- directly to
+# dossiary.html, scan_watch.py, and all six User Guides -- directly to
 # the release as individually downloadable assets, alongside (not
 # instead of) GitHub's own source archives. It does not create releases
 # or write release notes; that stays a manual step (gh release create /
@@ -41,6 +41,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            dossiary.html scan_watch.py USER_GUIDE.md USER_GUIDE.de.md \
+            dossiary.html scan_watch.py \
+            USER_GUIDE.md USER_GUIDE.de.md USER_GUIDE.es.md USER_GUIDE.fr.md \
+            USER_GUIDE.zh-Hans.md USER_GUIDE.zh-Hant.md \
             --repo "${{ github.repository }}" \
             --clobber
