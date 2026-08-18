@@ -185,36 +185,31 @@
   .empty p{ color:var(--text-dim); font-size:13.5px; line-height:1.6; margin:0 0 20px; }
   .empty .hint{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:18px; line-height:1.7; text-align:left; }
 
-  /* 302px (tabs, idle) vs 262px (sidebar, idle) -- see CLAUDE.md's sticky-header
-     calibration note for why this number matters and how it was derived. The
-     .app-nav tab strip sits ABOVE .table-wrap in the tabs layout, adding real
-     height to the stack; in the sidebar layout .app-nav sits BESIDE .table-wrap
-     (#main-layout.nav-style-sidebar is flex-direction:row), contributing no
-     extra vertical height of its own -- but all four numbers here were verified
-     fresh empirically (getBoundingClientRect() on #table-wrap against a 60+
-     document seed large enough to actually make max-height binding -- a small
-     seed never overflows it and any check against one is non-diagnostic, see
-     the Collections note below), confirming the rendered bottom edge lands at
-     the viewport bottom, not assumed.
-     Two additional rules below (.bulk-bar-visible) exist because the Collections
-     feature's bulk-action bar (#bulk-action-bar, shown whenever a row is
-     selected) adds ~74px of real page height above .table-wrap that the two
-     idle constants don't account for -- without them, selecting documents (the
-     feature's own core workflow: select -> bulk-add to a collection) pushed
-     .table-wrap's bottom edge past the viewport bottom, which is exactly the
-     failure mode this whole calibration exists to avoid (see the note directly
-     above this one): once .table-wrap's bottom goes past the viewport, the
-     *page* scrolls to reach it, and once the page scrolls, .table-wrap and its
-     sticky header scroll away together instead of the intended inner scroll.
-     `renderBulkActionBar()` toggles the `.bulk-bar-visible` class on
-     #main-layout precisely so these rules can key off it. If you change the
-     bulk bar's own height, or the header/toolbar/nav layout again, recalibrate
-     all four constants the same way -- don't assume only the two you touched
-     drifted; the pre-existing "230px" the sidebar case was expected to inherit
-     unchanged had itself already drifted stale (real value 256px) from
-     unrelated header/toolbar changes made elsewhere, discovered only because
-     that feature's own empirical check happened to re-measure it. */
-  .table-wrap{ padding:0 32px 40px; overflow:auto; max-height:calc(100vh - 364px); }
+  /* .table-wrap is a bounded scroll container so thead's sticky header has
+     something correct to stick to -- see CLAUDE.md's sticky-header
+     calibration note for the full derivation and how these constants were
+     measured. X is 364 (tabs, idle), 324 (sidebar, idle), 438 (tabs, bulk-bar
+     visible), 398 (sidebar, bulk-bar visible) -- the tab strip sits ABOVE
+     .table-wrap in the tabs layout, the sidebar sits BESIDE it, and
+     #bulk-action-bar adds ~74px of real page height whenever a row is
+     selected. The footer is now permanent, fixed chrome too
+     (position:fixed; bottom:0, see the footer's own note elsewhere in this
+     file), and its rendered height is baked into all four numbers above --
+     .table-wrap's bottom edge now correctly lands at the FOOTER's top edge,
+     not the raw viewport bottom the way this comment used to describe
+     before the footer was pinned. Recalibrate all four the same empirical
+     way (getBoundingClientRect() on #table-wrap and footer, against a 60+
+     document seed large enough to actually make max-height binding -- a
+     small seed never overflows it and any check against one is
+     non-diagnostic, see the Collections note below) if the
+     header/toolbar/nav/bulk-bar/footer layout changes again -- don't assume
+     only what you touched drifted.
+     Four MORE .table-wrap max-height overrides -- using their own,
+     separately-derived constants, NOT these four plus a simple mobile-
+     footer-height delta -- live inside `@media (max-width:640px)` further
+     down this file (~line 424); see CLAUDE.md for why that shortcut
+     doesn't work. */
+  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 364px); }
   #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 324px); }
   #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 438px); }
   #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 398px); }
@@ -438,6 +433,14 @@
       border-right:none; border-bottom:1px solid var(--line); overflow-x:auto;
     }
     #main-layout.nav-style-sidebar .nav-item-label{ display:none; }
+    /* #reports-view is page-flow-scrolled, not a bounded .table-wrap-style
+       container, so it needs its own footer allowance -- the fixed footer's
+       mobile height (plus its own padding/border) clips the Grand total row
+       otherwise. 140px is a worst-case-with-margin figure, not an exact
+       measurement (matching the .table-wrap mobile constants' own
+       worst-case-320px-width philosophy above); desktop already has enough
+       natural clearance and needs no equivalent override. */
+    #reports-view{ padding:0 16px 140px; }
   }
 
   @media print{

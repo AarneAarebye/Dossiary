@@ -193,7 +193,11 @@ version number — only by the schema itself matching).
   nav-style/bulk-bar dimensions) — the tab strip sits *above* `.table-wrap`
   in the tabs layout, adding real height to the stack, while the sidebar
   sits *beside* it, contributing none; the bulk-action bar adds its own
-  ~114px whenever any row is selected, regardless of nav style. **Since the
+  **74px** on desktop (`438 - 364 = 74`, `398 - 324 = 74`) and **102px** on
+  mobile (`820 - 718 = 102`, `844 - 742 = 102`) whenever any row is
+  selected, regardless of nav style — derivable directly from the constants
+  quoted here and in the mobile note below, not a separately-measured
+  figure. **Since the
   footer became fixed, permanently-visible chrome (`position: fixed; bottom:
   0;`, see the footer's own note elsewhere in this file), all four numbers
   above also include its rendered height (62px at normal widths)** — the
@@ -217,10 +221,25 @@ version number — only by the schema itself matching).
   breakpoint range** — both the chrome height and the footer's own height
   shrink as the viewport widens within that range (less toolbar wrapping,
   a shorter-wrapping footer), so a single constant picked from the
-  narrowest, tallest-chrome end of the range means a deliberate, growing
-  safety-margin gap (not overlap) toward the wider end of it — the same
-  "accept extra gap, never accept overlap" principle already established
-  above for the nav-style/bulk-bar desktop numbers.
+  narrowest, tallest-chrome end of the range means growing extra room (not
+  overlap) toward the wider end of it — the same "accept extra gap, never
+  accept overlap" principle already established above for the
+  nav-style/bulk-bar desktop numbers. Be honest about the real magnitude of
+  that extra room, though: this is not just "a few extra pixels of
+  margin" — at 640px width (the wide end of the mobile range) `.table-wrap`
+  renders as little as ~58px tall, roughly one visible row, with ~269px of
+  unused blank space below it. In practice the table is close to unusable
+  at that end of the range, not merely a little more generously spaced;
+  fixing that properly means a real intermediate breakpoint (or a
+  continuous/`clamp()`-based constant), not a documentation wording change
+  — out of scope for the fix that corrected this wording, tracked as a
+  known, accepted gap rather than silently softened. Worth keeping in
+  proportion, though: the File System Access API this whole app depends on
+  (see that note further below) isn't available on iOS Safari or Chrome
+  for Android, so this mobile breakpoint mostly matters for someone
+  narrowing a desktop browser window, not an actual phone — which is also
+  why the 320px-width residual-overlap finding described just below is
+  worth fixing eventually but isn't an urgent phone-user-facing problem.
   **One further, genuinely unavoidable wrinkle, found while verifying this
   fix**: `.table-wrap` has its own mobile `padding-bottom` (`32px`), and
   CSS padding can't be compressed below its declared value by `max-height`

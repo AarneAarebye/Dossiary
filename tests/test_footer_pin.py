@@ -46,6 +46,41 @@ async def open_seeded_library(page, width, height, nav_style):
     await page.click("#open-btn")
     await page.wait_for_timeout(400)
 
+async def measure_last_row_not_clipped(page, label):
+    """Real last-row-visibility check for the 641-1280px desktop width band,
+    which the container-bottom-vs-footer-top proxy measure() uses above is
+    blind to: a large .table-wrap padding-bottom can absorb the difference
+    between the max-height budget and what actually fits, so twBottom could
+    sit comfortably above the footer's top edge while the last real <tr>
+    (the content that actually matters to a person) is still clipped behind
+    it. Scrolls both #table-wrap's own inner region and the page to their
+    respective ends before measuring, since either one being un-scrolled
+    could hide a real overlap."""
+    await page.evaluate("""
+        () => {
+            const tw = document.querySelector('#table-wrap');
+            tw.scrollTop = tw.scrollHeight;
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    """)
+    await page.wait_for_timeout(100)
+    info = await page.evaluate("""
+        () => {
+            const tw = document.querySelector('#table-wrap');
+            tw.scrollTop = tw.scrollHeight;
+            window.scrollTo(0, document.body.scrollHeight);
+            const rows = document.querySelectorAll('#doc-tbody tr');
+            const lastRow = rows[rows.length - 1];
+            const lr = lastRow.getBoundingClientRect();
+            const f = document.querySelector('footer').getBoundingClientRect();
+            return { lastRowBottom: lr.bottom, footerTop: f.top, rowCount: rows.length };
+        }
+    """)
+    clip = info['lastRowBottom'] - info['footerTop']
+    assert info['rowCount'] > 0, f"[{label}] no table rows found -- seed/render didn't happen as expected"
+    assert clip <= 2, f"[{label}] last table row is clipped behind the fixed footer by {clip:.1f}px (last row bottom {info['lastRowBottom']:.1f}, footer top {info['footerTop']:.1f})"
+    print(f"[{label}] last row clip={clip:.1f}px (<=2px accepted): PASS")
+
 async def measure(page, label, min_gap):
     """min_gap: the smallest acceptable gap in px. 0 means "no overlap
     allowed" (the normal case); a negative value documents a known, bounded,
@@ -159,5 +194,45 @@ async def main():
 
         print("JS ERRORS (640px mobile viewport):", errors4)
         await browser4.close()
+
+    # === Desktop in-between width band (641-1280px, 800px viewport height):
+    # a final whole-branch review found this band was never covered by the
+    # scenarios above -- .toolbar wraps across more rows at these
+    # in-between widths than at the 1280px-calibrated width, so
+    # .table-wrap's recalibrated max-height allowed more content than
+    # actually fit above the fixed footer, clipping the real last table row
+    # (up to 27px at 700-800px, 14px at 900px) even though the
+    # container-bottom-vs-footer-top proxy measure() uses above looked fine
+    # (a large .table-wrap padding-bottom was absorbing the difference).
+    # The fix was raising .table-wrap's padding-bottom from 40px to 70px
+    # (box-sizing:border-box means max-height's math already includes
+    # padding, so this doesn't change the calibrated max-height constants or
+    # the 1280px-width behavior -- confirmed via measure() below still
+    # reading a 0px gap there -- it just reserves more of the already-
+    # budgeted space as padding instead of potential content). This uses
+    # the real last-row-visibility check (measure_last_row_not_clipped),
+    # not the proxy, specifically because the proxy is blind to this exact
+    # failure mode. ===
+    async with async_playwright() as p:
+        browser5 = await p.chromium.launch()
+        errors5 = []
+        for nav_style in ['tabs', 'sidebar']:
+            for width in [641, 700, 800, 900, 1000, 1100, 1280]:
+                page5 = await browser5.new_page()
+                page5.on("pageerror", lambda exc: errors5.append(str(exc)))
+                await open_seeded_library(page5, width, 800, nav_style)
+                await measure_last_row_not_clipped(page5, f"in-between band {width}x800, nav={nav_style}")
+                await page5.close()
+
+        # 1280px is the calibrated desktop width -- confirm the padding-bottom
+        # change didn't disturb its own exact-0px-gap calibration.
+        page5b = await browser5.new_page()
+        page5b.on("pageerror", lambda exc: errors5.append(str(exc)))
+        await open_seeded_library(page5b, 1280, 800, 'tabs')
+        await measure(page5b, "in-between band regression check: 1280x800, nav=tabs, bulkbar=hidden", min_gap=-2)
+        await page5b.close()
+
+        print("JS ERRORS (641-1280px in-between width band):", errors5)
+        await browser5.close()
 
 asyncio.run(main())

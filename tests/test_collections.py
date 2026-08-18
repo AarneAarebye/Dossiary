@@ -711,16 +711,24 @@ async def main():
                 () => {
                     const el = document.querySelector('#table-wrap');
                     const rect = el.getBoundingClientRect();
+                    const footerRect = document.querySelector('footer').getBoundingClientRect();
                     return {
                         bottom: rect.bottom, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
-                        viewportHeight: window.innerHeight,
+                        viewportHeight: window.innerHeight, footerTop: footerRect.top,
                     };
                 }
             """)
-            distance = info['viewportHeight'] - info['bottom']
+            # Since the footer became fixed, permanently-visible chrome, #table-wrap's
+            # bottom edge is calibrated to land at the FOOTER's top edge, not the raw
+            # viewport bottom -- comparing against window.innerHeight here (as this
+            # check used to) would print a permanently-false, stale result now, since
+            # the footer's own height is deliberately part of the reserved budget.
+            # See tests/test_footer_pin.py's own measure() helper, which already
+            # compares against the footer's top edge the same way.
+            distance = info['footerTop'] - info['bottom']
             binding = info['scrollHeight'] > info['clientHeight'] + 1
             print(f"[{label}] max-height constraint actually binding (scrollHeight > clientHeight):", binding)
-            print(f"[{label}] table-wrap bottom lands within 2px of viewport bottom:", abs(distance) <= 2, f"(distance: {distance:.1f}px)")
+            print(f"[{label}] table-wrap bottom lands within 2px of the footer's top edge:", abs(distance) <= 2, f"(distance: {distance:.1f}px)")
 
         # State A: default nav style, bulk bar hidden
         await measure_calibration("nav style A, bulk bar hidden")
