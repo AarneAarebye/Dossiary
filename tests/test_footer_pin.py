@@ -151,7 +151,7 @@ async def main():
         await measure(page2, "mobile 320x800, nav=tabs, bulkbar=hidden", min_gap=-2)
         await page2.check('tr[data-id="1"] .row-select-checkbox')
         await page2.wait_for_timeout(150)
-        await measure(page2, "mobile 320x800, nav=tabs, bulkbar=VISIBLE (known bounded overlap)", min_gap=-30)
+        await measure(page2, "mobile 320x800, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
         await page2.click('#bulk-clear-selection-btn')
         await page2.wait_for_timeout(150)
 
@@ -160,7 +160,29 @@ async def main():
         await measure(page2, "mobile 320x800, nav=sidebar, bulkbar=hidden", min_gap=-2)
         await page2.check('tr[data-id="1"] .row-select-checkbox')
         await page2.wait_for_timeout(150)
-        await measure(page2, "mobile 320x800, nav=sidebar, bulkbar=VISIBLE (known bounded overlap)", min_gap=-55)
+        await measure(page2, "mobile 320x800, nav=sidebar, bulkbar=VISIBLE", min_gap=-2)
+
+        # === Toolbar reachability at the narrowest supported width: every
+        # control must still be reachable via horizontal scroll, not silently
+        # clipped or unreachable, now that .toolbar no longer wraps onto many
+        # rows at narrow widths. ===
+        toolbar_info = await page2.evaluate("""
+            () => {
+                const tb = document.querySelector('.toolbar');
+                const ids = ['search', 'category-filter', 'type-filter', 'person-filter',
+                             'show-archived-toggle', 'manage-fields-btn', 'manage-collections-btn',
+                             'inbox-check-btn', 'add-btn', 'reload-btn', 'columns-btn'];
+                const missing = ids.filter(id => !document.getElementById(id));
+                return {
+                    scrollWidth: tb.scrollWidth,
+                    clientWidth: tb.clientWidth,
+                    overflowsHorizontally: tb.scrollWidth > tb.clientWidth + 1,
+                    missingControls: missing,
+                };
+            }
+        """)
+        print(f"[toolbar reachability, 320px width] all expected controls present (none missing): {toolbar_info['missingControls'] == []}")
+        print(f"[toolbar reachability, 320px width] toolbar genuinely overflows horizontally (scrollWidth={toolbar_info['scrollWidth']} > clientWidth={toolbar_info['clientWidth']}): {toolbar_info['overflowsHorizontally']}")
 
         print("JS ERRORS (320px mobile viewport):", errors2)
         await browser2.close()
