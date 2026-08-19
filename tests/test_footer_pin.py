@@ -111,27 +111,58 @@ async def main():
         errors = []
         page.on("pageerror", lambda exc: errors.append(str(exc)))
 
-        # === Desktop viewport (1280x720): tight calibration expected in all
-        # four nav-style x bulk-bar-visible combinations -- min_gap=-2 (i.e.
-        # essentially exact, no overlap, matching Task 1's own verification) ===
-        await open_seeded_library(page, 1280, 720, 'tabs')
-        await measure(page, "desktop 1280x720, nav=tabs, bulkbar=hidden", min_gap=-2)
+        # === Desktop viewport sweep (720px-tall viewport), across several
+        # widths -- not just 1280px. A final whole-branch review of the
+        # Amount-range/Currency-filter branch found that a single calibrated
+        # width isn't enough: that branch's new toolbar controls can push
+        # .toolbar onto an extra wrapped row at certain widths only, and
+        # which widths trigger that differs by nav style (tabs' toolbar
+        # spans the full width; sidebar's is squeezed narrower), so a
+        # regression can appear at an untested width even while 1280px alone
+        # keeps passing. 1000/1100px is where tabs mode regressed (an extra
+        # wrapped row not present at 1280px, now closed by recalibrating
+        # tabs' own constants); 1440px is where sidebar mode's own
+        # recalibration (see CLAUDE.md's sticky-header calibration note)
+        # leaves deliberate, accepted dead space rather than overlap.
+        # Tabs mode's constants are tightly calibrated across this whole
+        # sweep, so every tabs combination uses the tight, essentially-exact
+        # measure() proxy (min_gap=-2). Sidebar mode's own worst-case width
+        # sits narrower than this sweep (900px, per the sweep used to derive
+        # its constants), so at the two narrower widths here (1000/1100) the
+        # proxy shows an apparent negative gap even though the real last
+        # table row isn't actually clipped -- .table-wrap's own
+        # padding-bottom absorbs the difference, the same known effect the
+        # 641-1280px in-between-band section below already accounts for --
+        # so those two combinations use the real last-row-visibility check
+        # instead of the proxy, same as that section does. ===
+        for width in [1000, 1100, 1280, 1440]:
+            await open_seeded_library(page, width, 720, 'tabs')
+            await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden", min_gap=-2)
 
-        await page.check('tr[data-id="1"] .row-select-checkbox')
-        await page.wait_for_timeout(150)
-        await measure(page, "desktop 1280x720, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
-        await page.click('#bulk-clear-selection-btn')
-        await page.wait_for_timeout(150)
+            await page.check('tr[data-id="1"] .row-select-checkbox')
+            await page.wait_for_timeout(150)
+            await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
+            await page.click('#bulk-clear-selection-btn')
+            await page.wait_for_timeout(150)
 
-        await page.click('#nav-style-toggle')
-        await page.wait_for_timeout(200)
-        await measure(page, "desktop 1280x720, nav=sidebar, bulkbar=hidden", min_gap=-2)
+            await page.click('#nav-style-toggle')
+            await page.wait_for_timeout(200)
+            sidebar_tight = width >= 1280
+            if sidebar_tight:
+                await measure(page, f"desktop {width}x720, nav=sidebar, bulkbar=hidden", min_gap=-2)
+            else:
+                await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=sidebar, bulkbar=hidden")
 
-        await page.check('tr[data-id="1"] .row-select-checkbox')
-        await page.wait_for_timeout(150)
-        await measure(page, "desktop 1280x720, nav=sidebar, bulkbar=VISIBLE", min_gap=-2)
+            await page.check('tr[data-id="1"] .row-select-checkbox')
+            await page.wait_for_timeout(150)
+            if sidebar_tight:
+                await measure(page, f"desktop {width}x720, nav=sidebar, bulkbar=VISIBLE", min_gap=-2)
+            else:
+                await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=sidebar, bulkbar=VISIBLE")
+            await page.click('#bulk-clear-selection-btn')
+            await page.wait_for_timeout(150)
 
-        print("JS ERRORS (desktop viewport):", errors)
+        print("JS ERRORS (desktop viewport sweep):", errors)
         await browser.close()
 
     # === Mobile breakpoint (max-width: 640px): the mobile calibration uses a

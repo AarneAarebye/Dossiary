@@ -48,9 +48,19 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   bräuchte dafür aber trotzdem Ihren Klick auf „Zulassen" bei einer
   Berechtigungsabfrage, die den echten Ordner nennt.
 - **Durchsuchen** — sortierbare, durchsuchbare, filterbare Liste aller
-  Dokumente in der Bibliothek, mit Kategorie-/Typ-Filtern. Die Suche
-  durchsucht Titel, Kategorie, Unterkategorie, Dokumenttyp, Notizen,
-  OCR-Text, Tags, Personen und den Wert jedes benutzerdefinierten Feldes.
+  Dokumente in der Bibliothek, mit Kategorie-/Typ-/Personen-Filtern und,
+  für jedes benutzerdefinierte Feld, das in das generische Spaltensystem
+  aufgenommen wurde (siehe „Jedes einwertige benutzerdefinierte Feld kann
+  zu einer Tabellenspalte, einem Filter und Autocomplete werden“ weiter
+  unten), auch dessen eigenem Filter-Dropdown. Die Suche durchsucht Titel,
+  Kategorie, Unterkategorie, Dokumenttyp, Notizen, OCR-Text, Tags, Personen
+  und den Wert jedes benutzerdefinierten Feldes. Betrag bekommt statt eines
+  Dropdowns einen eigenen **Bereichsfilter** (ein Dropdown mit jedem
+  einzelnen Betrag wäre nicht sinnvoll) — ein Min- und ein Max-Zahlenfeld
+  in der Symbolleiste, beide optional, sowie ein separates Kontrollkästchen
+  „Betrag nicht gesetzt“, um Dokumente ohne gespeicherten Betrag zu finden
+  (das die Min-/Max-Felder deaktiviert, solange es aktiviert ist, da beide
+  sich gegenseitig ausschließende Wege sind, dasselbe Feld zu filtern).
 - **Erfassen** — ein neues Dokument (PDF oder Bild) hinzufügen, mit
   clientseitiger OCR über [Tesseract.js](https://github.com/naptha/tesseract.js),
   die vollständig im Browser läuft. Sprachoptionen: Deutsch, Englisch, oder
@@ -290,20 +300,29 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Betrag hat ein verknüpftes Währungsfeld** — beide sind inzwischen
   technisch ganz gewöhnliche benutzerdefinierte Felder (ihre Eingabefelder
   in Erfassung/Bearbeitung sind zwei normale, unabhängig platzierte
-  Felder, jedes mit eigenem Lösch-Button), behalten aber bewusst eine
-  Ausnahme vom sonst vollständig generischen System: Keines von beiden
-  bekommt Column-/Autocomplete-Kontrollkästchen in den Feldeinstellungen.
-  Währung ist freier Text mit eigenem Autocomplete aus bereits in der
-  Bibliothek verwendeten Währungen, statt eines festen Dropdowns (echte
-  Dokumente mischen Symbole wie „€“/„$“ und Codes wie „EUR“/„USD“). Ihre
-  *Tabellenspalte und Zeile in der Detailansicht* bleiben immer zu einer
-  Anzeige „123.45 EUR“ zusammengefasst (Betrag, dann Währung, immer in
-  dieser Reihenfolge) statt zwei getrennte Spalten zu werden, da freier
-  Text es unmöglich macht zu wissen, ob ein Wert als vorangestelltes
-  Symbol oder nachgestellter Code gemeint ist. Das Sortieren der
-  Betrags-Spalte sortiert nur nach der reinen Zahl — es gibt keine
-  Währungsumrechnung, da dies eine persönliche Dokumentenablage ist, kein
-  Buchhaltungsprogramm. Eine **Standardwährung**, einmalig in den
+  Felder, jedes mit eigenem Lösch-Button). Betrag allein behält eine
+  bewusste Ausnahme vom sonst vollständig generischen System: Es bekommt
+  keine Column-/Autocomplete-Kontrollkästchen in den Feldeinstellungen, und
+  seine *Tabellenspalte und Zeile in der Detailansicht* bleiben immer mit
+  der Währung zu einer Anzeige „123.45 EUR“ zusammengefasst (Betrag, dann
+  Währung, immer in dieser Reihenfolge) statt eine eigene Spalte zu werden
+  — das Sortieren dieser zusammengefassten Betrags-Spalte sortiert nur nach
+  der reinen Zahl, und es gibt keine Währungsumrechnung, da dies eine
+  persönliche Dokumentenablage ist, kein Buchhaltungsprogramm. **Währung
+  selbst ist ein ganz gewöhnliches benutzerdefiniertes Feld, genau wie
+  Zahlungsmethode** — sie bekommt ihre eigene, optionale Tabellenspalte,
+  ein Filter-Dropdown in der Symbolleiste (mit jeder tatsächlich in Ihrer
+  Bibliothek verwendeten Währung, plus „— Nicht gesetzt —“) und
+  Autocomplete, über die Column-/Autocomplete-Kontrollkästchen der
+  Feldeinstellungen ein-/ausschaltbar wie bei jedem anderen Textfeld —
+  völlig unabhängig von der oben beschriebenen zusammengefassten
+  Betrag/Währung-Anzeige, die unverändert weiterfunktioniert, egal ob die
+  eigene Spalte der Währung gerade eingeblendet ist oder nicht. Das
+  Autocomplete der Währung schöpft aus bereits in der Bibliothek
+  verwendeten Währungen statt aus einem festen Dropdown, da echte Dokumente
+  Symbole wie „€“/„$“ und Codes wie „EUR“/„USD“ mischen und freier Text es
+  unmöglich macht zu wissen, ob ein Wert als vorangestelltes Symbol oder
+  nachgestellter Code gemeint ist. Eine **Standardwährung**, einmalig in den
   Feldeinstellungen festgelegt, ist optional und standardmäßig nicht
   gesetzt — wenn konfiguriert, füllt sie das Währungsfeld neuer Erfassungen
   genauso vor wie das Datumsfeld auf heute vorausgefüllt wird: optisch als

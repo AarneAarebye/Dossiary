@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (59 scripts) + shared
+tests/                   Playwright regression suite (60 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -174,17 +174,41 @@ this repo's git tags.
   regardless of what's literally written. The actual fix was to stop
   fighting that rule and lean into it: make `.table-wrap` an intentional,
   bounded scroll container for both axes, so sticky has exactly one clear,
-  correctly-scrolling ancestor. **`X` is `364` by default (top-tab nav),
-  `324` with `.nav-style-sidebar`, `438` with `.bulk-bar-visible`, and `398`
+  correctly-scrolling ancestor. **`X` is `410` by default (top-tab nav),
+  `370` with `.nav-style-sidebar`, `484` with `.bulk-bar-visible`, and `444`
   with both** (see the "Top-level nav" and "Collections" notes below for the
-  nav-style/bulk-bar dimensions) — the tab strip sits *above* `.table-wrap`
-  in the tabs layout, adding real height to the stack, while the sidebar
-  sits *beside* it, contributing none; the bulk-action bar adds its own
-  **74px** on desktop (`438 - 364 = 74`, `398 - 324 = 74`) and **102px** on
+  nav-style/bulk-bar dimensions) — the bulk-action bar adds its own
+  **74px** on desktop (`484 - 410 = 74`, `444 - 370 = 74`) and **102px** on
   mobile (`494 - 392 = 102`, `518 - 416 = 102`) whenever any row is
   selected, regardless of nav style — derivable directly from the constants
   quoted here and in the mobile note below, not a separately-measured
-  figure. **Since the
+  figure. **These four desktop numbers were bumped a second time (from
+  `364`/`370`/`438`/`444`) by the Amount-range/Currency-filter branch**,
+  and the relationship between the tabs and sidebar pair is no longer the
+  simple "tab strip sits above `.table-wrap`, adding real height; sidebar
+  sits beside it, adding none" story the original numbers told. That
+  branch's new toolbar controls can push `.toolbar` onto an extra wrapped
+  row at certain viewport widths, and which widths trigger that differs
+  between the two nav styles (tabs' toolbar spans the full content width;
+  sidebar's is squeezed narrower by the sidebar itself, so it wraps at
+  different breakpoints) — so each nav style's pair of constants is now
+  independently calibrated to its own worst-case width across a
+  700-1600px sweep (`getBoundingClientRect()` on `#table-wrap` and
+  `footer`, same 60-document seed and methodology as always), not derived
+  from the other by a fixed structural offset. It happened that tabs'
+  worst case (an extra wrapped row appearing only around 1000-1100px,
+  absent at other tabs widths) needed a bigger bump than sidebar's did
+  this round, landing tabs' numbers above sidebar's again — but that's
+  incidental to where each style's own toolbar happens to wrap this time,
+  not a re-assertion of the old structural rule; a future toolbar change
+  could easily flip it back. Sidebar mode is left with roughly `46px` of
+  known, accepted dead space at viewport widths `≥1440px` (its own
+  worst-case width is narrower than that, so the constant that closes the
+  worst case necessarily overshoots at the wide end) — deliberately not
+  tightened further, per the "accept extra gap, never accept overlap"
+  principle repeated throughout this note: the potential savings were
+  small relative to the risk of reopening a real overlap at a
+  narrower width. **Since the
   footer became fixed, permanently-visible chrome (`position: fixed; bottom:
   0;`, see the footer's own note elsewhere in this file), all four numbers
   above also include its rendered height (62px at normal widths)** — the
@@ -635,23 +659,31 @@ this repo's git tags.
   per-field loop exactly like "Organization" would, with `show_as_column:1,
   autocomplete:1` set by the migration so it keeps its table column/filter/
   autocomplete (see the generalized column system below) without any
-  Payment-method-specific code anywhere. **Amount and Currency keep one
-  deliberate, narrow exception**: `show_as_column:0, autocomplete:0` (they
-  opt OUT of the generic column system), because their *table column and
-  detail-view line* stay intentionally combined into one "123.45 EUR"
-  display (`formatAmount()`, reading `d.customFields['Amount']`/`['Currency']`,
-  `parseFloat`'d since `document_field_values.value` is always text) rather
-  than becoming two independent columns. Their capture/edit form inputs,
-  however, are NOT specially paired anymore — each is a normal, independently-
-  positioned `renderGenericFieldHtml()` field with its own clear button;
-  the old side-by-side `.field-row` layout from `renderAmountFieldHtml()`
-  is gone. Two narrow exceptions specifically for the field named
-  `'Currency'` remain inside `renderGenericFieldHtml()` itself: it reuses
-  the long-standing `currency-list` datalist (rather than the generic
-  per-field `field-${id}-list` mechanism), and it still pre-fills from
-  `defaultCurrency` as a dismissible guess on capture (amber `.field-guess`
-  + hint, cleared on first `input`/`change`) — both are single `field.name
-  === 'Currency'` checks, not the general mechanism. **The value-preservation
+  Payment-method-specific code anywhere. **Amount alone keeps one
+  deliberate, narrow exception**: `show_as_column:0, autocomplete:0` (it
+  opts OUT of the generic column system), because its *table column and
+  detail-view line* stay intentionally combined with Currency into one
+  "123.45 EUR" display (`formatAmount()`, reading
+  `d.customFields['Amount']`/`['Currency']`, `parseFloat`'d since
+  `document_field_values.value` is always text) rather than becoming its
+  own independent column. **Currency itself has since opted INTO the
+  generic column system** (`show_as_column:1, autocomplete:1`, same as
+  Payment method) — it gets its own optional table column, filter
+  dropdown, and autocomplete datalist, entirely independent of the
+  combined Amount/Currency display above, which keeps working unchanged
+  regardless of whether Currency's own column happens to be toggled on.
+  Both capture/edit form inputs are NOT specially paired — each is a normal,
+  independently-positioned `renderGenericFieldHtml()` field with its own
+  clear button; the old side-by-side `.field-row` layout from
+  `renderAmountFieldHtml()` is gone. Two narrow exceptions specifically for
+  the field named `'Currency'` remain inside `renderGenericFieldHtml()`
+  itself: it reuses the long-standing `currency-list` datalist (rather than
+  the generic per-field `field-${id}-list` mechanism, which still also
+  gets generated for it as a harmless unused side effect of opting into
+  the generic column system), and it still pre-fills from `defaultCurrency`
+  as a dismissible guess on capture (amber `.field-guess` + hint, cleared
+  on first `input`/`change`) — both are single `field.name === 'Currency'`
+  checks, not the general mechanism. **The value-preservation
   correctness property is now free**: since all three fields flow through
   the same `readDynamicFieldValues()`/`document_field_values` save loop and
   `applyDynamicFieldsForType()`'s generic orphaned-field handling as any
@@ -1137,9 +1169,10 @@ this repo's git tags.
   already used for this exact `needs_review` concept.
   **`.table-wrap`'s sticky-header max-height calibration is nav-style-
   dependent** — see that note near the top of this file for the current
-  values and the empirical-verification story; the tabs nav sits *above*
-  the table (adding real height to the stack) while the sidebar nav sits
-  *beside* it (adding none), so the two styles need different constants.
+  values and the empirical-verification story, including why the two
+  styles' constants are each independently calibrated to their own
+  worst-case toolbar-wrapping width rather than related by a fixed
+  structural offset.
 - **Reports** (`#nav-item-reports`, `data-view="reports"`, `reportBreakdownFields()`,
   `reportBreakdownFieldInfo()`, `computeReportGroups()`, `renderReportsView()`) is a
   4th top-level nav view alongside All Documents/Inbox/Waste bin, giving totals
@@ -1392,10 +1425,12 @@ this repo's git tags.
   a field attached to every type in the library would have had no way to
   ever reach them. Not offered for any person-type field (People, Author,
   Collaborator, ... — `capabilitiesHtml()` excludes `type === 'person'`,
-  see the People note above for why) or for `'Amount'`/`'Currency'` by
-  name (their flags are deliberately kept off — see the sentinel-fields
-  note above — so an editable checkbox that visibly did nothing would just
-  be confusing).
+  see the People note above for why) or for `'Amount'` by name (its flags
+  are deliberately kept off — see the sentinel-fields note above — so an
+  editable checkbox that visibly did nothing would just be confusing).
+  Currency is no longer excluded here — it's a completely ordinary field
+  for capability purposes now, same as Payment method, and gets these
+  checkboxes like any other text field.
 - **Schema upgrades for already-existing libraries.** `SCHEMA` uses
   `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
   exists — it does **not** retroactively add new columns to someone's

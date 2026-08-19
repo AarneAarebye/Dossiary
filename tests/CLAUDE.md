@@ -278,7 +278,42 @@ no saved value; a checkbox field explicitly saved as unchecked (`'0'`) is
 correctly excluded as real data, not "unset"; and a Smart Collection saved
 with a "not set" filter active reproduces the same filtering from its own
 saved criteria, proving the shared `matchesCriteria()` path works for both
-live toolbar and persisted Smart Collection filters). This
+live toolbar and persisted Smart Collection filters), Currency opting into
+the generic column/filter/autocomplete/sort system and the new Amount range
+filter (`test_amount_currency_filter.py` — Currency's own Column capability
+checkbox appearing in Field Settings while Amount's still doesn't; the
+Currency column appearing in the Columns menu as `field-3`, hidden by
+default, showing real per-row values once toggled on, and sorting correctly
+via the existing generic `sortKey.startsWith('field-')` mechanism with zero
+new sort code; the Currency filter dropdown listing distinct values plus
+"— Not set —" and narrowing correctly for both; a Smart Collection saved
+with a Currency filter active reproducing the same filtering from its own
+saved criteria; Reports' breakdown-field dropdown correctly excluding
+Currency, since it's already the report's own top-level grouping; the
+Amount min/max range filter narrowing correctly for min-only, max-only,
+both together, and an empty-result min>max case, with a document that has
+no Amount at all correctly excluded from every range comparison since NaN
+never satisfies a `>=`/`<=` comparison; "Amount not set" matching only a
+document with no saved Amount value at all, critically not one whose
+Amount is explicitly saved as `0` (real data, not "unset"); the min/max
+inputs disabling while "not set" is checked and re-enabling once it's
+unchecked; typing into an enabled min input leaving "not set" unchecked;
+the Currency filter and Amount "not set" composing correctly with plain
+AND, with no dedicated combo code, proving `matchesCriteria()`'s existing
+composition already covers it; a Smart Collection saved with an Amount
+range filter active reproducing the same filtering from its own saved
+criteria, mirroring the Currency Smart Collection scenario's structure;
+`resetAll()` clearing the Amount filter's min/max/"not set" state when
+switching libraries via the real `#reload-btn` ("Switch library") code
+path, reproducing the exact reported bug — a leaked "not set" filter would
+otherwise silently hide every document in the newly-opened library; and,
+as a second, independent scenario in the same file, the
+`migrateCurrencyColumnDefault()` backfill migration correctly flipping
+Currency's `show_as_column`/`autocomplete` from `0`/`0` to `1`/`1` for a
+library that already ran the old `migrateSentinelFieldsToGeneric()` before
+this feature existed, and — the idempotency property — NOT re-flipping it
+if a person already manually turned it back off after an earlier run of
+this same backfill). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
@@ -328,7 +363,15 @@ that can't be scripted. The approach used throughout:
   `DELETE FROM ... WHERE col = ?` (used by editing), and `INSERT OR
   REPLACE` semantics (used by settings) in addition to the original
   `INSERT OR IGNORE`; `exec()` handles a single `WHERE col = 'literal'`
-  clause (used by the settings lookup). If a future change sends the app's
+  clause (used by the settings lookup). The Amount/Currency column-and-filter
+  branch extended `run()`'s `UPDATE` handling further: a compound
+  `WHERE col1 = ? AND col2 = ?` clause (checked before the pre-existing
+  single-condition pattern, so it isn't accidentally matched by the
+  looser one first), and literal (non-`?`) values inside the `SET`
+  clause itself — e.g. `UPDATE fields SET show_as_column = 1,
+  autocomplete = 1 WHERE name = ? AND type = ?`, which
+  `migrateCurrencyColumnDefault()` sends as a literal-valued backfill
+  rather than binding `1`/`1` as params. If a future change sends the app's
   first `UPDATE`/`DELETE`/`SELECT` with a shape the stub doesn't recognize
   yet, extend the stub's regex matching rather than working around it —
   the whole point is exercising the app's real SQL strings.

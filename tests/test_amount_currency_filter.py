@@ -72,6 +72,32 @@ SEED = {
     ],
 }
 
+# A second, independent library ("library B") used by Scenario 11 below to
+# reproduce the exact resetAll() bug report: neither of its two documents
+# has any Amount/Currency field values at all, so if the Amount range
+# filter's state (min/max/"not set") leaked across a library switch instead
+# of being cleared by resetAll(), both documents would wrongly stay hidden
+# after reopening this library.
+LIBRARY_B_SEED = {
+    "documents": [
+        {
+            "id": 1, "title": "Library B Doc 1", "category": "Misc", "document_type": "Note",
+            "date": "2026-04-01T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/1_a.pdf", "original_file_path": None,
+            "created_at": "2026-04-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 0, "needs_review": 0, "deleted": 0,
+        },
+        {
+            "id": 2, "title": "Library B Doc 2", "category": "Misc", "document_type": "Note",
+            "date": "2026-04-02T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/2_b.pdf", "original_file_path": None,
+            "created_at": "2026-04-02T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+            "archived": 0, "needs_review": 0, "deleted": 0,
+        },
+    ],
+    "tags": [], "document_tags": [],
+}
+
 async def route_stub(page):
     async def route_handler(route):
         url = route.request.url
@@ -95,15 +121,6 @@ async def option_label(page, select_id, value):
             const opt = opts.find(o => o.value === '{value}');
             return opt ? opt.textContent : null;
         }}
-    """)
-
-async def read_db(page):
-    return await page.evaluate("""
-        (async () => {
-            const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
-            const f = await fh.getFile();
-            return JSON.parse(await f.text());
-        })()
     """)
 
 async def main():
@@ -138,9 +155,6 @@ async def main():
         # by default, and toggling it on shows the right per-row values ===
         await page.click('#columns-btn')
         await page.wait_for_timeout(100)
-        currency_toggle = page.locator('#columns-menu input[type=checkbox]', has=page.locator('xpath=following-sibling::*[contains(text(), "Currency")]'))
-        # Simpler: locate by the field's column id directly, same convention
-        # test_generic_column_system.py already uses for dynamic fields.
         currency_col_toggle = page.locator('#col-toggle-field-3')
         assert await currency_col_toggle.count() == 1, "Currency should appear in the Columns menu as field-3"
         assert not await currency_col_toggle.is_checked(), "Currency column should be hidden by default"
@@ -273,20 +287,24 @@ async def main():
         assert min_disabled and max_disabled, "Min/max inputs should be disabled while 'not set' is checked"
         print("Min/max inputs disabled while 'not set' is checked:", min_disabled, max_disabled)
 
-        # === Scenario 8: typing into a number input unchecks "not set" and
-        # re-enables both inputs ===
-        await page.evaluate("""() => {
-            const minInput = document.getElementById('amount-filter-min');
-            minInput.disabled = false;
-            minInput.value = '100';
-            minInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }""")
+        # === Scenario 8: unchecking "not set" re-enables both inputs (its own
+        # change handler), and typing into the now-enabled min input leaves
+        # "not set" unchecked -- a disabled input can't be typed into in a
+        # real browser at all, so there's no real-world path where typing
+        # happens while the checkbox is still checked; this only exercises
+        # the reachable case ===
+        await page.uncheck('#amount-filter-unset')
+        await page.wait_for_timeout(150)
+        min_enabled = not await page.locator('#amount-filter-min').is_disabled()
+        max_enabled = not await page.locator('#amount-filter-max').is_disabled()
+        assert min_enabled and max_enabled, "Unchecking 'not set' should re-enable both inputs"
+        print("Unchecking 'not set' re-enables both inputs:", min_enabled, max_enabled)
+
+        await page.fill('#amount-filter-min', '100')
         await page.wait_for_timeout(150)
         unset_checked = await page.locator('#amount-filter-unset').is_checked()
-        assert not unset_checked, "'Not set' should uncheck itself once a min/max value is typed"
-        max_disabled_after = await page.locator('#amount-filter-max').is_disabled()
-        assert not max_disabled_after, "Max input should be re-enabled once 'not set' unchecks itself"
-        print("Typing into min unchecks 'not set' and re-enables max:", unset_checked, max_disabled_after)
+        assert not unset_checked, "'Not set' should stay unchecked after typing into an enabled input"
+        print("Typing into an enabled min input leaves 'not set' unchecked:", unset_checked)
         await page.fill('#amount-filter-min', '')
         await page.wait_for_timeout(150)
 
@@ -306,6 +324,68 @@ async def main():
         await page.select_option('#dyn-filter-field-3', '')
         await page.uncheck('#amount-filter-unset')
         await page.wait_for_timeout(150)
+
+        # === Scenario 10: a Smart Collection saved with an Amount range
+        # filter active reproduces the same filtering from its own saved
+        # criteria on reopen -- mirrors Scenario 4's Currency Smart
+        # Collection structure exactly, but for #amount-filter-min/
+        # #amount-filter-max instead of the Currency dropdown ===
+        await page.fill('#amount-filter-min', '100')
+        await page.fill('#amount-filter-max', '300')
+        await page.wait_for_timeout(150)
+        await page.click('#save-smart-collection-btn')
+        await page.wait_for_timeout(150)
+        await page.fill('#smart-collection-name-input', '100-300')
+        await page.click('#smart-collection-name-save-btn')
+        await page.wait_for_timeout(200)
+        await page.fill('#amount-filter-min', '')
+        await page.fill('#amount-filter-max', '')
+        await page.wait_for_timeout(150)
+
+        amount_smart_collection_nav = page.locator('.nav-item[data-view^="collection-"]', has_text='100-300')
+        await amount_smart_collection_nav.click()
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == ['1', '2'], f"'100-300' Smart Collection should show docs 1, 2, got {ids}"
+        print("Smart Collection saved with an Amount range filter correctly reproduces it:", ids)
+
+        # === Scenario 11: resetAll() clears the Amount filter's state (min,
+        # max, "not set") when switching libraries -- reproduces the exact
+        # reported bug: checking "Amount not set" in library A, then
+        # switching to library B, used to leave the checkbox checked and
+        # both inputs disabled, silently hiding every document in library B
+        # (whose documents have no Amount value at all, so they'd all match
+        # a leaked "not set" filter). #reload-btn ("Switch library") is the
+        # real code path that calls resetAll() then openLibrary() -- the
+        # same path a person actually uses to switch libraries -- and the
+        # stub's showDirectoryPicker() returns whatever window.__TEST_ROOT
+        # currently points at, so reassigning it here to a fresh, second
+        # seeded root genuinely simulates picking a different folder. ===
+        await page.click('.nav-item[data-view="all"]')
+        await page.wait_for_timeout(150)
+        await page.check('#amount-filter-unset')
+        await page.wait_for_timeout(150)
+        ids_before_switch = await visible_ids(page)
+        assert ids_before_switch == ['4'], f"sanity check before switching libraries: expected only doc 4, got {ids_before_switch}"
+
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(LIBRARY_B_SEED)});")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(400)
+
+        min_value = await page.locator('#amount-filter-min').input_value()
+        max_value = await page.locator('#amount-filter-max').input_value()
+        unset_checked_after_switch = await page.locator('#amount-filter-unset').is_checked()
+        min_disabled_after_switch = await page.locator('#amount-filter-min').is_disabled()
+        max_disabled_after_switch = await page.locator('#amount-filter-max').is_disabled()
+        assert min_value == '' and max_value == '', f"Amount min/max should be cleared after switching libraries, got min={min_value!r} max={max_value!r}"
+        assert not unset_checked_after_switch, "'Amount not set' should be unchecked after switching libraries"
+        assert not min_disabled_after_switch and not max_disabled_after_switch, "Amount min/max inputs should be re-enabled after switching libraries"
+        print("Amount filter state (min, max, 'not set', disabled) is fully cleared after switching libraries:",
+              min_value, max_value, unset_checked_after_switch, min_disabled_after_switch, max_disabled_after_switch)
+
+        ids_after_switch = await visible_ids(page)
+        assert ids_after_switch == ['1', '2'], f"Both library B documents should be visible after switching (filter cleared, not leaked), got {ids_after_switch}"
+        print("Both library B documents are visible after switching libraries (Amount filter didn't leak):", ids_after_switch)
 
         print("JS ERRORS:", errors)
         await browser.close()

@@ -188,11 +188,24 @@
   /* .table-wrap is a bounded scroll container so thead's sticky header has
      something correct to stick to -- see CLAUDE.md's sticky-header
      calibration note for the full derivation and how these constants were
-     measured. X is 364 (tabs, idle), 324 (sidebar, idle), 438 (tabs, bulk-bar
-     visible), 398 (sidebar, bulk-bar visible) -- the tab strip sits ABOVE
-     .table-wrap in the tabs layout, the sidebar sits BESIDE it, and
-     #bulk-action-bar adds ~74px of real page height whenever a row is
-     selected. The footer is now permanent, fixed chrome too
+     measured. X is 410 (tabs, idle), 370 (sidebar, idle), 484 (tabs, bulk-bar
+     visible), 444 (sidebar, bulk-bar visible) -- #bulk-action-bar still adds
+     a consistent ~74px of real page height whenever a row is selected,
+     regardless of nav style (484-410=74, 444-370=74). The tab-strip-above
+     vs. sidebar-beside structural difference that used to fully explain
+     why tabs' numbers were larger than sidebar's is no longer the whole
+     story: the Amount-range/Currency-filter toolbar controls added
+     alongside this comment can push .toolbar onto an extra wrapped row at
+     certain viewport widths, and which widths trigger that differs between
+     the two nav styles (tabs' toolbar spans the full width; sidebar's is
+     squeezed narrower by the sidebar itself), so each nav style's pair of
+     constants is independently calibrated to its own worst-case width
+     across a 700-1600px sweep, not derived from the other by a fixed
+     structural offset. It happens that tabs' worst case (an extra wrapped
+     row at ~1000-1100px, absent at other tabs widths) needed a bigger bump
+     than sidebar's did this time, making tabs' numbers larger again -- but
+     that's incidental to where each style's own toolbar happens to wrap,
+     not a re-assertion of the old "tabs is inherently taller" rule. The footer is now permanent, fixed chrome too
      (position:fixed; bottom:0, see the footer's own note elsewhere in this
      file), and its rendered height is baked into all four numbers above --
      .table-wrap's bottom edge now correctly lands at the FOOTER's top edge,
@@ -218,9 +231,9 @@
      320-640px range now that it's fixed at one row. See CLAUDE.md for the
      full story, including a now-closed 320px+bulk-bar footer-overlap
      corner that this fix resolved as a side effect. */
-  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 364px); }
+  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 410px); }
   #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 370px); }
-  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 438px); }
+  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 484px); }
   #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 444px); }
   table{ width:100%; border-collapse:collapse; margin-top:18px; min-width:800px; }
   thead th{ text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-dim); font-weight:500; padding:8px 14px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none; white-space:nowrap; position:sticky; top:0; background:var(--ink); z-index:10; }
@@ -2666,6 +2679,9 @@
     reportsView.style.display = 'none';
     if(reportDateFrom) reportDateFrom.value = '';
     if(reportDateTo) reportDateTo.value = '';
+    if(amountFilterMin){ amountFilterMin.value = ''; amountFilterMin.disabled = false; }
+    if(amountFilterMax){ amountFilterMax.value = ''; amountFilterMax.disabled = false; }
+    if(amountFilterUnset) amountFilterUnset.checked = false;
     el('inbox-banner').style.display = 'none';
     subLabel.textContent = t('emptyTitle'); statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
@@ -2969,11 +2985,12 @@
   // One-time-per-library promotion of Payment method, Amount, and Currency from
   // dedicated `documents` columns (payment_method/amount/currency) with bespoke
   // rendering into plain `fields` rows, exactly like any other custom field --
-  // Payment method then participates fully in the generic column/filter/
-  // autocomplete/sort system (see FIELD_DEFS below and renderColumnsMenu()),
-  // while Amount/Currency keep their existing paired table/detail-view display via
-  // a small deliberate exception (see formatAmount()) even though their storage is
-  // now fully generic too. Idempotent: skips entirely once a 'Payment method'
+  // Payment method and Currency then participate fully in the generic column/
+  // filter/autocomplete/sort system (see FIELD_DEFS below and
+  // renderColumnsMenu()), while Amount alone keeps its existing paired
+  // table/detail-view display via a small deliberate exception (see
+  // formatAmount()) even though its storage is now fully generic too. Idempotent:
+  // skips entirely once a 'Payment method'
   // fields row already exists, so it's safe to call unconditionally on every
   // library open. Called from both initNewLibrary() (a brand new library starts
   // with these three pre-defined, exactly as they were always implicitly
@@ -3678,9 +3695,14 @@
   // Amount and Currency are plain generic fields now (see
   // migrateSentinelFieldsToGeneric()), so their values live in d.customFields like
   // any other custom field -- document_field_values.value is always TEXT, hence
-  // the parseFloat. Combining them into one "123.45 EUR" display is a deliberate,
-  // narrow exception kept for this one dedicated table column/detail-view line;
-  // neither field participates in the generic show-as-column system.
+  // the parseFloat. Combining them into one "123.45 EUR" display here is a
+  // deliberate, narrow exception kept for Amount alone: it never participates in
+  // the generic show-as-column system, since its table column/detail-view line
+  // stay permanently paired with Currency instead of becoming its own column.
+  // Currency itself now DOES participate in the generic show-as-column system
+  // (an independent, optional column/filter/autocomplete, same as Payment
+  // method) -- this combined display is a second, additional place Currency's
+  // value shows up, not its only one anymore.
   function formatAmount(d){
     const raw = (d.customFields || {})['Amount'];
     const amount = raw != null && raw !== '' ? parseFloat(raw) : NaN;
@@ -4211,8 +4233,8 @@
   // range -- so typing into either number input unchecks "not set" (and
   // re-enables both inputs), and checking "not set" clears and disables
   // both.
-  amountFilterMin.addEventListener('input', () => { amountFilterUnset.checked = false; amountFilterMin.disabled = amountFilterMax.disabled = false; render(); });
-  amountFilterMax.addEventListener('input', () => { amountFilterUnset.checked = false; amountFilterMin.disabled = amountFilterMax.disabled = false; render(); });
+  amountFilterMin.addEventListener('input', () => { amountFilterUnset.checked = false; render(); });
+  amountFilterMax.addEventListener('input', () => { amountFilterUnset.checked = false; render(); });
   amountFilterUnset.addEventListener('change', () => {
     amountFilterMin.disabled = amountFilterMax.disabled = amountFilterUnset.checked;
     if(amountFilterUnset.checked){ amountFilterMin.value = ''; amountFilterMax.value = ''; }
@@ -5050,10 +5072,11 @@
     // valued, no table-column/filter support yet -- out of scope for the pass that
     // generalized People into a real field, could follow later the same way this
     // itself followed Amount/Currency/Payment method's own generalization), and not
-    // Amount/Currency specifically: their show_as_column/autocomplete flags are
-    // deliberately inert (see formatAmount()'s note on why their display stays
-    // paired and hardcoded), so a checkbox that visibly did nothing would just be
-    // confusing. Shared between both columns below -- show_as_column/autocomplete
+    // Amount specifically: its show_as_column/autocomplete flags are deliberately
+    // inert (see formatAmount()'s note on why its display stays paired with
+    // Currency and hardcoded), so a checkbox that visibly did nothing would just be
+    // confusing. Currency itself is a completely ordinary field now and gets these
+    // checkboxes like any other. Shared between both columns below -- show_as_column/autocomplete
     // are properties of the field itself, not of its relationship to fsSelectedType,
     // so they need to stay reachable whether or not the field happens to already be
     // attached to whichever type is currently selected (a field attached to every

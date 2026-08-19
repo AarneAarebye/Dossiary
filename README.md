@@ -40,9 +40,17 @@ working" problem that motivated this project in the first place.
   read a stored library's access handle too — though it would still need
   you to click Allow on a permission prompt naming the real folder.
 - **Browse** — sortable, searchable, filterable list of every document in
-  the library, with category/type filters. Search matches title, category,
+  the library, with Category/Type/People filters and, for any custom field
+  toggled into the generic column system (see "Any single-valued custom
+  field can become a table column, a filter, and offer autocomplete"
+  below), its own filter dropdown too. Search matches title, category,
   subcategory, document type, notes, OCR text, tags, people, and every
-  custom field's value.
+  custom field's value. Amount gets a dedicated **range filter** instead of
+  a dropdown (a dropdown of every distinct amount wouldn't be useful) — a
+  min and a max number input in the toolbar, either or both optional, plus
+  a separate "Amount not set" checkbox for finding documents with no saved
+  Amount at all (which disables the min/max inputs while checked, since the
+  two are mutually exclusive ways of filtering the same field).
 - **Capture** — add a new document (PDF or image), with client-side OCR via
   [Tesseract.js](https://github.com/naptha/tesseract.js) running entirely in
   your browser. Language options: German, English, or both auto-detected
@@ -241,19 +249,26 @@ working" problem that motivated this project in the first place.
   every existing field) for that instead.
 - **Amount has a linked Currency field** — both are ordinary custom fields
   under the hood now (their capture/edit form inputs are two normal,
-  independently-positioned fields, each with its own clear button), but
-  they deliberately keep one exception from the fully generic system
-  above: neither gets Column/Autocomplete checkboxes in Field Settings.
-  Currency is free text, with its own autocomplete from currencies already
-  used in the library, rather than a fixed dropdown (real documents mix
-  symbols like "€"/"$" and codes like "EUR"/"USD"). Their *table column and
-  detail-view line* always stay combined into one "123.45 EUR" display
-  (amount, then currency, consistently) rather than becoming two separate
-  columns, since free text makes it impossible to know whether a given
-  value is meant as a prefix symbol or a suffix code. Sorting the
-  Amount column sorts by the raw number only — there's no currency
-  conversion, since this is a personal document archive, not an
-  accounting tool. A **default currency**, set once in Field Settings, is
+  independently-positioned fields, each with its own clear button). Amount
+  alone keeps one deliberate exception from the fully generic system above:
+  it never gets Column/Autocomplete checkboxes in Field Settings, and its
+  *table column and detail-view line* always stay combined with Currency
+  into one "123.45 EUR" display (amount, then currency, consistently)
+  rather than becoming its own column — sorting that combined Amount column
+  sorts by the raw number only, and there's no currency conversion, since
+  this is a personal document archive, not an accounting tool. **Currency
+  itself is a completely ordinary custom field, same as Payment method** —
+  it gets its own optional table column, toolbar filter dropdown (listing
+  every distinct currency actually used in your library, plus "— Not set
+  —"), and autocomplete, toggleable via Field Settings' Column/Autocomplete
+  checkboxes exactly like any other text field, entirely independent of the
+  combined Amount/Currency display above (that display keeps working
+  unchanged whether or not Currency's own column happens to be toggled on).
+  Currency's autocomplete draws from currencies already used in the
+  library rather than a fixed dropdown, since real documents mix symbols
+  like "€"/"$" and codes like "EUR"/"USD", and free text makes it
+  impossible to know whether a given value is meant as a prefix symbol or a
+  suffix code. A **default currency**, set once in Field Settings, is
   optional and unset by default — when configured, it pre-fills new
   captures' Currency field the same way the Date field pre-fills to today:
   visually flagged as a guess (amber, with a "double-check this" hint)
