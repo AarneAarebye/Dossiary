@@ -12,5 +12,5 @@ print("exit code:", result.returncode)
 print("stdout:", result.stdout.strip())
 print("stderr:", result.stderr.strip())
 assert result.returncode == 0
-assert result.stdout.strip() == 'scan_watch.py 1.10.0', f"unexpected --version output: {result.stdout!r}"
+assert result.stdout.strip() == 'scan_watch.py 1.11.0', f"unexpected --version output: {result.stdout!r}"
 print("PASS")
