@@ -1337,6 +1337,28 @@ version number — only by the schema itself matching).
   support depends on the SQLite version sql.js happens to bundle, and
   `INSERT OR REPLACE` has been supported forever), not browser storage —
   keep it that way so the preference travels with the library folder.
+- **Every filter dropdown built by `populateFilters()`** (Category, Type,
+  People, and any dynamic custom-field filter) also carries a "— Not set —"
+  option, right after "All X," so a document missing that field entirely
+  can be filtered to directly. It's driven by a dedicated sentinel,
+  `FILTER_UNSET` (`'__unset__'`), deliberately distinct from the plain
+  empty string `populateFilters()`'s own "All X" option already uses to
+  mean "this filter isn't active" — reusing the empty string for both
+  would make "not set" indistinguishable from "no filter selected."
+  `matchesCriteria()` — the single predicate both the live toolbar and
+  saved Smart Collection criteria already share (see the Collections note
+  above) — is the only place that interprets the sentinel, so this works
+  everywhere filtering already composes (the toolbar, Smart Collections,
+  Reports' own filter composition) with no separate code path: a scalar
+  field (category/type) checks `!!d.category`, the multi-valued People
+  field checks `(d.people||[]).length > 0`, and a dynamic field checks
+  `actual !== undefined` against `d.customFields`. That last check is
+  deliberately `!== undefined`, not a falsy check — a checkbox field
+  explicitly saved as unchecked is stored as the string `'0'`, which is
+  real, meaningful data, not "unset," matching
+  `readDynamicFieldValues()`'s own existing rule for the save path (an
+  unchecked box is meaningful data, not "empty"); only a field with no
+  saved value at all should match "— Not set —".
 - **Persisted default sort order** (`sortKey`, `sortDir`, `loadSortState()`,
   `saveSortState()`) mirrors the `nav_style`/`default_currency` pattern exactly:
   a per-library setting stored in the `settings` table, loaded once on library
