@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (58 scripts) + shared
+tests/                   Playwright regression suite (59 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2094,8 +2094,8 @@ version number — only by the schema itself matching).
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **58
-scripts covering most of the app's actual functionality** (57 of them
+There's a real, runnable Playwright regression suite in `tests/` — **59
+scripts covering most of the app's actual functionality** (58 of them
 Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
 check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
@@ -2365,7 +2365,15 @@ list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
 described only two basic scenarios, long after the suite had grown well
-past that).
+past that), the "not set" filter option (`test_not_set_filter.py` — the
+option appears in every filter dropdown (Category, Type, People, and
+dynamic custom fields); each field type's "not set" filter narrows to
+exactly the right documents with no saved value; a checkbox field
+explicitly saved as unchecked (`'0'`) is correctly excluded as real data,
+not "unset"; and a Smart Collection saved with a "not set" filter active
+reproduces the same filtering from its own saved criteria, proving the
+shared `matchesCriteria()` path works for both live toolbar and persisted
+Smart Collection filters).
 Separately, and worth remembering: a single commit whose message described
 itself as a trivial doc-only rename ("Update references to renamed
 MarinerPaperlessTools repo") turned out, on closer inspection, to have
