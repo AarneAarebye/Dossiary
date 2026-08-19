@@ -221,7 +221,176 @@ async def main():
         assert 'Currency' not in breakdown_options, f"Currency should not be a Reports breakdown option, got {breakdown_options}"
         print("Reports breakdown dropdown correctly excludes Currency:", breakdown_options)
 
+        # === Scenario 6: Amount range filter -- min only, max only, both,
+        # and an empty-result min>max case. Filters composed here on top of
+        # docs 1/2/3/5 (100/250/500/0, doc 4 has no Amount at all and is
+        # correctly excluded from every range comparison below since NaN
+        # never satisfies a >= / <= comparison) ===
+        await page.click('.nav-item[data-view="all"]')
+        await page.wait_for_timeout(150)
+
+        await page.fill('#amount-filter-min', '200')
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == ['2', '3'], f"Amount min=200 should show docs 2, 3, got {ids}"
+        print("Amount min=200 shows docs 2, 3:", ids)
+
+        await page.fill('#amount-filter-min', '')
+        await page.fill('#amount-filter-max', '200')
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == ['1', '5'], f"Amount max=200 should show docs 1, 5 (0 and 100), got {ids}"
+        print("Amount max=200 shows docs 1, 5:", ids)
+
+        await page.fill('#amount-filter-min', '100')
+        await page.fill('#amount-filter-max', '300')
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == ['1', '2'], f"Amount 100-300 should show docs 1, 2, got {ids}"
+        print("Amount range 100-300 shows docs 1, 2:", ids)
+
+        await page.fill('#amount-filter-min', '300')
+        await page.fill('#amount-filter-max', '100')
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == [], f"Amount min>max should show zero results, got {ids}"
+        print("Amount min=300/max=100 (min>max) correctly shows zero results:", ids)
+
+        await page.fill('#amount-filter-min', '')
+        await page.fill('#amount-filter-max', '')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 7: "Amount not set" matches only doc 4 -- critically
+        # NOT doc 5, whose Amount is explicitly saved as 0 (real data) ===
+        await page.check('#amount-filter-unset')
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == ['4'], f"Amount 'not set' should show only doc 4 (not doc 5, whose Amount=0 is real data), got {ids}"
+        print("Amount 'not set' filter shows only doc 4, correctly excluding doc 5's explicit 0:", ids)
+
+        min_disabled = await page.locator('#amount-filter-min').is_disabled()
+        max_disabled = await page.locator('#amount-filter-max').is_disabled()
+        assert min_disabled and max_disabled, "Min/max inputs should be disabled while 'not set' is checked"
+        print("Min/max inputs disabled while 'not set' is checked:", min_disabled, max_disabled)
+
+        # === Scenario 8: typing into a number input unchecks "not set" and
+        # re-enables both inputs ===
+        await page.evaluate("""() => {
+            const minInput = document.getElementById('amount-filter-min');
+            minInput.disabled = false;
+            minInput.value = '100';
+            minInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }""")
+        await page.wait_for_timeout(150)
+        unset_checked = await page.locator('#amount-filter-unset').is_checked()
+        assert not unset_checked, "'Not set' should uncheck itself once a min/max value is typed"
+        max_disabled_after = await page.locator('#amount-filter-max').is_disabled()
+        assert not max_disabled_after, "Max input should be re-enabled once 'not set' unchecks itself"
+        print("Typing into min unchecks 'not set' and re-enables max:", unset_checked, max_disabled_after)
+        await page.fill('#amount-filter-min', '')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 9: Currency filter AND Amount "not set" compose
+        # correctly with plain AND -- no dedicated combo code exists, this
+        # proves matchesCriteria()'s existing composition already covers it ===
+        await page.click('#columns-btn')
+        await page.wait_for_timeout(100)
+        await page.click('#columns-btn')  # Currency column already toggled on in Scenario 2; just closing any stray open menu state
+        await page.wait_for_timeout(100)
+        await page.select_option('#dyn-filter-field-3', 'EUR')
+        await page.check('#amount-filter-unset')
+        await page.wait_for_timeout(150)
+        ids = await visible_ids(page)
+        assert ids == [], f"Currency=EUR AND Amount not set should show zero results (doc 4 has no Currency saved either), got {ids}"
+        print("Currency=EUR AND Amount-not-set correctly composes to zero results:", ids)
+        await page.select_option('#dyn-filter-field-3', '')
+        await page.uncheck('#amount-filter-unset')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
 asyncio.run(main())
+
+# === Second, independent scenario: the backfill migration
+# (migrateCurrencyColumnDefault()) correctly flips Currency's
+# show_as_column/autocomplete from 0/0 to 1/1 for a library that already
+# ran the OLD migrateSentinelFieldsToGeneric() before this feature existed
+# -- and, critically, does NOT re-flip it if a person already manually
+# turned it back off in Field Settings after an earlier run of this same
+# backfill (idempotency, same property migrateTextFieldsAutocompleteDefault()'s
+# own test already covers for its own migration) ===
+BACKFILL_SEED = {
+    "fields": [
+        {"id": 1, "name": "Payment method", "type": "text", "show_as_column": 1, "autocomplete": 1},
+        {"id": 2, "name": "Amount", "type": "number", "show_as_column": 0, "autocomplete": 0},
+        {"id": 3, "name": "Currency", "type": "text", "show_as_column": 0, "autocomplete": 0},
+    ],
+}
+
+ALREADY_MIGRATED_BUT_MANUALLY_OFF_SEED = {
+    "fields": [
+        {"id": 1, "name": "Payment method", "type": "text", "show_as_column": 1, "autocomplete": 1},
+        {"id": 2, "name": "Amount", "type": "number", "show_as_column": 0, "autocomplete": 0},
+        {"id": 3, "name": "Currency", "type": "text", "show_as_column": 0, "autocomplete": 0},
+    ],
+    "settings": [
+        {"key": "currency_column_default_migrated", "value": "1"},
+    ],
+}
+
+async def read_db(page):
+    return await page.evaluate("""
+        (async () => {
+            const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+            const f = await fh.getFile();
+            return JSON.parse(await f.text());
+        })()
+    """)
+
+async def backfill_main():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        errors = []
+
+        # --- Case A: pre-migration shape, no marker row yet -- gets flipped ---
+        # Reuses route_stub(), defined earlier in this same file for main()'s
+        # own page -- no need to duplicate the routing/stub-loading logic here.
+        page = await browser.new_page()
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        await route_stub(page)
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(BACKFILL_SEED)});")
+        await page.click("#open-btn")
+        await page.wait_for_timeout(400)
+        persisted = await read_db(page)
+        currency_field = next(f for f in persisted['fields'] if f['name'] == 'Currency')
+        assert currency_field['show_as_column'] == 1 and currency_field['autocomplete'] == 1, \
+            f"Currency should be backfilled to show_as_column=1, autocomplete=1, got {currency_field}"
+        marker = next((s for s in persisted['settings'] if s['key'] == 'currency_column_default_migrated'), None)
+        assert marker is not None and marker['value'] == '1', "Migration marker should be persisted after the backfill runs"
+        print("Case A: pre-migration Currency field correctly backfilled to show_as_column=1, autocomplete=1:", currency_field)
+        await page.close()
+
+        # --- Case B: already migrated once, then manually turned back off --
+        # a reopen must NOT silently re-enable it ---
+        page2 = await browser.new_page()
+        page2.on("pageerror", lambda exc: errors.append(str(exc)))
+        await route_stub(page2)
+        await page2.goto(f"file://{APP_PATH}")
+        await page2.wait_for_timeout(200)
+        await page2.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(ALREADY_MIGRATED_BUT_MANUALLY_OFF_SEED)});")
+        await page2.click("#open-btn")
+        await page2.wait_for_timeout(400)
+        persisted2 = await read_db(page2)
+        currency_field2 = next(f for f in persisted2['fields'] if f['name'] == 'Currency')
+        assert currency_field2['show_as_column'] == 0, \
+            f"A library already past the migration marker, with Currency manually turned back off, should stay off, got {currency_field2}"
+        print("Case B: manually-turned-off Currency stays off across reopen (migration marker already present):", currency_field2)
+        await page2.close()
+
+        print("JS ERRORS (backfill scenarios):", errors)
+        await browser.close()
+
+asyncio.run(backfill_main())

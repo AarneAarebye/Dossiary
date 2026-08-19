@@ -200,8 +200,40 @@ class FakeDatabase {
       return;
     }
 
-    const updateMatch = n.match(/^UPDATE\s+(\w+)\s+SET\s+([\s\S]+?)\s+WHERE\s+(\w+)\s*=\s*\?/i);
+    // Handle both simple WHERE (col = ?) and compound WHERE (col = ? AND col2 = ?)
+    let updateMatch = n.match(/^UPDATE\s+(\w+)\s+SET\s+([\s\S]+?)\s+WHERE\s+(\w+)\s*=\s*\?\s*AND\s+(\w+)\s*=\s*\?$/i);
     if (updateMatch) {
+      // Compound WHERE with AND (e.g., "UPDATE fields SET show_as_column = 1, autocomplete = 1 WHERE name = ? AND type = ?")
+      const table = updateMatch[1];
+      const assignments = updateMatch[2].split(',').map(s => s.trim());
+      const whereCol1 = updateMatch[3];
+      const whereCol2 = updateMatch[4];
+      // Last two params are WHERE values; the rest are SET params (if any)
+      const whereVal1 = params[params.length - 2];
+      const whereVal2 = params[params.length - 1];
+      const setParams = params.slice(0, params.length - 2);
+      let paramIdx = 0;
+      const updates = {};
+      for (const assignment of assignments) {
+        const [col, val] = assignment.split('=').map(s => s.trim());
+        // Value can be either a parameter (?) or a literal (1, 'text', etc.)
+        if (val === '?') {
+          updates[col] = setParams[paramIdx++];
+        } else {
+          // Literal value - parse it
+          if (/^\d+$/.test(val)) updates[col] = parseInt(val);
+          else if (/^'.*'$/.test(val)) updates[col] = val.slice(1, -1);
+          else updates[col] = val;
+        }
+      }
+      const rows = this.tables[table].filter(r => r[whereCol1] === whereVal1 && r[whereCol2] === whereVal2);
+      for (const row of rows) Object.assign(row, updates);
+      return;
+    }
+
+    updateMatch = n.match(/^UPDATE\s+(\w+)\s+SET\s+([\s\S]+?)\s+WHERE\s+(\w+)\s*=\s*\?$/i);
+    if (updateMatch) {
+      // Simple WHERE with single condition (e.g., "UPDATE fields SET autocomplete = ? WHERE type = ?")
       const table = updateMatch[1];
       const assignments = updateMatch[2].split(',').map(s => s.trim());
       const whereCol = updateMatch[3];
@@ -211,8 +243,16 @@ class FakeDatabase {
       let paramIdx = 0;
       const updates = {};
       for (const assignment of assignments) {
-        const col = assignment.split('=')[0].trim();
-        updates[col] = setParams[paramIdx++];
+        const [col, val] = assignment.split('=').map(s => s.trim());
+        // Value can be either a parameter (?) or a literal (1, 'text', etc.)
+        if (val === '?') {
+          updates[col] = setParams[paramIdx++];
+        } else {
+          // Literal value - parse it
+          if (/^\d+$/.test(val)) updates[col] = parseInt(val);
+          else if (/^'.*'$/.test(val)) updates[col] = val.slice(1, -1);
+          else updates[col] = val;
+        }
       }
       // Real SQL updates every matching row, not just the first -- e.g.
       // "UPDATE fields SET autocomplete = ? WHERE type = ?" is expected to touch

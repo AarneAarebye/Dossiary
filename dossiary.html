@@ -367,6 +367,10 @@
   .report-date-range{ display:flex; align-items:center; gap:6px; }
   .report-date-range input[type=date]{ color-scheme:dark; background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:7px 9px; border-radius:var(--radius); }
   .report-date-range span{ color:var(--text-dim); font-family:var(--font-mono); font-size:12px; }
+  .amount-filter-range{ display:flex; align-items:center; gap:6px; }
+  .amount-filter-range input[type=number]{ width:90px; background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:7px 9px; border-radius:var(--radius); }
+  .amount-filter-range input[type=number]:disabled{ opacity:0.4; }
+  .amount-filter-range span{ color:var(--text-dim); font-family:var(--font-mono); font-size:12px; }
   .checkbox-label{ display:flex !important; align-items:center; gap:8px; cursor:pointer; text-transform:none !important; letter-spacing:normal !important; font-family:var(--font-sans) !important; font-size:13px !important; color:var(--text) !important; }
   .field-with-clear{ position:relative; }
   .field-with-clear input{ padding-right:30px !important; }
@@ -538,6 +542,14 @@
         <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="" data-i18n="toolbarAllTypes">All types</option></select></span>
         <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="" data-i18n="toolbarAllPeople">All people</option></select></span>
         <span id="dynamic-filters"></span>
+        <span class="amount-filter-range" id="amount-filter-range-wrap">
+          <input type="number" id="amount-filter-min" step="0.01" data-i18n-title="toolbarAmountMinTitle" data-i18n-placeholder="toolbarAmountMinTitle" title="Min amount" placeholder="Min amount" />
+          <span>–</span>
+          <input type="number" id="amount-filter-max" step="0.01" data-i18n-title="toolbarAmountMaxTitle" data-i18n-placeholder="toolbarAmountMaxTitle" title="Max amount" placeholder="Max amount" />
+        </span>
+        <label class="show-archived-toggle" id="amount-filter-unset-wrap">
+          <input type="checkbox" id="amount-filter-unset" /> <span data-i18n="toolbarAmountUnsetLabel">Amount not set</span>
+        </label>
         <label class="show-archived-toggle" id="show-archived-wrap">
           <input type="checkbox" id="show-archived-toggle" /> <span data-i18n="toolbarShowArchived">Show archived</span>
         </label>
@@ -710,6 +722,7 @@
       toolbarAllTypes: 'All types', toolbarAllPeople: 'All people', toolbarAllDynamic: 'All {label}', toolbarFieldNotSet: '— Not set —',
       toolbarShowArchived: 'Show archived', toolbarBreakdownByTitle: 'Break down by',
       toolbarFromDateTitle: 'From date', toolbarToDateTitle: 'To date',
+      toolbarAmountMinTitle: 'Min amount', toolbarAmountMaxTitle: 'Max amount', toolbarAmountUnsetLabel: 'Amount not set',
       toolbarManageFields: '⚙ Manage fields', toolbarManageCollections: '⚙ Manage collections',
       toolbarCheckInbox: '📥 Check inbox', toolbarAddDocument: '＋ Add document',
       toolbarSwitchLibrary: 'Switch library', toolbarColumns: '⚙ Columns',
@@ -869,6 +882,7 @@
       toolbarAllTypes: 'Todos los tipos', toolbarAllPeople: 'Todas las personas', toolbarAllDynamic: 'Todos los {label}', toolbarFieldNotSet: '— Sin definir —',
       toolbarShowArchived: 'Mostrar archivados', toolbarBreakdownByTitle: 'Desglosar por',
       toolbarFromDateTitle: 'Desde fecha', toolbarToDateTitle: 'Hasta fecha',
+      toolbarAmountMinTitle: 'Importe mín.', toolbarAmountMaxTitle: 'Importe máx.', toolbarAmountUnsetLabel: 'Importe sin definir',
       toolbarManageFields: '⚙ Administrar campos', toolbarManageCollections: '⚙ Administrar colecciones',
       toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarAddDocument: '＋ Añadir documento',
       toolbarSwitchLibrary: 'Cambiar de biblioteca', toolbarColumns: '⚙ Columnas',
@@ -1028,6 +1042,7 @@
       toolbarAllTypes: 'Tous les types', toolbarAllPeople: 'Toutes les personnes', toolbarAllDynamic: '{label} : tous', toolbarFieldNotSet: '— Non défini —',
       toolbarShowArchived: 'Afficher les archivés', toolbarBreakdownByTitle: 'Répartir par',
       toolbarFromDateTitle: 'Date de début', toolbarToDateTitle: 'Date de fin',
+      toolbarAmountMinTitle: 'Montant min.', toolbarAmountMaxTitle: 'Montant max.', toolbarAmountUnsetLabel: 'Montant non défini',
       toolbarManageFields: '⚙ Gérer les champs', toolbarManageCollections: '⚙ Gérer les collections',
       toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarAddDocument: '＋ Ajouter un document',
       toolbarSwitchLibrary: 'Changer de bibliothèque', toolbarColumns: '⚙ Colonnes',
@@ -1187,6 +1202,7 @@
       toolbarAllTypes: 'Alle Typen', toolbarAllPeople: 'Alle Personen', toolbarAllDynamic: 'Alle {label}', toolbarFieldNotSet: '— Nicht gesetzt —',
       toolbarShowArchived: 'Archivierte anzeigen', toolbarBreakdownByTitle: 'Aufschlüsseln nach',
       toolbarFromDateTitle: 'Von Datum', toolbarToDateTitle: 'Bis Datum',
+      toolbarAmountMinTitle: 'Betrag min.', toolbarAmountMaxTitle: 'Betrag max.', toolbarAmountUnsetLabel: 'Betrag nicht gesetzt',
       toolbarManageFields: '⚙ Felder verwalten', toolbarManageCollections: '⚙ Sammlungen verwalten',
       toolbarCheckInbox: '📥 Posteingang prüfen', toolbarAddDocument: '＋ Dokument hinzufügen',
       toolbarSwitchLibrary: 'Bibliothek wechseln', toolbarColumns: '⚙ Spalten',
@@ -1346,6 +1362,7 @@
       toolbarAllTypes: '所有类型', toolbarAllPeople: '所有人员', toolbarAllDynamic: '所有{label}', toolbarFieldNotSet: '— 未设置 —',
       toolbarShowArchived: '显示已归档', toolbarBreakdownByTitle: '细分依据',
       toolbarFromDateTitle: '起始日期', toolbarToDateTitle: '结束日期',
+      toolbarAmountMinTitle: '最小金额', toolbarAmountMaxTitle: '最大金额', toolbarAmountUnsetLabel: '金额未设置',
       toolbarManageFields: '⚙ 管理字段', toolbarManageCollections: '⚙ 管理收藏集',
       toolbarCheckInbox: '📥 检查收件箱', toolbarAddDocument: '＋ 添加文档',
       toolbarSwitchLibrary: '切换资料库', toolbarColumns: '⚙ 列',
@@ -1525,6 +1542,9 @@
       toolbarBreakdownByTitle: '細分依據',
       toolbarFromDateTitle: '起始日期',
       toolbarToDateTitle: '結束日期',
+      toolbarAmountMinTitle: '最小金額',
+      toolbarAmountMaxTitle: '最大金額',
+      toolbarAmountUnsetLabel: '金額未設置',
       toolbarManageFields: '⚙ 管理字段',
       toolbarManageCollections: '⚙ 管理收藏集',
       toolbarCheckInbox: '📥 檢查收件箱',
@@ -2083,6 +2103,9 @@
   const showArchivedWrap = el('show-archived-wrap');
   const reportDateFrom = el('report-date-from');
   const reportDateTo = el('report-date-to');
+  const amountFilterMin = el('amount-filter-min');
+  const amountFilterMax = el('amount-filter-max');
+  const amountFilterUnset = el('amount-filter-unset');
   const mainLayout = el('main-layout');
   const appNav = el('app-nav');
   const modalRoot = el('modal-root');
@@ -3803,7 +3826,11 @@
     const dynamic = [...document.querySelectorAll('#dynamic-filters select')]
       .map(sel => ({ label: sel.dataset.fieldLabel, value: sel.value }))
       .filter(f => f.value);
-    return { q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value, person: personFilter.value, showArchived: showArchivedToggle.checked, dynamic };
+    return {
+      q: (searchInput.value || '').trim().toLowerCase(), category: categoryFilter.value, type: typeFilter.value,
+      person: personFilter.value, showArchived: showArchivedToggle.checked, dynamic,
+      amountMin: amountFilterMin.value, amountMax: amountFilterMax.value, amountUnset: amountFilterUnset.checked,
+    };
   }
 
   // Applies a saved (or live) filter snapshot to one document -- the shape `criteria`
@@ -3812,7 +3839,7 @@
   // so both use identical predicate logic; see applyFilters() (Task 2) for the live
   // side, and matchesView()'s 'collection-<id>' branch below for the saved side.
   function matchesCriteria(d, criteria){
-    const { q, category, type, person, dynamic } = criteria;
+    const { q, category, type, person, dynamic, amountMin, amountMax, amountUnset } = criteria;
     if(category){
       if(category === FILTER_UNSET ? !!d.category : d.category !== category) return false;
     }
@@ -3821,6 +3848,31 @@
     }
     if(person){
       if(person === FILTER_UNSET ? (d.people||[]).length > 0 : !(d.people||[]).includes(person)) return false;
+    }
+    // amountMin/amountMax/amountUnset may be entirely absent on criteria
+    // saved by a Smart Collection created before this filter existed --
+    // normalize to the same "inactive" defaults currentFilters() itself
+    // always supplies now, so an old saved collection's behavior is
+    // unchanged rather than suddenly excluding every document with no
+    // Amount value.
+    const amtUnset = !!amountUnset;
+    const amtMin = amountMin || '';
+    const amtMax = amountMax || '';
+    if(amtUnset){
+      // Deliberately checking the raw stored value, NOT formatAmount()'s
+      // "0 or NaN displays as --" rule -- a document with Amount explicitly
+      // saved as 0 has real, meaningful saved data (same
+      // checkbox-'0'-is-not-unset distinction the dynamic-fields loop just
+      // below already enforces for every other field); only a document
+      // with no document_field_values row for Amount at all counts as
+      // "not set."
+      if((d.customFields || {})['Amount'] !== undefined) return false;
+    } else if(amtMin !== '' || amtMax !== ''){
+      const raw = (d.customFields || {})['Amount'];
+      const amt = raw != null && raw !== '' ? parseFloat(raw) : NaN;
+      if(isNaN(amt)) return false;
+      if(amtMin !== '' && amt < parseFloat(amtMin)) return false;
+      if(amtMax !== '' && amt > parseFloat(amtMax)) return false;
     }
     for(const f of dynamic){
       const actual = (d.customFields || {})[f.label];
@@ -4154,6 +4206,18 @@
   showArchivedToggle.addEventListener('change', render);
   reportDateFrom.addEventListener('change', render);
   reportDateTo.addEventListener('change', render);
+  // "Not set" and the min/max range are mutually exclusive states -- a
+  // document can't simultaneously have no Amount and have one within a
+  // range -- so typing into either number input unchecks "not set" (and
+  // re-enables both inputs), and checking "not set" clears and disables
+  // both.
+  amountFilterMin.addEventListener('input', () => { amountFilterUnset.checked = false; amountFilterMin.disabled = amountFilterMax.disabled = false; render(); });
+  amountFilterMax.addEventListener('input', () => { amountFilterUnset.checked = false; amountFilterMin.disabled = amountFilterMax.disabled = false; render(); });
+  amountFilterUnset.addEventListener('change', () => {
+    amountFilterMin.disabled = amountFilterMax.disabled = amountFilterUnset.checked;
+    if(amountFilterUnset.checked){ amountFilterMin.value = ''; amountFilterMax.value = ''; }
+    render();
+  });
 
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();
