@@ -68,7 +68,7 @@ async def main():
         print("Payment method: type=text, show_as_column=1, autocomplete=1:",
               by_name.get('Payment method', {}).get('type'), by_name.get('Payment method', {}).get('show_as_column'), by_name.get('Payment method', {}).get('autocomplete'))
         print("Amount: type=number, show_as_column=0:", by_name.get('Amount', {}).get('type'), by_name.get('Amount', {}).get('show_as_column'))
-        print("Currency: type=text, show_as_column=0:", by_name.get('Currency', {}).get('type'), by_name.get('Currency', {}).get('show_as_column'))
+        print("Currency: type=text, show_as_column=1 (now flows through generic system):", by_name.get('Currency', {}).get('type'), by_name.get('Currency', {}).get('show_as_column'))
 
         # === document_field_values backfilled from the old columns ===
         def value_for(field_name):

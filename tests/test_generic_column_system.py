@@ -49,13 +49,14 @@ async def main():
         print("Column checkbox present, unchecked by default:", col_checked_before)
         print("Autocomplete checkbox present (text field), unchecked by default:", ac_checked_before)
 
-        # Amount/Currency don't get these checkboxes at all -- deliberately inert
-        # (see formatAmount()'s note); neither is configured for "Report" either, so
-        # both are in this same available-fields list to compare against.
+        # Amount doesn't get these checkboxes at all -- deliberately inert
+        # (see formatAmount()'s note); Currency now does (same as any other show_as_column
+        # field). Neither is configured for "Report" either, so both are in this same
+        # available-fields list to compare against.
         amount_toggle_count = await page.locator('.fs-list-item[data-field="Amount"] .fs-col-toggle').count()
         currency_toggle_count = await page.locator('.fs-list-item[data-field="Currency"] .fs-col-toggle').count()
         print("Amount has no Column checkbox (deliberately inert, see formatAmount()):", amount_toggle_count == 0)
-        print("Currency has no Column checkbox (deliberately inert):", currency_toggle_count == 0)
+        print("Currency has a Column checkbox (now flows through generic system):", currency_toggle_count == 1)
 
         # Turn both capabilities on for Status.
         await page.check('.fs-list-item[data-field="Status"] .fs-col-toggle')
