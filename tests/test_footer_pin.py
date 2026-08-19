@@ -183,6 +183,30 @@ async def main():
         """)
         print(f"[toolbar reachability, 320px width] all expected controls present (none missing): {toolbar_info['missingControls'] == []}")
         print(f"[toolbar reachability, 320px width] toolbar genuinely overflows horizontally (scrollWidth={toolbar_info['scrollWidth']} > clientWidth={toolbar_info['clientWidth']}): {toolbar_info['overflowsHorizontally']}")
+        assert toolbar_info['missingControls'] == [], f"Toolbar is missing expected controls: {toolbar_info['missingControls']}"
+        assert toolbar_info['overflowsHorizontally'], f"Toolbar should overflow horizontally (scrollWidth={toolbar_info['scrollWidth']} vs clientWidth={toolbar_info['clientWidth']}) but doesn't -- children may be compressing instead of the row genuinely overflowing"
+
+        # === Columns dropdown must actually be visible in the viewport when opened,
+        # not just present in the DOM -- .toolbar{overflow-x:auto} at narrow widths
+        # forces overflow-y to compute as auto too (the same CSS Overflow spec quirk
+        # this file's own .table-wrap note documents), which used to clip
+        # .columns-menu (position:absolute inside .toolbar) to a ~12px sliver. ===
+        columns_menu_info = await page2.evaluate("""
+            () => {
+                document.getElementById('columns-btn').click();
+                const menu = document.getElementById('columns-menu');
+                const rect = menu.getBoundingClientRect();
+                return {
+                    display: menu.style.display,
+                    top: rect.top, bottom: rect.bottom, height: rect.height,
+                    viewportHeight: window.innerHeight,
+                    fullyVisible: rect.top >= 0 && rect.bottom <= window.innerHeight,
+                };
+            }
+        """)
+        print(f"[columns menu, 320px width] opens and is fully visible in the viewport (not clipped by .toolbar's own overflow): {columns_menu_info['fullyVisible']}")
+        assert columns_menu_info['display'] == 'block', "Columns menu should be open after clicking the button"
+        assert columns_menu_info['fullyVisible'], f"Columns menu clipped: top={columns_menu_info['top']:.1f} bottom={columns_menu_info['bottom']:.1f} viewportHeight={columns_menu_info['viewportHeight']}"
 
         print("JS ERRORS (320px mobile viewport):", errors2)
         await browser2.close()

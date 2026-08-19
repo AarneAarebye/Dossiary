@@ -207,7 +207,7 @@
      Four MORE .table-wrap max-height overrides -- using their own,
      separately-derived constants (392/416/494/518, not these four plus a
      simple mobile-footer-height delta) -- live inside
-     `@media (max-width:640px)` further down this file (~line 419); see
+     `@media (max-width:640px)` further down this file (~line 428); see
      CLAUDE.md for why that shortcut doesn't work. Those four constants
      dropped sharply (from 718/742/820/844) once .toolbar itself was capped
      to a single horizontally-scrollable row (flex-wrap:nowrap plus
@@ -4109,7 +4109,32 @@
   el('columns-btn').addEventListener('click', (e) => {
     e.stopPropagation();
     const menu = el('columns-menu');
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    const opening = menu.style.display === 'none' || menu.style.display === '';
+    if(opening){
+      // .toolbar becomes an overflow:auto container on BOTH axes at narrow widths
+      // (max-width:640px) -- per the CSS Overflow spec quirk this file's own
+      // .table-wrap note documents at length, any non-visible overflow value on one
+      // axis forces the other to compute as auto too, which clips this menu's normal
+      // position:absolute (relative to .columns-menu-wrap, itself inside .toolbar)
+      // instead of letting it float above everything else on the page. Promote it to
+      // position:fixed, positioned from the button's own real screen coordinates, so
+      // its containing block becomes the viewport instead of .toolbar -- desktop
+      // (.toolbar stays overflow:visible there) never hits this branch.
+      const toolbar = document.querySelector('.toolbar');
+      if(getComputedStyle(toolbar).overflowX !== 'visible'){
+        const btnRect = e.currentTarget.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (btnRect.bottom + 6) + 'px';
+        menu.style.right = (window.innerWidth - btnRect.right) + 'px';
+        menu.style.left = 'auto';
+      }else{
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.right = '';
+        menu.style.left = '';
+      }
+    }
+    menu.style.display = opening ? 'block' : 'none';
   });
   document.addEventListener('click', (e) => {
     const wrap = document.querySelector('.columns-menu-wrap');

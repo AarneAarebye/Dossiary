@@ -220,20 +220,25 @@ version number — only by the schema itself matching).
   picked from the narrowest, tallest-chrome end of the range means growing
   extra room (not overlap) toward the wider end of it — the same "accept
   extra gap, never accept overlap" principle already established above for
-  the nav-style/bulk-bar desktop numbers. Be honest about the real
-  magnitude of that extra room, though: this is not just "a few extra
-  pixels of margin" — at 640px width (the wide end of the mobile range)
-  `.table-wrap` renders as little as ~58px tall, roughly one visible row,
-  with plenty of unused blank space below it. In practice the table is
-  close to unusable at that end of the range, not merely a little more
-  generously spaced; fixing that properly means a real intermediate
-  breakpoint (or a continuous/`clamp()`-based constant), not a
-  documentation wording change — out of scope here, tracked as a known,
-  accepted gap rather than silently softened. Worth keeping in proportion,
-  though: the File System Access API this whole app depends on (see that
-  note further below) isn't available on iOS Safari or Chrome for Android,
-  so this mobile breakpoint mostly matters for someone narrowing a desktop
-  browser window, not an actual phone.
+  the nav-style/bulk-bar desktop numbers. **Re-measured after the toolbar
+  was capped to a single horizontally-scrollable row** (see that fix's own
+  note just below): at 640px width (the wide end of the mobile range)
+  `.table-wrap` now renders at 408px tall with the tabs nav / 384px tall
+  with the sidebar nav (60-doc seed, 800px-tall viewport, both measured via
+  `getBoundingClientRect()`) — several rows' worth of real table, not the
+  ~58px/one-row sliver an earlier version of this note described against
+  the old, pre-toolbar-fix constants. The extra room toward the wide end of
+  the range is real and intentional (per the "accept extra gap, never
+  accept overlap" principle above), but no longer the "close to unusable"
+  problem it once was; the toolbar fix substantially improved this
+  specific consequence as a side effect, not just moved the number
+  slightly. A real intermediate breakpoint (or a continuous/`clamp()`-based
+  constant) would still shrink that extra room further, but it's no longer
+  a correctness or usability gap worth tracking as one. Worth keeping in
+  proportion, though: the File System Access API this whole app depends on
+  (see that note further below) isn't available on iOS Safari or Chrome
+  for Android, so this mobile breakpoint mostly matters for someone
+  narrowing a desktop browser window, not an actual phone.
   **`.table-wrap` also has its own mobile `padding-bottom` (`32px`), and
   CSS padding can't be compressed below its declared value by `max-height`**
   — a box whose `max-height` computes smaller than its own padding sum
@@ -266,7 +271,12 @@ version number — only by the schema itself matching).
   institutional memory in case a future change to the toolbar's contents
   (e.g. adding enough new buttons that even a single scrollable row grows
   taller than expected) reintroduces tall chrome here and this needs
-  revisiting.
+  revisiting. **The real trade-off of this fix**: at narrow widths, toolbar
+  controls are no longer all visible at once the way they were when the
+  row wrapped onto several lines — they're still reachable, but only via
+  horizontal scroll, with no visible scroll affordance on platforms that
+  use overlay scrollbars (e.g. macOS), so a person may not immediately
+  realize there's more toolbar to scroll to.
   All of these numbers were verified empirically
   (`getBoundingClientRect()` on `#table-wrap` and `footer`, confirming
   `#table-wrap`'s rendered bottom edge lands exactly at the *footer's* top
@@ -2307,16 +2317,28 @@ combinations at a 1280x720 desktop viewport, plus the app's one mobile
 breakpoint at 320x800 (both nav styles, bulk bar hidden and visible),
 375x800 (tabs, bulk bar hidden and visible), and 640x800 (sidebar, bulk
 bar hidden and visible) — and that the footer itself is always fully
-within the viewport, needing no scroll to reach. The mobile checks
-deliberately don't all assert zero overlap: the 320px-width,
-bulk-bar-visible corner (both nav styles) has a small, real, structurally
-unavoidable overlap — see this file's own `.table-wrap` note above for why
-no `.table-wrap` CSS can fix it — so those two scenarios instead assert a
-bounded ceiling on it (no more than 30px/55px) rather than either
-demanding an impossible zero or ignoring the defect outright, so the test
-still catches it getting worse. Vacuousness was confirmed by temporarily
-re-widening the base desktop constant and confirming the test then fails
-with a large, clearly-wrong gap). This
+within the viewport, needing no scroll to reach. **All scenarios now
+assert the same tight `min_gap=-2` tolerance, including at 320px width
+with the bulk bar visible** — an earlier version of this suite had to
+carve out a bounded-ceiling exception for that one corner (both nav
+styles), since it had a small, real, structurally unavoidable overlap;
+capping `.toolbar` to a single horizontally-scrollable row (the fix this
+whole test file's own filename-adjacent feature landed) closed that
+corner outright by shrinking the mobile chrome height enough that it no
+longer occurs, so the exception was removed once the corner was
+confirmed closed (`gap=0.0px` at that combination, same as every other
+scenario). Vacuousness was confirmed by temporarily re-widening the base
+desktop constant and confirming the test then fails with a large,
+clearly-wrong gap. The same file also asserts (not just prints) that the
+narrow-width toolbar genuinely overflows horizontally with every expected
+control still present in the DOM (`toolbar_info`), and that the Columns
+dropdown, opened at 320px width, is fully contained within the viewport
+rather than clipped to a sliver by `.toolbar`'s own `overflow-x:auto`
+forcing `overflow-y` to compute as `auto` too (`columns_menu_info`) — the
+one real regression a final review of the toolbar-scroll branch found,
+caught by no other test in the suite since every other scenario that
+opens the Columns menu runs at desktop viewport width, where `.toolbar`
+never becomes an overflow container in the first place). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
