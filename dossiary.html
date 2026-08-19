@@ -2586,6 +2586,7 @@
       migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
       migratePeopleToGenericField(); // seeds People as an available person-type field from the start
       migrateTextFieldsAutocompleteDefault(); // no-op here (no text fields exist yet beyond the sentinels above), but marks this library as migrated
+      migrateCurrencyColumnDefault(); // no-op here (Currency was already created show_as_column=1 above), but marks this library as migrated
       migrateSearchablePdfBuiltFlag(); // no-op here (no documents exist yet), but marks this library as migrated
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
       await persistDb();
@@ -2611,6 +2612,7 @@
     migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
     migratePeopleToGenericField(); // one-time; no-op if this library was already migrated
     migrateTextFieldsAutocompleteDefault(); // one-time; no-op if this library was already migrated
+    migrateCurrencyColumnDefault(); // one-time; no-op if this library was already migrated
     migrateSearchablePdfBuiltFlag(); // one-time; no-op if this library was already migrated
     await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
@@ -2967,7 +2969,7 @@
     const sentinelDefs = [
       { name: 'Payment method', type: 'text', showAsColumn: 1, autocomplete: 1 },
       { name: 'Amount', type: 'number', showAsColumn: 0, autocomplete: 0 },
-      { name: 'Currency', type: 'text', showAsColumn: 0, autocomplete: 0 },
+      { name: 'Currency', type: 'text', showAsColumn: 1, autocomplete: 1 },
     ];
     for(const def of sentinelDefs){
       if(fieldNameToId[def.name] !== undefined) continue; // e.g. a library that already had a custom field literally named "Amount"
@@ -3078,6 +3080,25 @@
     if(rows.length) return; // already run once for this library
     db.run("UPDATE fields SET autocomplete = ? WHERE type = ?", [1, 'text']);
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('text_autocomplete_default_migrated', ?)", ['1']);
+  }
+
+  // One-time backfill for existing libraries: Currency used to be excluded
+  // from the generic column/filter/autocomplete system entirely (see
+  // migrateSentinelFieldsToGeneric() above) -- this flips it on for any
+  // library that already ran that migration under the old defaults.
+  // Tracked via its own settings row, same reasoning as
+  // migrateTextFieldsAutocompleteDefault() just above: there's no way to
+  // tell "never touched" apart from "a person deliberately turned it back
+  // off in Field Settings" just by looking at the fields table, since both
+  // look identical (show_as_column = 0). Running this unconditionally on
+  // every open would silently re-enable a field someone had intentionally
+  // turned back off; the explicit marker is what makes it safe to call
+  // unconditionally instead.
+  function migrateCurrencyColumnDefault(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'currency_column_default_migrated'").rows;
+    if(rows.length) return; // already run once for this library
+    db.run("UPDATE fields SET show_as_column = 1, autocomplete = 1 WHERE name = ? AND type = ?", ['Currency', 'text']);
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('currency_column_default_migrated', ?)", ['1']);
   }
 
   // One-time backfill for the new searchable_pdf_built flag (see the "Preserve
@@ -3656,7 +3677,12 @@
   // but out of scope for v1).
   function reportBreakdownFields(){
     const fixed = FIELD_DEFS.filter(f => ['category', 'document_type', 'people'].includes(f.id));
-    return [...fixed, ...dynamicColumnDefs()];
+    // Currency is deliberately excluded here (joining Date/Amount/Tags,
+    // already excluded from dynamicColumnDefs()'s own callers for their own
+    // reasons) -- Reports already groups totals by Currency at the top
+    // level, so offering it again as a breakdown-within-a-currency-group
+    // dimension would be redundant.
+    return [...fixed, ...dynamicColumnDefs().filter(f => f.label !== 'Currency')];
   }
 
   // Resolves a breakdown field id (from reportBreakdownFields()) to how to read its
@@ -4970,7 +4996,7 @@
     // type would otherwise have no way to ever reach its own checkboxes).
     function capabilitiesHtml(fieldName){
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
-      if(!fieldDef || fieldDef.type === 'person' || fieldName === 'Amount' || fieldName === 'Currency') return '';
+      if(!fieldDef || fieldDef.type === 'person' || fieldName === 'Amount') return '';
       return `
         <div class="fs-field-capabilities">
           <label><input type="checkbox" class="fs-col-toggle" ${fieldDef.showAsColumn ? 'checked' : ''} /> ${t('fieldSettingsColumnCheckbox')}</label>
