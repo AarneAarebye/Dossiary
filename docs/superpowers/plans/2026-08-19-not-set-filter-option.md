@@ -450,6 +450,23 @@ async def main():
         await page.click("#open-btn")
         await page.wait_for_timeout(400)
 
+        # Dynamic custom-field filters (Status, Paid) only render into the
+        # DOM behind a data-field-wrapped <span> that applyColumnVisibility()
+        # hides unless that field's own COLUMN is toggled visible -- a
+        # completely separate on/off switch from the filter dropdown itself
+        # (dynamicColumnDefs() defaults every custom field's column to
+        # defaultVisible:false, per dossiary.html's own dynamicColumnDefs()).
+        # Toggle both on once, via the same Columns-menu checkbox flow
+        # test_generic_column_system.py's own tests already use, before any
+        # scenario below tries to interact with either dynamic filter.
+        await page.click('#columns-btn')
+        await page.wait_for_timeout(100)
+        await page.check('#col-toggle-field-1')  # Status
+        await page.check('#col-toggle-field-2')  # Paid
+        await page.wait_for_timeout(150)
+        await page.click('#columns-btn')  # close the menu
+        await page.wait_for_timeout(100)
+
         # === Scenario 1: the "not set" option exists, with the exact
         # expected value, in every filter dropdown (built-in and dynamic) ===
         category_label = await option_label(page, '#category-filter', FILTER_UNSET)
@@ -464,11 +481,11 @@ async def main():
         assert person_label is not None, "Person filter is missing a '__unset__'-valued option"
         print(f"Person filter has a 'Not set' option: {person_label!r}")
 
-        status_label = await option_label(page, '#dyn-filter-1', FILTER_UNSET)
+        status_label = await option_label(page, '#dyn-filter-field-1', FILTER_UNSET)
         assert status_label is not None, "Status (dynamic text field) filter is missing a '__unset__'-valued option"
         print(f"Status filter has a 'Not set' option: {status_label!r}")
 
-        paid_label = await option_label(page, '#dyn-filter-2', FILTER_UNSET)
+        paid_label = await option_label(page, '#dyn-filter-field-2', FILTER_UNSET)
         assert paid_label is not None, "Paid (dynamic checkbox field) filter is missing a '__unset__'-valued option"
         print(f"Paid filter has a 'Not set' option: {paid_label!r}")
 
@@ -505,23 +522,23 @@ async def main():
         # === Scenario 5: Status (dynamic text field) "not set" matches
         # only doc 3 (docs 1 and 4 have it saved; doc 2 also has no Status
         # value seeded) ===
-        await page.select_option('#dyn-filter-1', FILTER_UNSET)
+        await page.select_option('#dyn-filter-field-1', FILTER_UNSET)
         await page.wait_for_timeout(150)
         ids = await visible_ids(page)
         assert ids == ['2', '3'], f"Status 'not set' should show docs 2 and 3, got {ids}"
         print("Status 'not set' filter shows docs 2 and 3:", ids)
-        await page.select_option('#dyn-filter-1', '')
+        await page.select_option('#dyn-filter-field-1', '')
         await page.wait_for_timeout(150)
 
         # === Scenario 6: Paid (dynamic checkbox field) "not set" matches
         # only doc 3 -- critically, NOT doc 4, whose Paid is explicitly
         # '0' (unchecked), which is real saved data, not "unset" ===
-        await page.select_option('#dyn-filter-2', FILTER_UNSET)
+        await page.select_option('#dyn-filter-field-2', FILTER_UNSET)
         await page.wait_for_timeout(150)
         ids = await visible_ids(page)
         assert ids == ['2', '3'], f"Paid 'not set' should show docs 2 and 3 (not doc 4, whose Paid=0 is real data), got {ids}"
         print("Paid 'not set' filter shows docs 2 and 3, correctly excluding doc 4's explicit '0':", ids)
-        await page.select_option('#dyn-filter-2', '')
+        await page.select_option('#dyn-filter-field-2', '')
         await page.wait_for_timeout(150)
 
         # === Scenario 7: a Smart Collection saved with a "not set" filter
