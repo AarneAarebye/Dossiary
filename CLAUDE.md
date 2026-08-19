@@ -1748,7 +1748,7 @@ version number — only by the schema itself matching).
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 272 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 273 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -1976,7 +1976,7 @@ version number — only by the schema itself matching).
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (272 keys apiece now, not ~260), and
+  grew from two top-level keys to six (273 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -2360,20 +2360,20 @@ forcing `overflow-y` to compute as `auto` too (`columns_menu_info`) — the
 one real regression a final review of the toolbar-scroll branch found,
 caught by no other test in the suite since every other scenario that
 opens the Columns menu runs at desktop viewport width, where `.toolbar`
-never becomes an overflow container in the first place). This
+never becomes an overflow container in the first place), and the "not set"
+filter option (`test_not_set_filter.py` — the option appears in every
+filter dropdown (Category, Type, People, and dynamic custom fields); each
+field type's "not set" filter narrows to exactly the right documents with
+no saved value; a checkbox field explicitly saved as unchecked (`'0'`) is
+correctly excluded as real data, not "unset"; and a Smart Collection saved
+with a "not set" filter active reproduces the same filtering from its own
+saved criteria, proving the shared `matchesCriteria()` path works for both
+live toolbar and persisted Smart Collection filters). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
 described only two basic scenarios, long after the suite had grown well
-past that), the "not set" filter option (`test_not_set_filter.py` — the
-option appears in every filter dropdown (Category, Type, People, and
-dynamic custom fields); each field type's "not set" filter narrows to
-exactly the right documents with no saved value; a checkbox field
-explicitly saved as unchecked (`'0'`) is correctly excluded as real data,
-not "unset"; and a Smart Collection saved with a "not set" filter active
-reproduces the same filtering from its own saved criteria, proving the
-shared `matchesCriteria()` path works for both live toolbar and persisted
-Smart Collection filters).
+past that).
 Separately, and worth remembering: a single commit whose message described
 itself as a trivial doc-only rename ("Update references to renamed
 MarinerPaperlessTools repo") turned out, on closer inspection, to have

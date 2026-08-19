@@ -193,7 +193,7 @@ async def main():
         await page.wait_for_timeout(150)
 
         # === Scenario 6: Paid (dynamic checkbox field) "not set" matches
-        # only doc 3 -- critically, NOT doc 4, whose Paid is explicitly
+        # docs 2 and 3 -- critically, NOT doc 4, whose Paid is explicitly
         # '0' (unchecked), which is real saved data, not "unset" ===
         await page.select_option('#dyn-filter-field-2', FILTER_UNSET)
         await page.wait_for_timeout(150)
