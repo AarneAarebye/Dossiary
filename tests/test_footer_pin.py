@@ -82,10 +82,10 @@ async def measure_last_row_not_clipped(page, label):
     print(f"[{label}] last row clip={clip:.1f}px (<=2px accepted): PASS")
 
 async def measure(page, label, min_gap):
-    """min_gap: the smallest acceptable gap in px. 0 means "no overlap
-    allowed" (the normal case); a negative value documents a known, bounded,
-    accepted overlap (only used for the single structurally-unavoidable
-    320px+bulk-bar corner) so the test still catches it getting WORSE."""
+    """min_gap: the smallest acceptable gap in px, applied uniformly across
+    all scenarios in this file. -2 allows for ~2px tolerance to account for
+    sub-pixel rendering precision, matching the "no real overlap" expectation
+    throughout."""
     info = await page.evaluate("""
         () => {
             const twEl = document.querySelector('#table-wrap');
@@ -137,10 +137,10 @@ async def main():
     # === Mobile breakpoint (max-width: 640px): the mobile calibration uses a
     # single worst-case (320px-width) constant per combination, so the gap is
     # tight only at 320px and grows to a deliberate safety margin at wider
-    # mobile widths -- min_gap=-2 (no overlap) everywhere EXCEPT the one
-    # documented, structurally-unavoidable corner (320px + bulk bar visible,
-    # both nav styles), where a small bounded overlap is accepted (see
-    # CLAUDE.md's .table-wrap note) but must not silently get worse. ===
+    # mobile widths. The 320px+bulk-bar corner was once a known, structurally-
+    # unavoidable overlap, but Task 1 fixed it by capping .toolbar to a single
+    # horizontally-scrollable row, reducing chrome height enough to eliminate it.
+    # All scenarios now expect tight, uniform min_gap=-2 everywhere. ===
     async with async_playwright() as p:
         browser2 = await p.chromium.launch()
         page2 = await browser2.new_page()
@@ -151,7 +151,7 @@ async def main():
         await measure(page2, "mobile 320x800, nav=tabs, bulkbar=hidden", min_gap=-2)
         await page2.check('tr[data-id="1"] .row-select-checkbox')
         await page2.wait_for_timeout(150)
-        await measure(page2, "mobile 320x800, nav=tabs, bulkbar=VISIBLE (known bounded overlap)", min_gap=-30)
+        await measure(page2, "mobile 320x800, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
         await page2.click('#bulk-clear-selection-btn')
         await page2.wait_for_timeout(150)
 
@@ -160,7 +160,53 @@ async def main():
         await measure(page2, "mobile 320x800, nav=sidebar, bulkbar=hidden", min_gap=-2)
         await page2.check('tr[data-id="1"] .row-select-checkbox')
         await page2.wait_for_timeout(150)
-        await measure(page2, "mobile 320x800, nav=sidebar, bulkbar=VISIBLE (known bounded overlap)", min_gap=-55)
+        await measure(page2, "mobile 320x800, nav=sidebar, bulkbar=VISIBLE", min_gap=-2)
+
+        # === Toolbar reachability at the narrowest supported width: every
+        # control must still be reachable via horizontal scroll, not silently
+        # clipped or unreachable, now that .toolbar no longer wraps onto many
+        # rows at narrow widths. ===
+        toolbar_info = await page2.evaluate("""
+            () => {
+                const tb = document.querySelector('.toolbar');
+                const ids = ['search', 'category-filter', 'type-filter', 'person-filter',
+                             'show-archived-toggle', 'manage-fields-btn', 'manage-collections-btn',
+                             'inbox-check-btn', 'add-btn', 'reload-btn', 'columns-btn'];
+                const missing = ids.filter(id => !document.getElementById(id));
+                return {
+                    scrollWidth: tb.scrollWidth,
+                    clientWidth: tb.clientWidth,
+                    overflowsHorizontally: tb.scrollWidth > tb.clientWidth + 1,
+                    missingControls: missing,
+                };
+            }
+        """)
+        print(f"[toolbar reachability, 320px width] all expected controls present (none missing): {toolbar_info['missingControls'] == []}")
+        print(f"[toolbar reachability, 320px width] toolbar genuinely overflows horizontally (scrollWidth={toolbar_info['scrollWidth']} > clientWidth={toolbar_info['clientWidth']}): {toolbar_info['overflowsHorizontally']}")
+        assert toolbar_info['missingControls'] == [], f"Toolbar is missing expected controls: {toolbar_info['missingControls']}"
+        assert toolbar_info['overflowsHorizontally'], f"Toolbar should overflow horizontally (scrollWidth={toolbar_info['scrollWidth']} vs clientWidth={toolbar_info['clientWidth']}) but doesn't -- children may be compressing instead of the row genuinely overflowing"
+
+        # === Columns dropdown must actually be visible in the viewport when opened,
+        # not just present in the DOM -- .toolbar{overflow-x:auto} at narrow widths
+        # forces overflow-y to compute as auto too (the same CSS Overflow spec quirk
+        # this file's own .table-wrap note documents), which used to clip
+        # .columns-menu (position:absolute inside .toolbar) to a ~12px sliver. ===
+        columns_menu_info = await page2.evaluate("""
+            () => {
+                document.getElementById('columns-btn').click();
+                const menu = document.getElementById('columns-menu');
+                const rect = menu.getBoundingClientRect();
+                return {
+                    display: menu.style.display,
+                    top: rect.top, bottom: rect.bottom, height: rect.height,
+                    viewportHeight: window.innerHeight,
+                    fullyVisible: rect.top >= 0 && rect.bottom <= window.innerHeight,
+                };
+            }
+        """)
+        print(f"[columns menu, 320px width] opens and is fully visible in the viewport (not clipped by .toolbar's own overflow): {columns_menu_info['fullyVisible']}")
+        assert columns_menu_info['display'] == 'block', "Columns menu should be open after clicking the button"
+        assert columns_menu_info['fullyVisible'], f"Columns menu clipped: top={columns_menu_info['top']:.1f} bottom={columns_menu_info['bottom']:.1f} viewportHeight={columns_menu_info['viewportHeight']}"
 
         print("JS ERRORS (320px mobile viewport):", errors2)
         await browser2.close()
