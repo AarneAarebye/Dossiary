@@ -3285,6 +3285,8 @@
   function renderPersonFieldHtml(prefix, field, existingPeople, orphaned){
     const value = (existingPeople || []).join(', ');
     const inputId = `${prefix}-field-${field.id}`;
+    const description = fieldDescriptions[field.name];
+    const descriptionHint = description ? `<div class="field-hint">${escapeHtml(description)}</div>` : '';
     return `
       <div class="field${orphaned ? ' field-orphaned' : ''}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
         <label for="${inputId}">${t('fieldPersonLabelSuffix', {name: escapeHtml(field.name)})}</label>
@@ -3292,6 +3294,7 @@
           <input type="text" id="${inputId}" list="person-list" value="${escapeHtml(value)}" placeholder="${t('fieldPersonPlaceholder')}" />
           <button type="button" class="clear-btn" id="${inputId}-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: escapeHtml(field.name)})}">✕</button>
         </div>
+        ${descriptionHint}
         ${orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : ''}
       </div>
     `;
@@ -3330,9 +3333,12 @@
     const orphanedHint = orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : '';
     if(field.type === 'checkbox'){
       const checked = existingValue === '1' ? 'checked' : '';
+      const description = fieldDescriptions[field.name];
+      const descriptionHint = description ? `<div class="field-hint">${escapeHtml(description)}</div>` : '';
       return `
         <div class="field${orphanedClass}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
           <label class="checkbox-label" for="${inputId}"><input type="checkbox" id="${inputId}" ${checked} /> ${escapeHtml(field.name)}</label>
+          ${descriptionHint}
           ${orphanedHint}
         </div>
       `;
@@ -3354,6 +3360,8 @@
     const guessHint = isCurrencyGuess
       ? `<div class="field-guess-hint" id="${inputId}-hint">${t('fieldCurrencyGuessHint', {currency: escapeHtml(defaultCurrency)})}</div>`
       : '';
+    const description = fieldDescriptions[field.name];
+    const descriptionHint = description ? `<div class="field-hint">${escapeHtml(description)}</div>` : '';
 
     return `
       <div class="field${orphanedClass}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
@@ -3363,6 +3371,7 @@
           <button type="button" class="clear-btn" id="${inputId}-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: escapeHtml(field.name)})}">✕</button>
         </div>
         ${guessHint}
+        ${descriptionHint}
         ${orphanedHint}
       </div>
     `;
@@ -4715,11 +4724,16 @@
               <button type="button" class="clear-btn" id="e-type-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('editDocTypeLabel')})}">✕</button>
             </div>
             <div class="field-hint">${t('editDocTypeHint')}</div>
+            ${fieldDescriptions['Document Type'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Document Type'])}</div>` : ''}
           </div>
 
           <div class="field-row">
             <div class="field"><label for="e-title">${t('editTitleLabel')}</label><input type="text" id="e-title" value="${escapeHtml(d.title || '')}" /></div>
-            <div class="field"><label for="e-date">${t('editDateLabel')}</label><input type="date" id="e-date" value="${escapeHtml((d.date || '').slice(0, 10))}" /></div>
+            <div class="field">
+              <label for="e-date">${t('editDateLabel')}</label>
+              <input type="date" id="e-date" value="${escapeHtml((d.date || '').slice(0, 10))}" />
+              ${fieldDescriptions['Date'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Date'])}</div>` : ''}
+            </div>
           </div>
           <div class="field-row">
             <div class="field">
@@ -4728,6 +4742,7 @@
                 <input type="text" id="e-category" list="category-list" value="${escapeHtml(d.category || '')}" />
                 <button type="button" class="clear-btn" id="e-category-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('editCategoryLabel')})}">✕</button>
               </div>
+              ${fieldDescriptions['Category'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Category'])}</div>` : ''}
             </div>
             <div class="field">
               <label for="e-subcategory">${t('editSubcategoryLabel')}</label>
@@ -4735,6 +4750,7 @@
                 <input type="text" id="e-subcategory" list="subcategory-list" value="${escapeHtml(d.subcategory || '')}" placeholder="${t('editSubcategoryPlaceholder')}" />
                 <button type="button" class="clear-btn" id="e-subcategory-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('editSubcategoryLabel')})}">✕</button>
               </div>
+              ${fieldDescriptions['Subcategory'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Subcategory'])}</div>` : ''}
             </div>
           </div>
           <div id="dynamic-fields-e"></div>
@@ -4760,6 +4776,7 @@
               <input type="text" id="e-tags" list="tag-list" value="${escapeHtml((d.tags||[]).join(', '))}" placeholder="${t('captureTagsPlaceholder')}" />
               <button type="button" class="clear-btn" id="e-tags-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('tableColTags')})}">✕</button>
             </div>
+            ${fieldDescriptions['Tags'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Tags'])}</div>` : ''}
           </div>
           <div class="field">
             <label for="e-notes">${t('captureNotesLabel')}</label>
@@ -5329,6 +5346,7 @@
               <button type="button" class="clear-btn" id="f-type-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('captureDocTypeLabel')})}">✕</button>
             </div>
             <div class="field-hint">${t('captureDocTypeHint')}</div>
+            ${fieldDescriptions['Document Type'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Document Type'])}</div>` : ''}
           </div>
 
           <div class="field-row">
@@ -5337,6 +5355,7 @@
               <label for="f-date">${t('captureDateLabel')}</label>
               <input type="date" id="f-date" class="field-guess" value="${todayIsoDate()}" />
               <div class="field-guess-hint" id="f-date-hint">${t('captureDateGuessHint')}</div>
+              ${fieldDescriptions['Date'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Date'])}</div>` : ''}
             </div>
           </div>
           <div class="field-row">
@@ -5346,6 +5365,7 @@
                 <input type="text" id="f-category" list="category-list" />
                 <button type="button" class="clear-btn" id="f-category-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('captureCategoryLabel')})}">✕</button>
               </div>
+              ${fieldDescriptions['Category'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Category'])}</div>` : ''}
             </div>
             <div class="field">
               <label for="f-subcategory">${t('captureSubcategoryLabel')}</label>
@@ -5353,6 +5373,7 @@
                 <input type="text" id="f-subcategory" list="subcategory-list" placeholder="${t('captureSubcategoryPlaceholder')}" />
                 <button type="button" class="clear-btn" id="f-subcategory-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('captureSubcategoryLabel')})}">✕</button>
               </div>
+              ${fieldDescriptions['Subcategory'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Subcategory'])}</div>` : ''}
             </div>
           </div>
           <div id="dynamic-fields-f"></div>
@@ -5378,6 +5399,7 @@
               <input type="text" id="f-tags" list="tag-list" placeholder="${t('captureTagsPlaceholder')}" />
               <button type="button" class="clear-btn" id="f-tags-clear" title="${t('fieldClearTitle')}" aria-label="${t('fieldClearAriaLabel', {name: t('tableColTags')})}">✕</button>
             </div>
+            ${fieldDescriptions['Tags'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Tags'])}</div>` : ''}
           </div>
           <div class="field">
             <label for="f-notes">${t('captureNotesLabel')}</label>
