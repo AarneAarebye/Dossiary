@@ -107,7 +107,7 @@ Open a GitHub issue. Please include your browser — Chrome or Edge only,
 since Safari/Firefox don't support the File System Access API this app
 depends on — and, if it's a data issue, whether the library was created
 fresh here or migrated from Mariner Paperless via `migrate_to_new_library.py`
-in the sibling `LibraryLifeboat` repo (formerly MarinerPaperlessTools).
+in the sibling `LibraryLifeboat` repo.
 
 ## License
 
