@@ -841,6 +841,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Default document type (pre-fills "Add document")',
       fieldSettingsDefaultCurrencyLabel: 'Default currency (guessed on new captures, e.g. EUR)',
       fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
+      fieldSettingsDescriptionsHeading: 'Field Descriptions', fieldSettingsDescriptionPlaceholder: 'No description set',
       fieldSettingsNoDocTypes: 'No document types in use yet. Type one into the Add/Edit document form first.',
       fieldSettingsSelectDocType: 'Select a document type.', fieldSettingsColumnCheckbox: 'Column',
       fieldSettingsAutocompleteCheckbox: 'Autocomplete', fieldSettingsAddToDisplayTitle: 'Add to Display Fields',
@@ -1001,6 +1002,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Tipo de documento predeterminado (precompleta "Añadir documento")',
       fieldSettingsDefaultCurrencyLabel: 'Moneda predeterminada (se sugiere en nuevas capturas, p. ej., EUR)',
       fieldSettingsColDocTypes: 'Tipos de documento', fieldSettingsColFields: 'Campos', fieldSettingsColDisplayFields: 'Campos mostrados',
+      fieldSettingsDescriptionsHeading: 'Descripciones de campos', fieldSettingsDescriptionPlaceholder: 'Sin descripción',
       fieldSettingsNoDocTypes: 'Aún no hay tipos de documento en uso. Escribe uno primero en el formulario de Añadir/Editar documento.',
       fieldSettingsSelectDocType: 'Selecciona un tipo de documento.', fieldSettingsColumnCheckbox: 'Columna',
       fieldSettingsAutocompleteCheckbox: 'Autocompletar', fieldSettingsAddToDisplayTitle: 'Añadir a Campos mostrados',
@@ -1161,6 +1163,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Type de document par défaut (préremplit « Ajouter un document »)',
       fieldSettingsDefaultCurrencyLabel: 'Devise par défaut (suggérée pour les nouvelles captures, p. ex. EUR)',
       fieldSettingsColDocTypes: 'Types de document', fieldSettingsColFields: 'Champs', fieldSettingsColDisplayFields: 'Champs affichés',
+      fieldSettingsDescriptionsHeading: 'Descriptions des champs', fieldSettingsDescriptionPlaceholder: 'Aucune description',
       fieldSettingsNoDocTypes: "Aucun type de document n'est encore utilisé. Saisissez-en un d'abord dans le formulaire Ajouter/Modifier un document.",
       fieldSettingsSelectDocType: 'Sélectionnez un type de document.', fieldSettingsColumnCheckbox: 'Colonne',
       fieldSettingsAutocompleteCheckbox: 'Autocomplétion', fieldSettingsAddToDisplayTitle: 'Ajouter aux Champs affichés',
@@ -1321,6 +1324,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Standard-Dokumenttyp (füllt "Dokument hinzufügen" vor)',
       fieldSettingsDefaultCurrencyLabel: 'Standardwährung (wird bei neuen Erfassungen vorgeschlagen, z. B. EUR)',
       fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
+      fieldSettingsDescriptionsHeading: 'Feldbeschreibungen', fieldSettingsDescriptionPlaceholder: 'Keine Beschreibung',
       fieldSettingsNoDocTypes: 'Noch keine Dokumenttypen in Verwendung. Gib zuerst einen im Formular "Dokument hinzufügen/bearbeiten" ein.',
       fieldSettingsSelectDocType: 'Wähle einen Dokumenttyp aus.', fieldSettingsColumnCheckbox: 'Spalte',
       fieldSettingsAutocompleteCheckbox: 'Autovervollständigung', fieldSettingsAddToDisplayTitle: 'Zu Anzeigefeldern hinzufügen',
@@ -1481,6 +1485,7 @@
       fieldSettingsDefaultDocTypeLabel: '默认文档类型（预填入"添加文档"）',
       fieldSettingsDefaultCurrencyLabel: '默认货币（新录入时自动猜测，例如 EUR）',
       fieldSettingsColDocTypes: '文档类型', fieldSettingsColFields: '字段', fieldSettingsColDisplayFields: '显示字段',
+      fieldSettingsDescriptionsHeading: '字段说明', fieldSettingsDescriptionPlaceholder: '未设置说明',
       fieldSettingsNoDocTypes: '尚未使用任何文档类型。请先在添加/编辑文档表单中输入一个。',
       fieldSettingsSelectDocType: '请选择一个文档类型。', fieldSettingsColumnCheckbox: '列',
       fieldSettingsAutocompleteCheckbox: '自动完成', fieldSettingsAddToDisplayTitle: '添加到显示字段',
@@ -1748,6 +1753,8 @@
       fieldSettingsColDocTypes: '文檔類型',
       fieldSettingsColFields: '字段',
       fieldSettingsColDisplayFields: '顯示字段',
+      fieldSettingsDescriptionsHeading: '字段說明',
+      fieldSettingsDescriptionPlaceholder: '未設置說明',
       fieldSettingsNoDocTypes: '尚未使用任何文檔類型。請先在添加/編輯文檔表單中輸入一個。',
       fieldSettingsSelectDocType: '請選擇一個文檔類型。',
       fieldSettingsColumnCheckbox: '列',
@@ -1959,6 +1966,9 @@
     CREATE TABLE IF NOT EXISTS collection_documents (
       collection_id INTEGER, document_id INTEGER, PRIMARY KEY (collection_id, document_id)
     );
+    CREATE TABLE IF NOT EXISTS field_descriptions (
+      field_name TEXT PRIMARY KEY, description TEXT
+    );
   `;
 
   // Columns added after a library may already have been created. CREATE TABLE IF NOT
@@ -2069,6 +2079,10 @@
                             // 'text' | 'number' | 'date' | 'checkbox'
   let fieldNameToId = {};   // name -> id, built from fieldDefs
   let nextFieldId = 1;
+  let fieldDescriptions = {}; // field_name -> description (string, possibly empty) -- covers both
+                               // the five built-ins with no `fields` row (Category, Subcategory,
+                               // Document Type, Date, Tags) and every fieldDefs entry, keyed by
+                               // name rather than id so one mechanism covers both kinds of field.
   let fieldValuesByDocId = {}; // { docId: { fieldName: valueString, ... } }
   let defaultDocumentType = null; // prefills Document Type when opening "Add document"
   let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
@@ -2734,6 +2748,7 @@
     nextPersonId = maxPersonId + 1;
 
     loadFieldDefs();
+    loadFieldDescriptions();
     loadCollections();
     loadFieldValues();
 
@@ -2966,6 +2981,19 @@
       maxFieldId = Math.max(maxFieldId, f.id);
     }
     nextFieldId = maxFieldId + 1;
+  }
+
+  function loadFieldDescriptions(){
+    const { rows } = queryAll('SELECT field_name, description FROM field_descriptions');
+    fieldDescriptions = {};
+    for(const [fieldName, description] of rows){
+      fieldDescriptions[fieldName] = description || '';
+    }
+  }
+
+  function saveFieldDescription(fieldName, description){
+    db.run('INSERT OR REPLACE INTO field_descriptions (field_name, description) VALUES (?, ?)', [fieldName, description]);
+    fieldDescriptions[fieldName] = description;
   }
 
   function loadCollections(){
@@ -5014,6 +5042,10 @@
               <div class="fs-list" id="fs-display-list"></div>
             </div>
           </div>
+          <div class="fs-descriptions" style="margin-top:16px;">
+            <h3>${t('fieldSettingsDescriptionsHeading')}</h3>
+            <div class="fs-list" id="fs-descriptions-list"></div>
+          </div>
           <div class="modal-actions" style="margin-top:16px;">
             <button id="fs-done-btn">${t('commonDone')}</button>
           </div>
@@ -5029,6 +5061,32 @@
 
     renderFieldSettingsTypeList();
     renderFieldSettingsFieldColumns();
+    renderFieldDescriptionsList();
+  }
+
+  const FIELD_DESCRIPTION_BUILTIN_NAMES = ['Category', 'Subcategory', 'Document Type', 'Date', 'Tags'];
+
+  function renderFieldDescriptionsList(){
+    const listEl = el('fs-descriptions-list');
+    const names = [...FIELD_DESCRIPTION_BUILTIN_NAMES, ...fieldDefs.map(f => f.name)];
+    listEl.innerHTML = names.map(name => `
+      <div class="fs-list-item fs-description-item" data-field-name="${escapeHtml(name)}">
+        <div class="fs-field-row">
+          <span>${escapeHtml(name)}</span>
+        </div>
+        <input type="text" class="fs-description-input" value="${escapeHtml(fieldDescriptions[name] || '')}" placeholder="${t('fieldSettingsDescriptionPlaceholder')}" />
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.fs-description-item').forEach(itemEl => {
+      const fieldName = itemEl.dataset.fieldName;
+      const input = itemEl.querySelector('.fs-description-input');
+      const commit = async () => {
+        saveFieldDescription(fieldName, input.value.trim());
+        await persistDb();
+      };
+      input.addEventListener('keydown', (e) => { if(e.key === 'Enter') input.blur(); });
+      input.addEventListener('blur', commit);
+    });
   }
 
   function renderFieldSettingsTypeList(){
