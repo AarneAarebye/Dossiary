@@ -161,6 +161,7 @@
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
   .fs-item-actions button.fs-remove:hover{ color:var(--red); }
   .fs-field-item, .fs-description-item{ display:block; cursor:default; }
+  .fs-description-input{ width:100%; margin-top:4px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:6px 8px; color:var(--text); font-family:var(--font-sans); font-size:13px; }
   .fs-field-row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .fs-field-capabilities{ display:flex; gap:10px; margin-top:4px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
   .fs-field-capabilities label{ display:flex; align-items:center; gap:3px; cursor:pointer; }
@@ -3526,7 +3527,7 @@
     const name = nameInput.value.trim();
     if(!typeName){ statusEl.textContent = t('fieldValidationPickDocType'); return; }
     if(!name){ statusEl.textContent = t('fieldValidationEnterName'); return; }
-    if(['People', 'Amount', 'Payment method'].includes(name)){
+    if(['People', 'Amount', 'Payment method', ...FIELD_DESCRIPTION_BUILTIN_NAMES].includes(name)){
       statusEl.textContent = t('fieldValidationReservedName', {name});
       return;
     }
