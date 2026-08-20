@@ -313,7 +313,24 @@ Currency's `show_as_column`/`autocomplete` from `0`/`0` to `1`/`1` for a
 library that already ran the old `migrateSentinelFieldsToGeneric()` before
 this feature existed, and — the idempotency property — NOT re-flipping it
 if a person already manually turned it back off after an earlier run of
-this same backfill). This
+this same backfill), and field descriptions (`test_field_descriptions.py` —
+the `field_descriptions` table existing for both a seeded/reopened library
+and a brand new one taken through `initNewLibrary()`; the Field Settings
+"Field Descriptions" list ordering the five built-ins first, in order, then
+every custom field, including the auto-created sentinel fields (Payment
+method, Amount, Currency, People); typing a description and blurring
+persisting it, and the saved value reappearing on reopening Field Settings;
+the description hint appearing under the right field's label, correctly
+scoped to that one field, in **both** the capture and edit forms, for a
+built-in (Category), a custom text field (Organization), and one of each
+other generic field type (checkbox, number, date, person) — proving
+`renderGenericFieldHtml()`'s checkbox and text/number/date branches and
+`renderPersonFieldHtml()` all got the same treatment; a field with no
+description set showing no hint at all (Subcategory); Document Type's
+pre-existing autocomplete hint and its new description hint both rendering,
+stacked, in both forms, rather than one replacing the other; and description
+text containing a literal `{label}` rendering completely verbatim rather
+than being run through `t()`'s substitution). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
@@ -374,7 +391,15 @@ that can't be scripted. The approach used throughout:
   rather than binding `1`/`1` as params. If a future change sends the app's
   first `UPDATE`/`DELETE`/`SELECT` with a shape the stub doesn't recognize
   yet, extend the stub's regex matching rather than working around it —
-  the whole point is exercising the app's real SQL strings.
+  the whole point is exercising the app's real SQL strings. The field-
+  descriptions branch registered a new `field_descriptions` table in the
+  `FakeDatabase`'s table lists (both the seeded-load and empty-init paths),
+  and gave it the same `INSERT OR REPLACE` dedupe treatment `settings`
+  already had — real `field_descriptions.field_name` is a `TEXT PRIMARY
+  KEY`, so without a matching dedupe branch in the stub, saving two
+  different descriptions for the same field name would leave both rows in
+  the fake table instead of replacing the first, silently diverging from
+  the real schema's own uniqueness guarantee.
 - Stub `window.showDirectoryPicker` and the `FileSystemDirectoryHandle` /
   `FileSystemFileHandle` interfaces with an in-memory `Map`-based fake
   filesystem, so `getFileHandle`/`getDirectoryHandle`/`createWritable`/

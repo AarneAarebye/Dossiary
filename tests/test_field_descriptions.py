@@ -151,11 +151,17 @@ async def main():
 
         # === Scenario 6: Document Type shows BOTH its existing built-in hint and
         # the new description hint, stacked, when a description is set for it ===
+        # (Paid's description is set here too, early, purely so Scenario 7 below
+        # -- which opens the edit form on the seeded document -- has a non-text
+        # generic field description already saved to check; Scenario 8 re-fills
+        # it with the same final text later when it exercises every other
+        # generic field type in the capture form.)
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
         await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         await page.locator('.fs-description-item[data-field-name="Document Type"] .fs-description-input').fill('What kind of document this is')
+        await page.locator('.fs-description-item[data-field-name="Paid"] .fs-description-input').fill('Whether this was already paid')
         await page.locator('.fs-description-item[data-field-name="Date"] .fs-description-input').click()
         await page.wait_for_timeout(150)
         await page.click('#modal-close-btn')
@@ -169,10 +175,13 @@ async def main():
         assert len(type_hints) == 2, f"Document Type should show two stacked hints (built-in + description), got {type_hints}"
         assert type_hints[1] == 'What kind of document this is', f"second Document Type hint should be the description, got {type_hints}"
         print("Document Type shows both its built-in hint and the new description hint, stacked:", type_hints)
-        await page.evaluate("() => { document.getElementById('modal-root').innerHTML = ''; }")
-        await page.wait_for_timeout(100)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
 
-        # === Scenario 7: the same hints show correctly in the edit form too ===
+        # === Scenario 7: the same hints show correctly in the edit form too --
+        # Category (a built-in), a non-text generic field type (the "Paid"
+        # checkbox), and Document Type's own two-stacked-hints case, all
+        # checked against the edit form, not just capture ===
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(300)
         await page.click('button:has-text("Edit")')
@@ -182,8 +191,19 @@ async def main():
         )
         assert edit_category_hints == ['Where this document belongs, e.g. Travel or Medical'], f"edit-form Category hint missing or wrong, got {edit_category_hints}"
         print("Category shows its description hint in the edit form too:", edit_category_hints)
-        await page.evaluate("() => { document.getElementById('modal-root').innerHTML = ''; }")
-        await page.wait_for_timeout(100)
+
+        edit_paid_hints = await page.locator('[data-dynamic-field="Paid"]').locator('.field-hint').all_text_contents()
+        assert edit_paid_hints == ['Whether this was already paid'], f"edit-form Paid (checkbox) hint missing or wrong, got {edit_paid_hints}"
+        print("Paid (a non-text generic field type) shows its description hint in the edit form too:", edit_paid_hints)
+
+        edit_type_hints = await page.evaluate(
+            "() => Array.from(document.querySelector('label[for=\\'e-type\\']').closest('.field').querySelectorAll('.field-hint')).map(el => el.textContent)"
+        )
+        assert len(edit_type_hints) == 2, f"edit-form Document Type should show two stacked hints (built-in + description), got {edit_type_hints}"
+        assert edit_type_hints[1] == 'What kind of document this is', f"second edit-form Document Type hint should be the description, got {edit_type_hints}"
+        print("Document Type shows both stacked hints in the edit form too:", edit_type_hints)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
 
         # === Scenario 8: a generic field of every type (checkbox, number, date,
         # person -- text is already covered by Organization in Scenario 5) shows
@@ -242,6 +262,24 @@ async def main():
         print("Description containing a literal '{label}' renders verbatim, not run through t():", org_to_hints)
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
+
+        # === Scenario 10: field_descriptions table also exists for a brand new
+        # library (initNewLibrary(), not just an existing/seeded one reopened
+        # via loadDb()) -- same assertion shape as Scenario 1, against a fresh
+        # empty folder taken through the "initialize new library" prompt ===
+        new_page = await browser.new_page()
+        await route_stub(new_page)
+        await new_page.goto(f"file://{APP_PATH}")
+        await new_page.wait_for_timeout(200)
+        await new_page.evaluate("window.__TEST_ROOT = window.__makeEmptyRoot();")
+        await new_page.click("#open-btn")
+        await new_page.wait_for_timeout(200)
+        await new_page.click("#init-btn")
+        await new_page.wait_for_timeout(200)
+        new_lib_persisted = await read_db(new_page)
+        assert 'field_descriptions' in new_lib_persisted, "field_descriptions table should exist for a brand new library too"
+        print("field_descriptions table exists for a brand new library:", 'field_descriptions' in new_lib_persisted)
+        await new_page.close()
 
         print("JS ERRORS:", errors)
         await browser.close()

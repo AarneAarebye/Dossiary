@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (60 scripts) + shared
+tests/                   Playwright regression suite (61 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -1770,7 +1770,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 273 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 278 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -1998,7 +1998,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (273 keys apiece now, not ~260), and
+  grew from two top-level keys to six (278 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -2113,6 +2113,76 @@ this repo's git tags.
   Simplified guide's own screenshots — the running app renders different
   characters in each language state, so a screenshot captured under
   `zh-Hans` would show the wrong script if reused under `zh-Hant`.
+- **Field descriptions** (`field_descriptions`, `loadFieldDescriptions()`/
+  `saveFieldDescription()`, the "Field Descriptions" section in Field
+  Settings — `.fs-descriptions`, `renderFieldDescriptionsList()`) let a
+  person attach a short, optional hint to any field — the five built-ins
+  (Category, Subcategory, Document Type, Date, Tags) plus every generic
+  custom field — shown as a `.field-hint` line under the field's label in
+  both the capture and edit forms. **`field_descriptions` is keyed by
+  `field_name TEXT PRIMARY KEY`, not `fields.id`**, deliberately — the
+  five built-ins have no `fields`-table row at all (they're real `<input>`s
+  hardcoded into the capture/edit form markup, not part of the generic
+  fields system — see the Custom fields note above), so a `fields.id`
+  foreign key simply couldn't reach them. Keying by name instead covers
+  both groups — built-ins and generic custom fields — with one uniform
+  table and one uniform `fieldDescriptions[name]` lookup, rather than a
+  built-in-only mechanism plus a second, `fields.id`-keyed one for custom
+  fields. **`FIELD_DESCRIPTION_BUILTIN_NAMES`** (`['Category',
+  'Subcategory', 'Document Type', 'Date', 'Tags']`) is a hardcoded array
+  for the same reason it can't be derived from anything: unlike
+  `dynamicColumnDefs()` or `getUsedDocumentTypes()`, there's no table row
+  or other in-memory list that already enumerates "fields with a real form
+  input but no `fields` row" — Amount, Currency, and Payment method used
+  to be in that category too, but aren't anymore (see the sentinel-fields
+  note above), so this array is exactly, and only, the five names left
+  over after that migration. **A custom field can share a built-in's exact
+  name** (e.g. a Mariner-migrated library with a custom "Date" field, since
+  the sibling migration script copies field names generically with no
+  reserved-word check) — `renderFieldDescriptionsList()` filters
+  `fieldDefs` against `FIELD_DESCRIPTION_BUILTIN_NAMES` before appending
+  the custom-fields tail, so the built-in always wins the single shared
+  row and the list never shows the same name twice; `addInlineCustomField()`'s
+  own reserved-name list was deliberately left alone rather than extended
+  to also block this collision, since doing so would change behavior for
+  existing libraries that already have such a field, a bigger change than
+  this feature warranted.
+  **`renderFieldDescriptionsList()` is deliberately NOT re-rendered when
+  the selected document type changes in Field Settings**, unlike
+  `renderFieldSettingsFieldColumns()` (the Fields/Display Fields columns,
+  which are genuinely scoped to `fsSelectedType`) — a description belongs
+  to the field itself, independent of which type(s) it happens to be
+  attached to, the same "property of the field, not of its relationship to
+  `fsSelectedType`" reasoning the Per-field capability checkboxes note
+  above already established for `show_as_column`/`autocomplete`. The list
+  is built once per modal open and stays correct regardless of which type
+  is subsequently selected in the other two columns.
+  **The save-on-blur handler has no revert-on-empty guard**, unlike the
+  Collections rename input it's modeled on (the Manage Collections modal's
+  own rename input resets back to the collection's real name on an empty
+  blur, rather than saving a blank one — see `tests/CLAUDE.md`'s Collections
+  entry) — because an empty description is a
+  valid, meaningful value here (it just means "show no hint for this
+  field"), not an error state to reject the way an empty collection name
+  would be. Blurring an emptied input saves the empty string via the same
+  `INSERT OR REPLACE` path as any other value, and the corresponding
+  `.field-hint` line correctly disappears from the capture/edit forms.
+  **Description text is never run through `t()`** — like a field's own
+  name, it's free-form content someone typed for their own library, not
+  app chrome; running it through the translation lookup would be wrong
+  twice over — it isn't one of this app's ~278 known UI strings in the
+  first place, so `t()`'s fallback would just echo it back unchanged, and
+  passing it through `t(key, params)` at all would risk a literal `{...}`
+  substring in someone's own description being misread as a substitution
+  placeholder (`test_field_descriptions.py`'s own Scenario 9 checks
+  exactly this: a description containing a literal `{label}` renders
+  verbatim). **Document Type is the one built-in field that already had
+  its own permanent `.field-hint` line before this feature** (the "Not in
+  the list? Type a new one — it'll be created." autocomplete hint) — its
+  new description hint is a SECOND, separate `.field-hint` div appended
+  after the existing one, not a replacement; a configured description
+  shows both, stacked, and a field with no description set continues
+  showing just the original hint exactly as before.
 
 ## How this was tested
 

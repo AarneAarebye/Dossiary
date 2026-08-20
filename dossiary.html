@@ -149,7 +149,7 @@
   .columns-menu-item input{ accent-color:var(--phosphor); }
   .columns-menu-item label{ cursor:pointer; user-select:none; }
   .fs-columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
-  .fs-col h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
+  .fs-col h3, .fs-descriptions h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
   .fs-list{ border:1px solid var(--line); border-radius:var(--radius); max-height:280px; overflow-y:auto; background:var(--ink-2); }
   .fs-list-item{ padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid rgba(217,210,189,0.06); display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .fs-list-item:last-child{ border-bottom:none; }
@@ -160,7 +160,7 @@
   .fs-item-actions button{ padding:2px 6px; font-size:10px; border:none; background:transparent; color:var(--text-dim); }
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
   .fs-item-actions button.fs-remove:hover{ color:var(--red); }
-  .fs-field-item{ display:block; cursor:default; }
+  .fs-field-item, .fs-description-item{ display:block; cursor:default; }
   .fs-field-row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .fs-field-capabilities{ display:flex; gap:10px; margin-top:4px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
   .fs-field-capabilities label{ display:flex; align-items:center; gap:3px; cursor:pointer; }
@@ -2682,7 +2682,7 @@
     inboxDirHandle = null; pendingInboxFiles = [];
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
-    fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {};
+    fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
     collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
@@ -5085,7 +5085,13 @@
 
   function renderFieldDescriptionsList(){
     const listEl = el('fs-descriptions-list');
-    const names = [...FIELD_DESCRIPTION_BUILTIN_NAMES, ...fieldDefs.map(f => f.name)];
+    // A custom field can share a built-in's exact name (e.g. a Mariner-migrated
+    // library with a custom "Date" field) -- fieldDescriptions is keyed by name
+    // alone, so the built-in always takes precedence and the collision is
+    // filtered out here rather than shown as two rows that silently write the
+    // same row. See CLAUDE.md's field-descriptions note for why.
+    const customNames = fieldDefs.map(f => f.name).filter(name => !FIELD_DESCRIPTION_BUILTIN_NAMES.includes(name));
+    const names = [...FIELD_DESCRIPTION_BUILTIN_NAMES, ...customNames];
     listEl.innerHTML = names.map(name => `
       <div class="fs-list-item fs-description-item" data-field-name="${escapeHtml(name)}">
         <div class="fs-field-row">

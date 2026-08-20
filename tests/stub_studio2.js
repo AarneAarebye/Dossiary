@@ -282,6 +282,9 @@ class FakeDatabase {
     if (table === 'settings' && isReplace) {
       this.tables.settings = this.tables.settings.filter(r => r.key !== row.key);
     }
+    if (table === 'field_descriptions' && isReplace) {
+      this.tables.field_descriptions = this.tables.field_descriptions.filter(r => r.field_name !== row.field_name);
+    }
     if (table === 'tags' && isIgnore) { if (this.tables.tags.some(t => t.name === row.name)) return; }
     if (table === 'document_tags' && isIgnore) {
       if (this.tables.document_tags.some(dt => dt.document_id === row.document_id && dt.tag_id === row.tag_id)) return;
