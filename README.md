@@ -230,6 +230,17 @@ working" problem that motivated this project in the first place.
   itself now uses. Both start off for a newly created field, so a fresh
   custom field doesn't clutter the table or toolbar until you decide it's
   worth surfacing there.
+- **Any field can carry a short description** — Field Settings' "Field
+  Descriptions" section lists every field, built-in (Category, Subcategory,
+  Document Type, Date, Tags) and custom alike, each with its own optional
+  text. Useful for a field whose name alone doesn't say enough — e.g.
+  clarifying that "Organization" can hold a person's name too, not just a
+  company's. Once set, it shows as a small hint line under the field's
+  label in both the capture and edit forms; a field with nothing set shows
+  no hint at all. Document Type is the one field that already had its own
+  built-in hint ("Not in the list? Type a new one — it'll be created.") —
+  adding a description there shows both, stacked, rather than replacing
+  the original.
 - **Add a custom field right from the capture/edit forms** — a
   "+ Add a custom field" toggle below the custom fields, hidden until you've
   entered a document type (a field always has to attach to *some* type).

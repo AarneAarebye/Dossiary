@@ -276,6 +276,20 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   sind bei einem neu erstellten Feld zunächst deaktiviert, damit ein
   frisches benutzerdefiniertes Feld die Tabelle oder Symbolleiste nicht
   überfüllt, bevor Sie entscheiden, dass es dort sichtbar sein soll.
+- **Jedes Feld kann eine kurze Beschreibung erhalten** — der Bereich
+  „Feldbeschreibungen" in den Feldeinstellungen listet jedes Feld auf,
+  eingebaute (Kategorie, Unterkategorie, Dokumenttyp, Datum, Tags) wie
+  benutzerdefinierte gleichermaßen, jeweils mit eigenem optionalem Text.
+  Nützlich für ein Feld, dessen Name allein nicht genug aussagt — etwa um
+  klarzustellen, dass „Organization" auch den Namen einer Person enthalten
+  kann, nicht nur den einer Firma. Einmal gesetzt, erscheint sie als
+  kleiner Hinweistext unter der Feldbeschriftung sowohl im Erfassungs- als
+  auch im Bearbeitungsformular; ein Feld ohne gesetzten Text zeigt gar
+  keinen Hinweis. Dokumenttyp ist das einzige Feld, das bereits einen
+  eigenen eingebauten Hinweis hatte („Nicht in der Liste? Einfach einen
+  neuen Typ eintippen — er wird angelegt.") — wird dort zusätzlich eine
+  Beschreibung gesetzt, erscheinen beide gestapelt, statt den
+  ursprünglichen zu ersetzen.
 - **Ein benutzerdefiniertes Feld direkt aus dem Erfassungs-/
   Bearbeitungsformular anlegen** — ein Schalter „+ Add a custom field“
   unterhalb der benutzerdefinierten Felder, verborgen, bis ein
