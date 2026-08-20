@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **59
-scripts covering most of the app's actual functionality** (58 of them
+There's a real, runnable Playwright regression suite in `tests/` — **62
+scripts covering most of the app's actual functionality** (61 of them
 Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
 check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
@@ -330,7 +330,18 @@ description set showing no hint at all (Subcategory); Document Type's
 pre-existing autocomplete hint and its new description hint both rendering,
 stacked, in both forms, rather than one replacing the other; and description
 text containing a literal `{label}` rendering completely verbatim rather
-than being run through `t()`'s substitution). This
+than being run through `t()`'s substitution), and comma-aware autocomplete
+for multi-valued fields (`test_comma_autocomplete.py` — the native `list=`
+attribute genuinely removed once `wireCommaAutocomplete()` wires a field,
+for both People and Tags; typing a second name after a comma (e.g.
+"Birgit, A") actually suggesting matches for that second segment, not
+nothing, reproducing the exact reported bug native `<input list>` has;
+clicking a suggestion completing just that segment and appending `", "`
+so the next entry can start immediately; a name already used earlier in
+the same input correctly excluded from later suggestions; ArrowDown/Enter
+keyboard selection; an empty segment showing no dropdown at all; the same
+behavior confirmed for Tags; and the whole mechanism working identically
+in the edit form, not just capture). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

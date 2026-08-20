@@ -388,6 +388,13 @@
   .checkbox-label{ display:flex !important; align-items:center; gap:8px; cursor:pointer; text-transform:none !important; letter-spacing:normal !important; font-family:var(--font-sans) !important; font-size:13px !important; color:var(--text) !important; }
   .field-with-clear{ position:relative; }
   .field-with-clear input{ padding-right:30px !important; }
+  .comma-autocomplete-dropdown{
+    position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); z-index:40; max-height:220px; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .comma-autocomplete-item{ padding:6px 10px; font-family:var(--font-sans); font-size:13px; cursor:pointer; color:var(--text); }
+  .comma-autocomplete-item:hover{ background:rgba(79,224,166,0.06); }
+  .comma-autocomplete-item.active{ background:rgba(79,224,166,0.12); color:var(--phosphor); }
   .clear-btn{
     position:absolute; right:4px; top:50%; transform:translateY(-50%);
     width:20px; height:20px; padding:0; border:none; background:transparent;
@@ -2176,6 +2183,81 @@
     });
   }
 
+  // Comma-separated multi-value fields (People/Author/Collaborator/any other
+  // person-type field, and Tags) use a free-text input where each entry is
+  // separated by ", " -- native <input list> can't autocomplete this
+  // correctly, since the browser only ever matches suggestions against the
+  // WHOLE input value, not the segment currently being typed. Typing
+  // "Birgit, A" never matches anything via the native mechanism, even
+  // though "A" alone would match "Arne" -- only the very first, comma-free
+  // segment ever gets real suggestions. This reimplements the same
+  // comma-aware matching by hand: on every keystroke, take the text after
+  // the last comma, filter the given datalist's own <option> values by it
+  // (case-insensitive substring, excluding names already used earlier in
+  // the same input), and show a small clickable/keyboard-navigable
+  // suggestion list positioned under the input via the existing
+  // .field-with-clear wrapper's position:relative. The native `list`
+  // attribute is removed once this takes over, so the browser's own
+  // (broken, for this case) suggestion popup never appears alongside it.
+  function wireCommaAutocomplete(input, datalistId){
+    if(!input || input.dataset.commaAutocompleteWired) return;
+    input.dataset.commaAutocompleteWired = '1';
+    input.removeAttribute('list');
+    const wrap = input.closest('.field-with-clear') || input.parentElement;
+    const dropdown = document.createElement('div');
+    dropdown.className = 'comma-autocomplete-dropdown';
+    dropdown.style.display = 'none';
+    wrap.appendChild(dropdown);
+
+    let matches = [];
+    let activeIndex = -1;
+
+    function currentSegment(){
+      const parts = input.value.split(',');
+      return parts[parts.length - 1].trim();
+    }
+    function usedValues(){
+      const parts = input.value.split(',').map(s => s.trim().toLowerCase());
+      return new Set(parts.slice(0, -1).filter(Boolean));
+    }
+    function applySuggestion(value){
+      const parts = input.value.split(',');
+      parts[parts.length - 1] = ` ${value}`;
+      parts[0] = parts[0].trim();
+      input.value = parts.join(',') + ', ';
+      hide();
+      input.focus();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function hide(){ dropdown.style.display = 'none'; dropdown.innerHTML = ''; matches = []; activeIndex = -1; }
+    function draw(){
+      dropdown.innerHTML = matches.map((m, i) => `<div class="comma-autocomplete-item${i === activeIndex ? ' active' : ''}" data-index="${i}">${escapeHtml(m)}</div>`).join('');
+      dropdown.querySelectorAll('.comma-autocomplete-item').forEach(item => {
+        item.addEventListener('mousedown', (e) => { e.preventDefault(); applySuggestion(matches[Number(item.dataset.index)]); });
+      });
+    }
+    function update(){
+      const segment = currentSegment();
+      if(!segment){ hide(); return; }
+      const used = usedValues();
+      const options = [...document.querySelectorAll(`#${datalistId} option`)].map(o => o.value);
+      matches = options.filter(v => v.toLowerCase().includes(segment.toLowerCase()) && !used.has(v.toLowerCase())).slice(0, 8);
+      activeIndex = -1;
+      if(!matches.length){ hide(); return; }
+      dropdown.style.display = 'block';
+      draw();
+    }
+    input.addEventListener('input', update);
+    input.addEventListener('blur', () => setTimeout(hide, 150)); // delayed so a mousedown-selected item still fires first
+    input.addEventListener('keydown', (e) => {
+      if(!matches.length) return;
+      if(e.key === 'ArrowDown'){ e.preventDefault(); activeIndex = Math.min(activeIndex + 1, matches.length - 1); draw(); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); activeIndex = Math.max(activeIndex - 1, -1); draw(); }
+      else if(e.key === 'Enter' && activeIndex >= 0){ e.preventDefault(); applySuggestion(matches[activeIndex]); }
+      else if(e.key === 'Escape'){ hide(); }
+    });
+  }
+
   function safeFilename(name, fallback){
     if(!name) name = fallback;
     let cleaned = name.replace(/[^a-zA-Z0-9\-_. ()]/g, '_').trim();
@@ -3471,6 +3553,10 @@
         input.addEventListener('change', clearGuess, { once: true });
       }
     });
+    // Every person-type field (People, Author, Collaborator, ...) is multi-valued
+    // and comma-separated -- see wireCommaAutocomplete()'s own comment for why this
+    // replaces the native list="person-list" attribute rather than relying on it.
+    container.querySelectorAll('input[list="person-list"]').forEach(input => wireCommaAutocomplete(input, 'person-list'));
   }
 
   // "+ Add a custom field" only makes sense once a document type is entered -- a
@@ -3560,6 +3646,7 @@
       ? renderPersonFieldHtml(prefix, { id, name, type }, [], false)
       : renderGenericFieldHtml(prefix, { id, name, type }, '', false);
     container.insertAdjacentHTML('beforeend', newFieldHtml);
+    if(type === 'person') wireCommaAutocomplete(el(`${prefix}-field-${id}`), 'person-list');
 
     nameInput.value = '';
     statusEl.textContent = '';
@@ -4855,6 +4942,7 @@
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');
     wireClearButton('e-tags', 'e-tags-clear');
+    wireCommaAutocomplete(el('e-tags'), 'tag-list');
     el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
 
     if(d.file_path){
@@ -5448,6 +5536,7 @@
     wireClearButton('f-category', 'f-category-clear');
     wireClearButton('f-subcategory', 'f-subcategory-clear');
     wireClearButton('f-tags', 'f-tags-clear');
+    wireCommaAutocomplete(el('f-tags'), 'tag-list');
 
     // The date field is preset to today as a starting guess, not a real value --
     // clear the "please double-check" flag as soon as the person actually looks

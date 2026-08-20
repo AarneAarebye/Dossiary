@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (61 scripts) + shared
+tests/                   Playwright regression suite (62 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2183,6 +2183,37 @@ this repo's git tags.
   after the existing one, not a replacement; a configured description
   shows both, stacked, and a field with no description set continues
   showing just the original hint exactly as before.
+- **Comma-aware autocomplete for multi-valued fields** (`wireCommaAutocomplete()`)
+  fixes a real limitation of native `<input list="...">`: the browser only
+  ever matches suggestions against the *whole* input value, never a
+  substring of it, so a comma-separated field (People/Author/Collaborator/
+  any other person-type field, and Tags) only ever offered suggestions for
+  the *first* entry typed — after "Birgit, " and starting a second name,
+  nothing suggested, since no datalist option's value literally starts
+  with "Birgit, A". `wireCommaAutocomplete(input, datalistId)` replaces the
+  native mechanism by hand: on every keystroke it takes the text after the
+  last comma, filters the given datalist's own `<option>` values by it
+  (case-insensitive substring, excluding names already used earlier in the
+  same input), and renders a small clickable/keyboard-navigable suggestion
+  list (`.comma-autocomplete-dropdown`) positioned under the input via the
+  existing `.field-with-clear` wrapper's `position:relative` — the same
+  wrapper every comma-separated field already had for its clear button, so
+  no new markup was needed there. The native `list` attribute is removed
+  once this takes over (`input.removeAttribute('list')`), so the browser's
+  own broken-for-this-case popup never appears alongside the real one.
+  Selecting a suggestion (click, or Enter on a keyboard-highlighted item)
+  replaces just the current segment and appends `", "` so typing the next
+  entry can continue immediately. Wired from three places: the generic
+  `applyDynamicFieldsForType()` rebuild pass (covers every person-type
+  field, People included, the same way its clear-button rewiring already
+  does), `addInlineCustomField()`'s own insert path (a newly-created
+  person-type field, appended without a full container rebuild), and two
+  one-off calls for `#f-tags`/`#e-tags` (Tags isn't part of the dynamic
+  fields system at all, same as its clear button). A
+  `dataset.commaAutocompleteWired` guard makes the function idempotent,
+  though in practice every one of these three call sites only ever wires a
+  freshly-rendered element, so the guard is defensive rather than
+  load-bearing.
 
 ## How this was tested
 

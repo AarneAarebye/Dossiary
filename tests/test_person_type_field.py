@@ -58,8 +58,12 @@ async def main():
         print("Author field appears immediately after creation:", author_present)
         placeholder = await author_input.get_attribute('placeholder')
         print("Author input has a person-style placeholder:", placeholder)
+        # wireCommaAutocomplete() removes the native list= attribute and replaces it
+        # with its own comma-aware suggestion dropdown -- see test_comma_autocomplete.py
+        # for real coverage of that mechanism, including on this exact Author field.
         list_attr = await author_input.get_attribute('list')
-        print("Author input uses the shared person-list datalist:", list_attr)
+        assert list_attr is None, f"Author input should have its native list= attribute removed (comma-aware autocomplete replaces it), got {list_attr!r}"
+        print("Author input's native list= attribute is removed (replaced by comma-aware autocomplete):", list_attr)
 
         # People (already configured for Book) should be present and untouched by adding Author.
         people_present = await page.locator('[data-dynamic-field="People"] input').count()
