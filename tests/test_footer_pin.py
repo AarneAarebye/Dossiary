@@ -124,24 +124,41 @@ async def main():
         # tabs' own constants); 1440px is where sidebar mode's own
         # recalibration (see CLAUDE.md's sticky-header calibration note)
         # leaves deliberate, accepted dead space rather than overlap.
-        # Tabs mode's constants are tightly calibrated across this whole
-        # sweep, so every tabs combination uses the tight, essentially-exact
-        # measure() proxy (min_gap=-2). Sidebar mode's own worst-case width
-        # sits narrower than this sweep (900px, per the sweep used to derive
-        # its constants), so at the two narrower widths here (1000/1100) the
-        # proxy shows an apparent negative gap even though the real last
-        # table row isn't actually clipped -- .table-wrap's own
-        # padding-bottom absorbs the difference, the same known effect the
-        # 641-1280px in-between-band section below already accounts for --
-        # so those two combinations use the real last-row-visibility check
-        # instead of the proxy, same as that section does. ===
-        for width in [1000, 1100, 1280, 1440]:
+        # Both nav styles share the same underlying padding-absorption
+        # effect at narrow-enough widths: the box-edge measure() proxy
+        # reports a large apparent overlap there even though the real last
+        # table row isn't clipped, because .table-wrap's own padding-bottom
+        # absorbs the difference (the same known effect the 641-1280px
+        # in-between-band section below already accounts for). Each nav
+        # style clears that effect at a different width, verified with a
+        # finer 700-1100px sweep at this exact 720px viewport height:
+        # tabs' proxy becomes reliable at 900px (boxGap goes from a false
+        # -52/-67px at 700-850px to a real, trustworthy 16px at 900px);
+        # sidebar's real clip stays tight (-3.5px) from 700-850px, then
+        # relaxes sharply to -40.5px at 900px and further at 1000/1100px
+        # (an earlier version of this comment guessed 900px as sidebar's
+        # own worst case, which was wrong -- 900px already has 40px+ of
+        # unused margin there, real coverage but not a sensitive one,
+        # since a future regression smaller than that margin would slip
+        # through undetected). So: 800px is included specifically to keep
+        # sidebar's *actual* tightest point covered by a real, sensitive
+        # check, and both nav styles fall back to the real
+        # last-row-visibility check below their own reliability threshold
+        # (900px for tabs, 1280px for sidebar) rather than the proxy. ===
+        for width in [800, 1000, 1100, 1280, 1440]:
             await open_seeded_library(page, width, 720, 'tabs')
-            await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden", min_gap=-2)
+            tabs_tight = width >= 900
+            if tabs_tight:
+                await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden", min_gap=-2)
+            else:
+                await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden")
 
             await page.check('tr[data-id="1"] .row-select-checkbox')
             await page.wait_for_timeout(150)
-            await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
+            if tabs_tight:
+                await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
+            else:
+                await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE")
             await page.click('#bulk-clear-selection-btn')
             await page.wait_for_timeout(150)
 
