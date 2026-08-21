@@ -351,8 +351,9 @@ content; every action available in the old detail modal still working
 from the panel with correct in-place refresh (Archive/Unarchive, Flag for
 review/Done, Add to Collection, regenerate preview); a deleted document's
 panel dropping to Restore-only with Edit/Archive genuinely absent, not
-just disabled; Cancel from an edit reached via the panel closing the edit
-form without forcing a collapsed panel open; saving an edit reached via
+just disabled; Cancel from an edit reached via the row-level `.row-edit-btn`
+shortcut closing the edit form without forcing a collapsed panel open;
+saving an edit reached via
 the row-level `.row-edit-btn` shortcut — which bypasses the panel/selection
 step on the way in — selecting the just-edited document as the panel's new
 selection and highlighting its row; the toggle button being absent in

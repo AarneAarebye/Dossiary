@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (62 scripts) + shared
+tests/                   Playwright regression suite (63 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -962,7 +962,7 @@ this repo's git tags.
   below), at which point it reappears with a small `archived` pill next to
   its title (same spot as the existing "new"/"from inbox" pills). Nothing
   else about the document changes; toggling it is a single `UPDATE
-  documents SET archived = ?` from the detail modal's Archive/Unarchive
+  documents SET archived = ?` from the detail panel's Archive/Unarchive
   button, mirroring `regenerateThumbnail()`'s own update-in-memory →
   persist → `render()` → re-open-the-modal pattern. Deliberately a
   dedicated `documents` column, not a generic custom checkbox field — the
@@ -973,7 +973,7 @@ this repo's git tags.
   Inbox nav item — `#nav-item-inbox`, `data-view="inbox"`) is a second,
   independent staging flag, built as a direct structural mirror of
   `archived` above — same `documents` column pattern, same `SCHEMA`/
-  `SCHEMA_MIGRATIONS` treatment, same detail-modal toggle-button pattern
+  `SCHEMA_MIGRATIONS` treatment, same detail-panel toggle-button pattern
   (`review-toggle-btn`, "Flag for review" / "Done") — but serving a
   different purpose: not "no longer needed," but "not yet reviewed." This
   is the second stage of a two-stage lifecycle for inbox-imported
@@ -989,7 +989,7 @@ this repo's git tags.
   with no date was the original bug report that led to this feature — the
   fix isn't to guess a date, it's to put unreviewed documents somewhere a
   person actually notices them). Any document can be flagged, not just
-  inbox-imported ones — the "Flag for review" button in the detail modal
+  inbox-imported ones — the "Flag for review" button in the detail panel
   works on anything, mirroring the "mark all documents as needs_review"
   scope the person who requested this feature specifically asked for.
   **Only the explicit Done action clears the flag — saving an edit never
@@ -1003,7 +1003,7 @@ this repo's git tags.
   navigation" note below for how view membership, badge counts, and
   rendering all work; this note only covers `needs_review`'s own semantics
   and its interaction with `archived`.
-  **`toggleNeedsReview()` has two call sites**: the detail modal's own
+  **`toggleNeedsReview()` has two call sites**: the detail panel's own
   toggle button (`async () => { await toggleNeedsReview(id); openDetail(id);
   }`, which refreshes in place), and the edit form's own "Save & Done"
   button (see its own note below, which closes the modal entirely instead)
@@ -1089,7 +1089,7 @@ this repo's git tags.
   offers only Restore, since none of those other actions mean anything for
   a document that isn't reachable anywhere they'd matter until it's
   restored. `toggleDeleted()`, like `toggleNeedsReview()` above, now has a
-  single call site — the detail modal's own button — and always refreshes
+  single call site — the detail panel's own button — and always refreshes
   in place; restoring from a `'trash'`-view row works by opening that
   row's detail view (the same `openDetail()` every other view's rows use)
   and clicking Restore there, rather than a dedicated inline restore
@@ -1223,7 +1223,7 @@ this repo's git tags.
   background sync logic. Manual collections are static rosters you build by
   selecting documents in the table and clicking "Add to Collection" (via the
   bulk-action toolbar that appears when checkboxes are checked), or one at a
-  time from a document's own detail-modal action buttons ("Add to Collection"
+  time from a document's own detail-panel action buttons ("Add to Collection"
   picks which one; "Remove from Collection" appears only when viewing from
   inside a specific manual collection). Removing a document from a collection
   and deleting a collection are both inline `DELETE FROM` statements in their
@@ -1269,7 +1269,7 @@ this repo's git tags.
   retain your old All Documents selection. Creating a new manual collection
   and adding its first documents happen as one action via the same
   `addDocumentsToCollection()` and `createManualCollection()` functions that
-  the detail-modal single-document action buttons use — no special
+  the detail-panel single-document action buttons use — no special
   code-path difference between a bulk add and a single add.
   **Bulk archive/delete/flag-for-review actions** (`bulkSetArchived()`,
   `bulkSetDeleted()`, `bulkSetNeedsReview()`, `renderBulkActionBar()`)
@@ -1328,7 +1328,22 @@ this repo's git tags.
   `null` — refreshing the panel to its empty state — whenever the
   currently-selected document falls out of the active view's filtered/
   sorted set (deleted, archived out of view, or excluded by a filter/
-  search change). **Clicking a row never auto-expands a collapsed
+  search change). **`openDetail(id)` itself is the authoritative setter of
+  `selectedDocId`**, not just a content-rendering function — it sets
+  `selectedDocId = d ? d.id : null` from whatever document it actually
+  finds (or fails to find), right after its own `allDocs.find()` lookup.
+  This means `render()`'s own invalidation above doesn't always have the
+  last word: several action handlers (e.g. `toggleArchived()`) call
+  `render()` first — which zeroes `selectedDocId` if the acted-on document
+  fell out of the current filtered/sorted view — and then call
+  `openDetail(id)` again afterward with that same original id purely to
+  refresh the panel's displayed content. Because `openDetail()` re-asserts
+  `selectedDocId` unconditionally, that trailing call re-selects the
+  document too, re-highlighting its row if one still exists and leaving
+  the panel showing its content even if the row doesn't (e.g. it just got
+  archived out of the currently-visible view). This is intentional —
+  quick "undo" reachability right after an action, not a bug — not an
+  invalidation loophole to close. **Clicking a row never auto-expands a collapsed
   panel** — selection, highlighting, and content-refresh all happen
   unconditionally on every row click, but panel *visibility* is
   controlled only by the toolbar's own `#detail-panel-toggle-btn`,
@@ -1367,10 +1382,18 @@ this repo's git tags.
   `.table-detail-row` wrapper, sitting at exactly the same vertical offset
   under exactly the same header/toolbar/nav/bulk-bar/footer chrome, so the
   same "how much vertical room is left below that chrome" figure applies
-  to both; this was verified the same empirical way as everything else in
-  this section (`getBoundingClientRect()`, confirming the panel's own
-  bottom edge lands at the fixed footer's top edge with no overlap), not
-  assumed just because the numbers happened to match structurally. This is
+  to both; the reasoning is sound and was spot-checked the same empirical
+  way as everything else in this section at authoring time
+  (`getBoundingClientRect()`, confirming the panel's own bottom edge lands
+  at the fixed footer's top edge with no overlap), not assumed just
+  because the numbers happened to match structurally — but, unlike
+  `.table-wrap` itself, this has **no automated regression test guarding
+  it**: `tests/test_footer_pin.py` is the file that actually enforces this
+  class of check on an ongoing basis, and it was never extended to also
+  measure the panel's own bottom edge. A future layout change could
+  silently drift the panel out of alignment with the footer without any
+  test failing to catch it — don't read this note as claiming coverage
+  that doesn't exist. This is
   purely a **horizontal** layout change — the panel sits *beside* the
   table, not above or below it — so none of `.table-wrap`'s own four
   constants needed to move; reusing them for a same-height sibling is not
@@ -1988,7 +2011,11 @@ this repo's git tags.
   making the toggle inert for the keyboard path too, matching what a
   mouse user already experiences via the backdrop rather than attempting
   a re-render that would be safe for some modals and destructive for
-  others.
+  others. **The persistent detail panel doesn't need an equivalent guard**
+  — `setLang()` calls `openDetail(selectedDocId)` (when set) unconditionally
+  after `render()`, with no modal-open check at all, because the panel is
+  read-only display content, not an in-progress form; unlike capture/edit,
+  there's nothing typed-but-unsaved for a re-render to discard.
   **`loadLang()`/`saveLang()` wrap their `localStorage` calls in their own
   try/catch, independently of each other** — `localStorage` access can
   throw (blocked by browser privacy settings, enterprise policy, private-
