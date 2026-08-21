@@ -61,6 +61,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Scenario 1: a pre-`deleted`-column document reads back as not-deleted
         # rather than erroring, and shows normally in All Documents ===
@@ -86,8 +88,6 @@ async def main():
         print("Edit button hidden while deleted:", edit_btn_count == 0)
         print("Archive button hidden while deleted:", archive_btn_count == 0)
         print("Review-toggle button hidden while deleted:", review_btn_count == 0)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         main_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("doc 1 no longer in All Documents:", '1' not in main_row_ids)
@@ -118,12 +118,12 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click('#delete-toggle-btn')
         await page.wait_for_timeout(200)
-        modal_still_open = await page.locator('#modal-backdrop').count()
-        print("modal stays open after Restore (refreshes in place):", modal_still_open == 1)
+        # The detail panel refreshes its content in place (no modal at all for panel
+        # content) -- confirm the button is still present with its restored label.
+        panel_still_showing = await page.locator('#delete-toggle-btn').count()
+        print("panel stays showing after Restore (refreshes in place):", panel_still_showing == 1)
         restore_label_after = await page.locator('#delete-toggle-btn').inner_text()
         print("button now reads Delete again (full action set restored):", restore_label_after)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
         bin_row_ids_after_restore = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("doc 1 no longer listed in Waste bin:", '1' not in bin_row_ids_after_restore)
 
@@ -145,8 +145,6 @@ async def main():
         print("doc 2 starts flagged (Done label):", queue_review_label_before)
         await page.click('#delete-toggle-btn')
         await page.wait_for_timeout(200)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         inbox_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("doc 2 no longer in Inbox after deletion:", '2' not in inbox_row_ids)
@@ -161,7 +159,7 @@ async def main():
         # Clicking the row itself opens the full detail view, same as any other view.
         await page.click('tr[data-id="2"]')
         await page.wait_for_timeout(200)
-        detail_title = await page.locator('.modal h2').first.inner_text()
+        detail_title = await page.locator('#detail-panel-body h2').first.inner_text()
         print("clicking a Waste bin row opens its detail view:", detail_title)
         restore_from_detail_label = await page.locator('#delete-toggle-btn').inner_text()
         print("its detail view also only offers Restore:", restore_from_detail_label)

@@ -84,6 +84,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Scenario 1: the Collections nav section exists, expanded by default,
         # listing both seeded collections alphabetically ===
@@ -327,8 +329,6 @@ async def main():
         await page.wait_for_timeout(150)
         await page.click('.modal-collection-option[data-collection-id="1"]')
         await page.wait_for_timeout(200)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         await page.click('#nav-item-collection-1')
         await page.wait_for_timeout(150)
@@ -357,8 +357,6 @@ async def main():
         await page.wait_for_timeout(200)
         remove_btn_from_all = await page.locator('#remove-from-collection-btn').count()
         print("Remove-from-collection hidden when viewing from All Documents:", remove_btn_from_all == 0)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         # === Scenario 18: Remove-from-collection hidden when viewing from inside a
         # smart collection's view, even though doc 3 is a member of a manual collection
@@ -369,8 +367,6 @@ async def main():
         await page.wait_for_timeout(200)
         remove_btn_from_smart = await page.locator('#remove-from-collection-btn').count()
         print("Remove-from-collection hidden when viewing from inside a smart collection:", remove_btn_from_smart == 0)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         # === Scenario 19: Manage Collections modal lists every collection with the
         # right kind and document count ===

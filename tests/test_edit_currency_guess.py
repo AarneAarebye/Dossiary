@@ -49,6 +49,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, []);")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Capture three documents with NO default_currency configured yet, so none
         # of them get a Currency value -- mirrors documents captured before a default
@@ -134,8 +136,8 @@ async def main():
             })()
         """)
         print("doc1 currency persisted after accepting the edit-time guess:", get_field_value(persisted1, 1, 'Currency'))
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        # Save already closed the edit modal on success (see saveEditedDocument()'s
+        # explicit closeModal() call) -- no separate close click needed here.
 
         # === Re-opening doc1's edit again: Currency now has a REAL saved value, so it
         # must NOT be re-flagged as a guess (a saved value is truth, not a guess). ===

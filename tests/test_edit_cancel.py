@@ -30,6 +30,8 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
         await page.click('#add-btn')
         await page.wait_for_timeout(100)
         with open('canceldoc.pdf', 'wb') as f:
@@ -48,9 +50,9 @@ async def main():
         await page.click('#cancel-edit-btn')
         await page.wait_for_timeout(200)
 
-        modal_text = await page.locator('.modal').inner_text()
-        print("shows original title after cancel:", 'Keep This Title' in modal_text)
-        print("shows discarded edit (should be False):", 'Should Not Be Saved' in modal_text)
+        panel_text = await page.locator('#detail-panel-body').inner_text()
+        print("shows original title after cancel:", 'Keep This Title' in panel_text)
+        print("shows discarded edit (should be False):", 'Should Not Be Saved' in panel_text)
 
         row_html = await page.locator('tr[data-id="1"]').inner_html()
         print("row still shows original title:", 'Keep This Title' in row_html)

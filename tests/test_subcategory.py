@@ -62,7 +62,7 @@ async def main():
         # check detail modal
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
-        modal_text = await page.locator('.modal').inner_text()
+        modal_text = await page.locator('#detail-panel-body').inner_text()
         print("modal shows category/subcategory:", 'Medical / Dentist' in modal_text)
 
         # check sidecar

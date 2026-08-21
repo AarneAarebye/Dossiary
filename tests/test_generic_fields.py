@@ -43,6 +43,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, {json.dumps(FIELD_ROWS)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Capture a document of type "Invoice" -> all 4 generic fields + People should render ===
         await page.click('#add-btn')
@@ -95,13 +97,12 @@ async def main():
         # detail modal shows formatted values (checkbox -> Yes, date -> readable)
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
-        modal_text = await page.locator('.modal').inner_text()
+        modal_text = await page.locator('#detail-panel-body').inner_text()
         print("modal shows Organization:", 'Organization' in modal_text and 'Ernestus' in modal_text)
         print("modal shows Paid as Yes:", 'Yes' in modal_text)
         print("modal shows formatted date (not raw ISO):", '2018' in modal_text and 'T00:00' not in modal_text)
 
         # search by generic field value
-        await page.click('#modal-close-btn')
         await page.fill('#search', 'Sandhausen')
         await page.wait_for_timeout(150)
         search_rows = await page.locator('#doc-tbody tr').count()

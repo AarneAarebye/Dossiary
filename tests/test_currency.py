@@ -50,6 +50,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, []);")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Currency renders alongside Amount for a type that configures both ===
         await page.click('#add-btn')
@@ -146,9 +148,8 @@ async def main():
 
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
-        modal_text = await page.locator('.modal').inner_text()
-        print("detail view shows '75.00 EUR':", '75.00 EUR' in modal_text)
-        await page.click('#modal-close-btn')
+        panel_text = await page.locator('#detail-panel-body').inner_text()
+        print("detail view shows '75.00 EUR':", '75.00 EUR' in panel_text)
 
         # === Sidecar text includes the currency ===
         sidecar_text = await page.evaluate("""
@@ -186,9 +187,8 @@ async def main():
             })()
         """)
         print("currency updated to USD:", get_field_value(persisted2, doc1['id'], 'Currency'))
-        # saveEditedDocument() ends by opening the detail view, not closing the modal.
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        # saveEditedDocument() now closes the edit modal explicitly on success and
+        # updates the (already-open) panel in place -- no separate close click needed.
 
         # === CRITICAL: reclassifying to a type without Amount/Currency configured
         # doesn't remove either field outright while it still holds real data -- each
@@ -222,8 +222,6 @@ async def main():
         doc1_after = persisted3['documents'][0]
         print("amount PRESERVED after reclassify+save (should still be 75.0):", get_field_value(persisted3, doc1_after['id'], 'Amount'))
         print("currency PRESERVED after reclassify+save (should still be USD):", get_field_value(persisted3, doc1_after['id'], 'Currency'))
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         # Reclassify back to Invoice -- the preserved value should reappear in the form.
         await page.click('tr[data-id="1"]')

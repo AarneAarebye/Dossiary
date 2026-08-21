@@ -62,6 +62,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Scenario 1: Inbox nav badge shows only the non-archived flagged doc;
         # All Documents shows only the fully-reviewed doc; the archived+flagged doc
@@ -110,10 +112,11 @@ async def main():
         print("doc 2's detail button label from Inbox (should be Done):", doc2_review_label)
         await page.click('#review-toggle-btn')
         await page.wait_for_timeout(200)
-        modal_still_open_after_done = await page.locator('#modal-backdrop').count()
-        print("modal refreshes in place after Done (stays open):", modal_still_open_after_done == 1)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        # The detail panel refreshes its content in place (no modal to close at all
+        # for panel content) -- confirm the button itself is still present with its
+        # new label, proving openDetail() re-rendered rather than clearing the panel.
+        panel_refreshed_after_done = await page.locator('#review-toggle-btn').count()
+        print("panel refreshes in place after Done (button still present):", panel_refreshed_after_done == 1)
         inbox_count_after_done = await page.locator('#nav-count-inbox').inner_text()
         print("Inbox badge now 0:", inbox_count_after_done)
         await page.click('#nav-item-all')
@@ -131,9 +134,7 @@ async def main():
         await page.click('#review-toggle-btn')
         await page.wait_for_timeout(200)
         review_btn_label_after = await page.locator('#review-toggle-btn').inner_text()
-        print("button label after flagging (modal refreshes in place):", review_btn_label_after)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        print("button label after flagging (panel refreshes in place):", review_btn_label_after)
 
         main_row_ids_after_flag = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("doc 1 no longer in All Documents after being flagged:", '1' not in main_row_ids_after_flag)
@@ -154,10 +155,9 @@ async def main():
         await page.fill('#e-title', 'Reviewed Invoice (touched)')
         await page.click('#save-edit-btn')
         await page.wait_for_timeout(300)
-        # saveEditedDocument() reopens the detail view (not the edit form) on success,
-        # rather than closing the modal outright -- close it before continuing.
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        # saveEditedDocument() now closes the edit modal explicitly on success and
+        # sets selectedDocId so the (already-open) panel shows the just-saved
+        # document -- no separate close click needed.
 
         inbox_row_ids_after_save = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("doc 1 still in Inbox after an intermediate save:", '1' in inbox_row_ids_after_save)
@@ -188,8 +188,6 @@ async def main():
         doc3_archive_label = await page.locator('#archive-toggle-btn').inner_text()
         print("archived+flagged doc's review button (should be Done):", doc3_review_label)
         print("archived+flagged doc's archive button (should be Unarchive):", doc3_archive_label)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         # === Scenario 7: "Save & Done" (only rendered on a currently-flagged
         # document) saves the edit AND clears needs_review in one click -- doc 1

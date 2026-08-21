@@ -31,6 +31,8 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Doc 1: a 5-page PDF -- page count should show in capture, detail, and edit ===
         await page.evaluate("window.__STUB_PDF_NUM_PAGES = 5;")
@@ -57,7 +59,7 @@ async def main():
         await page.wait_for_timeout(300)
         edit_page_count = await page.locator('#e-page-count').inner_text()
         print("Edit dialog page count note:", repr(edit_page_count))
-        await page.click('#modal-close-btn')
+        await page.click('#cancel-edit-btn')  # close the (genuinely separate) edit modal
         await page.wait_for_timeout(150)
 
         # === Doc 2: an IMAGE document -- should show no page count anywhere ===

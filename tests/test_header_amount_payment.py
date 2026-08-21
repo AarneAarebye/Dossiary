@@ -35,6 +35,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, []);")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Doc 1: Certificate type, no amount/payment at all ===
         await page.click('#add-btn')
@@ -52,12 +54,11 @@ async def main():
 
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
-        modal_text1 = await page.locator('.modal').inner_text()
+        modal_text1 = await page.locator('#detail-panel-body').inner_text()
         print("--- Doc without amount/payment ---")
         print("shows Payment b-tag (should be False):", '<b>Payment</b>' in modal_text1 or 'Payment ' in modal_text1)
         print("shows 'Amount' label (should be False):", 'Amount' in modal_text1)
         print("shows 'Date' label (should be True, always shown):", 'Date' in modal_text1)
-        await page.click('#modal-close-btn')
 
         # === Doc 2: Invoice type, WITH amount/payment filled in ===
         await page.click('#add-btn')
@@ -77,7 +78,7 @@ async def main():
 
         await page.click('tr[data-id="2"]')
         await page.wait_for_timeout(200)
-        modal_text2 = await page.locator('.modal').inner_text()
+        modal_text2 = await page.locator('#detail-panel-body').inner_text()
         print("--- Doc with amount/payment ---")
         print("shows 'Payment' label (should be True):", 'Payment' in modal_text2)
         print("shows 'PayPal' value:", 'PayPal' in modal_text2)

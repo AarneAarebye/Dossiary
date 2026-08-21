@@ -38,6 +38,8 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Doc that never runs OCR (no searchable PDF built) -- both copy buttons
         # show now, since every capture preserves its own untouched original
@@ -79,9 +81,6 @@ async def main():
         clip1 = await page.evaluate("navigator.clipboard.readText()")
         print("Original button copies the preserved original's own path (distinct from file_path):", clip1)
         assert clip1 == 'EmptyLibrary/files/1_Plain PDF Doc/copytest1.pdf', f"unexpected clipboard content: {clip1!r}"
-
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         # === Doc WITH a searchable-PDF original -- both copy buttons show, and each
         # copies its own distinct path (not a stale/shared value) ===

@@ -86,6 +86,8 @@ async def main():
         await page3.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page3.click("#open-btn")
         await page3.wait_for_timeout(300)
+        await page3.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons (Edit, etc.) are reachable for the rest of this test
+        await page3.wait_for_timeout(150)
         await page3.select_option('#lang-select', 'de')
         await page3.wait_for_timeout(150)
         nav_all_text = await page3.locator('#nav-item-all .nav-item-label').inner_text()
@@ -200,8 +202,6 @@ async def main():
         # not Fields.
         fields_heading = await page3.locator('.modal-section h3').first.inner_text()
         print("Scenario 9 -- detail modal section heading translated:", fields_heading in ("FELDER", "PERSONEN"))
-        await page3.click('#modal-close-btn')
-        await page3.wait_for_timeout(150)
 
         # === Scenario 10: shared field-rendering validation messages
         # translate (reuses page3, still German) -- renderPersonFieldHtml()/
@@ -293,12 +293,11 @@ async def main():
         # we only confirm the German label/status wiring is in place.
         await page3.click('#cancel-edit-btn')
         await page3.wait_for_timeout(150)
-        await page3.click('#modal-close-btn')
-        await page3.wait_for_timeout(150)
 
         # === Scenario 13: Field Settings modal translates (reuses page3,
         # still German; no modal open at this point since Scenario 12 closed
-        # both the edit form via Cancel and the detail view via modal-close-btn) ===
+        # the edit form via Cancel -- the detail panel itself isn't a modal
+        # and needs no closing) ===
         await page3.click('#manage-fields-btn')
         await page3.wait_for_timeout(200)
         fs_heading = await page3.locator('.modal h2').inner_text()
@@ -440,8 +439,6 @@ async def main():
         print("Scenario 20 -- edit-form OCR language dropdown options translated:", edit_ocr_lang_options == ocr_lang_de)
         await page3.click('#cancel-edit-btn')
         await page3.wait_for_timeout(150)
-        await page3.click('#modal-close-btn')
-        await page3.wait_for_timeout(150)
 
         # === Scenario 21: #lang-select is inert while a modal is open -- a mouse click
         # on the old button was already blocked by the modal's own backdrop, but keyboard
@@ -558,8 +555,6 @@ async def main():
         e_tags_clear_aria = await page3.locator('#e-tags-clear').get_attribute('aria-label')
         print("Scenario 22 -- edit Tags clear button translated:", e_tags_clear_aria == "Tags leeren")
         await page3.click('#cancel-edit-btn')
-        await page3.wait_for_timeout(150)
-        await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
         # === Scenario 23: footer "User Guide" link opens the right language's guide,
@@ -754,8 +749,8 @@ async def main():
         await page29.wait_for_timeout(150)
         await page29.click('#save-edit-btn')
         await page29.wait_for_timeout(200)
-        await page29.click('#modal-close-btn') # saving reopens the detail modal; #lang-select is a deliberate no-op while any modal is open
-        await page29.wait_for_timeout(150)
+        # saveEditedDocument() closes the edit modal itself on success -- no separate
+        # close click needed (the detail panel it also refreshes isn't a modal at all).
         await page29.select_option('#lang-select', 'de')
         await page29.wait_for_timeout(150)
         status_saved_de = await page29.locator('#status').inner_text()

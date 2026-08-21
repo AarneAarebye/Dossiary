@@ -36,6 +36,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({type_field_rows!r}, []);")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # Document 1: two people
         await page.click('#add-btn')
@@ -111,7 +113,7 @@ async def main():
         await page.wait_for_timeout(100)
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
-        modal_text = await page.locator('.modal').inner_text()
+        modal_text = await page.locator('#detail-panel-body').inner_text()
         print("modal shows 'People' section:", 'People' in modal_text)
         print("modal shows both names:", 'Arne' in modal_text and 'Jana' in modal_text)
 
@@ -126,8 +128,6 @@ async def main():
         """)
         print("--- sidecar for doc1 ---")
         print(sidecar)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
 
         # === Edit: clear People via the clear button, confirm it saves as empty ===
         await page.click('tr[data-id="2"]')

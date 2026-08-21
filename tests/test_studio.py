@@ -219,7 +219,6 @@ async def run_test():
         open_file_btn = await page.locator('#open-file-btn').count()
         open_original_btn = await page.locator('#open-original-btn').count()
         print("open-file button:", open_file_btn, " open-original button:", open_original_btn)
-        await page.click('#modal-close-btn')
 
         # === SCENARIO 2: add a new document (image, OCR, tags incl. reused tag) ===
         await page.click('#add-btn')

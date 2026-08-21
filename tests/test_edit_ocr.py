@@ -31,6 +31,8 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Doc 1: an IMAGE document ===
         await page.click('#add-btn')
@@ -84,8 +86,7 @@ async def main():
         """)
         doc1 = [d for d in persisted['documents'] if d['id'] == 1][0]
         print("persisted ocr_text for image doc:", doc1['ocr_text'])
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        # Save already closed the edit modal on success -- no separate close click needed.
 
         # --- Edit doc 2 (PDF), run OCR -- exercises the pdf.js render path ---
         await page.click('tr[data-id="2"]')

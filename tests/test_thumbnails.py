@@ -75,7 +75,6 @@ async def main():
         button_label = await page.locator('#regen-thumb-btn').inner_text()
         print("modal shows <img> thumbnail:", img_present)
         print("button label (should be 'Regenerate preview'):", button_label)
-        await page.click('#modal-close-btn')
 
         # === Scenario 2: capture a PDF document -> stubbed pdf.js thumbnail ===
         await page.click('#add-btn')

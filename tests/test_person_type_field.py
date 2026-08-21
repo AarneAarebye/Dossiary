@@ -39,6 +39,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, []);")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         # === Create a new "Author" field of type Person, inline from the capture form ===
         await page.click('#add-btn')
@@ -106,14 +108,12 @@ async def main():
         # .modal-section h3 is CSS text-transform:uppercase, so inner_text() reports
         # "AUTHOR" even though the actual DOM/source text is "Author" -- same quirk
         # test_people.py's own "People" section check already lives with.
-        modal_text = await page.locator('.modal').inner_text()
+        modal_text = await page.locator('#detail-panel-body').inner_text()
         print("detail shows Author section:", 'AUTHOR' in modal_text)
         print("detail shows both Author names:", 'Tolkien' in modal_text and 'Christopher Tolkien' in modal_text)
         print("detail shows Arne under People:", 'Arne' in modal_text)
 
         # === Search finds a document by its Author, not just People ===
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
         await page.fill('#search', 'Christopher')
         await page.wait_for_timeout(200)
         rows_for_author_search = await page.locator('#doc-tbody tr').count()

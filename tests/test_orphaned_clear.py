@@ -34,6 +34,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, {json.dumps(FIELD_ROWS)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
+        await page.wait_for_timeout(150)
 
         await page.click('#add-btn')
         await page.wait_for_timeout(100)
@@ -71,8 +73,7 @@ async def main():
             })()
         """)
         print("document_field_values count after clearing orphaned field (should be 0):", len(persisted['document_field_values']))
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        # Save already closed the edit modal on success -- no separate close click needed.
 
         # Re-open to confirm it's genuinely gone, not just hidden
         await page.click('tr[data-id="1"]')
