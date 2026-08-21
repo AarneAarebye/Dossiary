@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **62
-scripts covering most of the app's actual functionality** (61 of them
+There's a real, runnable Playwright regression suite in `tests/` — **63
+scripts covering most of the app's actual functionality** (62 of them
 Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
 check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
@@ -341,7 +341,23 @@ so the next entry can start immediately; a name already used earlier in
 the same input correctly excluded from later suggestions; ArrowDown/Enter
 keyboard selection; an empty segment showing no dropdown at all; the same
 behavior confirmed for Tags; and the whole mechanism working identically
-in the edit form, not just capture). This
+in the edit form, not just capture),
+and the persistent detail panel (`test_detail_panel.py` — the panel
+starting collapsed by default and its expanded state persisting across a
+reopen, mirroring `test_nav.py`'s own `nav_style` persistence pattern;
+clicking a row highlighting it and showing its metadata in the panel, and
+clicking a different row moving both the highlight and the panel's
+content; every action available in the old detail modal still working
+from the panel with correct in-place refresh (Archive/Unarchive, Flag for
+review/Done, Add to Collection, regenerate preview); a deleted document's
+panel dropping to Restore-only with Edit/Archive genuinely absent, not
+just disabled; Cancel from an edit reached via the panel closing the edit
+form without forcing a collapsed panel open; saving an edit reached via
+the row-level `.row-edit-btn` shortcut — which bypasses the panel/selection
+step on the way in — selecting the just-edited document as the panel's new
+selection and highlighting its row; the toggle button being absent in
+Reports view; and the panel force-collapsing below the mobile breakpoint
+regardless of the saved preference). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
