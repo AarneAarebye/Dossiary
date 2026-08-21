@@ -143,7 +143,7 @@ async def main():
         await page.click('#regen-thumb-btn')
         await page.wait_for_timeout(300)
         thumb_status_text = await page.locator('#thumb-status').inner_text()
-        print("Regenerate preview ran and reported a status in the panel:", len(thumb_status_text.strip()) >= 0)
+        print("Regenerate preview reports the expected error (seed docs have no file_path):", "Could not generate preview" in thumb_status_text and "no file" in thumb_status_text.lower())
 
         # === Scenario 4: a deleted document's panel drops to Restore-only ===
         await page.click('#nav-item-trash')
