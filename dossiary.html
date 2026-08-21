@@ -4977,7 +4977,7 @@
       </div>
     `;
     el('modal-close-btn').addEventListener('click', closeModal);
-    el('cancel-edit-btn').addEventListener('click', () => openDetail(id));
+    el('cancel-edit-btn').addEventListener('click', () => closeModal());
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
     el('save-edit-btn').addEventListener('click', () => saveEditedDocument(id));
@@ -5169,9 +5169,12 @@
         date, notes, ocr_text: ocrText, customFields: customFieldsForDoc,
         personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
-      renderStats(); populateFilters(); populateDatalists(); render();
+      renderStats(); populateFilters(); populateDatalists();
+      selectedDocId = id;
+      render();
 
       setStatusT('editSavedStatus', {title: title || t('commonDocumentFallback', {id})}, 'ok');
+      closeModal();
       openDetail(id);
       return true;
     }catch(e){

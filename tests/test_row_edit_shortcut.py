@@ -77,15 +77,16 @@ async def main():
         detail_only_element_present = await page.locator('#edit-doc-btn').count()
         print("detail view was never opened underneath (no lingering detail-only element):", detail_only_element_present == 0)
 
-        # === Scenario 2: Cancel from an edit reached via the shortcut returns to
-        # the detail view (the simplest, single-behavior choice -- Cancel always
-        # goes to the detail view regardless of how Edit was reached) ===
+        # === Scenario 2: Cancel from an edit reached via the shortcut just closes
+        # the edit form -- it no longer reopens the detail view/panel, and does NOT
+        # force the (collapsed-by-default) detail panel open, since the shortcut
+        # bypasses row selection entirely on the way in ===
         await page.click('#cancel-edit-btn')
         await page.wait_for_timeout(200)
-        landed_on_detail_view = await page.locator('#edit-doc-btn').count()
-        print("Cancel lands on the detail view:", landed_on_detail_view == 1)
-        await page.click('#modal-close-btn')
-        await page.wait_for_timeout(150)
+        edit_form_closed = await page.locator('#e-title').count()
+        print("Cancel closes the edit form:", edit_form_closed == 0)
+        panel_not_forced_open = await page.locator('#main-layout.detail-panel-expanded').count()
+        print("Cancel does not force the detail panel open:", panel_not_forced_open == 0)
 
         # === Scenario 3: the shortcut works the same way in the Inbox view too --
         # not scoped to any one nav view ===
@@ -98,8 +99,6 @@ async def main():
         edit_opened_from_inbox = await page.locator('#e-title').is_visible()
         print("Edit form opened directly from the Inbox view:", edit_opened_from_inbox)
         await page.click('#cancel-edit-btn')
-        await page.wait_for_timeout(150)
-        await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
 
         # === Scenario 4: the shortcut is entirely absent for a deleted document in
