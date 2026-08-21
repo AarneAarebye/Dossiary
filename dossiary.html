@@ -2942,6 +2942,7 @@
     populateFilters();
     populateDatalists();
     render();
+    openDetail(selectedDocId); // populates the panel's empty state immediately, rather than leaving #detail-panel-body blank until the first row click
   }
 
   async function persistDb(){
@@ -4309,6 +4310,10 @@
     // (handled above, already returned) never consults `sorted`, so computing it
     // earlier would be wasted work on every Reports render.
     const sorted = sortDocs(filtered);
+    if(selectedDocId !== null && !sorted.some(d => d.id === selectedDocId)){
+      selectedDocId = null;
+      openDetail(null);
+    }
     reportsView.style.display = 'none';
     tableWrap.style.display = 'block';
     countLine.style.display = 'block';
@@ -4345,7 +4350,13 @@
     `).join('');
 
     document.querySelectorAll('thead th[data-key]').forEach(th => th.classList.toggle('active', th.dataset.key === sortKey));
-    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => openDetail(Number(tr.dataset.id))));
+    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('click', () => {
+      const id = Number(tr.dataset.id);
+      selectedDocId = id;
+      tbody.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
+      tr.classList.add('row-selected');
+      openDetail(id);
+    }));
     // Hover-revealed shortcut straight to Edit, skipping the detail view --
     // the row's own td already has onclick="event.stopPropagation()" (same
     // pattern as the select checkbox) so this doesn't also trigger the row's
@@ -4355,6 +4366,10 @@
     tbody.querySelectorAll('.row-edit-btn').forEach(btn => {
       btn.addEventListener('click', () => openEditForm(Number(btn.dataset.id)));
     });
+    if(selectedDocId !== null){
+      const selectedTr = tbody.querySelector(`tr[data-id="${selectedDocId}"]`);
+      if(selectedTr) selectedTr.classList.add('row-selected');
+    }
     applyColumnVisibility();
 
     document.querySelectorAll('.row-select-checkbox').forEach(cb => {
@@ -4482,7 +4497,7 @@
     render();
   });
 
-  // --- detail modal (view existing document) ---
+  // --- detail panel (view existing document) ---
 
   function closeModal(){
     modalRoot.innerHTML = '';
@@ -4544,8 +4559,12 @@
   }
 
   async function openDetail(id){
+    const panelBody = el('detail-panel-body');
     const d = allDocs.find(x => x.id === id);
-    if(!d) return;
+    if(!d){
+      panelBody.innerHTML = `<p class="detail-panel-empty" data-i18n="detailPanelEmpty">${t('detailPanelEmpty')}</p>`;
+      return;
+    }
 
     const actions = [];
     const manualCollections = collections.filter(c => c.kind === 'manual');
@@ -4607,10 +4626,7 @@
     const fileFullPath = d.file_path ? `${rootDirHandle.name}/${d.file_path}` : null;
     const originalFullPath = d.original_file_path ? `${rootDirHandle.name}/${d.original_file_path}` : null;
 
-    modalRoot.innerHTML = `
-      <div class="backdrop" id="modal-backdrop">
-        <div class="modal" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+    panelBody.innerHTML = `
           <div class="modal-head">
             ${thumbHtml}
             <div>
@@ -4651,12 +4667,7 @@
           <div class="modal-section"><h3>${t('detailSectionTags')}</h3><p>${(d.tags||[]).map(tag=>`<span class="pill">${escapeHtml(tag)}</span>`).join('') || t('tableNoValue')}</p></div>
           ${d.notes ? `<div class="modal-section"><h3>${t('detailSectionNotes')}</h3><p style="font-size:13px; line-height:1.6; margin:0; white-space:pre-wrap;">${escapeHtml(d.notes)}</p></div>` : ''}
           ${d.ocr_text ? `<div class="modal-section"><h3>${t('detailSectionOcrText')}</h3><div class="ocr-box">${escapeHtml(d.ocr_text)}</div></div>` : ''}
-        </div>
-      </div>
     `;
-    el('modal-close-btn').addEventListener('click', closeModal);
-    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
-    document.addEventListener('keydown', onModalKeydown);
 
     if(d.file_path){
       el('open-file-btn').addEventListener('click', async () => {
@@ -4684,7 +4695,7 @@
       el('archive-toggle-btn').addEventListener('click', () => toggleArchived(id));
       el('review-toggle-btn').addEventListener('click', async () => {
         await toggleNeedsReview(id);
-        openDetail(id); // refresh the modal so the button now reads Flag for review/Done correctly
+        openDetail(id); // refresh the panel so the button now reads Flag for review/Done correctly
       });
       if(el('add-to-collection-btn')){
         el('add-to-collection-btn').addEventListener('click', (e) => {
@@ -4729,7 +4740,7 @@
     }
     el('delete-toggle-btn').addEventListener('click', async () => {
       await toggleDeleted(id);
-      openDetail(id); // refresh the modal so it now shows Restore-only (or the full action set again)
+      openDetail(id); // refresh the panel so it now shows Restore-only (or the full action set again)
     });
   }
 
@@ -4746,7 +4757,7 @@
     db.run('UPDATE documents SET archived = ? WHERE id = ?', [d.archived ? 1 : 0, id]);
     await persistDb();
     render();
-    openDetail(id); // refresh the modal so the button now reads Archive/Unarchive correctly
+    openDetail(id); // refresh the panel so the button now reads Archive/Unarchive correctly
   }
 
   // needs_review is a fully independent flag from archived -- deliberately no
@@ -4852,7 +4863,7 @@
 
       d.thumbnail_path = thumbnailPath;
       render();
-      openDetail(id); // refresh the modal to show the new thumbnail
+      openDetail(id); // refresh the panel to show the new thumbnail
     }catch(e){
       statusEl.className = 'status err';
       statusEl.textContent = t('detailPreviewGenerationFailed', {error: e.message});
