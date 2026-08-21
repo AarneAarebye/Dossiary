@@ -2144,12 +2144,13 @@
   // (see render()); reset to null when the selected document falls out of
   // the current view's visible set (see render()'s own invalidation check).
   let selectedDocId = null;
-  // The detail modal's own single-document "Add to collection..." picker (built
-  // in openDetail() below) is appended to document.body, outside modalRoot, so it
-  // isn't cleared by closeModal()'s own `modalRoot.innerHTML = ''`. It already
-  // removes itself on an outside click; this reference lets closeModal() also
-  // remove it when the modal closes some other way (Escape, the backdrop, Close),
-  // so it can't outlive the modal it was opened from.
+  // The detail panel's own single-document "Add to collection..." picker (built
+  // in openDetail() below) is appended to document.body, outside both the panel
+  // and modalRoot, so it isn't cleared by the panel's own content rebuild or by
+  // closeModal()'s `modalRoot.innerHTML = ''`. It already removes itself on an
+  // outside click; this reference lets closeModal() also remove it if it's still
+  // open when the (separate) edit modal closes, so it can't outlive whichever UI
+  // it was opened from.
   let openDocCollectionMenu = null;
 
   let sortKey = 'import_date'; // overwritten by loadSortState() on every library open -- this is just the pre-library-open starting value
@@ -4769,7 +4770,7 @@
   // stop" rule that already applies everywhere else. Cleared *only* by this
   // explicit toggle (the "Done" state) -- deliberately never auto-cleared just by
   // saving an edit, since an edit might be an intentional intermediate save, not a
-  // signal the document is actually finished. Doesn't reopen the detail modal
+  // signal the document is actually finished. Doesn't refresh the detail panel
   // itself -- its one call site (the detail view's own button, below) does that,
   // keeping the toggle itself decoupled from whether a modal happens to be open.
   async function toggleNeedsReview(id){
@@ -6220,7 +6221,7 @@
   // share the same real table (Reports renders its own aggregate view instead --
   // see its own note above) -- a deleted document is just an ordinary row shown
   // when currentView === 'trash',
-  // reached and acted on (Restore, via the same openDetail() modal every other view
+  // reached and acted on (Restore, via the same openDetail() panel every other view
   // uses) exactly like any other document. There is deliberately no "empty bin"
   // action anywhere in this app; nothing is ever permanently removed.
 

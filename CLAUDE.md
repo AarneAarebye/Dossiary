@@ -1309,6 +1309,92 @@ this repo's git tags.
   all four combinations of nav style × bulk-bar visibility — don't assume
   the two nav-style constants alone are enough; selecting documents (this
   feature's own core workflow) is exactly the case that needs the other two.
+- **The detail view is a persistent side panel (`#detail-panel`), not a
+  modal** — `openDetail(id)` keeps its name (it still means "show this
+  document's detail content") but now renders into `#detail-panel-body`
+  instead of `#modal-root`, and drops the backdrop/close-button/Escape
+  chrome that made it a modal (a panel isn't dismissed, it's collapsed).
+  This replaced a full-screen modal that hid the table entirely while
+  open, matching legacy Mariner Paperless's own persistent "Details" side
+  panel instead. **`selectedDocId`** (module-level, distinct from
+  `selectedDocIds`, the multi-select `Set` bulk actions use) tracks which
+  single row the panel is showing, `null` meaning nothing selected — the
+  panel then shows a plain empty-state message rather than blank content.
+  Row click sets it, applies a `.row-selected` highlight to that `<tr>`,
+  and calls `openDetail(id)`; `render()`'s own rebuild of `tbody` on every
+  call means the highlight has to be reapplied after each rebuild (a
+  `tbody.querySelector('tr[data-id=...]')` lookup right after the rows are
+  rendered), and `render()` also invalidates `selectedDocId` back to
+  `null` — refreshing the panel to its empty state — whenever the
+  currently-selected document falls out of the active view's filtered/
+  sorted set (deleted, archived out of view, or excluded by a filter/
+  search change). **Clicking a row never auto-expands a collapsed
+  panel** — selection, highlighting, and content-refresh all happen
+  unconditionally on every row click, but panel *visibility* is
+  controlled only by the toolbar's own `#detail-panel-toggle-btn`,
+  deliberately: if a row click also expanded the panel, the panel's own
+  collapsed-by-default setting (see below) would stop mitigating anything
+  — it would spring open on literally the first row click anyone ever
+  makes.
+  **The panel's expanded/collapsed state is a per-library `settings` row**
+  (`detail_panel_expanded`), following `nav_style`'s exact
+  `loadNavStyle()`/`saveNavStyle()`/`applyNavStyle()` pattern
+  (`loadDetailPanelExpanded()`/`saveDetailPanelExpanded()`/
+  `applyDetailPanelExpanded()`, toggling a `detail-panel-expanded` class on
+  `#main-layout`) — except the default is collapsed (`false`) rather than
+  one of two named states, since defaulting to expanded would undercut the
+  entire reason this shipped collapsed-by-default: an always-visible panel
+  costs real horizontal table width, and the person who raised this
+  feature (comparing it to Mariner's own panel) explicitly worried about
+  losing that space. Below the app's one mobile breakpoint
+  (`max-width:640px`), the panel force-collapses regardless of the saved
+  preference — `#main-layout.detail-panel-expanded .detail-panel{
+  display:none; }` inside the media query, matched in selector specificity
+  to the base `#main-layout.detail-panel-expanded .detail-panel{
+  display:flex; }` rule it overrides (a lower-specificity `.detail-panel{
+  display:none; }` there would lose to the more specific rule and fail to
+  collapse anything) — a true side panel doesn't fit a phone-width
+  viewport any better than a full sidebar nav does (see that note's own
+  mobile-collapse precedent above). The toggle button itself is hidden
+  (not disabled) in Reports view, since that view renders its own
+  aggregate content rather than the shared document table — there's no
+  row for the panel to ever reflect there, same "hidden when the control
+  is inert for this view" pattern already used for "Show archived".
+  **The panel deliberately reuses `.table-wrap`'s own four `max-height`
+  calibration constants (410/370/484/444, plus their nav-style/bulk-bar
+  combinations) for its own `max-height`, rather than introducing new
+  ones** — the panel is a flex sibling of `.table-wrap` inside a new
+  `.table-detail-row` wrapper, sitting at exactly the same vertical offset
+  under exactly the same header/toolbar/nav/bulk-bar/footer chrome, so the
+  same "how much vertical room is left below that chrome" figure applies
+  to both; this was verified the same empirical way as everything else in
+  this section (`getBoundingClientRect()`, confirming the panel's own
+  bottom edge lands at the fixed footer's top edge with no overlap), not
+  assumed just because the numbers happened to match structurally. This is
+  purely a **horizontal** layout change — the panel sits *beside* the
+  table, not above or below it — so none of `.table-wrap`'s own four
+  constants needed to move; reusing them for a same-height sibling is not
+  the same thing as touching them.
+  **Two call sites that used to rely on an implicit trick no longer can.**
+  Before this change, `openEditForm()`'s Cancel button and
+  `saveEditedDocument()`'s success path both called `openDetail(id)`,
+  which — since the detail view and the edit form shared the same
+  `#modal-root` — implicitly closed the edit modal *and* reopened detail
+  content in one call, just by overwriting the same container. With the
+  panel and the edit modal now separate, simultaneously-existing elements,
+  that implicit behavior is gone: **Cancel** now just calls `closeModal()`
+  and does nothing else — the panel, if open, already shows whatever
+  document Edit was opened from, and Cancel deliberately does not force a
+  collapsed panel open or re-render content that didn't change. **Save**'s
+  success path now does two explicit things the old single call used to
+  do for free: `closeModal()` to dismiss the edit modal, and
+  `selectedDocId = id` (before the `render()` call that reapplies row
+  highlighting) so the just-saved document becomes the new panel
+  selection — this specifically covers editing reached via the row-level
+  `.row-edit-btn` shortcut (see its own note above), which bypasses row
+  selection entirely on the way in, so without this the panel would still
+  be pointing at whatever (if anything) was selected before, not the
+  document that was just edited.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
