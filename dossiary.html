@@ -247,6 +247,13 @@
   #main-layout.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 484px); }
   #main-layout.nav-style-sidebar.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 444px); }
   #main-layout.detail-panel-expanded .detail-panel{ display:flex; }
+  /* Reports renders its own aggregate content, not the shared document table --
+     the panel has no row to reflect there and must never stay visible (or
+     printable) underneath it, even if it was left expanded in a different view.
+     Same specificity shape as the .detail-panel-expanded rule above
+     (#main-layout.<class> .detail-panel, both (1,2,0)), so this must come AFTER
+     it in source order to win when both classes are present. */
+  #main-layout.view-reports .detail-panel{ display:none; }
   .detail-panel-head{ margin-bottom:14px; }
   .detail-panel-head h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0; font-weight:500; }
   .detail-panel-empty{ color:var(--text-dim); font-size:12.5px; }
@@ -305,7 +312,7 @@
     position:absolute; top:calc(100% + 6px); left:0; background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); padding:6px; z-index:40; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
   }
-  /* .modal-collection-option is the detail-modal's own single-document collection
+  /* .modal-collection-option is the detail panel's own single-document collection
      picker (see openDetail()'s add-to-collection-btn handler) -- identically
      purposed to .bulk-collection-option above, so it shares the exact same list-row
      styling rather than falling through to the plain global button{} rule. */
@@ -497,7 +504,7 @@
   }
 
   @media print{
-    #app-nav, .toolbar, .inbox-banner, footer, #reports-print-btn, .scanline{ display:none !important; }
+    #app-nav, .toolbar, .inbox-banner, footer, #reports-print-btn, .scanline, .detail-panel{ display:none !important; }
     /* The app is dark-themed (#app background var(--ink), light text) and Chrome/
        Edge don't print background colors by default, so without these overrides a
        printed report is low-contrast light-gray text on white paper, and the
@@ -1923,7 +1930,16 @@
     // own comment) -- it's only otherwise invoked at library-open time and from Field
     // Settings' own field-list-changed call sites, neither of which fires on a language
     // toggle.
-    if(rootDirHandle){ renderStats(); populateFilters(); renderColumnsMenu(); render(); }
+    // openDetail(selectedDocId) re-renders the panel's own currently-shown document
+    // content (if any) in the new language -- like renderStats()/populateFilters()/
+    // renderColumnsMenu() above, its template string is built via inline t() calls at
+    // render time, not data-i18n attributes, so it stays in whatever language it was
+    // last opened in otherwise. Safe to re-render here unconditionally, unlike the
+    // #lang-select modal-open guard elsewhere in this function (see that guard's own
+    // note) -- that guard exists specifically because re-rendering an open *modal*
+    // (capture/edit) mid-session would discard whatever's already typed into the form;
+    // the panel is read-only display content, so there's nothing in-progress to lose.
+    if(rootDirHandle){ renderStats(); populateFilters(); renderColumnsMenu(); render(); if(selectedDocId !== null) openDetail(selectedDocId); }
     // renderRecentLibraries() likewise builds its whole markup (heading,
     // "Last opened" dates, the remove button's title/aria-label) via t() calls
     // baked into a template string at render time, not data-i18n attributes --
@@ -2810,6 +2826,10 @@
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null;
     collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     selectedDocId = null;
+    // Collapse the panel and clear its content -- otherwise switching libraries (or
+    // cancelling/failing a folder picker) leaves a previous library's document
+    // details visible underneath the empty-state screen.
+    detailPanelExpanded = false; applyDetailPanelExpanded(); el('detail-panel-body').innerHTML = '';
     visibleColumns = new Set(FIELD_DEFS.filter(f => f.defaultVisible).map(f => f.id));
     currentView = 'all'; navCounts = { all: 0, inbox: 0, trash: 0 };
     emptyState.style.display = 'block'; initState.style.display = 'none';
@@ -4297,6 +4317,14 @@
       tableWrap.style.display = 'none';
       countLine.style.display = 'none';
       reportsView.style.display = 'block';
+      // Reports renders its own aggregate content, not the shared document table --
+      // the detail panel has no row to reflect there, so it must have no presence
+      // at all: not visible even if it was left expanded in a different view (the
+      // toggle button that would otherwise collapse it is also hidden in this view --
+      // see renderNav() -- so without this class the panel would be stuck open with
+      // no way to close it), and not printed onto a Reports printout (see the
+      // .detail-panel entry in the @media print rule).
+      mainLayout.classList.add('view-reports');
       renderReportsView(filtered);
       // Reports has no row-selection UI at all -- without this, a stale bulk-action
       // bar (and its "N selected" text) from whatever view was active before could
@@ -4307,6 +4335,7 @@
       renderBulkActionBar();
       return;
     }
+    mainLayout.classList.remove('view-reports');
     // Sorting is only meaningful for the real doc-table views below -- Reports
     // (handled above, already returned) never consults `sorted`, so computing it
     // earlier would be wasted work on every Reports render.
@@ -4562,6 +4591,24 @@
   async function openDetail(id){
     const panelBody = el('detail-panel-body');
     const d = allDocs.find(x => x.id === id);
+    // openDetail() is the authoritative setter of selectedDocId -- whatever
+    // document it actually renders (or fails to find) becomes the new source of
+    // truth, rather than trusting callers to keep the two in sync themselves.
+    // This matters because several action handlers (e.g. toggleArchived()) call
+    // render() first -- which zeroes selectedDocId if the acted-on document fell
+    // out of the current filtered/sorted view -- then call openDetail(id) again
+    // afterward with that same original id to refresh the panel's content. Without
+    // this line, that left the panel showing document X's content with
+    // selectedDocId still null and no row highlighted, a mismatch that persisted
+    // across every future render() call (search, filter, view switches) since the
+    // invalidation check only fires when selectedDocId !== null. Making this
+    // assignment unconditional means an action's own trailing openDetail(id) call
+    // can deliberately re-select and re-display that document even after it's
+    // fallen out of the visible table rows -- intentional "undo" reachability, not
+    // a bug -- and every existing "refresh by re-calling openDetail(id)" call site,
+    // the row-click handler, and the Save-path's own selectedDocId = id assignment
+    // all become redundant-but-harmless now that this is the one place that matters.
+    selectedDocId = d ? d.id : null;
     if(!d){
       panelBody.innerHTML = `<p class="detail-panel-empty" data-i18n="detailPanelEmpty">${t('detailPanelEmpty')}</p>`;
       return;
