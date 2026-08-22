@@ -1418,6 +1418,52 @@ this repo's git tags.
   selection entirely on the way in, so without this the panel would still
   be pointing at whatever (if anything) was selected before, not the
   document that was just edited.
+  **The default flipped from collapsed to expanded** — `loadDetailPanelExpanded()`
+  now treats "no saved `detail_panel_expanded` row at all" as expanded
+  (`detailPanelExpanded = rows.length === 0 || rows[0][0] !== '0';`) rather
+  than collapsed; an explicit saved `'0'` still means collapsed (a person
+  who deliberately toggles the panel off keeps that choice across reopens),
+  and an explicit `'1'` still means expanded, unchanged from the original
+  design. This is a genuine reversal of the collapsed-by-default reasoning
+  above, not a contradiction of it left unresolved: two of the panel's own
+  original reasons for *duplicated* chrome — the row-level Edit shortcut
+  competing with the panel's own Edit button, and no double-click
+  file-open forcing a trip through the panel just to open a file — are
+  gone now (see the next two paragraphs), so a collapsed-by-default panel
+  no longer pays for itself the way it did at launch. The horizontal-space
+  cost that originally justified collapsing by default hasn't changed;
+  what changed is how much redundant UI the person was trading that space
+  against.
+  **Double-click a row opens its file.** A `dblclick` listener, added
+  immediately after the existing per-row `click` listener in `render()`'s
+  row-wiring pass, reuses the panel's own "Open file" logic verbatim
+  (`resolveFileHandle` → `getFile` → `window.open`). It deliberately
+  doesn't duplicate any selection/highlight logic of its own, because
+  browsers fire two ordinary `click` events before a `dblclick` fires — by
+  the time the `dblclick` handler runs, the existing single-click listener
+  has already set `selectedDocId`, applied `.row-selected`, and called
+  `openDetail()` for that row, twice over. A document with no `file_path`
+  is a silent no-op, not an error. The panel's own "Open file" button
+  stays exactly as it was — double-click isn't a discoverable gesture on
+  its own, so the button remains the reliable, visible way to do the same
+  thing; this is a shortcut for someone who already knows it's there, not
+  a replacement for the button.
+  **`.row-edit-btn` is now hidden except below the mobile breakpoint.** At
+  normal widths it duplicated the panel's own Edit button, and that
+  duplication only made sense back when the panel defaulted to collapsed
+  and so wasn't reliably on screen — now that the panel defaults to
+  expanded (see above), the panel's Edit button is reliably reachable, so
+  `.row-edit-btn`/`.row-edit-col` are base-styled `display:none` (a
+  CSS-only change; the button's own row-level rendering and click-wiring,
+  described in the Editing note above, are untouched). It's restored
+  inside the app's one mobile breakpoint (`@media (max-width:640px)`)
+  specifically because that's the one place the panel is structurally
+  unreachable regardless of the toggle: the existing
+  `#main-layout.detail-panel-expanded .detail-panel{ display:none; }` rule
+  inside that same media query force-hides the panel unconditionally (see
+  the panel's own mobile-collapse paragraph above) — without restoring
+  `.row-edit-btn` there, Edit would be completely unreachable from the
+  table at that width.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
