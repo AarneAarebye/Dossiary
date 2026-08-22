@@ -365,8 +365,8 @@ silently drift the way it once did (an earlier version of this section
 described only two basic scenarios, long after the suite had grown well
 past that).
 Separately, and worth remembering: a single commit whose message described
-itself as a trivial doc-only rename ("Update references to renamed
-MarinerPaperlessTools repo") turned out, on closer inspection, to have
+itself as a trivial doc-only rename (updating references to the sibling
+repo's own former, never-public name) turned out, on closer inspection, to have
 silently reverted **four** already-shipped, already-documented features at
 once — the scan-hint toggle, the extra OCR languages, edit-time OCR's
 multi-page support (back to first-page-only), and the PDF page count
