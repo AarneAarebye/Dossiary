@@ -306,15 +306,13 @@ async def main():
         await popup.close()
 
         # a document with no file_path is a silent no-op on double-click -- no
-        # popup, no alert, no error
-        alert_fired = False
-        page.once("dialog", lambda dialog: (setattr(page, '_dialog_seen', True), asyncio.ensure_future(dialog.dismiss())))
+        # popup opens
+        no_file_dblclick_no_popup = False
         try:
             async with page.expect_event('popup', timeout=1000):
                 await page.dblclick('tr[data-id="1"]')
         except Exception:
-            pass
-        no_file_dblclick_no_popup = True  # reaching here without the `async with` raising means no popup opened within the timeout
+            no_file_dblclick_no_popup = True
         print("double-click on a document with no file_path opens nothing:", no_file_dblclick_no_popup)
 
         _os.remove('detailpaneldblclick.pdf')
