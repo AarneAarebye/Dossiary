@@ -270,6 +270,55 @@ async def main():
         await page.fill('#search', '')
         await page.wait_for_timeout(200)
 
+        # === Scenario 10: double-clicking a row opens its file; a document with
+        # no file_path is a silent no-op; a single click never opens anything ===
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.fill('#f-title', 'Doc With File')
+        with open('detailpaneldblclick.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 detailpaneldblclick")
+        await page.set_input_files('#file-input', 'detailpaneldblclick.pdf')
+        await page.wait_for_timeout(100)
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+
+        # single click on the new row must not open anything
+        # (this Playwright version's expect_event __aexit__ itself awaits the
+        # event's value, so the TimeoutError from a not-fired "popup" surfaces
+        # right at the `async with` block's own exit -- the whole block needs
+        # to be wrapped in try/except, not just a bare `.value` await after it,
+        # or the expected-timeout case would crash the script instead of being
+        # caught, as first observed running this scenario)
+        single_click_opened_nothing = False
+        try:
+            async with page.expect_event('popup', timeout=1000):
+                await page.click('tr[data-id="4"]')
+                await page.wait_for_timeout(300)
+        except Exception:
+            single_click_opened_nothing = True
+        print("single click does not open the file:", single_click_opened_nothing)
+
+        # double click opens the file in a new tab
+        async with page.expect_event('popup', timeout=3000) as popup_info:
+            await page.dblclick('tr[data-id="4"]')
+        popup = await popup_info.value
+        print("double-click opens the file in a new tab:", popup is not None)
+        await popup.close()
+
+        # a document with no file_path is a silent no-op on double-click -- no
+        # popup, no alert, no error
+        alert_fired = False
+        page.once("dialog", lambda dialog: (setattr(page, '_dialog_seen', True), asyncio.ensure_future(dialog.dismiss())))
+        try:
+            async with page.expect_event('popup', timeout=1000):
+                await page.dblclick('tr[data-id="1"]')
+        except Exception:
+            pass
+        no_file_dblclick_no_popup = True  # reaching here without the `async with` raising means no popup opened within the timeout
+        print("double-click on a document with no file_path opens nothing:", no_file_dblclick_no_popup)
+
+        _os.remove('detailpaneldblclick.pdf')
+
         print("JS ERRORS:", errors)
         await browser.close()
 

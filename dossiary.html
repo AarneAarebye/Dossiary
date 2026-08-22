@@ -4387,6 +4387,20 @@
       tr.classList.add('row-selected');
       openDetail(id);
     }));
+    // Double-click a row to open its file directly, reusing the panel's own
+    // "Open file" logic. Browsers fire two ordinary click events before a
+    // dblclick, so selection/highlight/panel-refresh has already happened
+    // via the listener above by the time this fires -- this only adds the
+    // file-open step. A document with no file_path is a silent no-op.
+    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('dblclick', async () => {
+      const d = allDocs.find(x => x.id === Number(tr.dataset.id));
+      if(!d || !d.file_path) return;
+      try{
+        const fh = await resolveFileHandle(d.file_path, false);
+        const file = await fh.getFile();
+        window.open(URL.createObjectURL(file), '_blank');
+      }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
+    }));
     // Hover-revealed shortcut straight to Edit, skipping the detail view --
     // the row's own td already has onclick="event.stopPropagation()" (same
     // pattern as the select checkbox) so this doesn't also trigger the row's
