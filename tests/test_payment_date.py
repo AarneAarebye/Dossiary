@@ -46,8 +46,6 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededEmptyRoot({json.dumps(TYPE_FIELD_ROWS)}, {json.dumps(FIELD_ROWS)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
-        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
-        await page.wait_for_timeout(150)
 
         # Capture with Payment Date + Payment method + Amount all showing together
         await page.click('#add-btn')

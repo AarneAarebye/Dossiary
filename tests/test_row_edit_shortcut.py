@@ -62,6 +62,19 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.set_viewport_size({"width": 375, "height": 800})  # below the 640px breakpoint, where .row-edit-btn is the only way to reach Edit since the panel is force-hidden there
+        await page.wait_for_timeout(150)
+
+        # Collapse the panel before opening any edit form via the shortcut below.
+        # With the panel now expanded by default, Scenario 2 needs to start from
+        # a genuinely collapsed state to prove Cancel doesn't cause an
+        # *additional* expand, not that the panel merely happens to already be
+        # open -- and this has to happen here, before the edit modal opens: once
+        # it's open, its own backdrop blocks clicks to the toolbar behind it, so
+        # this can't be deferred until right before the Cancel click in
+        # Scenario 2 the way an earlier version of this fix attempted.
+        await page.click('#detail-panel-toggle-btn')
+        await page.wait_for_timeout(150)
 
         # === Scenario 1: clicking the row-edit shortcut on a normal document (All
         # Documents view) opens the Edit form directly, not the detail view, and
@@ -79,8 +92,11 @@ async def main():
 
         # === Scenario 2: Cancel from an edit reached via the shortcut just closes
         # the edit form -- it no longer reopens the detail view/panel, and does NOT
-        # force the (collapsed-by-default) detail panel open, since the shortcut
-        # bypasses row selection entirely on the way in ===
+        # force the panel open, since the shortcut bypasses row selection
+        # entirely on the way in. The panel was already collapsed above, before
+        # this edit form opened, so this proves Cancel doesn't cause an
+        # *additional* expand, not that the panel merely happens to already be
+        # open. ===
         await page.click('#cancel-edit-btn')
         await page.wait_for_timeout(200)
         edit_form_closed = await page.locator('#e-title').count()
@@ -108,6 +124,17 @@ async def main():
         await page.wait_for_timeout(150)
         edit_btn_in_trash = await page.locator('tr[data-id="3"] .row-edit-btn').count()
         print("edit shortcut button absent for a deleted document:", edit_btn_in_trash == 0)
+
+        # === Scenario 5: the shortcut is entirely absent at a normal desktop
+        # viewport width, for a non-deleted document -- it's redundant there now
+        # that the panel (which carries the same Edit action) defaults to
+        # expanded and is always reachable ===
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        await page.set_viewport_size({"width": 1280, "height": 800})
+        await page.wait_for_timeout(150)
+        edit_btn_at_desktop_width = await page.locator('tr[data-id="1"] .row-edit-btn:visible').count()
+        print("edit shortcut button hidden at a normal desktop width:", edit_btn_at_desktop_width == 0)
 
         print("JS ERRORS:", errors)
         await browser.close()

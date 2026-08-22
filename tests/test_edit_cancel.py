@@ -30,8 +30,6 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(200)
-        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
-        await page.wait_for_timeout(150)
         await page.click('#add-btn')
         await page.wait_for_timeout(100)
         with open('canceldoc.pdf', 'wb') as f:

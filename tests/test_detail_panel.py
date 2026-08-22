@@ -72,33 +72,40 @@ async def main():
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
 
-        # === Scenario 1: panel starts collapsed by default, and the toggle
-        # persists across a reopen ===
-        print("panel starts collapsed:", not await page.locator('#main-layout.detail-panel-expanded').count())
+        # === Scenario 1: panel starts EXPANDED by default (no saved setting),
+        # an explicit '0' opt-out still collapses it, and an explicit '1' still
+        # keeps it expanded, all surviving a reopen ===
+        print("panel starts expanded with no saved setting:", bool(await page.locator('#main-layout.detail-panel-expanded').count()))
+
+        # Reopen with an explicit '0' -- the deliberate opt-out must still work
+        # even though the no-row-at-all default flipped to expanded. See
+        # test_nav.py's own nav_style Scenario 7 for the established "simulate a
+        # reopen via re-seeding + #reload-btn" convention this mirrors; a real
+        # page.reload() doesn't work here since it destroys the stub's in-memory
+        # library state entirely.
+        seed_with_collapsed = dict(SEED)
+        seed_with_collapsed['settings'] = [{'key': 'detail_panel_expanded', 'value': '0'}]
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_collapsed)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        print("explicit '0' still collapses the panel:", not await page.locator('#main-layout.detail-panel-expanded').count())
+
+        # Toggling it from here persists '1' -- the existing toggle/persistence
+        # mechanics are otherwise completely unchanged by the default flip.
         await page.click('#detail-panel-toggle-btn')
         await page.wait_for_timeout(150)
-        print("toggle expands the panel:", bool(await page.locator('#main-layout.detail-panel-expanded').count()))
         settings_after_toggle = await read_settings(page)
         expanded_row = next((s for s in settings_after_toggle if s['key'] == 'detail_panel_expanded'), None)
-        print("detail_panel_expanded persisted as '1':", expanded_row['value'] if expanded_row else None)
+        print("toggling from collapsed persists '1':", expanded_row['value'] if expanded_row else None)
 
-        # Reopen the library via "Switch library" -- a real reopen would read the
-        # still-persisted detail_panel_expanded setting back from the same on-disk
-        # library.sqlite; here that's simulated by re-seeding a fresh root with
-        # detail_panel_expanded already set, matching this suite's existing
-        # convention for "does a preference survive a reopen" checks
-        # (test_nav.py's own nav_style Scenario 7 does the same). A real
-        # page.reload() doesn't work for this: it destroys the stub's in-memory
-        # library state entirely, so a freshly re-seeded root after a genuine
-        # reload has no way to reflect what a previous session wrote to disk --
-        # #reload-btn (the toolbar's own "Switch library") re-reads from
-        # window.__TEST_ROOT without tearing down the page's JS context.
+        # Reopen once more with that explicit '1' -- still expanded, and this is
+        # the state every later scenario in this file expects the panel to be in.
         seed_with_expanded = dict(SEED)
         seed_with_expanded['settings'] = [{'key': 'detail_panel_expanded', 'value': '1'}]
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_expanded)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
-        print("expanded state persists across reopen:", bool(await page.locator('#main-layout.detail-panel-expanded').count()))
+        print("explicit '1' persists as expanded across reopen:", bool(await page.locator('#main-layout.detail-panel-expanded').count()))
 
         # === Scenario 2: clicking a row selects/highlights it and shows its
         # metadata; clicking a different row updates both ===
@@ -196,6 +203,13 @@ async def main():
         print("row click still highlights/selects while collapsed:", row1_highlighted_while_collapsed == 1)
         print("row click still refreshes panel content while collapsed:", "First Doc" in panel_title_while_collapsed)
 
+        # .row-edit-btn only renders below the 640px mobile breakpoint now (see
+        # "Hide the row-level Edit shortcut except below the mobile breakpoint")
+        # -- it's hidden entirely at this file's default desktop viewport, so
+        # both remaining uses of it below (Scenarios 5-6) need a mobile width.
+        await page.set_viewport_size({"width": 375, "height": 800})
+        await page.wait_for_timeout(150)
+
         await page.click('tr[data-id="1"] .row-edit-btn')
         await page.wait_for_timeout(200)
         await page.click('#cancel-edit-btn')
@@ -216,6 +230,12 @@ async def main():
         row2_selected_after_save = await page.locator('tr[data-id="2"].row-selected').count()
         print("Save closes the edit form:", edit_form_gone_after_save == 0)
         print("Save via the row-edit shortcut selects the just-edited document:", row2_selected_after_save == 1)
+
+        # Back to desktop width, so Scenario 8's own mobile-viewport transition
+        # below is a meaningful before/after check rather than vacuous (it
+        # would otherwise already be at 375px by the time it gets there).
+        await page.set_viewport_size({"width": 1280, "height": 800})
+        await page.wait_for_timeout(150)
 
         # === Scenario 7: toggle button absent in Reports view, and the panel
         # itself has no presence there either -- not just the toggle button
@@ -269,6 +289,71 @@ async def main():
         print("no row remains highlighted after invalidation:", no_row_highlighted_after_invalidation == 0)
         await page.fill('#search', '')
         await page.wait_for_timeout(200)
+
+        # Back to desktop width -- Scenario 8 left the viewport at 375x800 for
+        # its own mobile check and never restored it, so without this,
+        # Scenario 10's double-click coverage (below) would only ever run at
+        # mobile width, never desktop.
+        await page.set_viewport_size({"width": 1280, "height": 800})
+        await page.wait_for_timeout(150)
+
+        # === Scenario 10: double-clicking a row opens its file; a document with
+        # no file_path is a silent no-op; a single click never opens anything ===
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.fill('#f-title', 'Doc With File')
+        with open('detailpaneldblclick.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 detailpaneldblclick")
+        await page.set_input_files('#file-input', 'detailpaneldblclick.pdf')
+        await page.wait_for_timeout(100)
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+
+        # single click on the new row must not open anything
+        # (this Playwright version's expect_event __aexit__ itself awaits the
+        # event's value, so the TimeoutError from a not-fired "popup" surfaces
+        # right at the `async with` block's own exit -- the whole block needs
+        # to be wrapped in try/except, not just a bare `.value` await after it,
+        # or the expected-timeout case would crash the script instead of being
+        # caught, as first observed running this scenario)
+        single_click_opened_nothing = False
+        try:
+            async with page.expect_event('popup', timeout=1000):
+                await page.click('tr[data-id="4"]')
+                await page.wait_for_timeout(300)
+        except Exception:
+            single_click_opened_nothing = True
+        print("single click does not open the file:", single_click_opened_nothing)
+
+        # double click opens the file in a new tab
+        async with page.expect_event('popup', timeout=3000) as popup_info:
+            await page.dblclick('tr[data-id="4"]')
+        popup = await popup_info.value
+        print("double-click opens the file in a new tab:", popup is not None)
+        await popup.close()
+
+        # a document with no file_path is a silent no-op on double-click -- no
+        # popup opens
+        no_file_dblclick_no_popup = False
+        try:
+            async with page.expect_event('popup', timeout=1000):
+                await page.dblclick('tr[data-id="1"]')
+        except Exception:
+            no_file_dblclick_no_popup = True
+        print("double-click on a document with no file_path opens nothing:", no_file_dblclick_no_popup)
+
+        # double-clicking the select checkbox must not open the file -- the
+        # checkbox's own stopPropagation() covers click but not dblclick, so
+        # this needs its own explicit guard in the dblclick handler
+        checkbox_dblclick_opened_nothing = False
+        try:
+            async with page.expect_event('popup', timeout=1000):
+                await page.dblclick('tr[data-id="4"] .select-col')
+        except Exception:
+            checkbox_dblclick_opened_nothing = True
+        print("double-clicking the select checkbox does not open the file:", checkbox_dblclick_opened_nothing)
+
+        _os.remove('detailpaneldblclick.pdf')
 
         print("JS ERRORS:", errors)
         await browser.close()
