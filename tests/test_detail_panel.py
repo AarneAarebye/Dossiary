@@ -355,6 +355,108 @@ async def main():
 
         _os.remove('detailpaneldblclick.pdf')
 
+        # === Scenario 11: right-click selects the row and opens a context
+        # menu, whether or not the panel is currently expanded ===
+        await page.click('#detail-panel-toggle-btn')  # collapse it, so this genuinely exercises "regardless of panel state"
+        await page.wait_for_timeout(150)
+        panel_collapsed_before_right_click = not await page.locator('#main-layout.detail-panel-expanded').count()
+        print("panel collapsed ahead of Scenario 11:", panel_collapsed_before_right_click)
+
+        await page.click('tr[data-id="2"]', button='right')
+        await page.wait_for_timeout(200)
+        row2_selected_via_right_click = await page.locator('tr[data-id="2"].row-selected').count()
+        print("right-click selects/highlights the row:", row2_selected_via_right_click == 1)
+        menu_visible = await page.locator('.row-context-menu:visible').count()
+        print("right-click opens the context menu:", menu_visible == 1)
+
+        # === Scenario 12: the context menu's action set matches the panel's
+        # own, minus Regenerate preview, plus Detail ===
+        menu_item_texts = await page.locator('.row-context-menu .row-context-menu-item').all_inner_texts()
+        print("Regenerate preview never appears in the context menu:", not any('preview' in t.lower() for t in menu_item_texts))
+        print("Detail item is present:", any('Details' in t for t in menu_item_texts))
+        print("Edit is present:", any(t == 'Edit' for t in menu_item_texts))
+        print("Archive is present:", any(t == 'Archive' for t in menu_item_texts))
+        print("Delete is present:", any(t == 'Delete' for t in menu_item_texts))
+
+        # === Scenario 13: "Detail" toggles the panel without changing
+        # selection; selecting a different row afterward doesn't itself
+        # change panel visibility ===
+        await page.click('.row-context-menu .row-context-menu-item:has-text("Show Details")')
+        await page.wait_for_timeout(150)
+        panel_expanded_after_detail_click = bool(await page.locator('#main-layout.detail-panel-expanded').count())
+        print("Detail expands the panel:", panel_expanded_after_detail_click)
+        still_row2_selected = await page.locator('tr[data-id="2"].row-selected').count()
+        print("Detail does not change which document is selected:", still_row2_selected == 1)
+
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(150)
+        panel_still_expanded_after_other_selection = bool(await page.locator('#main-layout.detail-panel-expanded').count())
+        print("selecting a different row afterward doesn't change panel visibility:", panel_still_expanded_after_other_selection)
+
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(200)
+        await page.click('.row-context-menu .row-context-menu-item:has-text("Hide Details")')
+        await page.wait_for_timeout(150)
+        panel_collapsed_after_second_detail_click = not await page.locator('#main-layout.detail-panel-expanded').count()
+        print("Detail collapses the panel on a second invocation:", panel_collapsed_after_second_detail_click)
+
+        # === Scenario 14: a representative action (Archive) actually does
+        # the same thing from the context menu as it does from the panel ===
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(200)
+        await page.click('.row-context-menu .row-context-menu-item:has-text("Archive")')
+        await page.wait_for_timeout(200)
+        await page.click('#detail-panel-toggle-btn')  # expand to check the panel's own button label
+        await page.wait_for_timeout(150)
+        archived_via_context_menu = await page.locator('#archive-toggle-btn').inner_text()
+        print("Archive from the context menu actually archives the document:", 'Unarchive' in archived_via_context_menu)
+        await page.click('#archive-toggle-btn')  # unarchive again
+        await page.wait_for_timeout(200)
+
+        # === Scenario 15: no context menu on .select-col/.row-edit-col, or
+        # in Reports view ===
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        dialog_fired = []
+        page.on('dialog', lambda dialog: (dialog_fired.append(dialog.message), asyncio.ensure_future(dialog.dismiss())))
+        await page.click('tr[data-id="1"] .select-col', button='right')
+        await page.wait_for_timeout(200)
+        no_menu_on_checkbox = await page.locator('.row-context-menu:visible').count()
+        print("no context menu when right-clicking the select checkbox:", no_menu_on_checkbox == 0)
+
+        await page.click('#nav-item-reports')
+        await page.wait_for_timeout(150)
+        # #doc-tbody's <tr> elements from the last non-Reports render are NOT
+        # cleared out when switching into Reports -- render() returns early
+        # for currentView === 'reports', before the code that rebuilds tbody
+        # rows, so they simply sit hidden underneath (tableWrap itself gets
+        # display:none). Check visibility, not raw existence, to correctly
+        # capture "nothing to right-click" rather than "no <tr> elements".
+        no_rows_in_reports = await page.locator('#doc-tbody tr:visible').count()
+        print("Reports view has no rows to right-click in the first place:", no_rows_in_reports == 0)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 16: "Add to Collection" from the context menu closes
+        # the menu and opens the collection picker cleanly, positioned near
+        # the click rather than collapsed to (0,0) ===
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(200)
+        await page.click('.row-context-menu .row-context-menu-item:has-text("Add to collection")')
+        await page.wait_for_timeout(150)
+        context_menu_gone = await page.locator('.row-context-menu:visible').count()
+        print("context menu closes when Add to Collection is clicked:", context_menu_gone == 0)
+        picker_visible = await page.locator('.bulk-collection-menu:visible').count()
+        print("collection picker opens:", picker_visible == 1)
+        # Plain `.bulk-collection-menu` also matches the toolbar's own permanent,
+        # always-present-but-display:none #bulk-collection-menu div -- a strict-mode
+        # violation with two matches. :visible disambiguates to the one this click
+        # actually created.
+        picker_top = await page.locator('.bulk-collection-menu:visible').evaluate('el => parseFloat(el.style.top)')
+        print("collection picker is positioned near the click, not collapsed to (0,0):", picker_top > 0)
+        await page.click('#nav-item-all')  # dismiss the picker by clicking elsewhere
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

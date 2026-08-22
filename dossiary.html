@@ -318,6 +318,14 @@
      styling rather than falling through to the plain global button{} rule. */
   .bulk-collection-option, .modal-collection-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
   .bulk-collection-option:hover, .modal-collection-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
+  .row-context-menu{
+    position:fixed; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:6px; z-index:60; min-width:200px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .row-context-menu-item{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
+  .row-context-menu-item:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
+  .row-context-menu-item.danger{ color:var(--red); }
+  .row-context-menu-item.danger:hover{ background:rgba(255,107,107,0.1); }
   .select-col{ width:32px; text-align:center; padding:11px 8px !important; }
   .row-edit-col{ width:28px; text-align:center; padding:11px 2px !important; display:none; }
   .row-edit-btn{
@@ -825,6 +833,7 @@
       detailLabelFile: 'File', detailLabelOriginal: 'Original', detailCopyButton: 'Copy', detailCopiedButton: 'Copied!',
       detailNoFileRecorded: 'No file recorded for this document', detailSectionFields: 'Fields', detailPanelTitle: 'Details',
       detailPanelEmpty: 'Select a document to see its details.',
+      contextMenuShowDetails: 'Show Details', contextMenuHideDetails: 'Hide Details',
       detailSectionPeople: 'People', detailSectionTags: 'Tags', detailSectionNotes: 'Notes',
       detailSectionOcrText: 'OCR text', detailCopyClipboardError: 'Could not copy to clipboard: {error}',
       detailOpenFileError: 'Could not open file: {error}', detailGeneratingPreview: 'Generating preview…',
@@ -987,6 +996,7 @@
       detailLabelFile: 'Archivo', detailLabelOriginal: 'Original', detailCopyButton: 'Copiar', detailCopiedButton: '¡Copiado!',
       detailNoFileRecorded: 'No hay ningún archivo registrado para este documento', detailSectionFields: 'Campos', detailPanelTitle: 'Detalles',
       detailPanelEmpty: 'Selecciona un documento para ver sus detalles.',
+      contextMenuShowDetails: 'Mostrar detalles', contextMenuHideDetails: 'Ocultar detalles',
       detailSectionPeople: 'Personas', detailSectionTags: 'Etiquetas', detailSectionNotes: 'Notas',
       detailSectionOcrText: 'Texto OCR', detailCopyClipboardError: 'No se pudo copiar al portapapeles: {error}',
       detailOpenFileError: 'No se pudo abrir el archivo: {error}', detailGeneratingPreview: 'Generando vista previa…',
@@ -1149,6 +1159,7 @@
       detailLabelFile: 'Fichier', detailLabelOriginal: 'Original', detailCopyButton: 'Copier', detailCopiedButton: 'Copié !',
       detailNoFileRecorded: 'Aucun fichier enregistré pour ce document', detailSectionFields: 'Champs', detailPanelTitle: 'Détails',
       detailPanelEmpty: 'Sélectionnez un document pour voir ses détails.',
+      contextMenuShowDetails: 'Afficher les détails', contextMenuHideDetails: 'Masquer les détails',
       detailSectionPeople: 'Personnes', detailSectionTags: 'Étiquettes', detailSectionNotes: 'Notes',
       detailSectionOcrText: 'Texte OCR', detailCopyClipboardError: 'Impossible de copier dans le presse-papiers : {error}',
       detailOpenFileError: "Impossible d'ouvrir le fichier : {error}", detailGeneratingPreview: "Génération de l'aperçu…",
@@ -1311,6 +1322,7 @@
       detailLabelFile: 'Datei', detailLabelOriginal: 'Original', detailCopyButton: 'Kopieren', detailCopiedButton: 'Kopiert!',
       detailNoFileRecorded: 'Für dieses Dokument ist keine Datei hinterlegt', detailSectionFields: 'Felder', detailPanelTitle: 'Details',
       detailPanelEmpty: 'Wähle ein Dokument aus, um seine Details zu sehen.',
+      contextMenuShowDetails: 'Details anzeigen', contextMenuHideDetails: 'Details ausblenden',
       detailSectionPeople: 'Personen', detailSectionTags: 'Tags', detailSectionNotes: 'Notizen',
       detailSectionOcrText: 'OCR-Text', detailCopyClipboardError: 'Konnte nicht in die Zwischenablage kopieren: {error}',
       detailOpenFileError: 'Datei konnte nicht geöffnet werden: {error}', detailGeneratingPreview: 'Vorschau wird erzeugt…',
@@ -1473,6 +1485,7 @@
       detailLabelFile: '文件', detailLabelOriginal: '原始文件', detailCopyButton: '复制', detailCopiedButton: '已复制！',
       detailNoFileRecorded: '此文档没有记录的文件', detailSectionFields: '字段', detailPanelTitle: '详情',
       detailPanelEmpty: '选择一个文档以查看其详情。',
+      contextMenuShowDetails: '显示详情', contextMenuHideDetails: '隐藏详情',
       detailSectionPeople: '人员', detailSectionTags: '标签', detailSectionNotes: '备注',
       detailSectionOcrText: 'OCR 文本', detailCopyClipboardError: '无法复制到剪贴板：{error}',
       detailOpenFileError: '无法打开文件：{error}', detailGeneratingPreview: '正在生成预览…',
@@ -1702,6 +1715,7 @@
       detailNoFileRecorded: '此文檔沒有記錄的文件',
       detailSectionFields: '字段', detailPanelTitle: '詳情',
       detailPanelEmpty: '選擇一個文檔以查看其詳情。',
+      contextMenuShowDetails: '顯示詳情', contextMenuHideDetails: '隱藏詳情',
       detailSectionPeople: '人員',
       detailSectionTags: '標籤',
       detailSectionNotes: '備註',
@@ -2170,6 +2184,7 @@
   // open when the (separate) edit modal closes, so it can't outlive whichever UI
   // it was opened from.
   let openDocCollectionMenu = null;
+  let openRowContextMenu = null;
 
   let sortKey = 'import_date'; // overwritten by loadSortState() on every library open -- this is just the pre-library-open starting value
   let sortDir = 'desc';
@@ -4408,6 +4423,20 @@
         window.open(URL.createObjectURL(file), '_blank');
       }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
     }));
+    // Right-click selects the row (identical to the click listener above)
+    // and opens a context menu carrying most of the panel's own actions.
+    // Same opt-out guard as dblclick, for the same reason: those cells'
+    // onclick="event.stopPropagation()" only covers `click`.
+    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('contextmenu', (e) => {
+      if(e.target.closest('.select-col, .row-edit-col')) return;
+      e.preventDefault();
+      const id = Number(tr.dataset.id);
+      selectedDocId = id;
+      tbody.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
+      tr.classList.add('row-selected');
+      openDetail(id);
+      showRowContextMenu(id, e.clientX, e.clientY);
+    }));
     // Hover-revealed shortcut straight to Edit, skipping the detail view --
     // the row's own td already has onclick="event.stopPropagation()" (same
     // pattern as the select checkbox) so this doesn't also trigger the row's
@@ -4607,6 +4636,73 @@
     }catch(e){
       alert(t('detailCopyClipboardError', {error: e.message}));
     }
+  }
+
+  // Shows the row context menu at a fixed viewport position (clientX/clientY
+  // from the contextmenu event are already viewport-relative, unlike the
+  // add-to-collection picker's own position:absolute + scrollX/scrollY
+  // positioning, which anchors to a button's own getBoundingClientRect()
+  // instead of a raw click coordinate).
+  function showRowContextMenu(id, x, y){
+    const d = allDocs.find(doc => doc.id === id);
+    if(!d) return;
+    if(openRowContextMenu){ openRowContextMenu.remove(); openRowContextMenu = null; }
+
+    const menu = document.createElement('div');
+    menu.className = 'row-context-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    const detailLabel = detailPanelExpanded ? t('contextMenuHideDetails') : t('contextMenuShowDetails');
+    const detailBtn = document.createElement('button');
+    detailBtn.type = 'button';
+    detailBtn.className = 'row-context-menu-item';
+    detailBtn.textContent = detailLabel;
+    menu.appendChild(detailBtn);
+
+    const actionButtons = [];
+    buildDetailActions(id, d).filter(a => !a.panelOnly).forEach(a => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'row-context-menu-item' + (a.variant === 'danger' ? ' danger' : '');
+      btn.textContent = a.label;
+      menu.appendChild(btn);
+      actionButtons.push({ btn, onClick: a.onClick });
+    });
+
+    document.body.appendChild(menu);
+    openRowContextMenu = menu;
+
+    const closeMenu = () => {
+      if(openRowContextMenu === menu){ menu.remove(); openRowContextMenu = null; }
+      document.removeEventListener('click', closeMenu);
+    };
+
+    detailBtn.addEventListener('click', (e) => {
+      // Call the handler BEFORE removing the menu -- closeMenu() only
+      // detaches this container from the DOM, so it's safe either order for
+      // this specific handler, but every item below follows the same order
+      // for consistency (and because add-to-collection's own handler
+      // specifically needs e.target still attached to the DOM when it reads
+      // e.target.getBoundingClientRect() -- removing the menu first would
+      // detach that button, making the rect collapse to all zeros).
+      saveDetailPanelExpanded(!detailPanelExpanded);
+      closeMenu();
+    });
+    actionButtons.forEach(({ btn, onClick }) => {
+      btn.addEventListener('click', (e) => {
+        onClick(e);
+        closeMenu();
+      });
+    });
+
+    // Same delayed-registration pattern as openDocCollectionMenu's own
+    // outside-click dismissal (add-to-collection-btn's handler, inside
+    // buildDetailActions()) -- the setTimeout(...,0) is what keeps the
+    // very click that opened this menu (the contextmenu event itself,
+    // which is a separate event from any subsequent `click`) from
+    // immediately closing it.
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
   }
 
   // Shared by openDetail() (rendering panel buttons) and the row context
