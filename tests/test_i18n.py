@@ -86,8 +86,6 @@ async def main():
         await page3.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page3.click("#open-btn")
         await page3.wait_for_timeout(300)
-        await page3.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons (Edit, etc.) are reachable for the rest of this test
-        await page3.wait_for_timeout(150)
         await page3.select_option('#lang-select', 'de')
         await page3.wait_for_timeout(150)
         nav_all_text = await page3.locator('#nav-item-all .nav-item-label').inner_text()
@@ -745,6 +743,11 @@ async def main():
         # empty state (closing the library resets #status entirely) and confirm a
         # fresh language switch on the empty-state screen doesn't resurrect the
         # old document-related message.
+        # .row-edit-btn only renders below the 640px mobile breakpoint now (see
+        # "Hide the row-level Edit shortcut except below the mobile breakpoint"),
+        # so a mobile viewport is needed to reach it here.
+        await page29.set_viewport_size({"width": 375, "height": 800})
+        await page29.wait_for_timeout(150)
         await page29.click('tr[data-id="1"] .row-edit-btn')
         await page29.wait_for_timeout(150)
         await page29.click('#save-edit-btn')

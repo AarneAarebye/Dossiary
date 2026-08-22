@@ -168,7 +168,12 @@ async def main():
         # === Scenario 8: the same behavior works in the edit form too ===
         # .row-edit-btn is a hover-revealed button right on the table row itself --
         # it jumps straight to the edit form, skipping the detail view entirely, so
-        # clicking the row first would only open a modal that blocks it.
+        # clicking the row first would only open a modal that blocks it. It only
+        # renders below the 640px mobile breakpoint now (see "Hide the row-level
+        # Edit shortcut except below the mobile breakpoint"), so a mobile viewport
+        # is needed to reach it at all.
+        await page.set_viewport_size({"width": 375, "height": 800})
+        await page.wait_for_timeout(150)
         await page.click('.row-edit-btn')
         await page.wait_for_timeout(200)
         edit_people_input = page.locator('[data-dynamic-field="People"] input')

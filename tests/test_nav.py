@@ -78,8 +78,6 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
-        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
-        await page.wait_for_timeout(150)
 
         # === Scenario 1: the old review-queue/waste-bin UI is genuinely gone ===
         waste_bin_btn_count = await page.locator('#waste-bin-btn').count()

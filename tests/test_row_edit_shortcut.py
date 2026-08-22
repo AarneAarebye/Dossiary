@@ -65,6 +65,17 @@ async def main():
         await page.set_viewport_size({"width": 375, "height": 800})  # below the 640px breakpoint, where .row-edit-btn is the only way to reach Edit since the panel is force-hidden there
         await page.wait_for_timeout(150)
 
+        # Collapse the panel before opening any edit form via the shortcut below.
+        # With the panel now expanded by default, Scenario 2 needs to start from
+        # a genuinely collapsed state to prove Cancel doesn't cause an
+        # *additional* expand, not that the panel merely happens to already be
+        # open -- and this has to happen here, before the edit modal opens: once
+        # it's open, its own backdrop blocks clicks to the toolbar behind it, so
+        # this can't be deferred until right before the Cancel click in
+        # Scenario 2 the way an earlier version of this fix attempted.
+        await page.click('#detail-panel-toggle-btn')
+        await page.wait_for_timeout(150)
+
         # === Scenario 1: clicking the row-edit shortcut on a normal document (All
         # Documents view) opens the Edit form directly, not the detail view, and
         # doesn't also trigger the row's own click-to-detail handler (proving
@@ -81,8 +92,11 @@ async def main():
 
         # === Scenario 2: Cancel from an edit reached via the shortcut just closes
         # the edit form -- it no longer reopens the detail view/panel, and does NOT
-        # force the (collapsed-by-default) detail panel open, since the shortcut
-        # bypasses row selection entirely on the way in ===
+        # force the panel open, since the shortcut bypasses row selection
+        # entirely on the way in. The panel was already collapsed above, before
+        # this edit form opened, so this proves Cancel doesn't cause an
+        # *additional* expand, not that the panel merely happens to already be
+        # open. ===
         await page.click('#cancel-edit-btn')
         await page.wait_for_timeout(200)
         edit_form_closed = await page.locator('#e-title').count()

@@ -3077,12 +3077,12 @@
   }
 
   // Mirrors loadNavStyle()/saveNavStyle()/applyNavStyle() exactly, except the
-  // default is collapsed (false) rather than one of two named states --
-  // defaulting to expanded would defeat the whole point of a collapsed-by-
-  // default panel for a library that's never touched this setting.
+  // default is expanded (true) rather than one of two named states -- no
+  // saved setting at all means expanded; an explicit '0' still means
+  // someone deliberately collapsed it, and that opt-out is preserved.
   function loadDetailPanelExpanded(){
     const rows = queryAll("SELECT value FROM settings WHERE key = 'detail_panel_expanded'").rows;
-    detailPanelExpanded = rows.length > 0 && rows[0][0] === '1';
+    detailPanelExpanded = rows.length === 0 || rows[0][0] !== '0';
     applyDetailPanelExpanded();
   }
 

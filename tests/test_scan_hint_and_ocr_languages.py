@@ -33,8 +33,6 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(300)
-        await page.click('#detail-panel-toggle-btn')  # expand the detail panel so its action buttons are reachable for the rest of this test
-        await page.wait_for_timeout(150)
 
         # === Capture form: scan-hint toggle ===
         await page.click('#add-btn')
