@@ -290,6 +290,13 @@ async def main():
         await page.fill('#search', '')
         await page.wait_for_timeout(200)
 
+        # Back to desktop width -- Scenario 8 left the viewport at 375x800 for
+        # its own mobile check and never restored it, so without this,
+        # Scenario 10's double-click coverage (below) would only ever run at
+        # mobile width, never desktop.
+        await page.set_viewport_size({"width": 1280, "height": 800})
+        await page.wait_for_timeout(150)
+
         # === Scenario 10: double-clicking a row opens its file; a document with
         # no file_path is a silent no-op; a single click never opens anything ===
         await page.click('#add-btn')
@@ -334,6 +341,17 @@ async def main():
         except Exception:
             no_file_dblclick_no_popup = True
         print("double-click on a document with no file_path opens nothing:", no_file_dblclick_no_popup)
+
+        # double-clicking the select checkbox must not open the file -- the
+        # checkbox's own stopPropagation() covers click but not dblclick, so
+        # this needs its own explicit guard in the dblclick handler
+        checkbox_dblclick_opened_nothing = False
+        try:
+            async with page.expect_event('popup', timeout=1000):
+                await page.dblclick('tr[data-id="4"] .select-col')
+        except Exception:
+            checkbox_dblclick_opened_nothing = True
+        print("double-clicking the select checkbox does not open the file:", checkbox_dblclick_opened_nothing)
 
         _os.remove('detailpaneldblclick.pdf')
 

@@ -4394,7 +4394,12 @@
     // dblclick, so selection/highlight/panel-refresh has already happened
     // via the listener above by the time this fires -- this only adds the
     // file-open step. A document with no file_path is a silent no-op.
-    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('dblclick', async () => {
+    tbody.querySelectorAll('tr').forEach(tr => tr.addEventListener('dblclick', async (e) => {
+      // .select-col/.row-edit-col opt out of the row's own click handler via
+      // their own onclick="event.stopPropagation()" -- but that only stops
+      // `click`, not `dblclick` (a separate event type), so a double-click
+      // landing on either cell still reached here unless explicitly guarded.
+      if(e.target.closest('.select-col, .row-edit-col')) return;
       const d = allDocs.find(x => x.id === Number(tr.dataset.id));
       if(!d || !d.file_path) return;
       try{
