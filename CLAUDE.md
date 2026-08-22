@@ -936,7 +936,9 @@ this repo's git tags.
   without a separate click through the detail view first. Present in every
   nav view uniformly (not just Inbox, where the idea originally came from —
   editing directly is generically useful regardless of a document's review
-  state), **except deleted documents**, where it's absent entirely, matching
+  state; and, since the panel follow-up, only below the 640px breakpoint —
+  see the detail-panel note below), **except deleted documents**, where it's
+  absent entirely, matching
   the detail view's own precedent of dropping Edit (not just disabling it)
   for anything already in the Waste bin. The button's own `<td>` carries
   `onclick="event.stopPropagation()"`, the same pattern the select-checkbox
@@ -1361,7 +1363,8 @@ this repo's git tags.
   entire reason this shipped collapsed-by-default: an always-visible panel
   costs real horizontal table width, and the person who raised this
   feature (comparing it to Mariner's own panel) explicitly worried about
-  losing that space. Below the app's one mobile breakpoint
+  losing that space — **this default was later reversed to expanded; see
+  below**. Below the app's one mobile breakpoint
   (`max-width:640px`), the panel force-collapses regardless of the saved
   preference — `#main-layout.detail-panel-expanded .detail-panel{
   display:none; }` inside the media query, matched in selector specificity
@@ -1463,7 +1466,12 @@ this repo's git tags.
   inside that same media query force-hides the panel unconditionally (see
   the panel's own mobile-collapse paragraph above) — without restoring
   `.row-edit-btn` there, Edit would be completely unreachable from the
-  table at that width.
+  table at that width. The one accepted trade-off: this reasoning holds for
+  the *default* expanded state, not for someone who's deliberately
+  collapsed the panel at desktop width — for them, reaching Edit now takes
+  two clicks (re-expand the panel via the toolbar toggle, then click the
+  row) instead of the old hover shortcut's one, a minor, honest regression
+  for that specific case rather than something silently glossed over.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`

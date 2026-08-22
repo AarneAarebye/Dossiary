@@ -198,7 +198,13 @@ detail view, with no lingering detail-view element proving
 from also firing; the same behavior holding in the Inbox view too, not
 just All Documents; Cancel from an edit reached this way landing on the
 detail view; and the button being entirely absent — not just hidden — for
-a deleted document in the Waste bin), UI language support
+a deleted document in the Waste bin; Scenario 5 additionally covers the
+button's absence at a normal desktop width, now that the persistent
+detail panel's own follow-up work restyled `.row-edit-btn`/`.row-edit-col`
+to `display:none` except below the 640px mobile breakpoint — several
+other scenarios across this same file, and across the suite generally,
+now need a narrowed viewport to reach the button at all, where they
+previously didn't), UI language support
 (`test_i18n.py` — default English with no locale signal; auto-detecting
 German from `navigator.language`/`navigator.languages` on first load with
 no stored preference yet; selecting a language from the `<select
@@ -342,10 +348,11 @@ the same input correctly excluded from later suggestions; ArrowDown/Enter
 keyboard selection; an empty segment showing no dropdown at all; the same
 behavior confirmed for Tags; and the whole mechanism working identically
 in the edit form, not just capture),
-and the persistent detail panel (`test_detail_panel.py` — the panel
-starting collapsed by default and its expanded state persisting across a
-reopen, mirroring `test_nav.py`'s own `nav_style` persistence pattern;
-clicking a row highlighting it and showing its metadata in the panel, and
+and the persistent detail panel (`test_detail_panel.py` — the panel now
+starting **expanded** by default with no saved setting, an explicit `'0'`
+still collapsing it, and its expanded/collapsed state otherwise persisting
+across a reopen, mirroring `test_nav.py`'s own `nav_style` persistence
+pattern; clicking a row highlighting it and showing its metadata in the panel, and
 clicking a different row moving both the highlight and the panel's
 content; every action available in the old detail modal still working
 from the panel with correct in-place refresh (Archive/Unarchive, Flag for
@@ -357,8 +364,16 @@ saving an edit reached via
 the row-level `.row-edit-btn` shortcut — which bypasses the panel/selection
 step on the way in — selecting the just-edited document as the panel's new
 selection and highlighting its row; the toggle button being absent in
-Reports view; and the panel force-collapsing below the mobile breakpoint
-regardless of the saved preference). This
+Reports view; the panel force-collapsing below the mobile breakpoint
+regardless of the saved preference; and, this same branch's own follow-up
+row-interaction behaviors — double-clicking a row opening its document's
+file in a new tab, a single click never opening anything, a document with
+no `file_path` being a silent no-op on double-click, and (the propagation-
+leak fix caught in this branch's own final review) double-clicking the
+row's `.select-col` checkbox also being a silent no-op rather than
+toggling the checkbox and opening the file, since that cell's own
+`click`-only `event.stopPropagation()` doesn't cover `dblclick` on its
+own). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
