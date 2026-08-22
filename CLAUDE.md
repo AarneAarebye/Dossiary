@@ -1471,6 +1471,26 @@ this repo's git tags.
   two clicks (re-expand the panel via the toolbar toggle, then click the
   row) instead of the old hover shortcut's one, a minor, honest regression
   for that specific case rather than something silently glossed over.
+  **Right-click context menu** (`showRowContextMenu(id, x, y)`, the
+  `contextmenu` listener on table rows, `.row-context-menu`/`.row-context-menu-item`)
+  offers the same actions the panel does, rooted in a shared `buildDetailActions(id, d)`
+  function — one source of truth for which actions apply to a document right now
+  (deleted-document Restore-only, Add/Remove Collection's view-dependent visibility,
+  etc.) and what each one does, so the two surfaces can't drift out of sync.
+  **`buildDetailActions()` includes all actions** but marks "Regenerate preview"
+  with `panelOnly: true` — the context menu filters these out via
+  `.filter(a => !a.panelOnly)`, keeping that action panel-exclusive since it's
+  an interactive process with explicit feedback, not a one-shot operation the way
+  every context-menu action is. The `contextmenu` listener reuses the exact same
+  `.select-col, .row-edit-col` opt-out guard the `dblclick` listener already
+  established, for the same reason: those cells' `onclick="event.stopPropagation()"`
+  only covers the `click` event, not right-click or double-click. **The "Detail"
+  menu item toggles the panel's visibility** — it calls `saveDetailPanelExpanded(!detailPanelExpanded)`
+  without touching `selectedDocId`, so it's orthogonal to which document is currently
+  selected, the same "selection and visibility are independent" principle the
+  "row click never auto-expands" rule already established from the opposite direction:
+  selecting a document never touches panel *visibility*, and now, symmetrically,
+  toggling panel *visibility* never touches which document is *selected*.
 - **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
   `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
   `display` on any element carrying a matching `data-field="<id>"`
