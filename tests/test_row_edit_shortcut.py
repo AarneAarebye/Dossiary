@@ -62,6 +62,8 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
         await page.click("#open-btn")
         await page.wait_for_timeout(300)
+        await page.set_viewport_size({"width": 375, "height": 800})  # below the 640px breakpoint, where .row-edit-btn is the only way to reach Edit since the panel is force-hidden there
+        await page.wait_for_timeout(150)
 
         # === Scenario 1: clicking the row-edit shortcut on a normal document (All
         # Documents view) opens the Edit form directly, not the detail view, and
@@ -108,6 +110,17 @@ async def main():
         await page.wait_for_timeout(150)
         edit_btn_in_trash = await page.locator('tr[data-id="3"] .row-edit-btn').count()
         print("edit shortcut button absent for a deleted document:", edit_btn_in_trash == 0)
+
+        # === Scenario 5: the shortcut is entirely absent at a normal desktop
+        # viewport width, for a non-deleted document -- it's redundant there now
+        # that the panel (which carries the same Edit action) defaults to
+        # expanded and is always reachable ===
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        await page.set_viewport_size({"width": 1280, "height": 800})
+        await page.wait_for_timeout(150)
+        edit_btn_at_desktop_width = await page.locator('tr[data-id="1"] .row-edit-btn:visible').count()
+        print("edit shortcut button hidden at a normal desktop width:", edit_btn_at_desktop_width == 0)
 
         print("JS ERRORS:", errors)
         await browser.close()

@@ -319,13 +319,11 @@
   .bulk-collection-option, .modal-collection-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
   .bulk-collection-option:hover, .modal-collection-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
   .select-col{ width:32px; text-align:center; padding:11px 8px !important; }
-  .row-edit-col{ width:28px; text-align:center; padding:11px 2px !important; }
+  .row-edit-col{ width:28px; text-align:center; padding:11px 2px !important; display:none; }
   .row-edit-btn{
-    opacity:0; background:none; border:none; color:var(--text-dim); font-size:14px;
+    display:none; background:none; border:none; color:var(--text-dim); font-size:14px;
     line-height:1; padding:4px; cursor:pointer; border-radius:var(--radius);
   }
-  #doc-tbody tr:hover .row-edit-btn{ opacity:1; }
-  .row-edit-btn:hover{ color:var(--phosphor); background:rgba(79,224,166,0.12); }
   /* .review-queue-row/.review-queue-actions below are NOT scoped to the
      (now-removed) always-visible review-queue banner -- they're generic list-row
      markup independently reused by renderRecentLibraries(), so they stay even
@@ -475,6 +473,10 @@
   #lang-select{ font-family:var(--font-mono); font-size:11px; padding:2px 6px; border:1px solid var(--line); border-radius:var(--radius); background:transparent; color:var(--text-dim); cursor:pointer; color-scheme:dark; }
   #lang-select:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
   @media (max-width:640px){
+    .row-edit-col{ display:table-cell; }
+    .row-edit-btn{ display:inline-block; opacity:0; }
+    #doc-tbody tr:hover .row-edit-btn{ opacity:1; }
+    .row-edit-btn:hover{ color:var(--phosphor); background:rgba(79,224,166,0.12); }
     header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; flex-wrap:nowrap; overflow-x:auto; } .table-wrap{ padding:0 16px 32px; max-height:calc(100vh - 392px); }
     .toolbar > *{ flex-shrink:0; }
     #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 416px); }
