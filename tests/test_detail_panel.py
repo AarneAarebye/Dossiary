@@ -453,7 +453,16 @@ async def main():
         # violation with two matches. :visible disambiguates to the one this click
         # actually created.
         picker_top = await page.locator('.bulk-collection-menu:visible').evaluate('el => parseFloat(el.style.top)')
-        print("collection picker is positioned near the click, not collapsed to (0,0):", picker_top > 0)
+        # picker_top > 0 alone is vacuous: the picker's own positioning code is
+        # `rect.bottom + window.scrollY + 6`, so even a fully collapsed (all-zero)
+        # rect -- which is exactly what a detached-from-the-DOM e.target would
+        # produce if onClick ran AFTER the menu was removed -- still yields
+        # 0 + 0 + 6 = 6, and 6 > 0 is still True. A real click-relative position
+        # on this row (well down the page, at a desktop viewport) lands far above
+        # that ~6px floor, so a threshold well above it (but still comfortably
+        # below any plausible real position) actually distinguishes "positioned
+        # near the click" from "collapsed to zero".
+        print("collection picker is positioned near the click, not collapsed to (0,0):", picker_top > 50)
         await page.click('#nav-item-all')  # dismiss the picker by clicking elsewhere
         await page.wait_for_timeout(150)
 
