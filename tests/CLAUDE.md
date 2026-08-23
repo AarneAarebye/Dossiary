@@ -373,7 +373,37 @@ leak fix caught in this branch's own final review) double-clicking the
 row's `.select-col` checkbox also being a silent no-op rather than
 toggling the checkbox and opening the file, since that cell's own
 `click`-only `event.stopPropagation()` doesn't cover `dblclick` on its
-own). This
+own); and this same file's later right-click-context-menu scenarios,
+covering that branch's own follow-up feature — right-click selecting and
+highlighting a row and refreshing the panel's content exactly like a plain
+click does, verified to work the same whether the panel is currently
+expanded or collapsed; the context menu's item set for a normal document
+matching the panel's own action set minus "Regenerate preview" (which
+never appears in the menu at all, panel-exclusive by design) plus a
+"Detail" entry the panel itself has no equivalent of; "Detail" toggling
+the panel's expanded/collapsed state on repeated invocations without ever
+touching which document is selected, and, symmetrically, selecting a
+different row afterward not touching panel visibility either; Archive
+from the context menu actually archiving the document end-to-end,
+verified against the panel's own button label afterward rather than just
+the menu closing; right-clicking `.select-col` opening no menu at all, and
+Reports view having no rows to right-click in the first place; "Add to
+Collection" from the context menu closing the menu and opening the
+collection picker positioned near the actual click point rather than
+collapsed to `(0,0)` (which is what a stale, already-detached `e.target`
+would produce); and a dedicated large-seed (25-document) scenario
+reproducing the exact viewport-overflow bug this branch's final
+whole-branch review caught — right-clicking a row near the bottom of a
+1280×800 viewport used to push the menu's last item (with "Add to
+Collection" in play, six items deep) to a bottom edge of 831px against an
+800px-tall viewport; `showRowContextMenu()` now measures the menu's real
+rendered height once it's in the DOM and, only when it would overflow,
+clamps `top` so the whole menu — every item, not just the visible ones at
+the moment of the click — stays on-screen, verified via
+`getBoundingClientRect()` on every `.row-context-menu-item`, confirmed
+non-vacuous by temporarily reverting the clamp and re-running the same
+scenario (it then correctly reports `False`, with the last item's
+`bottom` past 800px). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

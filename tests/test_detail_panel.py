@@ -466,6 +466,63 @@ async def main():
         await page.click('#nav-item-all')  # dismiss the picker by clicking elsewhere
         await page.wait_for_timeout(150)
 
+        # === Scenario 17: the context menu clamps vertically so every item
+        # stays fully on-screen and clickable, even when right-clicking a row
+        # near the bottom of the table -- reproducing the exact "Delete is
+        # unreachable" overflow the final whole-branch review caught (verified
+        # empirically at 1280x800, 1280x1000, 1440x900, and 1280x720; every
+        # one overflowed before the fix). Needs a seed large enough that a low
+        # row is genuinely below the fold, not the 3-document SEED above --
+        # matching the "seed enough documents to make the geometry check
+        # non-vacuous" convention test_footer_pin.py/test_collections.py's own
+        # Scenario 30 already use for similar viewport-geometry checks.
+        many_docs_seed = {
+            "documents": [
+                {
+                    "id": i, "title": f"Doc {i}", "category": "Finance", "document_type": "Invoice",
+                    "date": f"2026-01-{(i % 28) + 1:02d}T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None,
+                    "created_at": f"2026-01-{(i % 28) + 1:02d}T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+                    "archived": 0, "needs_review": 0, "deleted": 0,
+                }
+                for i in range(1, 26)
+            ],
+            "tags": [], "document_tags": [],
+            # A manual collection is included so "Add to collection" renders too --
+            # without it the menu only has 5 items, which happens to still fit
+            # this particular row/viewport combination even unclamped (confirmed
+            # while building this scenario: 5 items landed with the last item's
+            # own bottom exactly AT the viewport edge, only the menu's own
+            # padding poked past it) and would make this scenario vacuous. With
+            # "Add to collection" as a 6th item, the unclamped menu genuinely
+            # pushes the last item's bottom to 831px against an 800px-tall
+            # viewport -- confirmed by temporarily reverting the clamp in
+            # showRowContextMenu() and re-running this scenario, which then
+            # correctly reports False.
+            "collections": [{"id": 1, "name": "My Collection", "kind": "manual", "criteria": None}],
+            "collection_documents": [],
+        }
+        await page.set_viewport_size({"width": 1280, "height": 800})
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(many_docs_seed)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        last_row = page.locator('#doc-tbody tr').last
+        await last_row.scroll_into_view_if_needed()
+        await last_row.click(button='right')
+        await page.wait_for_timeout(200)
+        menu_item_rects = await page.locator('.row-context-menu .row-context-menu-item:visible').evaluate_all(
+            "els => els.map(e => e.getBoundingClientRect().bottom)"
+        )
+        viewport_height = 800
+        # A half-pixel tolerance absorbs float rounding from getBoundingClientRect()
+        # without masking a real overflow -- a genuinely off-screen item overflows
+        # by several pixels' worth of button height, not a rounding error.
+        all_items_within_viewport = len(menu_item_rects) > 0 and all(b <= viewport_height + 0.5 for b in menu_item_rects)
+        print("every context menu item (including the last one) is fully within the viewport:", all_items_within_viewport)
+        await page.click('#nav-item-all')  # dismiss the menu
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

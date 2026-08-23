@@ -4673,6 +4673,22 @@
     document.body.appendChild(menu);
     openRowContextMenu = menu;
 
+    // Clamp vertically so every item stays reachable -- position:fixed means
+    // there's no scroll that could bring an off-screen item back into view,
+    // and the raw click Y (passed in as `y`) plus a normal-height table's
+    // worth of menu items routinely overflows the viewport bottom for any
+    // row in the lower half of the table. Measured only after the menu (with
+    // its real items) is already in the DOM, since only then does it have a
+    // real rendered height -- and done synchronously, before paint, so there's
+    // no visible jump. Horizontal position is left untouched; only vertical
+    // overflow was ever reported.
+    const menuRect = menu.getBoundingClientRect();
+    const margin = 8;
+    if(menuRect.bottom > window.innerHeight){
+      const clampedTop = Math.max(margin, window.innerHeight - menuRect.height - margin);
+      menu.style.top = clampedTop + 'px';
+    }
+
     const closeMenu = () => {
       if(openRowContextMenu === menu){ menu.remove(); openRowContextMenu = null; }
       document.removeEventListener('click', closeMenu);
