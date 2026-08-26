@@ -72,6 +72,28 @@
     flex-direction:column; align-items:stretch; width:220px; flex:0 0 220px;
     padding:16px 0; gap:2px; border-bottom:none; border-right:1px solid var(--line);
     background:var(--panel);
+    /* #app-nav's own content height is user-data-dependent (a library with
+       many collections can genuinely be taller than the viewport), and
+       unlike .table-wrap it had no bound of its own -- align-items:stretch
+       on #main-layout doesn't impose one either, since stretch just matches
+       whichever flex sibling's natural content is tallest, and #app-nav's
+       own content is frequently the taller one. Without a real max-height,
+       #app-nav simply grew past the fixed footer's own position (the footer
+       is position:fixed, independent of document flow), leaving whatever
+       sits at the bottom of the nav -- .nav-style-toggle, and often several
+       trailing collection items -- genuinely unreachable underneath it, not
+       just visually clipped (confirmed directly: a real click on the
+       toggle button times out, intercepted by the footer). max-height here
+       mirrors .table-wrap's own "bounded, scrollable container" pattern,
+       but with a different budget: #app-nav starts at the same Y position
+       as .toolbar (both sit directly below header, as flex siblings inside
+       #main-layout), not below the toolbar the way .table-wrap does, so
+       there's no toolbar/nav height to subtract. 106px/62px were measured
+       via getBoundingClientRect() (header's own bottom edge / #main-layout's
+       top edge, and the fixed footer's own rendered height) -- both were
+       stable across every viewport width checked (1024-1440px), unlike
+       .table-wrap's own toolbar-height budget, which does vary by width. */
+    max-height:calc(100vh - 168px); overflow-y:auto;
   }
   #main-layout.nav-style-sidebar .nav-item{
     padding:10px 20px; border-bottom:none; border-left:3px solid transparent;
@@ -501,6 +523,15 @@
     #main-layout.nav-style-sidebar .app-nav{
       flex-direction:row; width:auto; flex:0 0 auto; padding:0 16px;
       border-right:none; border-bottom:1px solid var(--line); overflow-x:auto;
+      /* Reset the desktop-only vertical max-height/scroll budget (see the base
+         rule's own comment) -- this selector is the same one, so without an
+         explicit reset here those properties would otherwise carry over
+         unchanged and constrain this row-direction strip's height too,
+         wrapping its items across several lines to fit that budget instead
+         of staying a single horizontally-scrollable row. Confirmed directly:
+         omitting this reset made a 15-collection nav render at exactly
+         calc(100vh - 168px) tall here, wrapped into multiple rows. */
+      max-height:none; overflow-y:visible;
     }
     #main-layout.nav-style-sidebar .nav-item-label{ display:none; }
     /* #reports-view is page-flow-scrolled, not a bounded .table-wrap-style

@@ -189,6 +189,63 @@ async def main():
         main_layout_class_after_reopen = await page.get_attribute('#main-layout', 'class')
         print("nav-style-sidebar class absent after reopening with 'tabs' persisted:", main_layout_class_after_reopen)
 
+        # === A library with enough manual collections makes the sidebar
+        # nav's own content taller than the space above the fixed footer --
+        # #app-nav previously had no bound of its own (unlike .table-wrap),
+        # so it simply grew past the footer's own fixed position, leaving
+        # .nav-style-toggle (and often several trailing collection items)
+        # genuinely unreachable underneath it, not just visually clipped.
+        # Needs a seed large enough to make the geometry check non-vacuous,
+        # matching test_footer_pin.py/test_collections.py's own convention --
+        # 15 collections at a realistic non-fullscreen 900px-tall viewport is
+        # enough to overflow. ===
+        many_collections_seed = dict(SEED)
+        many_collections_seed['settings'] = [{'key': 'nav_style', 'value': 'sidebar'}]
+        many_collections_seed['collections'] = [
+            {'id': i, 'name': f'Collection {i}', 'kind': 'manual', 'criteria': None}
+            for i in range(1, 16)
+        ]
+        many_collections_seed['collection_documents'] = []
+        await page.set_viewport_size({'width': 1280, 'height': 900})
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(many_collections_seed)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        nav_overflow_info = await page.evaluate("""
+            () => {
+                const nav = document.getElementById('app-nav');
+                return { scrollHeight: nav.scrollHeight, clientHeight: nav.clientHeight };
+            }
+        """)
+        # Prove the constraint is actually binding before trusting the
+        # bottom-edge check that follows -- an unconstrained nav would report
+        # scrollHeight === clientHeight here, which would make the next
+        # assertion pass vacuously regardless of whether the fix is present.
+        print("sidebar nav content genuinely exceeds its own box (constraint is binding):", nav_overflow_info['scrollHeight'] > nav_overflow_info['clientHeight'])
+
+        footer_top = await page.evaluate("document.querySelector('footer').getBoundingClientRect().top")
+        nav_bottom = await page.evaluate("document.getElementById('app-nav').getBoundingClientRect().bottom")
+        print("sidebar nav's own bottom edge does not extend past the fixed footer's top edge:", nav_bottom <= footer_top + 0.5)
+
+        # Scroll the nav to its own bottom and confirm the toggle button is
+        # both fully on-screen and genuinely clickable there -- reproducing
+        # the exact reported bug ("hidden behind the footer") and confirming
+        # the fix, not just the geometry.
+        await page.evaluate("document.getElementById('app-nav').scrollTop = document.getElementById('app-nav').scrollHeight")
+        await page.wait_for_timeout(100)
+        toggle_reachable = await page.evaluate("""
+            () => {
+                const btn = document.getElementById('nav-style-toggle');
+                const rect = btn.getBoundingClientRect();
+                const footerTop = document.querySelector('footer').getBoundingClientRect().top;
+                return rect.bottom <= footerTop + 0.5 && rect.top >= 0;
+            }
+        """)
+        print("nav-style-toggle is fully within the viewport after scrolling the nav to the bottom:", toggle_reachable)
+        await page.click('#nav-style-toggle', timeout=3000)
+        style_after_click = await page.get_attribute('#main-layout', 'class')
+        print("nav-style-toggle is genuinely clickable, not intercepted by the footer:", 'nav-style-sidebar' not in style_after_click)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
