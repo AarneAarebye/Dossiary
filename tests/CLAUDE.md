@@ -13,7 +13,17 @@ tags, people, subcategory, columns/filters (including persistence), OCR
 option, including edit-time OCR against every page of a multi-page PDF,
 not just the first), PDF page count display (capture/edit/detail, and its
 correct absence for image documents), searchable PDF generation,
-thumbnails/previews (generation and regeneration), generic custom fields
+thumbnails/previews (`test_thumbnails.py`'s original Scenarios 1-2 and all
+of `test_regenerate.py` exercising real image/PDF-thumbnail generation and
+regeneration, but only against a patched copy of the app with
+`SHOW_DOCUMENT_PREVIEW` forced to `true`, not the shipped default, now that
+the persistent detail panel's own preview slot defaults to hidden — see the
+patched-copy-helper note near the end of this file — plus `test_thumbnails.py`'s
+new Scenario 3 proving the actual, unpatched, shipped-default app genuinely
+hides both the thumbnail slot and the Generate/Regenerate button from the
+detail panel while thumbnail generation itself keeps running exactly as
+before, still writing a real `thumbnail_path` and a real file under
+`thumbnails/` to disk), generic custom fields
 (all four types), dynamic per-type field show/hide/reorder, Field Settings
 (add/remove/reorder fields per type, default document type, the per-field
 Column/Autocomplete capability checkboxes), creating a brand new custom
@@ -348,7 +358,13 @@ the same input correctly excluded from later suggestions; ArrowDown/Enter
 keyboard selection; an empty segment showing no dropdown at all; the same
 behavior confirmed for Tags; and the whole mechanism working identically
 in the edit form, not just capture),
-and the persistent detail panel (`test_detail_panel.py` — the panel now
+and the persistent detail panel (`test_detail_panel.py` — run against a
+patched copy of the app with `SHOW_DOCUMENT_PREVIEW` forced back to `true`
+(the same patched-copy technique described near the end of this file),
+specifically so this file's own "every panel action still works" coverage
+— including Regenerate preview and the context-menu-never-shows-it
+assertion described below — keeps exercising the real, restorable preview
+pipeline even though the shipped app hides it by default; the panel now
 starting **expanded** by default with no saved setting, an explicit `'0'`
 still collapsing it, and its expanded/collapsed state otherwise persisting
 across a reopen, mirroring `test_nav.py`'s own `nav_style` persistence
@@ -513,3 +529,31 @@ current requirements. If you create a new test file, copy the
 writing new stub-loading code from scratch, and if you ever see a test
 reading anything other than `stub_studio2.js`, that's a bug to fix, not a
 one-off worth leaving alone.
+
+**A second, newer cross-cutting convention exists alongside that one:
+`_write_patched_app_with_preview_enabled()`, currently hand-duplicated
+identically across three files rather than factored into a shared module.**
+`SHOW_DOCUMENT_PREVIEW` (see that flag's own note in the parent repo's
+`../CLAUDE.md`) defaults to hiding the persistent detail panel's thumbnail
+slot and its Generate/Regenerate button, so `test_thumbnails.py`,
+`test_regenerate.py`, and `test_detail_panel.py` each need a way to keep
+exercising the real, underlying preview pipeline — thumbnail generation and
+regeneration, and every panel/context-menu action that touches it — at full
+strength, rather than only ever seeing it hidden; none of the three exist
+to test the toggle's own default behavior itself, that's
+`test_thumbnails.py`'s own Scenario 3 job alone, run against the real,
+unpatched app. Each of the three files carries its own copy of the helper —
+identical in what it does, differing only in each file's own docstring
+explaining why that particular file needs it: it reads `dossiary.html`,
+replaces the literal `const SHOW_DOCUMENT_PREVIEW = false;` with `= true;`,
+writes the patched HTML to a temp file next to `dossiary.html`
+(`tempfile.mkstemp(..., dir=...)`, so relative asset paths still resolve
+the same way they did against the real file), and returns that path for the
+test to `page.goto()` instead of `APP_PATH` — the caller is responsible for
+`os.remove()`-ing it once done. This suite has no shared Python helper
+module — every test file here is a fully standalone script, the same
+situation the `stub_studio2.js` note above exists to address on the
+JS-stub side — so, like that note's own guidance, if you ever add a fourth
+test file that needs this same technique, copy
+`_write_patched_app_with_preview_enabled()` verbatim from one of these
+three rather than writing a new one from scratch.
