@@ -2238,7 +2238,17 @@
   // later language switch doesn't wrongly resurrect a stale single-key translation onto a
   // message it didn't actually produce.
   let lastStatusKey = null, lastStatusParams = null, lastStatusKind = null;
-  function setStatus(msg, kind){ lastStatusKey = null; lastStatusParams = null; statusEl.textContent = msg || ''; statusEl.className = 'status' + (kind ? ' ' + kind : ''); }
+  function setStatus(msg, kind){
+    lastStatusKey = null; lastStatusParams = null;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    // 'busy' is the one kind rendered as HTML (spinner + escaped text) rather than
+    // plain textContent -- msg isn't guaranteed free of HTML-special characters
+    // (e.g. statusCouldNotOpenFolder interpolates a native Error.message), so it's
+    // always escaped before going into innerHTML, same as everywhere else in this
+    // file that mixes translated text into markup.
+    if(kind === 'busy'){ statusEl.innerHTML = msg ? '<span class="spinner"></span> ' + escapeHtml(msg) : ''; }
+    else{ statusEl.textContent = msg || ''; }
+  }
   function setStatusT(key, params, kind){ setStatus(t(key, params), kind); lastStatusKey = key; lastStatusParams = params || null; lastStatusKind = kind; }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function nowIso(){ return new Date().toISOString(); }
@@ -2763,7 +2773,7 @@
       return;
     }
     try{
-      setStatusT('statusOpeningFolderPicker', null);
+      setStatusT('statusOpeningFolderPicker', null, 'busy');
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       await proceedWithRootDirHandle(handle);
     }catch(e){
@@ -2778,7 +2788,7 @@
   // handle, open it" means.
   async function proceedWithRootDirHandle(handle){
     rootDirHandle = handle;
-    setStatusT('statusCheckingForLibrary', null);
+    setStatusT('statusCheckingForLibrary', null, 'busy');
     try{
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
@@ -2794,7 +2804,7 @@
 
   async function initNewLibrary(){
     try{
-      setStatusT('statusSettingUpSqlite', null);
+      setStatusT('statusSettingUpSqlite', null, 'busy');
       await ensureSqlJs();
       db = new SQL.Database();
       db.run(SCHEMA);
@@ -2816,9 +2826,9 @@
   }
 
   async function loadDb(){
-    setStatusT('statusLoadingSqliteEngine', null);
+    setStatusT('statusLoadingSqliteEngine', null, 'busy');
     await ensureSqlJs();
-    setStatusT('statusReadingLibrary', null);
+    setStatusT('statusReadingLibrary', null, 'busy');
     const file = await dbFileHandle.getFile();
     const buf = await file.arrayBuffer();
     db = new SQL.Database(new Uint8Array(buf));
