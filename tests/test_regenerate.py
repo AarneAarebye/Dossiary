@@ -4,6 +4,25 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
+import tempfile
+
+def _write_patched_app_with_preview_enabled():
+    """Writes a copy of dossiary.html with SHOW_DOCUMENT_PREVIEW flipped to
+    true, so this test can keep exercising the real Generate/Regenerate
+    preview pipeline even though it now defaults to off (see
+    dossiary.html's own SHOW_DOCUMENT_PREVIEW comment). Returns the temp
+    file's path; caller is responsible for deleting it."""
+    with open(APP_PATH) as f:
+        html = f.read()
+    target = "const SHOW_DOCUMENT_PREVIEW = false;"
+    replacement = "const SHOW_DOCUMENT_PREVIEW = true;"
+    assert target in html, "SHOW_DOCUMENT_PREVIEW declaration not found -- did its exact text change in dossiary.html?"
+    patched = html.replace(target, replacement)
+    fd, path = tempfile.mkstemp(suffix='.html', dir=_os2.path.dirname(APP_PATH))
+    with _os2.fdopen(fd, 'w') as f:
+        f.write(patched)
+    return path
+
 import asyncio, json
 from playwright.async_api import async_playwright
 
@@ -51,7 +70,8 @@ async def main():
         }};
         """
         await page.add_init_script(combined)
-        await page.goto(f"file://{APP_PATH}")
+        patched_app_path = _write_patched_app_with_preview_enabled()
+        await page.goto(f"file://{patched_app_path}")
         await page.wait_for_timeout(200)
         await page.evaluate("window.__TEST_ROOT = window.__makeNoThumbRoot();")
         await page.click("#open-btn")
@@ -93,5 +113,6 @@ async def main():
 
         print("JS ERRORS:", errors)
         await browser.close()
+        _os2.remove(patched_app_path)
 
 asyncio.run(main())
