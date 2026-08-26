@@ -30,7 +30,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-__version__ = '1.16.1'  # kept in sync with Dossiary's own APP_VERSION and this repo's git tag
+__version__ = '1.16.2'  # kept in sync with Dossiary's own APP_VERSION and this repo's git tag
 
 
 def log(msg):
