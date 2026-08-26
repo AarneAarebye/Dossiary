@@ -436,6 +436,25 @@ this repo's git tags.
   library and its worker script **must be the exact same pinned CDN
   version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
   mismatch, so don't update one without the other.
+  **The detail panel's own display of this preview is currently hidden
+  behind `SHOW_DOCUMENT_PREVIEW` (`const`, declared right after
+  `APP_VERSION`), a hardcoded developer-facing toggle, not a user-facing
+  setting.** Off until there's a carousel/gallery-style view that would
+  make a single static thumbnail worth its 110x140px of panel space
+  again — see the `docs/superpowers/specs/2026-08-26-hide-document-preview-design.md`
+  spec for the full reasoning. It gates exactly two things: the block in
+  `openDetail()` that builds `thumbHtml` (when off, `thumbHtml` is `''`,
+  not even the "no preview yet" empty-state placeholder, since that would
+  still cost the same panel space), and the `regen-thumb` action
+  descriptor in `buildDetailActions()` (when off, it's never added to the
+  actions array, so "Generate preview"/"Regenerate preview" doesn't
+  appear in the panel — it was already `panelOnly: true`, so it was never
+  reachable from the row context menu regardless). Generation itself —
+  `generateThumbnail()`/`writeThumbnail()` on capture and Inbox-add — is
+  completely untouched by this flag and keeps running exactly as before,
+  so `thumbnail_path` stays populated for every document captured while
+  the toggle is off; reactivating the feature later needs no backfill,
+  just flipping the constant back to `true`.
 - **Dynamic per-type fields** (`typeFieldOrder`, `loadTypeFieldOrder()`,
   `applyDynamicFieldsForType()`, `renderGenericFieldHtml()`,
   `renderPersonFieldHtml()`) fully rebuild the capture/edit forms'
