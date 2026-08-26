@@ -4725,6 +4725,7 @@
     const closeMenu = () => {
       if(openRowContextMenu === menu){ menu.remove(); openRowContextMenu = null; }
       document.removeEventListener('click', closeMenu);
+      document.removeEventListener('contextmenu', closeMenu);
     };
 
     detailBtn.addEventListener('click', (e) => {
@@ -4750,8 +4751,16 @@
     // buildDetailActions()) -- the setTimeout(...,0) is what keeps the
     // very click that opened this menu (the contextmenu event itself,
     // which is a separate event from any subsequent `click`) from
-    // immediately closing it.
-    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    // immediately closing it. Also closes on any OTHER right-click --
+    // right-clicking a different row already replaces the menu correctly
+    // (showRowContextMenu() removes the old one at its own top before
+    // building a new one), but right-clicking anywhere that ISN'T a row
+    // previously left this menu open underneath the browser's own native
+    // context menu, looking broken even though nothing was corrupted.
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+      document.addEventListener('contextmenu', closeMenu);
+    }, 0);
   }
 
   // Shared by openDetail() (rendering panel buttons) and the row context

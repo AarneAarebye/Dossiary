@@ -544,6 +544,32 @@ async def main():
         await page.click('#nav-item-all')  # dismiss the menu
         await page.wait_for_timeout(150)
 
+        # === Scenario 18: right-clicking elsewhere on the page closes an
+        # already-open context menu, instead of leaving it open underneath
+        # the browser's own native context menu -- the dismissal listener
+        # used to only cover 'click', not 'contextmenu' ===
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(150)
+        menu_open = await page.locator('.row-context-menu').count()
+        print("context menu open after right-clicking a row:", menu_open == 1)
+        await page.click('header', button='right')
+        await page.wait_for_timeout(150)
+        menu_closed_after_elsewhere = await page.locator('.row-context-menu').count()
+        print("context menu closes after right-clicking elsewhere on the page:", menu_closed_after_elsewhere == 0)
+
+        # Right-clicking a DIFFERENT row must still replace the menu with a
+        # fresh one for that row, not just close it -- confirms the new
+        # 'contextmenu' dismissal listener doesn't fight with
+        # showRowContextMenu()'s own existing old-menu removal.
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(150)
+        await page.click('tr[data-id="2"]', button='right')
+        await page.wait_for_timeout(150)
+        menu_count_after_row_switch = await page.locator('.row-context-menu').count()
+        print("exactly one menu remains after right-clicking a different row:", menu_count_after_row_switch == 1)
+        await page.click('#nav-item-all')  # dismiss
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
         _os2.remove(patched_app_path)
