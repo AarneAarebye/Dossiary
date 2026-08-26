@@ -592,6 +592,128 @@ git commit -m "Document the SHOW_DOCUMENT_PREVIEW toggle"
 
 ---
 
+### Task 4: Fix `test_detail_panel.py`'s Regenerate preview scenario
+
+**Added after execution began** — Task 2's implementer correctly scoped
+their brief to the two thumbnail-focused test files named in it, but
+surfaced a real gap this plan's author missed while writing Task 2: a
+scenario inside `tests/test_detail_panel.py` (part of that file's
+"every action available in the old detail modal still working from the
+panel" coverage) also clicks `#regen-thumb-btn` directly, and now fails
+with a Playwright timeout since that element is hidden by default per
+Task 1. This task closes that gap using the exact same technique Task 2
+already established, applied to the one file it didn't cover.
+
+**Files:**
+- Modify: `tests/test_detail_panel.py`
+
+**Interfaces:**
+- Consumes: `SHOW_DOCUMENT_PREVIEW` (Task 1) and the same
+  `_write_patched_app_with_preview_enabled()` pattern Task 2 introduced
+  in `tests/test_thumbnails.py`/`tests/test_regenerate.py` — same helper
+  body, same target/replacement strings.
+
+Unlike `test_thumbnails.py`/`test_regenerate.py`, this file's Scenarios
+1-16+ all share a single `page`/`page.goto()` call near the top of
+`main()` — the Regenerate preview assertion (currently around line 165,
+`await page.click('#regen-thumb-btn')`) is one assertion embedded deep in
+that one continuous session, not an isolated scenario with its own fresh
+page. The fix is the same as Task 2's: serve a copy of `dossiary.html`
+with `SHOW_DOCUMENT_PREVIEW` patched to `true` for this file's one
+`page.goto()` call, so every scenario in the file — including the later
+one confirming "Regenerate preview never appears in the context menu"
+(this stays true regardless of the flag, since that action was already
+`panelOnly: true` before this plan) — keeps running exactly as it did
+before Task 1, with no behavior-coverage lost.
+
+- [ ] **Step 1: Add the identical patching helper**
+
+In `tests/test_detail_panel.py`, right after the existing `APP_PATH` line
+(currently line 5), add:
+
+```python
+import tempfile
+
+def _write_patched_app_with_preview_enabled():
+    """Writes a copy of dossiary.html with SHOW_DOCUMENT_PREVIEW flipped to
+    true, so this file's "every panel action still works" coverage
+    (including Regenerate preview) keeps exercising the real pipeline even
+    though it now defaults to off (see dossiary.html's own
+    SHOW_DOCUMENT_PREVIEW comment). Returns the temp file's path; caller
+    is responsible for deleting it."""
+    with open(APP_PATH) as f:
+        html = f.read()
+    target = "const SHOW_DOCUMENT_PREVIEW = false;"
+    replacement = "const SHOW_DOCUMENT_PREVIEW = true;"
+    assert target in html, "SHOW_DOCUMENT_PREVIEW declaration not found -- did its exact text change in dossiary.html?"
+    patched = html.replace(target, replacement)
+    fd, path = tempfile.mkstemp(suffix='.html', dir=_os2.path.dirname(APP_PATH))
+    with _os2.fdopen(fd, 'w') as f:
+        f.write(patched)
+    return path
+```
+
+- [ ] **Step 2: Serve the patched copy**
+
+Find the file's one `page.goto()` call (currently):
+
+```python
+        await page.goto(f"file://{APP_PATH}")
+```
+
+Change to:
+
+```python
+        patched_app_path = _write_patched_app_with_preview_enabled()
+        await page.goto(f"file://{patched_app_path}")
+```
+
+- [ ] **Step 3: Clean up the temp file at the end**
+
+Find the end of `main()` — this file's own final lines (structure may
+differ slightly from Task 2's two files; find the actual
+`await browser.close()` call) — and add cleanup immediately after it:
+
+```python
+        await browser.close()
+        _os2.remove(patched_app_path)
+```
+
+- [ ] **Step 4: Run the full file and confirm everything passes**
+
+Run: `cd tests && python3 test_detail_panel.py`
+Expected: every scenario passes exactly as it did before Task 1 —
+including `Regenerate preview reports the expected error (seed docs have
+no file_path): True` and, later in the same run, `Regenerate preview
+never appears in the context menu: True` — with `JS ERRORS: []`. If any
+other assertion in this file changed behavior as a side effect of running
+against the patched copy, stop and investigate before continuing — this
+file should behave identically to its pre-Task-1 state from here on.
+
+- [ ] **Step 5: Run the full 63-script suite**
+
+Run:
+```bash
+cd tests && for f in test_*.py; do python3 "$f" > /tmp/task4_$f.log 2>&1; echo "EXIT:$? for $f"; done
+```
+Expected: 63/63 exit 0. This confirms the gap Task 2's implementer found
+is fully closed and nothing else regressed.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add tests/test_detail_panel.py
+git commit -m "Fix test_detail_panel.py's Regenerate preview scenario for the SHOW_DOCUMENT_PREVIEW default
+
+This file's own Regenerate-preview assertion (part of its broader "every
+panel action still works" coverage) started failing once Task 1 hid that
+button by default -- a real gap this plan missed, surfaced during Task 2's
+implementation. Same patched-copy technique Task 2 already established,
+applied to the one file it didn't cover."
+```
+
+---
+
 ## Self-Review
 
 **1. Spec coverage** — every requirement from the approved spec
