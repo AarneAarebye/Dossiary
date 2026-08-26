@@ -736,6 +736,14 @@
 <script>
 (function(){
   const APP_VERSION = '1.14.0'; // shown in the footer; bump alongside the matching git tag on release
+  // Hides the detail panel's document-preview thumbnail (and its "no
+  // preview yet"/"preview missing" placeholder) plus the Generate/
+  // Regenerate preview action, without touching thumbnail *generation* on
+  // capture/Inbox-add -- thumbnail_path stays populated the whole time
+  // this is off, so flipping it back to true needs no backfill. Off until
+  // there's a carousel/gallery-style view that would make a single static
+  // preview image worth its panel space again.
+  const SHOW_DOCUMENT_PREVIEW = false;
 
   // --- i18n ---
   // See CLAUDE.md's UI language note for the full rationale. Summary: STRINGS is
@@ -4760,10 +4768,12 @@
     // comment for why "deleted" is the strongest of the three staging flags.
     if(!d.deleted){
       actions.push({ key: 'edit', label: t('detailEdit'), variant: null, onClick: () => openEditForm(id) });
-      actions.push({
-        key: 'regen-thumb', label: d.thumbnail_path ? t('detailRegeneratePreview') : t('detailGeneratePreview'),
-        variant: null, panelOnly: true, onClick: () => regenerateThumbnail(id),
-      });
+      if(SHOW_DOCUMENT_PREVIEW){
+        actions.push({
+          key: 'regen-thumb', label: d.thumbnail_path ? t('detailRegeneratePreview') : t('detailGeneratePreview'),
+          variant: null, panelOnly: true, onClick: () => regenerateThumbnail(id),
+        });
+      }
       actions.push({
         key: 'archive-toggle', label: d.archived ? t('detailUnarchive') : t('detailArchive'),
         variant: null, onClick: () => toggleArchived(id),
@@ -4880,14 +4890,17 @@
       return `<button${cls} id="${actionIdByKey[a.key]}">${a.label}</button>`;
     });
 
-    let thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailNoPreviewYet')}</div>`;
-    if(d.thumbnail_path){
-      try{
-        const fh = await resolveFileHandle(d.thumbnail_path, false);
-        const file = await fh.getFile();
-        thumbHtml = `<img class="modal-thumb" id="modal-thumb-slot" src="${URL.createObjectURL(file)}" alt="${t('sharedDocumentPreviewAlt')}" />`;
-      }catch(e){
-        thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailPreviewMissing')}</div>`;
+    let thumbHtml = '';
+    if(SHOW_DOCUMENT_PREVIEW){
+      thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailNoPreviewYet')}</div>`;
+      if(d.thumbnail_path){
+        try{
+          const fh = await resolveFileHandle(d.thumbnail_path, false);
+          const file = await fh.getFile();
+          thumbHtml = `<img class="modal-thumb" id="modal-thumb-slot" src="${URL.createObjectURL(file)}" alt="${t('sharedDocumentPreviewAlt')}" />`;
+        }catch(e){
+          thumbHtml = `<div class="modal-thumb-empty" id="modal-thumb-slot">${t('detailPreviewMissing')}</div>`;
+        }
       }
     }
 
