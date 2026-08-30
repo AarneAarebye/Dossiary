@@ -4859,7 +4859,7 @@
             <option value="3m">${t('reminderSnooze3Months')}</option>
             <option value="custom">${t('reminderSnoozeCustom')}</option>
           </select>
-          <input type="date" class="reminder-snooze-custom-date" data-document-id="${r.documentId}" data-field-id="${r.fieldId}" style="max-width:0; overflow:hidden;" />
+          <input type="date" class="reminder-snooze-custom-date" data-document-id="${r.documentId}" data-field-id="${r.fieldId}" style="display:none;" />
         </span>
       </div>
     `;
@@ -4882,8 +4882,7 @@
         const choice = select.value;
         if(choice === 'custom'){
           const dateInput = select.nextElementSibling;
-          dateInput.style.maxWidth = 'auto';
-          dateInput.style.overflow = 'visible';
+          dateInput.style.display = 'inline-block';
           dateInput.focus();
           return;
         }

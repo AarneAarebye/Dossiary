@@ -305,6 +305,11 @@ async def main():
         row_count = await page.locator('.reminder-row').count()
         print("modal shows exactly one row per due reminder:", row_count == len(due_now))
 
+        # Custom-date input should be hidden before "Custom date..." is selected
+        doc1_row = page.locator('.reminder-row[data-document-id="1"]')
+        custom_date_initially_hidden = not await doc1_row.locator('.reminder-snooze-custom-date').is_visible()
+        print("custom-date input is hidden before 'Custom date' is selected:", custom_date_initially_hidden)
+
         # Snooze doc 3's reminder for "1 week" -- confirm it persists and the row disappears
         doc3_row = page.locator('.reminder-row[data-document-id="3"]')
         await doc3_row.locator('.reminder-snooze-select').select_option('1w')
@@ -324,7 +329,6 @@ async def main():
         print("doc 3's snooze persisted as exactly today + 7 days:", snooze_row_3['snoozed_until'] if snooze_row_3 else None, "==", expected_1w)
 
         # Custom-date snooze on doc 1
-        doc1_row = page.locator('.reminder-row[data-document-id="1"]')
         await doc1_row.locator('.reminder-snooze-select').select_option('custom')
         await page.wait_for_timeout(100)
         custom_date_visible = await doc1_row.locator('.reminder-snooze-custom-date').is_visible()
