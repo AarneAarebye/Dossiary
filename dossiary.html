@@ -905,7 +905,7 @@
       captureSubcategoryPlaceholder: 'Independent of category, not a child of it',
       captureAddFieldToggleCollapsed: '+ Add a custom field', captureAddFieldToggleExpanded: '− Add a custom field',
       captureAddFieldNamePlaceholder: 'Field name', captureAddFieldTypeText: 'Text', captureAddFieldTypeNumber: 'Number',
-      captureAddFieldTypeDate: 'Date', captureAddFieldTypeCheckbox: 'Checkbox', captureAddFieldTypePerson: 'Person',
+      captureAddFieldTypeDate: 'Date', captureAddFieldTypeCheckbox: 'Checkbox', captureAddFieldTypePerson: 'Person', captureAddFieldTypeReminder: 'Reminder',
       captureAddFieldAmountHint: 'Need a monetary value? Use the built-in Amount field (with its own Currency) instead.',
       captureTagsLabel: 'Tags (comma-separated)', captureTagsPlaceholder: 'e.g. medical, insurance',
       captureNotesLabel: 'Notes', captureSaveButton: 'Save document',
@@ -1069,7 +1069,7 @@
       captureSubcategoryPlaceholder: 'Independiente de la categoría, no es una subordinada de ella',
       captureAddFieldToggleCollapsed: '+ Añadir un campo personalizado', captureAddFieldToggleExpanded: '− Añadir un campo personalizado',
       captureAddFieldNamePlaceholder: 'Nombre del campo', captureAddFieldTypeText: 'Texto', captureAddFieldTypeNumber: 'Número',
-      captureAddFieldTypeDate: 'Fecha', captureAddFieldTypeCheckbox: 'Casilla de verificación', captureAddFieldTypePerson: 'Persona',
+      captureAddFieldTypeDate: 'Fecha', captureAddFieldTypeCheckbox: 'Casilla de verificación', captureAddFieldTypePerson: 'Persona', captureAddFieldTypeReminder: 'Recordatorio',
       captureAddFieldAmountHint: '¿Necesitas un valor monetario? Usa en su lugar el campo integrado Importe (con su propia Moneda).',
       captureTagsLabel: 'Etiquetas (separadas por comas)', captureTagsPlaceholder: 'p. ej., médico, seguro',
       captureNotesLabel: 'Notas', captureSaveButton: 'Guardar documento',
@@ -1233,7 +1233,7 @@
       captureSubcategoryPlaceholder: "Indépendante de la catégorie, ce n'est pas une subdivision de celle-ci",
       captureAddFieldToggleCollapsed: '+ Ajouter un champ personnalisé', captureAddFieldToggleExpanded: '− Ajouter un champ personnalisé',
       captureAddFieldNamePlaceholder: 'Nom du champ', captureAddFieldTypeText: 'Texte', captureAddFieldTypeNumber: 'Nombre',
-      captureAddFieldTypeDate: 'Date', captureAddFieldTypeCheckbox: 'Case à cocher', captureAddFieldTypePerson: 'Personne',
+      captureAddFieldTypeDate: 'Date', captureAddFieldTypeCheckbox: 'Case à cocher', captureAddFieldTypePerson: 'Personne', captureAddFieldTypeReminder: 'Rappel',
       captureAddFieldAmountHint: "Besoin d'une valeur monétaire ? Utilisez plutôt le champ intégré Montant (avec sa propre Devise).",
       captureTagsLabel: 'Étiquettes (séparées par des virgules)', captureTagsPlaceholder: 'p. ex. médical, assurance',
       captureNotesLabel: 'Notes', captureSaveButton: 'Enregistrer le document',
@@ -1397,7 +1397,7 @@
       captureSubcategoryPlaceholder: 'Unabhängig von der Kategorie, keine Unterordnung',
       captureAddFieldToggleCollapsed: '+ Benutzerdefiniertes Feld hinzufügen', captureAddFieldToggleExpanded: '− Benutzerdefiniertes Feld hinzufügen',
       captureAddFieldNamePlaceholder: 'Feldname', captureAddFieldTypeText: 'Text', captureAddFieldTypeNumber: 'Zahl',
-      captureAddFieldTypeDate: 'Datum', captureAddFieldTypeCheckbox: 'Kontrollkästchen', captureAddFieldTypePerson: 'Person',
+      captureAddFieldTypeDate: 'Datum', captureAddFieldTypeCheckbox: 'Kontrollkästchen', captureAddFieldTypePerson: 'Person', captureAddFieldTypeReminder: 'Erinnerung',
       captureAddFieldAmountHint: 'Brauchst du einen Geldbetrag? Nutze stattdessen das eingebaute Feld "Betrag" (mit eigener Währung).',
       captureTagsLabel: 'Tags (durch Komma getrennt)', captureTagsPlaceholder: 'z. B. medizinisch, Versicherung',
       captureNotesLabel: 'Notizen', captureSaveButton: 'Dokument speichern',
@@ -1561,7 +1561,7 @@
       captureSubcategoryPlaceholder: '独立于分类，并非其下级',
       captureAddFieldToggleCollapsed: '+ 添加自定义字段', captureAddFieldToggleExpanded: '− 添加自定义字段',
       captureAddFieldNamePlaceholder: '字段名称', captureAddFieldTypeText: '文本', captureAddFieldTypeNumber: '数字',
-      captureAddFieldTypeDate: '日期', captureAddFieldTypeCheckbox: '复选框', captureAddFieldTypePerson: '人员',
+      captureAddFieldTypeDate: '日期', captureAddFieldTypeCheckbox: '复选框', captureAddFieldTypePerson: '人员', captureAddFieldTypeReminder: '提醒',
       captureAddFieldAmountHint: '需要填写金额？请改用内置的"金额"字段（自带货币）。',
       captureTagsLabel: '标签（以逗号分隔）', captureTagsPlaceholder: '例如：医疗、保险',
       captureNotesLabel: '备注', captureSaveButton: '保存文档',
@@ -1811,6 +1811,7 @@
       captureAddFieldTypeDate: '日期',
       captureAddFieldTypeCheckbox: '複選框',
       captureAddFieldTypePerson: '人員',
+      captureAddFieldTypeReminder: '提醒',
       captureAddFieldAmountHint: '需要填寫金額？請改用內置的"金額"字段（自帶貨幣）。',
       captureTagsLabel: '標籤（以逗號分隔）',
       captureTagsPlaceholder: '例如：醫療、保險',
@@ -3594,12 +3595,12 @@
     }
     let inputType = 'text', extra = '';
     if(field.type === 'number'){ inputType = 'number'; extra = 'step="any"'; }
-    else if(field.type === 'date'){ inputType = 'date'; }
+    else if(field.type === 'date' || field.type === 'reminder'){ inputType = 'date'; }
 
     const isCurrency = field.name === 'Currency';
     const isCurrencyGuess = isCurrency && !existingValue && !!defaultCurrency
       && (prefix === 'f' || (prefix === 'e' && amountFilled));
-    let value = field.type === 'date' ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
+    let value = (field.type === 'date' || field.type === 'reminder') ? (existingValue ? existingValue.slice(0, 10) : '') : (existingValue || '');
     if(isCurrencyGuess) value = defaultCurrency;
 
     let listAttr = '';
@@ -4128,7 +4129,7 @@
     const def = fieldDefs.find(f => f.name === fieldName);
     if(!def) return rawValue;
     if(def.type === 'checkbox') return rawValue === '1' ? t('commonYes') : t('commonNo');
-    if(def.type === 'date') return formatDate(rawValue);
+    if(def.type === 'date' || def.type === 'reminder') return formatDate(rawValue);
     return rawValue;
   }
 
@@ -5231,6 +5232,7 @@
                 <option value="date">${t('captureAddFieldTypeDate')}</option>
                 <option value="checkbox">${t('captureAddFieldTypeCheckbox')}</option>
                 <option value="person">${t('captureAddFieldTypePerson')}</option>
+                <option value="reminder">${t('captureAddFieldTypeReminder')}</option>
               </select>
               <button type="button" id="e-new-field-btn">${t('commonAdd')}</button>
             </div>
@@ -5864,6 +5866,7 @@
                 <option value="date">${t('captureAddFieldTypeDate')}</option>
                 <option value="checkbox">${t('captureAddFieldTypeCheckbox')}</option>
                 <option value="person">${t('captureAddFieldTypePerson')}</option>
+                <option value="reminder">${t('captureAddFieldTypeReminder')}</option>
               </select>
               <button type="button" id="f-new-field-btn">${t('commonAdd')}</button>
             </div>
