@@ -267,20 +267,20 @@
      320-640px range now that it's fixed at one row. See CLAUDE.md for the
      full story, including a now-closed 320px+bulk-bar footer-overlap
      corner that this fix resolved as a side effect. */
-  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 410px); }
-  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 370px); }
-  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 484px); }
-  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 444px); }
+  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 414px); }
+  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 374px); }
+  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 488px); }
+  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 448px); }
   .table-detail-row{ display:flex; align-items:flex-start; }
   .table-detail-row .table-wrap{ flex:1; min-width:0; }
   .detail-panel{
     display:none; flex-direction:column; flex:0 0 340px; width:340px;
     background:var(--panel); border-left:1px solid var(--line);
-    padding:20px 24px; overflow:auto; max-height:calc(100vh - 410px);
+    padding:20px 24px; overflow:auto; max-height:calc(100vh - 414px);
   }
-  #main-layout.nav-style-sidebar .detail-panel{ max-height:calc(100vh - 370px); }
-  #main-layout.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 484px); }
-  #main-layout.nav-style-sidebar.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 444px); }
+  #main-layout.nav-style-sidebar .detail-panel{ max-height:calc(100vh - 374px); }
+  #main-layout.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 488px); }
+  #main-layout.nav-style-sidebar.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 448px); }
   #main-layout.detail-panel-expanded .detail-panel{ display:flex; }
   /* Reports renders its own aggregate content, not the shared document table --
      the panel has no row to reflect there and must never stay visible (or
