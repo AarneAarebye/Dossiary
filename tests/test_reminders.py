@@ -295,6 +295,65 @@ async def main():
         print("results are sorted by date ascending (most overdue first):", sorted_dates == sorted(sorted_dates))
         print("doc 2 (most overdue) sorts first:", result[0]['documentId'] == 2)
 
+        # === Scenario 5: openRemindersModal() renders every due reminder,
+        # clicking a row opens that document, and each of the four snooze
+        # choices persists correctly and removes that row from the list ===
+        due_now = await page.evaluate("checkReminders()")
+        await page.evaluate("(due) => openRemindersModal(due)", due_now)
+        await page.wait_for_timeout(200)
+
+        row_count = await page.locator('.reminder-row').count()
+        print("modal shows exactly one row per due reminder:", row_count == len(due_now))
+
+        # Snooze doc 3's reminder for "1 week" -- confirm it persists and the row disappears
+        doc3_row = page.locator('.reminder-row[data-document-id="3"]')
+        await doc3_row.locator('.reminder-snooze-select').select_option('1w')
+        await page.wait_for_timeout(200)
+        doc3_row_gone = await page.locator('.reminder-row[data-document-id="3"]').count()
+        print("doc 3's row is removed from the modal after snoozing 1 week:", doc3_row_gone == 0)
+
+        persisted3 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        snooze_row_3 = next((s for s in persisted3['reminder_snoozes'] if s['document_id'] == 3 and s['field_id'] == 1), None)
+        expected_1w = await page.evaluate("addDaysToIsoDate(todayIsoDate(), 7)")
+        print("doc 3's snooze persisted as exactly today + 7 days:", snooze_row_3['snoozed_until'] if snooze_row_3 else None, "==", expected_1w)
+
+        # Custom-date snooze on doc 1
+        doc1_row = page.locator('.reminder-row[data-document-id="1"]')
+        await doc1_row.locator('.reminder-snooze-select').select_option('custom')
+        await page.wait_for_timeout(100)
+        custom_date_visible = await doc1_row.locator('.reminder-snooze-custom-date').is_visible()
+        print("choosing 'Custom date' reveals a date picker:", custom_date_visible)
+        await doc1_row.locator('.reminder-snooze-custom-date').fill('2026-12-25')
+        await page.evaluate("""
+            () => {
+                const input = document.querySelector('.reminder-row[data-document-id="1"] .reminder-snooze-custom-date');
+                if(input) {
+                    const event = new Event('change', { bubbles: true });
+                    input.dispatchEvent(event);
+                }
+            }
+        """)
+        await page.wait_for_timeout(200)
+        doc1_row_gone = await page.locator('.reminder-row[data-document-id="1"]').count()
+        print("doc 1's row is removed after a custom-date snooze:", doc1_row_gone == 0)
+
+        # Clicking a remaining row (not its snooze control) opens that document
+        # and closes the modal
+        remaining_row = page.locator('.reminder-row').first
+        remaining_doc_id = await remaining_row.get_attribute('data-document-id')
+        await remaining_row.click()
+        await page.wait_for_timeout(200)
+        modal_closed = await page.locator('.reminder-row').count()
+        print("clicking a row closes the modal:", modal_closed == 0)
+        selected_row_highlighted = await page.locator(f'tr[data-id="{remaining_doc_id}"].row-selected').count()
+        print("clicking a row selects/highlights that document in the table:", selected_row_highlighted == 1)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

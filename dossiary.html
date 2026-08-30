@@ -178,6 +178,19 @@
   .fs-list-item:hover{ background:rgba(79,224,166,0.06); }
   .fs-list-item.active{ background:rgba(79,224,166,0.12); color:var(--phosphor); }
   .fs-list-empty{ padding:14px 10px; font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono); }
+  .reminder-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 12px; border-bottom:1px solid rgba(217,210,189,0.06); cursor:pointer;
+  }
+  .reminder-row:last-child{ border-bottom:none; }
+  .reminder-row:hover{ background:rgba(79,224,166,0.06); }
+  .reminder-row-title{ font-size:13px; color:var(--text); }
+  .reminder-row-sub{ font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono); margin-top:2px; }
+  .reminder-snooze{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .reminder-snooze select, .reminder-snooze-custom-date{
+    background:var(--ink-2); border:1px solid var(--line); color:var(--text);
+    font-family:var(--font-mono); font-size:11.5px; padding:5px 7px; border-radius:var(--radius);
+  }
   .fs-item-actions{ display:flex; gap:2px; flex-shrink:0; }
   .fs-item-actions button{ padding:2px 6px; font-size:10px; border:none; background:transparent; color:var(--text-dim); }
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
@@ -981,6 +994,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
       dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
       reminderDueToday: 'Due today', reminderOverdueSingular: '{days} day overdue', reminderOverduePlural: '{days} days overdue', reminderDueInSingular: 'Due in {days} day', reminderDueInPlural: 'Due in {days} days',
+      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…',
     },
     es: {
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
@@ -1147,6 +1161,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} archivo no se pudo añadir y sigue allí.',
       dragdropPartialFailureStillTherePlural: ' {count} archivos no se pudieron añadir y siguen allí.',
       reminderDueToday: 'Vence hoy', reminderOverdueSingular: 'Vencido hace {days} día', reminderOverduePlural: 'Vencido hace {days} días', reminderDueInSingular: 'Vence en {days} día', reminderDueInPlural: 'Vence en {days} días',
+      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…',
     },
     fr: {
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
@@ -1313,6 +1328,7 @@
       dragdropPartialFailureStillThereSingular: " {count} fichier n'a pas pu être ajouté et est toujours là.",
       dragdropPartialFailureStillTherePlural: " {count} fichiers n'ont pas pu être ajoutés et sont toujours là.",
       reminderDueToday: 'Échéance aujourd\'hui', reminderOverdueSingular: 'En retard de {days} jour', reminderOverduePlural: 'En retard de {days} jours', reminderDueInSingular: 'Échéance dans {days} jour', reminderDueInPlural: 'Échéance dans {days} jours',
+      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -1479,6 +1495,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
       dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
       reminderDueToday: 'Heute fällig', reminderOverdueSingular: '{days} Tag überfällig', reminderOverduePlural: '{days} Tage überfällig', reminderDueInSingular: 'Fällig in {days} Tag', reminderDueInPlural: 'Fällig in {days} Tagen',
+      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…',
     },
     'zh-Hans': {
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
@@ -1645,6 +1662,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 个文件无法添加，仍留在原处。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 个文件无法添加，仍留在原处。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天后到期', reminderDueInPlural: '{days} 天后到期',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…',
     },
     'zh-Hant': {
       commonCancel: '取消',
@@ -1932,6 +1950,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 個文件無法添加，仍留在原處。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 個文件無法添加，仍留在原處。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天後到期', reminderDueInPlural: '{days} 天後到期',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…',
     },
   };
 
@@ -3359,6 +3378,11 @@
   window.__DEBUG_addDaysToIsoDate = addDaysToIsoDate;
   window.__DEBUG_checkReminders = checkReminders;
   window.__DEBUG_loadDocumentsFromDb = loadDocumentsFromDb;
+  // Expose checkReminders globally for test Scenario 5
+  window.checkReminders = checkReminders;
+  window.openRemindersModal = openRemindersModal;
+  window.todayIsoDate = todayIsoDate;
+  window.addDaysToIsoDate = addDaysToIsoDate;
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
@@ -4799,6 +4823,100 @@
     el('modal-close-btn').addEventListener('click', closeModal);
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
+  }
+
+  function openRemindersModal(dueReminders){
+    const todayIso = todayIsoDate();
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('reminderModalTitle')}</h2>
+          <div class="fs-list" id="reminders-list">
+            ${dueReminders.map(r => renderReminderRowHtml(r, todayIso)).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    wireReminderRows();
+  }
+
+  function renderReminderRowHtml(r, todayIso){
+    return `
+      <div class="reminder-row" data-document-id="${r.documentId}" data-field-id="${r.fieldId}">
+        <div>
+          <div class="reminder-row-title">${escapeHtml(r.docTitle)}</div>
+          <div class="reminder-row-sub">${escapeHtml(r.fieldName)} · ${formatDate(r.date)} · ${reminderDueLabel(r.date, todayIso)}</div>
+        </div>
+        <span class="reminder-snooze" onclick="event.stopPropagation()">
+          <select class="reminder-snooze-select" data-document-id="${r.documentId}" data-field-id="${r.fieldId}">
+            <option value="">${t('reminderSnoozeLabel')}</option>
+            <option value="1w">${t('reminderSnooze1Week')}</option>
+            <option value="1m">${t('reminderSnooze1Month')}</option>
+            <option value="3m">${t('reminderSnooze3Months')}</option>
+            <option value="custom">${t('reminderSnoozeCustom')}</option>
+          </select>
+          <input type="date" class="reminder-snooze-custom-date" data-document-id="${r.documentId}" data-field-id="${r.fieldId}" style="max-width:0; overflow:hidden;" />
+        </span>
+      </div>
+    `;
+  }
+
+  function wireReminderRows(){
+    modalRoot.querySelectorAll('.reminder-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const documentId = Number(row.dataset.documentId);
+        closeModal();
+        selectedDocId = documentId;
+        render();
+        openDetail(documentId);
+      });
+    });
+    modalRoot.querySelectorAll('.reminder-snooze-select').forEach(select => {
+      select.addEventListener('change', async (e) => {
+        const documentId = Number(select.dataset.documentId);
+        const fieldId = Number(select.dataset.fieldId);
+        const choice = select.value;
+        if(choice === 'custom'){
+          const dateInput = select.nextElementSibling;
+          dateInput.style.maxWidth = 'auto';
+          dateInput.style.overflow = 'visible';
+          dateInput.focus();
+          return;
+        }
+        if(!choice) return;
+        const days = choice === '1w' ? 7 : choice === '1m' ? 30 : 90;
+        const snoozedUntil = addDaysToIsoDate(todayIsoDate(), days);
+        await snoozeReminder(documentId, fieldId, snoozedUntil);
+        removeReminderRow(select.closest('.reminder-row'));
+      });
+    });
+    modalRoot.querySelectorAll('.reminder-snooze-custom-date').forEach(dateInput => {
+      dateInput.addEventListener('change', async () => {
+        if(!dateInput.value) return;
+        const documentId = Number(dateInput.dataset.documentId);
+        const fieldId = Number(dateInput.dataset.fieldId);
+        await snoozeReminder(documentId, fieldId, dateInput.value);
+        removeReminderRow(dateInput.closest('.reminder-row'));
+      });
+    });
+  }
+
+  function removeReminderRow(rowEl){
+    if(!rowEl) return;
+    rowEl.remove();
+    // Every reminder snoozed away -- nothing left to show, close automatically
+    // rather than leaving an empty modal open.
+    if(!modalRoot.querySelectorAll('.reminder-row').length) closeModal();
+  }
+
+  async function snoozeReminder(documentId, fieldId, snoozedUntil){
+    reminderSnoozes[`${documentId}:${fieldId}`] = snoozedUntil;
+    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until) VALUES (?, ?, ?)', [documentId, fieldId, snoozedUntil]);
+    await persistDb();
   }
 
   // Copies a full library-relative path (as displayed) to the clipboard, with brief
