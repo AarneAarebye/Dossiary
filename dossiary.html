@@ -980,6 +980,7 @@
       dragdropAddedToReviewQueuePlural: 'Added {count} documents to the review queue from {folder}.',
       dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
       dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
+      reminderDueToday: 'Due today', reminderOverdueSingular: '{days} day overdue', reminderOverduePlural: '{days} days overdue', reminderDueInSingular: 'Due in {days} day', reminderDueInPlural: 'Due in {days} days',
     },
     es: {
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
@@ -1145,6 +1146,7 @@
       dragdropAddedToReviewQueuePlural: 'Se añadieron {count} documentos a la cola de revisión desde {folder}.',
       dragdropPartialFailureStillThereSingular: ' {count} archivo no se pudo añadir y sigue allí.',
       dragdropPartialFailureStillTherePlural: ' {count} archivos no se pudieron añadir y siguen allí.',
+      reminderDueToday: 'Vence hoy', reminderOverdueSingular: 'Vencido hace {days} día', reminderOverduePlural: 'Vencido hace {days} días', reminderDueInSingular: 'Vence en {days} día', reminderDueInPlural: 'Vence en {days} días',
     },
     fr: {
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
@@ -1310,6 +1312,7 @@
       dragdropAddedToReviewQueuePlural: '{count} documents ajoutés à la file de révision depuis {folder}.',
       dragdropPartialFailureStillThereSingular: " {count} fichier n'a pas pu être ajouté et est toujours là.",
       dragdropPartialFailureStillTherePlural: " {count} fichiers n'ont pas pu être ajoutés et sont toujours là.",
+      reminderDueToday: 'Échéance aujourd\'hui', reminderOverdueSingular: 'En retard de {days} jour', reminderOverduePlural: 'En retard de {days} jours', reminderDueInSingular: 'Échéance dans {days} jour', reminderDueInPlural: 'Échéance dans {days} jours',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -1475,6 +1478,7 @@
       dragdropAddedToReviewQueuePlural: '{count} Dokumente aus {folder} zur Prüfung hinzugefügt.',
       dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
       dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
+      reminderDueToday: 'Heute fällig', reminderOverdueSingular: '{days} Tag überfällig', reminderOverduePlural: '{days} Tage überfällig', reminderDueInSingular: 'Fällig in {days} Tag', reminderDueInPlural: 'Fällig in {days} Tagen',
     },
     'zh-Hans': {
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
@@ -1640,6 +1644,7 @@
       dragdropAddedToReviewQueuePlural: '已从 {folder} 将 {count} 个文档添加到审核队列。',
       dragdropPartialFailureStillThereSingular: ' 有 {count} 个文件无法添加，仍留在原处。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 个文件无法添加，仍留在原处。',
+      reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天后到期', reminderDueInPlural: '{days} 天后到期',
     },
     'zh-Hant': {
       commonCancel: '取消',
@@ -1926,6 +1931,7 @@
       dragdropAddedToReviewQueuePlural: '已從 {folder} 將 {count} 個文檔添加到審覈隊列。',
       dragdropPartialFailureStillThereSingular: ' 有 {count} 個文件無法添加，仍留在原處。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 個文件無法添加，仍留在原處。',
+      reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天後到期', reminderDueInPlural: '{days} 天後到期',
     },
   };
 
@@ -2311,6 +2317,53 @@
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function nowIso(){ return new Date().toISOString(); }
   function todayIsoDate(){ return nowIso().slice(0, 10); } // YYYY-MM-DD, matches <input type="date">
+
+  function addDaysToIsoDate(iso, days){
+    const d = new Date(iso + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  // "N days overdue" / "due in N days" / "due today", used by openRemindersModal().
+  function reminderDueLabel(dateIso, todayIso){
+    const dateMs = Date.parse(dateIso + 'T00:00:00Z');
+    const todayMs = Date.parse(todayIso + 'T00:00:00Z');
+    const diffDays = Math.round((dateMs - todayMs) / 86400000);
+    if(diffDays === 0) return t('reminderDueToday');
+    if(diffDays < 0){
+      const overdueDays = -diffDays;
+      return overdueDays === 1 ? t('reminderOverdueSingular', {days: overdueDays}) : t('reminderOverduePlural', {days: overdueDays});
+    }
+    return diffDays === 1 ? t('reminderDueInSingular', {days: diffDays}) : t('reminderDueInPlural', {days: diffDays});
+  }
+
+  // Pure, synchronous scan over already-loaded in-memory data -- no filesystem
+  // or network I/O, matching this app's "no silent/background work" principle
+  // (see CLAUDE.md's Inbox note for the same reasoning applied to file staging).
+  // Only two call sites ever invoke this: once automatically right after a
+  // library opens (afterDbReady()), and the "Check reminders" toolbar button.
+  function checkReminders(){
+    const todayIso = todayIsoDate();
+    const cutoff = addDaysToIsoDate(todayIso, reminderLookaheadDays);
+    const reminderFields = fieldDefs.filter(f => f.type === 'reminder');
+    if(!reminderFields.length) return [];
+    const results = [];
+    for(const d of allDocs){
+      if(d.deleted || d.archived) continue;
+      const customFields = d.customFields || {};
+      for(const field of reminderFields){
+        const raw = customFields[field.name];
+        if(!raw) continue;
+        const dateOnly = raw.slice(0, 10);
+        if(dateOnly > cutoff) continue;
+        const snoozedUntil = reminderSnoozes[`${d.id}:${field.id}`];
+        if(snoozedUntil && snoozedUntil > todayIso) continue;
+        results.push({ documentId: d.id, fieldId: field.id, fieldName: field.name, date: dateOnly, docTitle: displayName(d) });
+      }
+    }
+    results.sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
+    return results;
+  }
 
   // Wires a small "×" button next to a text input (with a datalist) to clear it and
   // refocus, so the full datalist suggestion list reappears instead of staying
@@ -3301,6 +3354,11 @@
   // the later row happened to win"). This returns every raw row so a caller can count
   // rows for a specific key directly, independent of the map projection above.
   window.__DEBUG_reminderSnoozesRawRows = () => queryAll('SELECT document_id, field_id, snoozed_until FROM reminder_snoozes').rows;
+  // Test-only hooks for checkReminders() and its helpers (tests/test_reminders.py Scenario 4)
+  window.__DEBUG_todayIsoDate = todayIsoDate;
+  window.__DEBUG_addDaysToIsoDate = addDaysToIsoDate;
+  window.__DEBUG_checkReminders = checkReminders;
+  window.__DEBUG_loadDocumentsFromDb = loadDocumentsFromDb;
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');

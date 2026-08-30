@@ -178,6 +178,123 @@ async def main():
         if matching_rows:
             print("and that one row holds the NEW value, not the old one:", matching_rows[0][2] == '2026-07-15')
 
+        # === Scenario 4: checkReminders() -- due/overdue inclusion, lookahead
+        # window boundary, archived/deleted exclusion, active-snooze exclusion,
+        # expired-snooze inclusion, multi-field-per-document correctness, sort
+        # order. All dates are computed relative to the real "today" the test
+        # runs on, so this scenario is deliberately date-arithmetic rather than
+        # hardcoded, to stay correct regardless of when the suite runs. ===
+        multi_field_seed = {
+            "documents": [
+                {  # doc 1: due today
+                    "id": 1, "title": "Doc Due Today", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 2: overdue by 5 days
+                    "id": 2, "title": "Doc Overdue", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 3: due in 10 days (within a 14-day lookahead)
+                    "id": 3, "title": "Doc Due Soon", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 4: due in 60 days (OUTSIDE a 14-day lookahead -- must be excluded)
+                    "id": 4, "title": "Doc Too Far Out", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 5: due today, but ARCHIVED -- must be excluded
+                    "id": 5, "title": "Doc Archived", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 1, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 6: due today, but DELETED -- must be excluded
+                    "id": 6, "title": "Doc Deleted", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 1,
+                },
+                {  # doc 7: due today, but ACTIVELY snoozed -- must be excluded
+                    "id": 7, "title": "Doc Snoozed", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 8: due today, snooze already EXPIRED -- must be included
+                    "id": 8, "title": "Doc Snooze Expired", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 9: TWO reminder fields, one due (Insurance) one not (Warranty)
+                    "id": 9, "title": "Doc Two Reminders", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "settings": [{"key": "reminder_lookahead_days", "value": "14"}],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+                {"id": 2, "name": "Warranty End", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_field_values": [],  # filled in below via JS, using real relative-to-today dates
+            "reminder_snoozes": [],       # filled in below via JS, same reason
+        }
+
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(multi_field_seed)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        # Compute every date relative to the app's own todayIsoDate() and write
+        # document_field_values / reminder_snoozes directly via __DEBUG_dbRun(), then
+        # reload from the in-memory db so allDocs/reminderSnoozes reflect them --
+        # this keeps the scenario correct regardless of what "today" actually is
+        # when the suite runs.
+        result = await page.evaluate("""
+            () => {
+                const add = (days) => window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), days);
+                const values = [
+                    [1, 1, add(0)],   // doc1 field1 (Renewal Date): due today
+                    [2, 1, add(-5)],  // doc2: overdue by 5 days
+                    [3, 1, add(10)],  // doc3: due in 10 days (within 14-day lookahead)
+                    [4, 1, add(60)],  // doc4: due in 60 days (outside lookahead)
+                    [5, 1, add(0)],   // doc5: due today, but archived
+                    [6, 1, add(0)],   // doc6: due today, but deleted
+                    [7, 1, add(0)],   // doc7: due today, but actively snoozed
+                    [8, 1, add(0)],   // doc8: due today, snooze already expired
+                    [9, 1, add(0)],   // doc9 Renewal Date: due today
+                    [9, 2, add(60)],  // doc9 Warranty End: not due
+                ];
+                for(const [documentId, fieldId, value] of values){
+                    window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [documentId, fieldId, value]);
+                }
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until) VALUES (?, ?, ?)', [7, 1, add(5)]);  // active: 5 days in the future
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until) VALUES (?, ?, ?)', [8, 1, add(-1)]); // expired: 1 day in the past
+                window.__DEBUG_loadDocumentsFromDb();
+                const due = window.__DEBUG_checkReminders();
+                return due.map(r => ({ documentId: r.documentId, fieldId: r.fieldId, fieldName: r.fieldName, date: r.date, docTitle: r.docTitle }));
+            }
+        """)
+        due_doc_ids = sorted(r['documentId'] for r in result)
+        print("checkReminders() includes exactly docs 1, 2, 3, 8, 9 (not 4/5/6/7):", due_doc_ids == [1, 2, 3, 8, 9])
+
+        doc9_entries = [r for r in result if r['documentId'] == 9]
+        print("doc 9 contributes exactly one due entry (Renewal Date only, not Warranty End):", len(doc9_entries) == 1 and doc9_entries[0]['fieldName'] == 'Renewal Date')
+
+        sorted_dates = [r['date'] for r in result]
+        print("results are sorted by date ascending (most overdue first):", sorted_dates == sorted(sorted_dates))
+        print("doc 2 (most overdue) sorts first:", result[0]['documentId'] == 2)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
