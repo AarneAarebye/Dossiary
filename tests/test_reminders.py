@@ -129,6 +129,42 @@ async def main():
         await page.click('#fs-done-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 3: reminder_snoozes rows load correctly into memory,
+        # and a real INSERT OR REPLACE against the compound (document_id,
+        # field_id) key replaces an existing row rather than duplicating it ===
+        seed_with_snooze = {
+            'document_type_fields': TYPE_FIELD_ROWS,
+            'reminder_snoozes': [
+                {'document_id': 1, 'field_id': 1, 'snoozed_until': '2026-06-01'},
+            ],
+        }
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_snooze)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        # window.__DEBUG_reminderSnoozes is a small test-only hook loadReminderSnoozes()
+        # sets at the end of its own body -- the simplest way to assert on this
+        # module-private variable from outside the page's own closure.
+        loaded_snooze = await page.evaluate("window.__DEBUG_reminderSnoozes ? window.__DEBUG_reminderSnoozes['1:1'] : undefined")
+        print("seeded snooze row loads into memory:", loaded_snooze)
+
+        # Directly exercise the real INSERT OR REPLACE path the app itself uses,
+        # confirming the stub correctly replaces (not duplicates) on the same
+        # compound key -- this is the one thing this table needed new stub support
+        # for, since every prior INSERT OR REPLACE dedupe in this stub has been a
+        # single-column key (settings.key, field_descriptions.field_name).
+        # `db` and `loadReminderSnoozes` are both private to dossiary.html's own
+        # top-level closure, not reachable from page.evaluate() directly -- routed
+        # through the __DEBUG_dbRun/__DEBUG_loadReminderSnoozes test-only hooks instead.
+        replaced_value = await page.evaluate("""
+            () => {
+                window.__DEBUG_dbRun('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until) VALUES (?, ?, ?)', [1, 1, '2026-07-15']);
+                window.__DEBUG_loadReminderSnoozes(); // re-read from the table, same as a real reopen would
+                return window.__DEBUG_reminderSnoozes['1:1'];
+            }
+        """)
+        print("after a second INSERT OR REPLACE on the same (document_id, field_id), the row's snoozed_until is the NEW value:", replaced_value == '2026-07-15')
+
         print("JS ERRORS:", errors)
         await browser.close()
 

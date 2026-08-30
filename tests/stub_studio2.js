@@ -171,12 +171,12 @@ class FakeDatabase {
     if (bytes && bytes.length) {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(bytes));
-        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [], field_descriptions: parsed.field_descriptions || [] };
+        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [], field_descriptions: parsed.field_descriptions || [], reminder_snoozes: parsed.reminder_snoozes || [] };
       } catch (e) {
-        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [] };
+        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [] };
       }
     } else {
-      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [] };
+      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [] };
     }
   }
   run(sql, params) {
@@ -284,6 +284,9 @@ class FakeDatabase {
     }
     if (table === 'field_descriptions' && isReplace) {
       this.tables.field_descriptions = this.tables.field_descriptions.filter(r => r.field_name !== row.field_name);
+    }
+    if (table === 'reminder_snoozes' && isReplace) {
+      this.tables.reminder_snoozes = this.tables.reminder_snoozes.filter(r => !(r.document_id === row.document_id && r.field_id === row.field_id));
     }
     if (table === 'tags' && isIgnore) { if (this.tables.tags.some(t => t.name === row.name)) return; }
     if (table === 'document_tags' && isIgnore) {
@@ -412,7 +415,7 @@ window.__makeSeededRoot = function(seed) {
     document_type_fields: seed.document_type_fields || [], fields: seed.fields || [],
     document_field_values: seed.document_field_values || [],
     collections: seed.collections || [], collection_documents: seed.collection_documents || [],
-    field_descriptions: seed.field_descriptions || [],
+    field_descriptions: seed.field_descriptions || [], reminder_snoozes: seed.reminder_snoozes || [],
   };
   const dbBytes = new TextEncoder().encode(JSON.stringify(full));
   root._children.set('library.sqlite', new FakeFileHandle('library.sqlite', dbBytes));

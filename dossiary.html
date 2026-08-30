@@ -2101,6 +2101,10 @@
     CREATE TABLE IF NOT EXISTS field_descriptions (
       field_name TEXT PRIMARY KEY, description TEXT
     );
+    CREATE TABLE IF NOT EXISTS reminder_snoozes (
+      document_id INTEGER, field_id INTEGER, snoozed_until TEXT,
+      PRIMARY KEY (document_id, field_id)
+    );
   `;
 
   // Columns added after a library may already have been created. CREATE TABLE IF NOT
@@ -2221,6 +2225,8 @@
   let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
   let reminderLookaheadDays = 30; // how many days ahead a reminder-type field value counts as "coming up soon"; see checkReminders()
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
+
+  let reminderSnoozes = {};    // { "<documentId>:<fieldId>": "<snoozed_until ISO date>", ... }
 
   let collections = [];        // [{id, name, kind, criteria}, ...] from the `collections` table
   let collectionDocIds = {};   // { <collectionId>: Set<documentId> } -- manual collections only;
@@ -2912,6 +2918,7 @@
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30;
     collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
+    reminderSnoozes = {};
     selectedDocId = null;
     // Collapse the panel and clear its content -- otherwise switching libraries (or
     // cancelling/failing a folder picker) leaves a previous library's document
@@ -2982,6 +2989,7 @@
     loadFieldDefs();
     loadFieldDescriptions();
     loadCollections();
+    loadReminderSnoozes();
     loadFieldValues();
 
     // Person-type fields (People, Author, Collaborator, ...) are all backed by the
@@ -3266,6 +3274,23 @@
     db.run('INSERT OR REPLACE INTO field_descriptions (field_name, description) VALUES (?, ?)', [fieldName, description]);
     fieldDescriptions[fieldName] = description;
   }
+
+  function loadReminderSnoozes(){
+    reminderSnoozes = {};
+    const { rows } = queryAll('SELECT document_id, field_id, snoozed_until FROM reminder_snoozes');
+    for(const [documentId, fieldId, snoozedUntil] of rows){
+      reminderSnoozes[`${documentId}:${fieldId}`] = snoozedUntil;
+    }
+    window.__DEBUG_reminderSnoozes = reminderSnoozes; // test-only hook (tests/test_reminders.py) -- the simplest way to assert on this module-private variable from outside the page's own closure
+  }
+  // Two more small test-only hooks (tests/test_reminders.py Scenario 3), in the same
+  // spirit as __DEBUG_reminderSnoozes just above: `db` and `loadReminderSnoozes` are
+  // both private to this file's top-level closure, not reachable from page.evaluate()
+  // on their own. Task 5's snoozeReminder() will be the real, in-app writer of
+  // reminder_snoozes; until it lands, this is the only way to exercise the stub's
+  // compound-key INSERT OR REPLACE dedupe against the real INSERT the app itself uses.
+  window.__DEBUG_loadReminderSnoozes = loadReminderSnoozes;
+  window.__DEBUG_dbRun = (sql, params) => db.run(sql, params);
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
