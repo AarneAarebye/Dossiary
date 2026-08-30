@@ -2388,6 +2388,126 @@ this repo's git tags.
   after the existing one, not a replacement; a configured description
   shows both, stacked, and a field with no description set continues
   showing just the original hint exactly as before.
+- **Reminder-type custom fields** (`fields.type === 'reminder'`, a fifth
+  value alongside `text`/`number`/`date`/`checkbox`/`person`) let a
+  person turn any custom field — Renewal Date, Warranty End, Policy
+  Expiry, whatever name they give it — into a source the app proactively
+  surfaces as it comes due, without a fixed, single "the one reminder
+  field" concept anywhere. **It's deliberately not a new input shape at
+  all**: `renderGenericFieldHtml()`'s `inputType`/value-slicing logic
+  checks `field.type === 'date' || field.type === 'reminder'` (picking
+  the native `<input type="date">` and slicing `existingValue` to its
+  first 10 characters exactly as `date` already does), and
+  `formatCustomFieldValue()`'s display formatter has the identical
+  `field.type === 'date' || field.type === 'reminder'` check routing both
+  through `formatDate()` — a reminder field captures, stores
+  (`document_field_values.value`, a plain ISO date string, same column
+  every other field type shares), and displays exactly like a Date field
+  in every respect except the one flag `checkReminders()` reads. Creating
+  one works through the same inline "+ Add a custom field" flow as any
+  other type (`addInlineCustomField()`'s type dropdown gains a `Reminder`
+  option next to Text/Number/Date/Checkbox/Person) — it gets no
+  autocomplete default the way a new Text field does (`autocomplete =
+  type === 'text' ? 1 : 0`, unchanged), and in Field Settings'
+  per-field capability checkboxes it's offered the **Column** checkbox
+  like almost any field (`capabilitiesHtml()`'s guard excludes only
+  `type === 'person'` and the field literally named `'Amount'` — a
+  reminder field isn't either) but never the **Autocomplete** checkbox
+  (that one's gated on `field.type === 'text'` specifically, same as
+  Date/Number/Checkbox always were) — a dropdown of distinct dates isn't
+  a useful autocomplete any more for a reminder than it ever was for a
+  plain date.
+  **Any field with `type: 'reminder'`, on any document, is automatically
+  a reminder source — there is no hardcoded field name anywhere in this
+  feature.** `checkReminders()` starts from `fieldDefs.filter(f => f.type
+  === 'reminder')`, so a library can have zero, one, or several such
+  fields (a document can even carry more than one at once — an
+  insurance-policy document with both a Renewal Date and a separate
+  Inspection Due field), and every one of them participates identically.
+  **`reminder_lookahead_days`** (a `settings` row, `reminderLookaheadDays`
+  in JS, defaulting to **30** — `loadReminderLookaheadDays()` falls back
+  to 30 for a missing row or anything that doesn't parse as a
+  non-negative integer, `saveReminderLookaheadDays()` applies the same
+  validation on write) controls how far into the future a reminder counts
+  as "coming up soon," and lives in the Field Settings modal right
+  alongside `default_document_type`/`default_currency` — same
+  `settings`-table `key`/`value` pattern, same per-library scope, same
+  reason for living there (no general settings-modal infrastructure
+  exists in this app; a control sits spatially attached to what it
+  configures). **`reminder_snoozes` (`document_id INTEGER, field_id
+  INTEGER, snoozed_until TEXT, PRIMARY KEY (document_id, field_id)`) is
+  keyed by a compound `(document_id, field_id)` pair, not just
+  `document_id`** — necessarily, since a single document can carry more
+  than one reminder-type field (see the two-reminder-field case just
+  above), and each needs its own independent snooze state; a
+  `document_id`-only key would silently conflate them. Loaded once per
+  library open into an in-memory `reminderSnoozes` map keyed by the
+  string `` `${documentId}:${fieldId}` `` (`loadReminderSnoozes()`,
+  called from `loadDocumentsFromDb()` alongside `loadReminderLookaheadDays()`).
+  **What counts as "due"** (`checkReminders()`, a pure, synchronous,
+  in-memory scan over `allDocs` — no filesystem or network I/O, matching
+  this app's "no silent/background work" principle) is: the document
+  isn't `deleted` or `archived`; a reminder-type field on it has a
+  non-blank value; that value's date-only portion is on or before
+  `addDaysToIsoDate(todayIsoDate(), reminderLookaheadDays)` (so an
+  already-overdue date is included with no lower bound, not just ones
+  landing inside the window ahead); and, if `reminderSnoozes` has an
+  entry for that exact `documentId:fieldId` pair, its `snoozed_until`
+  must **not** be strictly after today (an active, still-in-the-future
+  snooze excludes the reminder; an expired one — `snoozed_until` today or
+  earlier — no longer does, so a snoozed reminder resurfaces on its own
+  once the snooze lapses, without anyone having to un-snooze it
+  manually). Results are sorted by date ascending, most overdue first.
+  **Two explicit trigger points only, no live badge, no background
+  polling** — `afterDbReady()` calls `checkReminders()` synchronously
+  right after a library finishes loading (safe to do inline, unlike
+  `checkInbox()`'s own fire-and-forget call just above it in the same
+  function, precisely because this is an in-memory scan with no I/O to
+  await) and opens the reminders modal automatically only if anything
+  came back due, staying silent otherwise; and the always-visible
+  toolbar's **"🔔 Check reminders" button** (`#check-reminders-btn` →
+  `checkRemindersAndShowStatus()`) re-runs the same scan on demand,
+  reporting `t('reminderNoneDue')` ("No reminders due.") on the status
+  line when nothing's due or opening the modal when something is. This
+  mirrors `checkInbox()`'s own precedent exactly (see the Inbox note
+  above) and for the same reason: the automatic on-open check alone can't
+  notice a reminder that becomes due while a library is already sitting
+  open in a tab (the same gap `#inbox-check-btn` exists to close for
+  staged files), so a manual re-check button is the fix rather than
+  polling in the background.
+  **`openRemindersModal(dueReminders)`** renders one `.reminder-row` per
+  due reminder (via `renderReminderRowHtml()`, called from
+  `wireReminderRows()`), each showing the document's title, the
+  reminder's field name, its formatted date, and a due/overdue label from
+  **`reminderDueLabel(dateIso, todayIso)`** ("Due today" / "N days
+  overdue" / "Due in N days", singular/plural handled the same
+  ternary-and-key-pair way every other count-dependent string in this app
+  is — see the i18n note's own explanation of that pattern). Every row
+  offers all four snooze choices (1 week / 1 month / 3 months / a custom
+  date via a `<select>` plus a normally-hidden `<input type="date">` that
+  only appears once "Custom date…" is chosen) — **`addDaysToIsoDate(iso,
+  days)`** is the one shared date-math helper behind both the 1w/1m/3m
+  offsets here and the lookahead cutoff above, so there's exactly one
+  place that knows how to add N days to an ISO date string.
+  **`snoozeReminder(documentId, fieldId, snoozedUntil)` writes only to
+  `reminder_snoozes` (`INSERT OR REPLACE`, keyed by the same compound
+  pair) — it never touches the reminder field's own stored date.**
+  Snoozing is purely "stop bothering me about this until then," not a
+  rescheduling of the underlying event; the document's actual Renewal
+  Date/Warranty End/etc. value is completely unaffected, and un-snoozing
+  early isn't even a feature — the snooze simply expires on its own once
+  `snoozed_until` is no longer in the future. Snoozing a row removes it
+  from the open modal immediately (`removeReminderRow()`), and once every
+  row has been snoozed away the modal closes itself automatically rather
+  than sitting open and empty. Clicking a row anywhere outside its
+  snooze controls closes the modal, selects that document
+  (`selectedDocId = documentId`), re-renders the table so the row
+  highlights, and opens its detail panel — the same four operations
+  `saveEditedDocument()`'s own success path performs (see the persistent
+  detail panel note's "Two call sites that used to rely on an implicit
+  trick" paragraph above), just in a different order here (`closeModal()`
+  runs first, before `selectedDocId` is even set, since closing the modal
+  doesn't depend on which document ends up selected).
 - **Comma-aware autocomplete for multi-valued fields** (`wireCommaAutocomplete()`)
   fixes a real limitation of native `<input list="...">`: the browser only
   ever matches suggestions against the *whole* input value, never a

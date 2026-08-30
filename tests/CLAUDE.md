@@ -419,7 +419,59 @@ the moment of the click — stays on-screen, verified via
 `getBoundingClientRect()` on every `.row-context-menu-item`, confirmed
 non-vacuous by temporarily reverting the clamp and re-running the same
 scenario (it then correctly reports `False`, with the last item's
-`bottom` past 800px). This
+`bottom` past 800px); and reminder-type custom fields (`test_reminders.py`,
+six scenarios — creating a `reminder`-type field inline via the same "+
+Add a custom field" flow and confirming it behaves identically to `date`
+end to end: the type option present in the dropdown, the field rendering
+as a native `<input type="date">` immediately after creation, the saved
+value round-tripping through `library.sqlite` as a plain ISO date string
+under `type: 'reminder'`, and the detail panel displaying it exactly like
+any other date — plus Field Settings offering the Column capability
+checkbox for it but never Autocomplete, matching `date`/`number`/
+`checkbox`'s own treatment; `reminder_lookahead_days` defaulting to 30
+with nothing persisted, saving an explicit `14` and reading it back
+correctly after a simulated reopen; the `reminder_snoozes` table loading
+a seeded row into the in-memory `reminderSnoozes` map via the
+`__DEBUG_reminderSnoozes` test-only hook, and a real `INSERT OR REPLACE`
+against its compound `(document_id, field_id)` key confirmed to actually
+replace rather than duplicate the row — checked two ways, not one,
+because the first check alone (reading back `reminderSnoozes['1:1']`
+after the replace) is vacuous: `loadReminderSnoozes()`'s for-of loop
+overwrites the same map key on every matching row regardless of whether
+the underlying table actually deduped, so it reads back the correct
+final value even if the stub left two rows sitting side by side; the
+real assertion reads the raw table rows back via a second
+`__DEBUG_reminderSnoozesRawRows` hook and confirms there's exactly one,
+holding the new value — this was the first genuinely compound-key `INSERT
+OR REPLACE` dedupe branch `stub_studio2.js` needed, every prior one
+(`settings.key`, `field_descriptions.field_name`) having been a single
+column; `checkReminders()`'s full "what counts as due" rule exercised
+against a 9-document seed (due today, overdue by 5 days, due in 10 days
+inside a 14-day lookahead, due in 60 days outside it, due today but
+archived, due today but deleted, due today but actively snoozed 5 days
+into the future, due today with an already-expired 1-day-past snooze,
+and one document carrying two reminder fields where only one is
+actually due) — with every date computed relative to the app's own
+`todayIsoDate()`/`addDaysToIsoDate()` rather than hardcoded, so the
+scenario stays correct regardless of which real day the suite runs on —
+confirming exactly the right five documents come back due, the
+two-reminder-field document contributes only its one genuinely-due field
+rather than both, and results sort by date ascending with the most
+overdue entry first; the reminders modal rendering one row per due
+reminder with a due/overdue label, all four snooze choices (1 week/1
+month/3 months/a custom date, the last revealing its date input only once
+chosen) persisting the expected `snoozed_until` and removing their own
+row from the modal, the modal auto-closing once every row has been
+snoozed away, and clicking a remaining row closing the modal and
+selecting/highlighting that document in the table — the same select/
+render/closeModal/openDetail sequence `saveEditedDocument()`'s own
+success path already uses, just reordered so `closeModal()` runs first;
+and both trigger points — a genuinely fresh library open with a due
+reminder already in the seed surfacing the modal automatically with no
+manual action, the "Check reminders" toolbar button opening the same
+modal on demand, and that same button reporting the "No reminders due."
+empty-case status message when a freshly-opened library has nothing due
+at all). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
