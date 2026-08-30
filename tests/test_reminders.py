@@ -94,6 +94,41 @@ async def main():
         print("Column checkbox offered for a reminder field:", column_checkbox_present == 1)
         print("Autocomplete checkbox NOT offered for a reminder field:", autocomplete_checkbox_present == 0)
 
+        # === Scenario 2: reminder_lookahead_days defaults to 30 when unset,
+        # persists an explicit value, and survives a reopen ===
+        lookahead_default = await page.evaluate("document.getElementById('fs-reminder-lookahead').value")
+        print("reminder lookahead defaults to 30 with no persisted setting:", lookahead_default)  # set below, after opening Field Settings again
+
+        await page.fill('#fs-reminder-lookahead', '14')
+        await page.dispatch_event('#fs-reminder-lookahead', 'change')
+        await page.wait_for_timeout(200)
+        await page.click('#fs-done-btn')
+        await page.wait_for_timeout(150)
+
+        persisted2 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        lookahead_row = next((s for s in persisted2['settings'] if s['key'] == 'reminder_lookahead_days'), None)
+        print("reminder_lookahead_days persisted as '14':", lookahead_row['value'] if lookahead_row else None)
+
+        # Reopen (same convention test_nav.py/test_recent_libraries.py use: re-seed
+        # a fresh root with the setting already present, simulating a real reopen
+        # reading the same on-disk library.sqlite back)
+        seed_with_lookahead = {'document_type_fields': TYPE_FIELD_ROWS, 'settings': [{'key': 'reminder_lookahead_days', 'value': '14'}]}
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_lookahead)}, []); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.click('#manage-fields-btn')
+        await page.wait_for_timeout(200)
+        lookahead_after_reopen = await page.evaluate("document.getElementById('fs-reminder-lookahead').value")
+        print("reminder_lookahead_days reads back as '14' after reopening:", lookahead_after_reopen)
+        await page.click('#fs-done-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
