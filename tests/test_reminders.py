@@ -4,7 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
-import asyncio, json
+import asyncio, json, datetime
 from playwright.async_api import async_playwright
 
 TYPE_FIELD_ROWS = [
@@ -357,6 +357,69 @@ async def main():
         print("clicking a row closes the modal:", modal_closed == 0)
         selected_row_highlighted = await page.locator(f'tr[data-id="{remaining_doc_id}"].row-selected').count()
         print("clicking a row selects/highlights that document in the table:", selected_row_highlighted == 1)
+
+        # === Scenario 6: the automatic library-open check surfaces the modal
+        # only when something is due, and stays silent otherwise; the manual
+        # "Check reminders" button reports "No reminders due." when nothing
+        # is due, and opens the modal when something is ===
+        today_iso = datetime.date.today().isoformat()
+        due_seed = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc With Reminder", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [{"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0}],
+            "document_field_values": [{"document_id": 1, "field_id": 1, "value": today_iso}],
+        }
+        empty_seed = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc Without Reminder", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [], "document_field_values": [],
+        }
+
+        # A genuinely fresh library open (the real afterDbReady() flow) with a due
+        # reminder already present in the seed data -- not a mid-session mutation --
+        # should surface the modal automatically, with no manual action.
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(due_seed)}); window.__TEST_ROOT.name = 'DueLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        modal_shown_automatically = await page.locator('.reminder-row').count()
+        print("library open with a due reminder shows the reminders modal automatically:", modal_shown_automatically > 0)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        # Manual button, something due
+        check_btn_present = await page.locator('#check-reminders-btn').count()
+        print("Check reminders toolbar button is present:", check_btn_present == 1)
+        await page.click('#check-reminders-btn')
+        await page.wait_for_timeout(200)
+        modal_shown_by_button = await page.locator('.reminder-row').count()
+        print("clicking Check reminders opens the modal when something is due:", modal_shown_by_button > 0)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        # Manual button, nothing due (fresh library with no reminder field)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(empty_seed)}); window.__TEST_ROOT.name = 'EmptyLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        no_modal_on_open = await page.locator('.reminder-row').count()
+        print("library open with nothing due shows no modal:", no_modal_on_open == 0)
+        await page.click('#check-reminders-btn')
+        await page.wait_for_timeout(200)
+        status_text = await page.locator('#status').inner_text()
+        print("Check reminders with nothing due reports the empty-case status message:", 'no reminders' in status_text.lower())
 
         print("JS ERRORS:", errors)
         await browser.close()

@@ -670,6 +670,7 @@
         <button id="manage-fields-btn" data-i18n="toolbarManageFields">⚙ Manage fields</button>
         <button id="manage-collections-btn" data-i18n="toolbarManageCollections">⚙ Manage collections</button>
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
+        <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
         <button id="reload-btn" data-i18n="toolbarSwitchLibrary">Switch library</button>
         <button id="detail-panel-toggle-btn" data-i18n="toolbarDetailsToggle">☰ Details</button>
@@ -848,7 +849,7 @@
       toolbarAmountMinTitle: 'Min amount', toolbarAmountMaxTitle: 'Max amount', toolbarAmountUnsetLabel: 'Amount not set',
       toolbarAmountMinClearAriaLabel: 'Clear min amount', toolbarAmountMaxClearAriaLabel: 'Clear max amount',
       toolbarManageFields: '⚙ Manage fields', toolbarManageCollections: '⚙ Manage collections',
-      toolbarCheckInbox: '📥 Check inbox', toolbarAddDocument: '＋ Add document',
+      toolbarCheckInbox: '📥 Check inbox', toolbarCheckReminders: '🔔 Check reminders', toolbarAddDocument: '＋ Add document',
       toolbarSwitchLibrary: 'Switch library', toolbarColumns: '⚙ Columns', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Add all',
       bulkAddToCollection: 'Add to collection ▾', bulkNewCollectionPlaceholder: 'New collection name',
@@ -986,7 +987,7 @@
       dragdropAddedMultiForReview: 'Added {count} documents for review.',
       dragdropPartialFailureSingular: ' {count} file could not be added.',
       dragdropPartialFailurePlural: ' {count} files could not be added.',
-      dragdropNoFilesWaiting: 'No files waiting in {folder}.',
+      dragdropNoFilesWaiting: 'No files waiting in {folder}.', reminderNoneDue: 'No reminders due.',
       dragdropCouldNotAddAnyOfCountSingular: 'Could not add any of the {count} file in {folder}.',
       dragdropCouldNotAddAnyOfCountPlural: 'Could not add any of the {count} files in {folder}.',
       dragdropAddedToReviewQueueSingular: 'Added {count} document to the review queue from {folder}.',
@@ -1015,7 +1016,7 @@
       toolbarAmountMinTitle: 'Importe mín.', toolbarAmountMaxTitle: 'Importe máx.', toolbarAmountUnsetLabel: 'Importe sin definir',
       toolbarAmountMinClearAriaLabel: 'Borrar importe mínimo', toolbarAmountMaxClearAriaLabel: 'Borrar importe máximo',
       toolbarManageFields: '⚙ Administrar campos', toolbarManageCollections: '⚙ Administrar colecciones',
-      toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarAddDocument: '＋ Añadir documento',
+      toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarCheckReminders: '🔔 Ver recordatorios', toolbarAddDocument: '＋ Añadir documento',
       toolbarSwitchLibrary: 'Cambiar de biblioteca', toolbarColumns: '⚙ Columnas', toolbarDetailsToggle: '☰ Detalles',
       inboxBannerAddAll: 'Añadir todo',
       bulkAddToCollection: 'Añadir a colección ▾', bulkNewCollectionPlaceholder: 'Nombre de la nueva colección',
@@ -1153,7 +1154,7 @@
       dragdropAddedMultiForReview: 'Se añadieron {count} documentos para revisión.',
       dragdropPartialFailureSingular: ' {count} archivo no se pudo añadir.',
       dragdropPartialFailurePlural: ' {count} archivos no se pudieron añadir.',
-      dragdropNoFilesWaiting: 'No hay archivos esperando en {folder}.',
+      dragdropNoFilesWaiting: 'No hay archivos esperando en {folder}.', reminderNoneDue: 'No hay recordatorios pendientes.',
       dragdropCouldNotAddAnyOfCountSingular: 'No se pudo añadir ninguno de los {count} archivo en {folder}.',
       dragdropCouldNotAddAnyOfCountPlural: 'No se pudo añadir ninguno de los {count} archivos en {folder}.',
       dragdropAddedToReviewQueueSingular: 'Se añadió {count} documento a la cola de revisión desde {folder}.',
@@ -1182,7 +1183,7 @@
       toolbarAmountMinTitle: 'Montant min.', toolbarAmountMaxTitle: 'Montant max.', toolbarAmountUnsetLabel: 'Montant non défini',
       toolbarAmountMinClearAriaLabel: 'Effacer le montant min.', toolbarAmountMaxClearAriaLabel: 'Effacer le montant max.',
       toolbarManageFields: '⚙ Gérer les champs', toolbarManageCollections: '⚙ Gérer les collections',
-      toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarAddDocument: '＋ Ajouter un document',
+      toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarCheckReminders: '🔔 Vérifier les rappels', toolbarAddDocument: '＋ Ajouter un document',
       toolbarSwitchLibrary: 'Changer de bibliothèque', toolbarColumns: '⚙ Colonnes', toolbarDetailsToggle: '☰ Détails',
       inboxBannerAddAll: 'Tout ajouter',
       bulkAddToCollection: 'Ajouter à une collection ▾', bulkNewCollectionPlaceholder: 'Nom de la nouvelle collection',
@@ -1320,7 +1321,7 @@
       dragdropAddedMultiForReview: '{count} documents ajoutés pour révision.',
       dragdropPartialFailureSingular: " {count} fichier n'a pas pu être ajouté.",
       dragdropPartialFailurePlural: " {count} fichiers n'ont pas pu être ajoutés.",
-      dragdropNoFilesWaiting: 'Aucun fichier en attente dans {folder}.',
+      dragdropNoFilesWaiting: 'Aucun fichier en attente dans {folder}.', reminderNoneDue: 'Aucun rappel à traiter.',
       dragdropCouldNotAddAnyOfCountSingular: "Impossible d'ajouter le fichier ({count}) dans {folder}.",
       dragdropCouldNotAddAnyOfCountPlural: "Impossible d'ajouter aucun des {count} fichiers dans {folder}.",
       dragdropAddedToReviewQueueSingular: '{count} document ajouté à la file de révision depuis {folder}.',
@@ -1349,7 +1350,7 @@
       toolbarAmountMinTitle: 'Betrag min.', toolbarAmountMaxTitle: 'Betrag max.', toolbarAmountUnsetLabel: 'Betrag nicht gesetzt',
       toolbarAmountMinClearAriaLabel: 'Mindestbetrag löschen', toolbarAmountMaxClearAriaLabel: 'Höchstbetrag löschen',
       toolbarManageFields: '⚙ Felder verwalten', toolbarManageCollections: '⚙ Sammlungen verwalten',
-      toolbarCheckInbox: '📥 Posteingang prüfen', toolbarAddDocument: '＋ Dokument hinzufügen',
+      toolbarCheckInbox: '📥 Posteingang prüfen', toolbarCheckReminders: '🔔 Erinnerungen prüfen', toolbarAddDocument: '＋ Dokument hinzufügen',
       toolbarSwitchLibrary: 'Bibliothek wechseln', toolbarColumns: '⚙ Spalten', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Alle hinzufügen',
       bulkAddToCollection: 'Zu Sammlung hinzufügen ▾', bulkNewCollectionPlaceholder: 'Neuer Sammlungsname',
@@ -1487,7 +1488,7 @@
       dragdropAddedMultiForReview: '{count} Dokumente zur Prüfung hinzugefügt.',
       dragdropPartialFailureSingular: ' {count} Datei konnte nicht hinzugefügt werden.',
       dragdropPartialFailurePlural: ' {count} Dateien konnten nicht hinzugefügt werden.',
-      dragdropNoFilesWaiting: 'Keine Dateien warten in {folder}.',
+      dragdropNoFilesWaiting: 'Keine Dateien warten in {folder}.', reminderNoneDue: 'Keine fälligen Erinnerungen.',
       dragdropCouldNotAddAnyOfCountSingular: 'Konnte keine der {count} Datei in {folder} hinzufügen.',
       dragdropCouldNotAddAnyOfCountPlural: 'Konnte keine der {count} Dateien in {folder} hinzufügen.',
       dragdropAddedToReviewQueueSingular: '{count} Dokument aus {folder} zur Prüfung hinzugefügt.',
@@ -1516,7 +1517,7 @@
       toolbarAmountMinTitle: '最小金额', toolbarAmountMaxTitle: '最大金额', toolbarAmountUnsetLabel: '金额未设置',
       toolbarAmountMinClearAriaLabel: '清除最小金额', toolbarAmountMaxClearAriaLabel: '清除最大金额',
       toolbarManageFields: '⚙ 管理字段', toolbarManageCollections: '⚙ 管理收藏集',
-      toolbarCheckInbox: '📥 检查收件箱', toolbarAddDocument: '＋ 添加文档',
+      toolbarCheckInbox: '📥 检查收件箱', toolbarCheckReminders: '🔔 检查提醒', toolbarAddDocument: '＋ 添加文档',
       toolbarSwitchLibrary: '切换资料库', toolbarColumns: '⚙ 列', toolbarDetailsToggle: '☰ 详情',
       inboxBannerAddAll: '全部添加',
       bulkAddToCollection: '添加到收藏集 ▾', bulkNewCollectionPlaceholder: '新收藏集名称',
@@ -1654,7 +1655,7 @@
       dragdropAddedMultiForReview: '已添加 {count} 个文档，待审核。',
       dragdropPartialFailureSingular: ' 有 {count} 个文件无法添加。',
       dragdropPartialFailurePlural: ' 有 {count} 个文件无法添加。',
-      dragdropNoFilesWaiting: '{folder} 中没有等待处理的文件。',
+      dragdropNoFilesWaiting: '{folder} 中没有等待处理的文件。', reminderNoneDue: '没有到期的提醒。',
       dragdropCouldNotAddAnyOfCountSingular: '无法添加 {folder} 中的 {count} 个文件中的任何一个。',
       dragdropCouldNotAddAnyOfCountPlural: '无法添加 {folder} 中的 {count} 个文件中的任何一个。',
       dragdropAddedToReviewQueueSingular: '已从 {folder} 将 {count} 个文档添加到审核队列。',
@@ -1707,8 +1708,7 @@
       toolbarAmountMaxClearAriaLabel: '清除最大金額',
       toolbarManageFields: '⚙ 管理字段',
       toolbarManageCollections: '⚙ 管理收藏集',
-      toolbarCheckInbox: '📥 檢查收件箱',
-      toolbarAddDocument: '＋ 添加文檔',
+      toolbarCheckInbox: '📥 檢查收件箱', toolbarCheckReminders: '🔔 檢查提醒', toolbarAddDocument: '＋ 添加文檔',
       toolbarSwitchLibrary: '切換資料庫',
       toolbarColumns: '⚙ 列', toolbarDetailsToggle: '☰ 詳情',
       inboxBannerAddAll: '全部添加',
@@ -1942,7 +1942,7 @@
       dragdropAddedMultiForReview: '已添加 {count} 個文檔，待審覈。',
       dragdropPartialFailureSingular: ' 有 {count} 個文件無法添加。',
       dragdropPartialFailurePlural: ' 有 {count} 個文件無法添加。',
-      dragdropNoFilesWaiting: '{folder} 中沒有等待處理的文件。',
+      dragdropNoFilesWaiting: '{folder} 中沒有等待處理的文件。', reminderNoneDue: '沒有到期的提醒。',
       dragdropCouldNotAddAnyOfCountSingular: '無法添加 {folder} 中的 {count} 個文件中的任何一個。',
       dragdropCouldNotAddAnyOfCountPlural: '無法添加 {folder} 中的 {count} 個文件中的任何一個。',
       dragdropAddedToReviewQueueSingular: '已從 {folder} 將 {count} 個文檔添加到審覈隊列。',
@@ -2980,6 +2980,11 @@
     setStatusT('statusOpenedLibrary', {count: allDocs.length, name: rootDirHandle.name}, 'ok');
     checkInbox(); // fire-and-forget -- best effort, doesn't block the library from opening
     recordRecentLibrary(rootDirHandle); // fire-and-forget, same reasoning as checkInbox() above
+    // Silent when nothing's due, same as checkInbox() finding nothing staged --
+    // checkReminders() is a pure in-memory scan, no I/O, so this can run
+    // synchronously right here rather than needing its own fire-and-forget treatment.
+    const dueOnOpen = checkReminders();
+    if(dueOnOpen.length) openRemindersModal(dueOnOpen);
   }
 
   function resetAll(){
@@ -6800,6 +6805,12 @@
     setStatus(addedPart + failedPart, failed ? 'err' : 'ok');
   }
 
+  function checkRemindersAndShowStatus(){
+    const due = checkReminders();
+    if(!due.length){ setStatusT('reminderNoneDue', null, 'ok'); return; }
+    openRemindersModal(due);
+  }
+
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
   // reflects whatever checkInbox() found the one time it runs automatically
@@ -6809,6 +6820,7 @@
   // single explicit click, not automatic polling -- keeps the same "no silent
   // writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
+  el('check-reminders-btn').addEventListener('click', checkRemindersAndShowStatus);
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a
