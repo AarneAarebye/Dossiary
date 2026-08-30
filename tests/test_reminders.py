@@ -165,6 +165,19 @@ async def main():
         """)
         print("after a second INSERT OR REPLACE on the same (document_id, field_id), the row's snoozed_until is the NEW value:", replaced_value == '2026-07-15')
 
+        # The check above alone is vacuous: loadReminderSnoozes()'s for-of loop overwrites
+        # the same "1:1" map key once per matching row, in insertion order, so it reads back
+        # the same correct *final* value whether the stub's compound-key dedupe actually
+        # removed the old (document_id=1, field_id=1) row or just left it sitting alongside
+        # the new one -- either way the newest row is the one processed last and wins the
+        # map slot. Confirm the real fix: read the raw table rows via __DEBUG_reminderSnoozesRawRows
+        # (added specifically for this) and assert there's exactly ONE row for this key, not two.
+        raw_rows = await page.evaluate("window.__DEBUG_reminderSnoozesRawRows()")
+        matching_rows = [r for r in raw_rows if r[0] == 1 and r[1] == 1]
+        print("exactly one reminder_snoozes row exists for (document_id=1, field_id=1) after the replace (proves dedupe, not just the final map value):", len(matching_rows) == 1)
+        if matching_rows:
+            print("and that one row holds the NEW value, not the old one:", matching_rows[0][2] == '2026-07-15')
+
         print("JS ERRORS:", errors)
         await browser.close()
 

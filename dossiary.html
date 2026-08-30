@@ -3291,6 +3291,16 @@
   // compound-key INSERT OR REPLACE dedupe against the real INSERT the app itself uses.
   window.__DEBUG_loadReminderSnoozes = loadReminderSnoozes;
   window.__DEBUG_dbRun = (sql, params) => db.run(sql, params);
+  // A fourth test-only hook, added to fix a real gap a task review caught: the three
+  // hooks above only ever proved the in-memory reminderSnoozes MAP read back the right
+  // *value* after a second INSERT OR REPLACE on the same (document_id, field_id) key --
+  // not that the underlying reminder_snoozes TABLE actually holds one row for that key
+  // rather than two (loadReminderSnoozes()'s for-of loop happens to overwrite the same
+  // map key twice, in insertion order, if dedupe silently failed and left both rows in
+  // place, so the map alone can't distinguish "deduped correctly" from "duplicated, but
+  // the later row happened to win"). This returns every raw row so a caller can count
+  // rows for a specific key directly, independent of the map projection above.
+  window.__DEBUG_reminderSnoozesRawRows = () => queryAll('SELECT document_id, field_id, snoozed_until FROM reminder_snoozes').rows;
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
