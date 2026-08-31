@@ -3559,8 +3559,25 @@
   // non-orphaned field for some type, but this app never does that automatically.
   function migrateDefaultReminderField(){
     loadFieldDefs(); // ensure fieldDefs/fieldNameToId/nextFieldId reflect the DB before we touch either
-    if(fieldNameToId['Reminder'] !== undefined) return; // already migrated
-
+    const existing = fieldDefs.find(f => f.name === 'Reminder');
+    if(existing){
+      if(existing.type === 'reminder') return; // already migrated correctly, nothing to do
+      // A field literally named 'Reminder' already exists in this library, but it's
+      // NOT a reminder-type field -- 'Reminder' only became a reserved name as part of
+      // this very feature, so any library created with an earlier Dossiary version
+      // could have a real, unrelated custom field (text/date/checkbox/etc.) by this
+      // exact name, with real data in it. Do NOT treat that as "already migrated" --
+      // fieldNameToId['Reminder'] already points at it (from loadFieldDefs() above),
+      // which is enough on its own to keep addInlineCustomField()'s reserved-name
+      // check correctly blocking a second, colliding field by this name -- but we
+      // must NOT create a second field, and buildDetailActions() must NOT offer the
+      // 'default-reminder' action for this library at all, since setDefaultReminder()/
+      // clearDefaultReminder() write to fieldNameToId['Reminder'] unconditionally and
+      // would silently overwrite this field's real, unrelated data the first time
+      // someone chose a preset. See buildDetailActions()'s own guard for the other
+      // half of this fix.
+      return;
+    }
     const id = nextFieldId++;
     db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)',
       [id, 'Reminder', 'reminder', 0, 0]);
@@ -5125,7 +5142,18 @@
     // comment for why "deleted" is the strongest of the three staging flags.
     if(!d.deleted){
       actions.push({ key: 'edit', label: t('detailEdit'), variant: null, onClick: () => openEditForm(id) });
-      actions.push({
+      // Guard against the wrong-typed-'Reminder'-field case migrateDefaultReminderField()
+      // itself refuses to touch (see its own comment): fieldNameToId['Reminder'] can point
+      // at a pre-existing, non-reminder-type field in a library that had a real custom
+      // field by this name before it became reserved. In that case there is no real
+      // reminder-type field for this action to read/write at all -- offering it would let
+      // setDefaultReminder()/clearDefaultReminder() (which write to fieldNameToId['Reminder']
+      // unconditionally) silently clobber that unrelated field's real data. So the action is
+      // only added when a real reminder-type field actually backs it.
+      const defaultReminderFieldId = fieldNameToId['Reminder'];
+      const defaultReminderFieldIsUsable = defaultReminderFieldId !== undefined &&
+        fieldDefs.find(f => f.id === defaultReminderFieldId)?.type === 'reminder';
+      if(defaultReminderFieldIsUsable) actions.push({
         key: 'default-reminder',
         label: d.customFields && d.customFields['Reminder']
           ? t('contextMenuReminderSet', {date: formatDate(d.customFields['Reminder'])})
@@ -5138,6 +5166,13 @@
         // the menu that triggered it) matters for this to work.
         onClick: (e) => {
           e.stopPropagation();
+          // Same "close any already-open one of these first" guard
+          // showRowContextMenu() uses for openRowContextMenu -- without it, opening a
+          // second flyout (e.g. via the detail panel's own button after already
+          // opening one via right-click elsewhere) wouldn't close the first, since
+          // e.stopPropagation() above also prevents this click from reaching the
+          // first flyout's own outsideClick listener.
+          if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
           const rect = e.target.getBoundingClientRect();
           const hasReminder = !!(d.customFields && d.customFields['Reminder']);
           const flyout = document.createElement('div');
@@ -5190,6 +5225,10 @@
               await setDefaultReminder(id, input.value);
               removeFlyout();
             });
+            // The custom-date view is a different (typically shorter) height than the
+            // choices list -- re-clamp after switching to it too, same reasoning as the
+            // initial clampFlyoutTop() call below.
+            clampFlyoutTop();
           };
 
           const removeFlyout = () => {
@@ -5199,9 +5238,31 @@
           };
           const outsideClick = (evt) => { if(!flyout.contains(evt.target)) removeFlyout(); };
 
+          // Clamp vertically so every option stays reachable, the same technique
+          // showRowContextMenu() already uses for the row context menu itself (see its
+          // own comment) -- a flyout opened from a row near the bottom of a tall table
+          // can otherwise render partially or fully below the viewport, making its
+          // lower options (Custom date.../Clear reminder) unreachable. Unlike the
+          // context menu (position:fixed, so its clamped top is a plain viewport
+          // coordinate), .reminder-flyout is position:absolute -- its top is a
+          // document-relative coordinate (it was set above as
+          // `rect.bottom + window.scrollY + 6`) -- so the clamped viewport-relative
+          // top has to be converted back by re-adding window.scrollY.
+          const clampFlyoutTop = () => {
+            const flyoutRect = flyout.getBoundingClientRect();
+            const margin = 8;
+            if(flyoutRect.bottom > window.innerHeight){
+              const clampedViewportTop = Math.max(margin, window.innerHeight - flyoutRect.height - margin);
+              flyout.style.top = (clampedViewportTop + window.scrollY) + 'px';
+            }
+          };
+
           renderChoices();
           document.body.appendChild(flyout);
           openReminderFlyout = flyout;
+          // Measured only now that the flyout (with its real choices) is actually in the
+          // DOM, so it has a real rendered height to clamp against.
+          clampFlyoutTop();
           setTimeout(() => document.addEventListener('click', outsideClick), 0);
         },
       });

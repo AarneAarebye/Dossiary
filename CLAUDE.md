@@ -2582,12 +2582,16 @@ this repo's git tags.
   **Today**/**Tomorrow**/**Next week** (`todayIsoDate()`,
   `addDaysToIsoDate(todayIsoDate(), 1)`, `addDaysToIsoDate(todayIsoDate(),
   7)` — the same shared date-math helper the reminders modal's own snooze
-  offsets use, see above), **Custom date** (reveals a normally-hidden
-  `<input type="date" class="reminder-flyout-custom-date">` with `min` set
+  offsets use, see above), **Custom date** (reveals it by replacing the
+  flyout's whole `innerHTML` with a fresh `<input type="date"
+  class="reminder-flyout-custom-date">` — there's no pre-existing hidden
+  element the way the reminders modal's own `.reminder-snooze-custom-date`
+  has, since this flyout swaps its entire content per view rather than
+  toggling `display`. The resulting input still has `min` set
   to tomorrow and `color-scheme: dark`, mirroring the reminders modal's
-  own `.reminder-snooze-custom-date` input exactly, defensive re-check of
-  `input.value <= todayIsoDate()` included for the same reason that
-  modal's own handler has one — a native date input's `min` can be
+  own `.reminder-snooze-custom-date` input's own behavior, and the same
+  defensive re-check of `input.value <= todayIsoDate()` for the same
+  reason that modal's own handler has one — a native date input's `min` can be
   bypassed by a manually typed value in some browsers), and **Clear
   reminder**, rendered only when `d.customFields['Reminder']` already has
   a value — there's nothing to clear otherwise.
