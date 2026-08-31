@@ -3396,6 +3396,13 @@
   window.__DEBUG_findFieldByName = (name) => fieldDefs.find(f => f.name === name) || null;
   window.__DEBUG_setDefaultReminder = setDefaultReminder;
   window.__DEBUG_clearDefaultReminder = clearDefaultReminder;
+  // Test-only: read a custom field value directly from a document's in-memory state,
+  // for asserting that setDefaultReminder()/clearDefaultReminder() correctly update
+  // the in-memory customFields object (distinct from database persistence).
+  window.__DEBUG_getCustomFieldValue = (documentId, fieldName) => {
+    const d = allDocs.find(x => x.id === documentId);
+    return d && d.customFields ? d.customFields[fieldName] : undefined;
+  };
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');

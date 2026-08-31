@@ -76,11 +76,13 @@ async def main():
         result = await page.evaluate("""
             (async () => {
                 await window.__DEBUG_setDefaultReminder(1, window.__DEBUG_todayIsoDate());
+                const inMemory = window.__DEBUG_getCustomFieldValue(1, 'Reminder');
                 const due = window.__DEBUG_checkReminders();
                 const includesDoc1 = due.some(r => r.documentId === 1 && r.fieldName === 'Reminder');
-                return { includesDoc1 };
+                return { inMemory, includesDoc1 };
             })()
         """)
+        print("setDefaultReminder() updates the document's in-memory customFields:", bool(result['inMemory']))
         print("a default reminder due today is included by checkReminders():", result['includesDoc1'])
 
         persisted = await page.evaluate("""
@@ -98,12 +100,14 @@ async def main():
         await page.wait_for_timeout(100)
         result2 = await page.evaluate("""
             () => {
+                const inMemory = window.__DEBUG_getCustomFieldValue(1, 'Reminder');
                 const due = window.__DEBUG_checkReminders();
                 const stillIncluded = due.some(r => r.documentId === 1 && r.fieldName === 'Reminder');
-                return { stillIncluded };
+                return { inMemory, stillIncluded };
             }
         """)
-        print("clearDefaultReminder() and checkReminders() no longer includes it:", not result2['stillIncluded'])
+        print("clearDefaultReminder() removes it from in-memory customFields:", not result2['inMemory'])
+        print("and checkReminders() no longer includes it:", not result2['stillIncluded'])
 
         persisted2 = await page.evaluate("""
             (async () => {
