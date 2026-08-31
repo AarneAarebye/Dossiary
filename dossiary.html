@@ -192,6 +192,16 @@
     font-family:var(--font-mono); font-size:11.5px; padding:5px 7px; border-radius:var(--radius);
   }
   .reminder-snooze-custom-date{ color-scheme:dark; }
+  .reminder-flyout{
+    position:absolute; z-index:50; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:6px; min-width:160px; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  }
+  .reminder-flyout-option{ display:block; width:100%; text-align:left; padding:8px 10px; background:transparent; border:none; color:var(--text); font-family:var(--font-mono); font-size:12.5px; cursor:pointer; border-radius:var(--radius); }
+  .reminder-flyout-option:hover{ background:rgba(79,224,166,0.1); color:var(--phosphor); }
+  .reminder-flyout-custom-date{
+    background:var(--ink-2); border:1px solid var(--line); color:var(--text); color-scheme:dark;
+    font-family:var(--font-mono); font-size:11.5px; padding:5px 7px; border-radius:var(--radius); width:100%;
+  }
   .fs-item-actions{ display:flex; gap:2px; flex-shrink:0; }
   .fs-item-actions button{ padding:2px 6px; font-size:10px; border:none; background:transparent; color:var(--text-dim); }
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
@@ -996,7 +1006,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
       dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
       reminderDueToday: 'Due today', reminderOverdueSingular: '{days} day overdue', reminderOverduePlural: '{days} days overdue', reminderDueInSingular: 'Due in {days} day', reminderDueInPlural: 'Due in {days} days',
-      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…',
+      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder',
     },
     es: {
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
@@ -1163,7 +1173,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} archivo no se pudo añadir y sigue allí.',
       dragdropPartialFailureStillTherePlural: ' {count} archivos no se pudieron añadir y siguen allí.',
       reminderDueToday: 'Vence hoy', reminderOverdueSingular: 'Vencido hace {days} día', reminderOverduePlural: 'Vencido hace {days} días', reminderDueInSingular: 'Vence en {days} día', reminderDueInPlural: 'Vence en {days} días',
-      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…',
+      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio',
     },
     fr: {
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
@@ -1330,7 +1340,7 @@
       dragdropPartialFailureStillThereSingular: " {count} fichier n'a pas pu être ajouté et est toujours là.",
       dragdropPartialFailureStillTherePlural: " {count} fichiers n'ont pas pu être ajoutés et sont toujours là.",
       reminderDueToday: 'Échéance aujourd\'hui', reminderOverdueSingular: 'En retard de {days} jour', reminderOverduePlural: 'En retard de {days} jours', reminderDueInSingular: 'Échéance dans {days} jour', reminderDueInPlural: 'Échéance dans {days} jours',
-      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…',
+      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -1497,7 +1507,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
       dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
       reminderDueToday: 'Heute fällig', reminderOverdueSingular: '{days} Tag überfällig', reminderOverduePlural: '{days} Tage überfällig', reminderDueInSingular: 'Fällig in {days} Tag', reminderDueInPlural: 'Fällig in {days} Tagen',
-      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…',
+      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen',
     },
     'zh-Hans': {
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
@@ -1664,7 +1674,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 个文件无法添加，仍留在原处。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 个文件无法添加，仍留在原处。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天后到期', reminderDueInPlural: '{days} 天后到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒',
     },
     'zh-Hant': {
       commonCancel: '取消',
@@ -1951,7 +1961,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 個文件無法添加，仍留在原處。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 個文件無法添加，仍留在原處。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天後到期', reminderDueInPlural: '{days} 天後到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒',
     },
   };
 
@@ -2276,6 +2286,7 @@
   // open when the (separate) edit modal closes, so it can't outlive whichever UI
   // it was opened from.
   let openDocCollectionMenu = null;
+  let openReminderFlyout = null; // same "lives outside modalRoot, tracked separately" reasoning as openDocCollectionMenu just above
   let openRowContextMenu = null;
 
   let sortKey = 'import_date'; // overwritten by loadSortState() on every library open -- this is just the pre-library-open starting value
@@ -4832,6 +4843,7 @@
     // so it needs its own explicit cleanup here (Escape/backdrop/Close), not just
     // its existing outside-click handler.
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
+    if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
   function onModalKeydown(e){ if(e.key === 'Escape') closeModal(); }
 
@@ -5113,6 +5125,86 @@
     // comment for why "deleted" is the strongest of the three staging flags.
     if(!d.deleted){
       actions.push({ key: 'edit', label: t('detailEdit'), variant: null, onClick: () => openEditForm(id) });
+      actions.push({
+        key: 'default-reminder',
+        label: d.customFields && d.customFields['Reminder']
+          ? t('contextMenuReminderSet', {date: formatDate(d.customFields['Reminder'])})
+          : t('contextMenuAddReminder'),
+        variant: null,
+        // Same "read e.target's rect before removing anything, positioned via a
+        // floating element appended to document.body outside modalRoot/the row
+        // context menu" pattern add-to-collection already uses just below -- see
+        // that action's own comment for why the ordering (call onClick, THEN close
+        // the menu that triggered it) matters for this to work.
+        onClick: (e) => {
+          e.stopPropagation();
+          const rect = e.target.getBoundingClientRect();
+          const hasReminder = !!(d.customFields && d.customFields['Reminder']);
+          const flyout = document.createElement('div');
+          flyout.className = 'reminder-flyout';
+          flyout.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+          flyout.style.left = (rect.left + window.scrollX) + 'px';
+
+          const renderChoices = () => {
+            flyout.innerHTML = `
+              <button type="button" class="reminder-flyout-option" data-choice="today">${t('defaultReminderToday')}</button>
+              <button type="button" class="reminder-flyout-option" data-choice="tomorrow">${t('defaultReminderTomorrow')}</button>
+              <button type="button" class="reminder-flyout-option" data-choice="nextweek">${t('defaultReminderNextWeek')}</button>
+              <button type="button" class="reminder-flyout-option" data-choice="custom">${t('defaultReminderCustomDate')}</button>
+              ${hasReminder ? `<button type="button" class="reminder-flyout-option" data-choice="clear">${t('defaultReminderClear')}</button>` : ''}
+            `;
+            flyout.querySelectorAll('.reminder-flyout-option').forEach(btn => {
+              btn.addEventListener('click', async (evt) => {
+                // Stop this from also reaching document's outsideClick listener below.
+                // Without this, the 'custom' branch's synchronous (non-awaited)
+                // flyout.innerHTML reassignment in renderCustomDate() detaches this very
+                // button from the DOM *before* the click event finishes bubbling to
+                // document -- so outsideClick's flyout.contains(evt.target) check would
+                // see a no-longer-attached target and immediately remove the flyout it
+                // just switched to the custom-date view. The other four choices don't hit
+                // this race (they await before touching the DOM, so the bubble finishes
+                // first), but stopping propagation here is correct and harmless for all of them too.
+                evt.stopPropagation();
+                const choice = btn.dataset.choice;
+                if(choice === 'today'){ await setDefaultReminder(id, todayIsoDate()); removeFlyout(); }
+                else if(choice === 'tomorrow'){ await setDefaultReminder(id, addDaysToIsoDate(todayIsoDate(), 1)); removeFlyout(); }
+                else if(choice === 'nextweek'){ await setDefaultReminder(id, addDaysToIsoDate(todayIsoDate(), 7)); removeFlyout(); }
+                else if(choice === 'clear'){ await clearDefaultReminder(id); removeFlyout(); }
+                else if(choice === 'custom'){ renderCustomDate(); }
+              });
+            });
+          };
+
+          const renderCustomDate = () => {
+            flyout.innerHTML = `
+              <input type="date" class="reminder-flyout-custom-date" min="${addDaysToIsoDate(todayIsoDate(), 1)}" />
+            `;
+            const input = flyout.querySelector('.reminder-flyout-custom-date');
+            input.focus();
+            input.addEventListener('change', async () => {
+              if(!input.value) return;
+              // Defensive, same reasoning as the reminders modal's own custom-snooze-date
+              // handler: a native date input's min attribute can be bypassed by a manually
+              // typed value in some browsers, so re-check here too.
+              if(input.value <= todayIsoDate()) return;
+              await setDefaultReminder(id, input.value);
+              removeFlyout();
+            });
+          };
+
+          const removeFlyout = () => {
+            flyout.remove();
+            if(openReminderFlyout === flyout) openReminderFlyout = null;
+            document.removeEventListener('click', outsideClick);
+          };
+          const outsideClick = (evt) => { if(!flyout.contains(evt.target)) removeFlyout(); };
+
+          renderChoices();
+          document.body.appendChild(flyout);
+          openReminderFlyout = flyout;
+          setTimeout(() => document.addEventListener('click', outsideClick), 0);
+        },
+      });
       if(SHOW_DOCUMENT_PREVIEW){
         actions.push({
           key: 'regen-thumb', label: d.thumbnail_path ? t('detailRegeneratePreview') : t('detailGeneratePreview'),
@@ -5226,6 +5318,7 @@
     const detailActions = buildDetailActions(id, d);
     const actionIdByKey = {
       'open-file': 'open-file-btn', 'open-original': 'open-original-btn', 'edit': 'edit-doc-btn',
+      'default-reminder': 'default-reminder-btn',
       'regen-thumb': 'regen-thumb-btn', 'archive-toggle': 'archive-toggle-btn', 'review-toggle': 'review-toggle-btn',
       'add-to-collection': 'add-to-collection-btn', 'remove-from-collection': 'remove-from-collection-btn',
       'delete-toggle': 'delete-toggle-btn',
