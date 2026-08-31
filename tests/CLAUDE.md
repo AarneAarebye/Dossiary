@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **63
-scripts covering most of the app's actual functionality** (62 of them
+There's a real, runnable Playwright regression suite in `tests/` — **64
+scripts covering most of the app's actual functionality** (63 of them
 Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
 check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR

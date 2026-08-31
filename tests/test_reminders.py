@@ -298,8 +298,8 @@ async def main():
         # === Scenario 5: openRemindersModal() renders every due reminder,
         # clicking a row opens that document, and each of the four snooze
         # choices persists correctly and removes that row from the list ===
-        due_now = await page.evaluate("checkReminders()")
-        await page.evaluate("(due) => openRemindersModal(due)", due_now)
+        due_now = await page.evaluate("window.__DEBUG_checkReminders()")
+        await page.evaluate("(due) => window.__DEBUG_openRemindersModal(due)", due_now)
         await page.wait_for_timeout(200)
 
         row_count = await page.locator('.reminder-row').count()
@@ -309,6 +309,19 @@ async def main():
         doc1_row = page.locator('.reminder-row[data-document-id="1"]')
         custom_date_initially_hidden = not await doc1_row.locator('.reminder-snooze-custom-date').is_visible()
         print("custom-date input is hidden before 'Custom date' is selected:", custom_date_initially_hidden)
+
+        # The custom-date input is the only date input in the app that used to be
+        # missing color-scheme:dark (finding 1) -- confirm it's now fixed, same
+        # assertion style as tests/test_date_picker_color_scheme.py uses for #f-date/#e-date.
+        custom_date_color_scheme = await doc1_row.locator('.reminder-snooze-custom-date').evaluate("el => getComputedStyle(el).colorScheme")
+        print("custom-date input's color-scheme is dark:", custom_date_color_scheme == 'dark')
+
+        # The custom-date input has no lower bound by default (finding 4) -- confirm its
+        # `min` attribute is set to tomorrow's date, so the native picker won't offer
+        # today-or-earlier as a choice.
+        custom_date_min = await doc1_row.locator('.reminder-snooze-custom-date').get_attribute('min')
+        expected_min = await page.evaluate("window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), 1)")
+        print("custom-date input's min attribute is tomorrow's date:", custom_date_min == expected_min)
 
         # Snooze doc 3's reminder for "1 week" -- confirm it persists and the row disappears
         doc3_row = page.locator('.reminder-row[data-document-id="3"]')
@@ -325,7 +338,7 @@ async def main():
             })()
         """)
         snooze_row_3 = next((s for s in persisted3['reminder_snoozes'] if s['document_id'] == 3 and s['field_id'] == 1), None)
-        expected_1w = await page.evaluate("addDaysToIsoDate(todayIsoDate(), 7)")
+        expected_1w = await page.evaluate("window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), 7)")
         print("doc 3's snooze persisted as exactly today + 7 days:", snooze_row_3['snoozed_until'] if snooze_row_3 else None, "==", expected_1w)
 
         # Custom-date snooze on doc 1
@@ -333,6 +346,25 @@ async def main():
         await page.wait_for_timeout(100)
         custom_date_visible = await doc1_row.locator('.reminder-snooze-custom-date').is_visible()
         print("choosing 'Custom date' reveals a date picker:", custom_date_visible)
+
+        # Defensive check (finding 4): a manually-typed past-or-today value can bypass
+        # a native date input's own `min` attribute enforcement in some browsers, so the
+        # JS-level check in wireReminderRows()'s change handler needs to reject it too --
+        # simulated directly via page.evaluate() setting .value and dispatching a real
+        # 'change' event, since Playwright's own .fill() may itself be blocked by `min`
+        # before ever reaching the app's handler.
+        past_date = await page.evaluate("window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), -30)")
+        await page.evaluate("""
+            (pastDate) => {
+                const input = document.querySelector('.reminder-row[data-document-id="1"] .reminder-snooze-custom-date');
+                input.value = pastDate;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        """, past_date)
+        await page.wait_for_timeout(200)
+        doc1_row_survives_past_date = await page.locator('.reminder-row[data-document-id="1"]').count()
+        print("a manually-set past date is rejected by the JS-level defensive check (row stays, no snooze written):", doc1_row_survives_past_date == 1)
+
         await doc1_row.locator('.reminder-snooze-custom-date').fill('2026-12-25')
         await page.evaluate("""
             () => {

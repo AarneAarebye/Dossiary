@@ -219,7 +219,7 @@ async def main():
                 const tb = document.querySelector('.toolbar');
                 const ids = ['search', 'category-filter', 'type-filter', 'person-filter',
                              'show-archived-toggle', 'manage-fields-btn', 'manage-collections-btn',
-                             'inbox-check-btn', 'add-btn', 'reload-btn', 'columns-btn'];
+                             'inbox-check-btn', 'check-reminders-btn', 'add-btn', 'reload-btn', 'columns-btn'];
                 const missing = ids.filter(id => !document.getElementById(id));
                 return {
                     scrollWidth: tb.scrollWidth,

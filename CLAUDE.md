@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (63 scripts) + shared
+tests/                   Playwright regression suite (64 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -173,16 +173,17 @@ this repo's git tags.
   regardless of what's literally written. The actual fix was to stop
   fighting that rule and lean into it: make `.table-wrap` an intentional,
   bounded scroll container for both axes, so sticky has exactly one clear,
-  correctly-scrolling ancestor. **`X` is `410` by default (top-tab nav),
-  `370` with `.nav-style-sidebar`, `484` with `.bulk-bar-visible`, and `444`
+  correctly-scrolling ancestor. **`X` is `414` by default (top-tab nav),
+  `374` with `.nav-style-sidebar`, `488` with `.bulk-bar-visible`, and `448`
   with both** (see the "Top-level nav" and "Collections" notes below for the
   nav-style/bulk-bar dimensions) — the bulk-action bar adds its own
-  **74px** on desktop (`484 - 410 = 74`, `444 - 370 = 74`) and **102px** on
+  **74px** on desktop (`488 - 414 = 74`, `448 - 374 = 74`) and **102px** on
   mobile (`494 - 392 = 102`, `518 - 416 = 102`) whenever any row is
   selected, regardless of nav style — derivable directly from the constants
   quoted here and in the mobile note below, not a separately-measured
   figure. **These four desktop numbers were bumped a second time (from
-  `364`/`370`/`438`/`444`) by the Amount-range/Currency-filter branch**,
+  `364`/`370`/`438`/`444` to `410`/`370`/`484`/`444`) by the Amount-range/
+  Currency-filter branch**,
   and the relationship between the tabs and sidebar pair is no longer the
   simple "tab strip sits above `.table-wrap`, adding real height; sidebar
   sits beside it, adding none" story the original numbers told. That
@@ -200,10 +201,28 @@ this repo's git tags.
   this round, landing tabs' numbers above sidebar's again — but that's
   incidental to where each style's own toolbar happens to wrap this time,
   not a re-assertion of the old structural rule; a future toolbar change
-  could easily flip it back. Sidebar mode is left with roughly `46px` of
-  known, accepted dead space at viewport widths `≥1440px` (its own
+  could easily flip it back. **These four desktop numbers were bumped a
+  third time (from `410`/`370`/`484`/`444` to the current
+  `414`/`374`/`488`/`448` — a uniform +4px across all four) by the
+  reminders feature's own toolbar button**: Task 6's new "🔔 Check
+  reminders" button (see the reminder-type custom fields note further
+  below) pushed `.toolbar` onto an extra wrapped row at two more
+  nav-style-specific desktop widths (~1050-1100px for tabs, ~1280-1350px
+  for sidebar), breaking the sticky-header calibration by exactly 2px at
+  each — the same class of regression the Amount-range/Currency-filter
+  branch caused above, just from one more toolbar button crossing the
+  same wrapping threshold. Re-verified the same empirical way as every
+  prior bump: worst-case gap for every nav-style/bulk-bar combination went
+  from `-3.0px` (a real overlap) back to `+1.0px` (just past the `-2px`
+  accepted bound, not a large overshoot). Sidebar mode is left with
+  roughly `50px` of
+  known, accepted dead space at viewport widths `≥1440px` (up from the
+  `46px` this note previously quoted, by the same uniform +4px this
+  round's bump added — the underlying worst-case width didn't move, so
+  the overshoot at the wide end grew by exactly the same amount as the
+  constant itself did) — its own
   worst-case width is narrower than that, so the constant that closes the
-  worst case necessarily overshoots at the wide end) — deliberately not
+  worst case necessarily overshoots at the wide end — deliberately not
   tightened further, per the "accept extra gap, never accept overlap"
   principle repeated throughout this note: the potential savings were
   small relative to the risk of reopening a real overlap at a
@@ -1397,7 +1416,7 @@ this repo's git tags.
   row for the panel to ever reflect there, same "hidden when the control
   is inert for this view" pattern already used for "Show archived".
   **The panel deliberately reuses `.table-wrap`'s own four `max-height`
-  calibration constants (410/370/484/444, plus their nav-style/bulk-bar
+  calibration constants (414/374/488/448, plus their nav-style/bulk-bar
   combinations) for its own `max-height`, rather than introducing new
   ones** — the panel is a flex sibling of `.table-wrap` inside a new
   `.table-detail-row` wrapper, sitting at exactly the same vertical offset

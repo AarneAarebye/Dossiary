@@ -191,6 +191,7 @@
     background:var(--ink-2); border:1px solid var(--line); color:var(--text);
     font-family:var(--font-mono); font-size:11.5px; padding:5px 7px; border-radius:var(--radius);
   }
+  .reminder-snooze-custom-date{ color-scheme:dark; }
   .fs-item-actions{ display:flex; gap:2px; flex-shrink:0; }
   .fs-item-actions button{ padding:2px 6px; font-size:10px; border:none; background:transparent; color:var(--text-dim); }
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
@@ -2238,7 +2239,7 @@
                             // an unconfigured type shows none of its generic/People fields, matching
                             // Mariner's own behavior (fields must be explicitly assigned to a type).
   let fieldDefs = [];       // [{id, name, type}, ...] from the `fields` table -- type is one of
-                            // 'text' | 'number' | 'date' | 'checkbox'
+                            // 'text' | 'number' | 'date' | 'checkbox' | 'person' | 'reminder'
   let fieldNameToId = {};   // name -> id, built from fieldDefs
   let nextFieldId = 1;
   let fieldDescriptions = {}; // field_name -> description (string, possibly empty) -- covers both
@@ -3383,11 +3384,10 @@
   window.__DEBUG_addDaysToIsoDate = addDaysToIsoDate;
   window.__DEBUG_checkReminders = checkReminders;
   window.__DEBUG_loadDocumentsFromDb = loadDocumentsFromDb;
-  // Expose checkReminders globally for test Scenario 5
-  window.checkReminders = checkReminders;
-  window.openRemindersModal = openRemindersModal;
-  window.todayIsoDate = todayIsoDate;
-  window.addDaysToIsoDate = addDaysToIsoDate;
+  // Test-only hook for the reminders modal itself (tests/test_reminders.py Scenario 5) --
+  // kept in the same __DEBUG_-prefixed convention as every other hook above, rather than
+  // a separate unprefixed global, so test-only exposure stays visibly test-only.
+  window.__DEBUG_openRemindersModal = openRemindersModal;
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
@@ -4864,7 +4864,7 @@
             <option value="3m">${t('reminderSnooze3Months')}</option>
             <option value="custom">${t('reminderSnoozeCustom')}</option>
           </select>
-          <input type="date" class="reminder-snooze-custom-date" data-document-id="${r.documentId}" data-field-id="${r.fieldId}" style="display:none;" />
+          <input type="date" class="reminder-snooze-custom-date" data-document-id="${r.documentId}" data-field-id="${r.fieldId}" min="${addDaysToIsoDate(todayIso, 1)}" style="display:none;" />
         </span>
       </div>
     `;
@@ -4901,6 +4901,11 @@
     modalRoot.querySelectorAll('.reminder-snooze-custom-date').forEach(dateInput => {
       dateInput.addEventListener('change', async () => {
         if(!dateInput.value) return;
+        // Defensive: a native date input's `min` attribute can still be bypassed by a
+        // manually-typed value in some browsers, so re-check here rather than trusting
+        // the HTML attribute alone -- a past-or-today snooze would silently no-op
+        // (removed from this modal, but immediately due again on the very next check).
+        if(dateInput.value <= todayIsoDate()) return;
         const documentId = Number(dateInput.dataset.documentId);
         const fieldId = Number(dateInput.dataset.fieldId);
         await snoozeReminder(documentId, fieldId, dateInput.value);
