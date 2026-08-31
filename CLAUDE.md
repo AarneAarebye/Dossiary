@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (64 scripts) + shared
+tests/                   Playwright regression suite (65 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2527,6 +2527,101 @@ this repo's git tags.
   trick" paragraph above), just in a different order here (`closeModal()`
   runs first, before `selectedDocId` is even set, since closing the modal
   doesn't depend on which document ends up selected).
+- **The default-reminder context menu** (`migrateDefaultReminderField()`,
+  `buildDetailActions()`'s `'default-reminder'` action, `.reminder-flyout`)
+  extends the Reminder-type custom fields note above with a single,
+  reserved, always-available reminder every document can carry, reachable
+  directly from a right-click without first configuring a reminder-type
+  field for that document's type at all. **`'Reminder'` is an ordinary
+  `fields` row with `type: 'reminder'`** — `migrateDefaultReminderField()`
+  (called from both `initNewLibrary()` and `loadDb()`, the same
+  idempotent-by-name-check pattern as `migrateSentinelFieldsToGeneric()`/
+  `migratePeopleToGenericField()` above: it returns immediately once
+  `fieldNameToId['Reminder']` is already set) inserts it once per library,
+  with `show_as_column: 0, autocomplete: 0`. It's a real reserved name too
+  — `addInlineCustomField()`'s reserved-name check (`['People', 'Amount',
+  'Payment method', 'Reminder', ...FIELD_DESCRIPTION_BUILTIN_NAMES]`)
+  rejects anyone trying to create a colliding custom field by that name.
+  **Deliberately never added to `document_type_fields` for any type** —
+  nothing in this feature auto-attaches it, so `checkReminders()`'s "any
+  field with `type === 'reminder'`" scan and the Edit form's
+  orphaned-field display (see the "orphaned" paragraph above) already
+  cover it with zero code changes to either: since it's never configured
+  for a type, any document holding a value for it shows that value as an
+  orphaned field in Edit, exactly like a reminder-type field removed from
+  its type's own configuration would. A person can still manually attach
+  it via Field Settings if they want it to render as a normal,
+  non-orphaned field for some type — this app just never does that
+  automatically.
+  **`buildDetailActions(id, d)` is the single function shared between the
+  row context menu (`showRowContextMenu()`) and the persistent detail
+  panel (`openDetail()`)** — see that function's own note above — so the
+  new `'default-reminder'` action (inserted right after `'edit'`, before
+  the `SHOW_DOCUMENT_PREVIEW`-gated `'regen-thumb'` entry) appears in both
+  places automatically. Its label has two states, computed from
+  `d.customFields['Reminder']`: `t('contextMenuAddReminder')` ("Add
+  reminder") when unset, `t('contextMenuReminderSet', {date:
+  formatDate(...)})` ("Reminder: <date>") when set. Because the panel's
+  own rendering reads a separate, hardcoded `actionIdByKey` map
+  (`openDetail()`'s own `const actionIdByKey = {...}`) rather than the
+  context menu's fully generic iteration, the action needed an explicit
+  `'default-reminder': 'default-reminder-btn'` entry there too — without
+  it the panel button would render as `id="undefined"`, a real bug the
+  branch's own review caught, now guarded by `test_default_reminder.py`'s
+  own Scenario 10.
+  **The quick-pick flyout is a separate floating `<div
+  class="reminder-flyout">` appended to `document.body`, not a child of
+  `.row-context-menu`** — the same pattern `'add-to-collection'`'s own
+  picker (`.bulk-collection-menu`) already established just below it in
+  `buildDetailActions()`: `showRowContextMenu()`'s generic `closeMenu()`
+  only ever removes its own `.row-context-menu` element, so a
+  picker/flyout that lived inside it would vanish the instant the action
+  that opened it finishes running. Being a sibling element tracked by its
+  own module-level `openReminderFlyout` variable and its own
+  outside-click listener is what lets it survive that auto-close. Offers
+  **Today**/**Tomorrow**/**Next week** (`todayIsoDate()`,
+  `addDaysToIsoDate(todayIsoDate(), 1)`, `addDaysToIsoDate(todayIsoDate(),
+  7)` — the same shared date-math helper the reminders modal's own snooze
+  offsets use, see above), **Custom date** (reveals a normally-hidden
+  `<input type="date" class="reminder-flyout-custom-date">` with `min` set
+  to tomorrow and `color-scheme: dark`, mirroring the reminders modal's
+  own `.reminder-snooze-custom-date` input exactly, defensive re-check of
+  `input.value <= todayIsoDate()` included for the same reason that
+  modal's own handler has one — a native date input's `min` can be
+  bypassed by a manually typed value in some browsers), and **Clear
+  reminder**, rendered only when `d.customFields['Reminder']` already has
+  a value — there's nothing to clear otherwise.
+  **`setDefaultReminder(documentId, dateIso)`/`clearDefaultReminder(documentId)`
+  write via the exact delete-then-insert pattern `saveEditedDocument()`
+  already uses for every other field's `document_field_values` row** —
+  `DELETE FROM document_field_values WHERE document_id = ? AND field_id =
+  ?` followed by a fresh `INSERT` (set) or nothing (clear), against
+  `fieldNameToId['Reminder']`. Both also mutate `d.customFields` directly
+  on the same object `allDocs` already holds (matching `toggleArchived()`'s
+  own in-place-mutation approach) before calling
+  `persistDb()`/`render()`/`openDetail(documentId)`, so the panel and any
+  reopened context menu reflect the new value with no extra DB round-trip
+  needed to redisplay it. **This is completely unrelated to
+  `reminder_snoozes`** (see above) — snoozing/clearing the default
+  reminder never touches that table; `reminder_snoozes` exists
+  specifically for postponing a reminder-type field's own due date without
+  touching its stored value, a concept this feature has no equivalent of
+  — clearing the default reminder means deleting its
+  `document_field_values` row outright, not writing a snooze.
+  **A real click-bubbling bug, caught and fixed during this feature's own
+  review**: the flyout option buttons' click handler calls
+  `evt.stopPropagation()` — without it, choosing "Custom date…" (whose
+  handler synchronously reassigns `flyout.innerHTML` to swap in the date
+  input, detaching the very button that was just clicked, before that
+  click event finishes bubbling to `document`) let the bubbled click reach
+  the flyout's own `outsideClick` listener, whose `flyout.contains(evt.target)`
+  check then saw a no-longer-attached target and immediately removed the
+  flyout it had just switched to the custom-date view. The other four
+  choices don't hit this race (they `await` before touching the DOM, so
+  the bubble finishes first) — an obscure default (a synchronous DOM
+  mutation racing an in-flight event's own bubble phase) that "works fine"
+  right up until the one branch that doesn't take the `await`-first path,
+  the same spirit as this file's own DOCTYPE/quirks-mode note above.
 - **Comma-aware autocomplete for multi-valued fields** (`wireCommaAutocomplete()`)
   fixes a real limitation of native `<input list="...">`: the browser only
   ever matches suggestions against the *whole* input value, never a

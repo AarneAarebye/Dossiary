@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **64
-scripts covering most of the app's actual functionality** (63 of them
+There's a real, runnable Playwright regression suite in `tests/` — **65
+scripts covering most of the app's actual functionality** (64 of them
 Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
 check with no browser involved — see its own description below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
@@ -471,7 +471,48 @@ reminder already in the seed surfacing the modal automatically with no
 manual action, the "Check reminders" toolbar button opening the same
 modal on demand, and that same button reporting the "No reminders due."
 empty-case status message when a freshly-opened library has nothing due
-at all). This
+at all); and the default-reminder context menu built on top of that
+feature (`test_default_reminder.py`, ten scenarios — the `'Reminder'`
+field auto-created by `migrateDefaultReminderField()` on a fresh library
+open, and reopening the same library confirmed not to duplicate it (same
+`id` before and after a simulated reload); `'Reminder'` rejected as a name
+when creating a custom field inline, matching the existing reserved-name
+behavior; `setDefaultReminder()`/`clearDefaultReminder()` exercised
+directly via `__DEBUG_setDefaultReminder`/`__DEBUG_clearDefaultReminder`,
+checking both in-memory and persisted state and their `checkReminders()`
+integration — the in-memory assertions read back through a dedicated
+`__DEBUG_getCustomFieldValue` hook added specifically for this, after an
+earlier draft of this same scenario dropped them in favor of only
+checking `checkReminders()`'s own output and the raw persisted row,
+silently losing coverage of the one thing `setDefaultReminder()`/
+`clearDefaultReminder()` do that neither of those other two checks can
+tell apart from a bug: whether `d.customFields` on the in-memory `allDocs`
+object actually got mutated, not just the database; a document with a
+default reminder value showing up as an orphaned, editable field in the
+Edit form regardless of its type, with the correct value pre-filled; the
+context menu's two label states ("Add reminder" when unset, "Reminder:
+<date>" once set); the flyout surviving the row context menu's own
+`closeMenu()` auto-close — the same separate-floating-element property
+Add to Collection's own picker already relies on — and offering
+Today/Tomorrow/Next week/Custom date but not Clear reminder until a
+reminder actually exists; all four presets plus Clear reminder each
+verified end to end (Today setting it immediately and updating the
+context-menu label on the next right-click, Clear reverting that label
+back to "Add reminder"); the custom-date input starting hidden, becoming
+visible only once "Custom date…" is chosen, carrying a `min` of tomorrow,
+and reading `color-scheme: dark` via `getComputedStyle()` — matching the
+reminders modal's own already-established `.reminder-snooze-custom-date`
+pattern; an end-to-end confirmation that a reminder set through the
+flyout (not just through the `__DEBUG_` hooks) is picked up by
+`checkReminders()` the same way a function-level write already is; and,
+as its own dedicated closing scenario, `buildDetailActions()`'s
+`'default-reminder'` action confirmed to render as a real, correctly-`id`'d
+button in the detail panel too (`#default-reminder-btn`, not
+`id="undefined"`) and to update its own label after a preset is chosen
+from there — the specific panel-rendering regression this scenario exists
+to catch, since `openDetail()`'s `actionIdByKey` map is a separate,
+hardcoded lookup the context menu's own generic iteration doesn't depend
+on, so a missing entry there fails silently in the panel alone). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
