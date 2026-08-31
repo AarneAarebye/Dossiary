@@ -2941,6 +2941,7 @@
       db.run(SCHEMA);
       migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
       migratePeopleToGenericField(); // seeds People as an available person-type field from the start
+      migrateDefaultReminderField(); // seeds the always-available default Reminder field from the start
       migrateTextFieldsAutocompleteDefault(); // no-op here (no text fields exist yet beyond the sentinels above), but marks this library as migrated
       migrateCurrencyColumnDefault(); // no-op here (Currency was already created show_as_column=1 above), but marks this library as migrated
       migrateSearchablePdfBuiltFlag(); // no-op here (no documents exist yet), but marks this library as migrated
@@ -2967,6 +2968,7 @@
     applySchemaMigrations(); // adds any columns introduced after this library was created
     migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
     migratePeopleToGenericField(); // one-time; no-op if this library was already migrated
+    migrateDefaultReminderField(); // one-time; no-op if this library was already migrated
     migrateTextFieldsAutocompleteDefault(); // one-time; no-op if this library was already migrated
     migrateCurrencyColumnDefault(); // one-time; no-op if this library was already migrated
     migrateSearchablePdfBuiltFlag(); // one-time; no-op if this library was already migrated
@@ -3388,6 +3390,12 @@
   // kept in the same __DEBUG_-prefixed convention as every other hook above, rather than
   // a separate unprefixed global, so test-only exposure stays visibly test-only.
   window.__DEBUG_openRemindersModal = openRemindersModal;
+  // Test-only: looks up a fields row by name, for asserting migrateDefaultReminderField()'s
+  // own behavior without a dedicated production API for it (nothing else in the app
+  // needs to look up an arbitrary field by name from outside its own closure).
+  window.__DEBUG_findFieldByName = (name) => fieldDefs.find(f => f.name === name) || null;
+  window.__DEBUG_setDefaultReminder = setDefaultReminder;
+  window.__DEBUG_clearDefaultReminder = clearDefaultReminder;
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
@@ -3517,6 +3525,29 @@
     for(const [docId, personId] of rows){
       db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [docId, id, personId]);
     }
+  }
+
+  // The default, always-available reminder every document can carry, reachable
+  // directly from the row context menu (see buildDetailActions()'s 'default-reminder'
+  // action) rather than requiring a person to configure a reminder-type field for
+  // their document's type first. It's an ordinary reminder-type field under the hood
+  // -- nothing about checkReminders() or the orphaned-field display in the Edit form
+  // needs to change to support it -- the only thing special about it is that this
+  // migration ensures it always exists, and it's a reserved name (see
+  // addInlineCustomField()'s own reserved-name check) so nobody can accidentally
+  // create a colliding custom field. Deliberately NEVER added to document_type_fields
+  // for any type -- see this feature's own design spec for why: a person can still
+  // manually attach it via Field Settings if they want it to appear as a normal,
+  // non-orphaned field for some type, but this app never does that automatically.
+  function migrateDefaultReminderField(){
+    loadFieldDefs(); // ensure fieldDefs/fieldNameToId/nextFieldId reflect the DB before we touch either
+    if(fieldNameToId['Reminder'] !== undefined) return; // already migrated
+
+    const id = nextFieldId++;
+    db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)',
+      [id, 'Reminder', 'reminder', 0, 0]);
+    fieldDefs.push({ id, name: 'Reminder', type: 'reminder', showAsColumn: false, autocomplete: false });
+    fieldNameToId['Reminder'] = id;
   }
 
   // One-time-per-library switch: every text-type custom field gets Autocomplete
@@ -3923,7 +3954,7 @@
     const name = nameInput.value.trim();
     if(!typeName){ statusEl.textContent = t('fieldValidationPickDocType'); return; }
     if(!name){ statusEl.textContent = t('fieldValidationEnterName'); return; }
-    if(['People', 'Amount', 'Payment method', ...FIELD_DESCRIPTION_BUILTIN_NAMES].includes(name)){
+    if(['People', 'Amount', 'Payment method', 'Reminder', ...FIELD_DESCRIPTION_BUILTIN_NAMES].includes(name)){
       statusEl.textContent = t('fieldValidationReservedName', {name});
       return;
     }
@@ -5301,6 +5332,39 @@
     await persistDb();
     render();
     openDetail(id); // refresh the panel so the button now reads Archive/Unarchive correctly
+  }
+
+  // Writes/updates the single default-reminder value for a document, following
+  // the exact delete-then-insert pattern saveEditedDocument() already uses for
+  // every other custom field value (see that function's own document_field_values
+  // handling). Mutates the same object allDocs already holds for this document
+  // (matching toggleArchived()'s own approach) so a following render()/openDetail()
+  // picks up the change with no extra lookup needed.
+  async function setDefaultReminder(documentId, dateIso){
+    const d = allDocs.find(x => x.id === documentId);
+    if(!d) return;
+    const fieldId = fieldNameToId['Reminder'];
+    db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [documentId, fieldId]);
+    db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [documentId, fieldId, dateIso]);
+    d.customFields = d.customFields || {};
+    d.customFields['Reminder'] = dateIso;
+    await persistDb();
+    render();
+    openDetail(documentId); // refresh the panel so it reflects the new orphaned-field value if it's currently shown
+  }
+
+  // The delete half of setDefaultReminder() above -- removes the value entirely
+  // rather than writing a blank one, so the field goes back to not being an
+  // orphaned field at all for this document (no value means nothing to orphan).
+  async function clearDefaultReminder(documentId){
+    const d = allDocs.find(x => x.id === documentId);
+    if(!d) return;
+    const fieldId = fieldNameToId['Reminder'];
+    db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [documentId, fieldId]);
+    if(d.customFields) delete d.customFields['Reminder'];
+    await persistDb();
+    render();
+    openDetail(documentId);
   }
 
   // needs_review is a fully independent flag from archived -- deliberately no
