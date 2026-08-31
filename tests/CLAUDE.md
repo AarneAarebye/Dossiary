@@ -186,7 +186,23 @@ constants), replacing an earlier version of this same check that used only
 actually binding, so it could report success regardless of whether the CSS
 constants were actually correct; the current version explicitly asserts
 `scrollHeight > clientHeight` first, to prove the constraint is binding
-before trusting the bottom-edge measurement that follows it), persisted
+before trusting the bottom-edge measurement that follows it. **Scenario 30's
+own bottom-edge check was itself a real bug for a while**, caught only when
+a later, unrelated feature branch's Task 1 review happened to run this
+script and see it print `False` — its tolerance was symmetric
+(`abs(distance) <= 2`), silently disagreeing with `test_footer_pin.py`'s own
+`measure()` helper (the dedicated, more carefully-designed test for this
+exact concern), which correctly uses an asymmetric `gap >= -2` check
+matching this app's documented "accept extra gap, never accept overlap"
+principle. At the exact width/nav-style/bulk-bar combination Scenario 30
+happened to flag, `test_footer_pin.py` measures and *passes* the identical
+distance — it's already-known, already-accepted unused space (the toolbar's
+own non-monotonic wrapping behavior across widths — see the `.table-wrap`
+architecture note in `../CLAUDE.md`), not a real regression. Fixed by
+switching Scenario 30's own check to the same asymmetric tolerance
+`test_footer_pin.py` already used — a pure test fix, no `dossiary.html`
+change, confirmed non-vacuous by temporarily forcing a real CSS overlap and
+watching the check correctly flip to `False`, then restoring it), persisted
 default sort preference (`test_default_sort.py` — table opens sorted by
 `import_date` desc by default when no sort settings exist; clicking Date
 persists the sort choice; clicking Imported (a descending-by-default column
