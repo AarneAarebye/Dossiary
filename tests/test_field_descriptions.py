@@ -83,10 +83,10 @@ async def main():
         names = await page.evaluate(
             "() => Array.from(document.querySelectorAll('#fs-descriptions-list .fs-description-item')).map(el => el.dataset.fieldName)"
         )
-        # The five built-ins, plus the seeded fields, plus auto-created sentinel fields
+        # The five built-ins, plus the seeded fields, plus auto-created sentinel fields, plus the auto-created default Reminder field
         expected = ['Category', 'Subcategory', 'Document Type', 'Date', 'Tags',
                     'Organization', 'Organization To', 'Paid', 'Year', 'Date From', 'Author',
-                    'Payment method', 'Amount', 'Currency', 'People']
+                    'Payment method', 'Amount', 'Currency', 'People', 'Reminder']
         assert names == expected, \
             f"unexpected field order, expected {expected}, got {names}"
         print("Field Descriptions lists built-ins then custom fields, in order:", names)
