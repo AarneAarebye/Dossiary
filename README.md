@@ -71,23 +71,25 @@ working" problem that motivated this project in the first place.
   `inbox/` folder (at the library root, alongside `library.sqlite` and
   `files/`, and created automatically the same way `files/` is — no manual
   setup needed before dropping a file in by hand or pointing `scan_watch.py`
-  at it) has any files waiting in it. Click "Review" to see them and add
-  each with default values (just the file, plus a filename-derived title) —
-  the rest of the metadata is left blank for you to fill in from the
-  document's own Edit dialog afterward. This pairs with the standalone
+  at it) has any files waiting in it. Click "Add all" (or the toolbar's
+  always-visible "📥 Check inbox" button, for anything staged after the
+  library's already open) to add every staged file with default values
+  (just the file, plus a filename-derived title) — the rest of the metadata
+  is left blank for you to fill in from the document's own Edit dialog
+  afterward. This pairs with the standalone
   [`scan_watch.py`](#scan_watchpy-watched-folder-helper) script below, which
   moves finished scans from wherever your scan software saves them into that
   `inbox/` folder — Dossiary itself never watches the filesystem or
-  writes a document automatically; adding one from the inbox always requires
-  this explicit click.
+  writes a document automatically; adding files from the inbox always
+  requires this explicit click.
 - **Review queue** — a second stage after the Inbox: every document added
   from the inbox (category, type, and date all still blank at that point)
-  is automatically flagged "needs review" and shown in its own section
-  above the main table, instead of sorting to a possibly-unnoticed spot in
-  it. Click "Edit" on a queued document to fill in its metadata, or click
-  the row to open it. Only the explicit "Done" button — on the queue row
-  itself, or in the document's own detail view — clears the flag and moves
-  it into the main table; saving an intermediate edit does not, so you can
+  is automatically flagged "needs review" and shown in the "🚩 Inbox" nav
+  item alongside "📁 All Documents" and "🗑 Waste bin," instead of sorting
+  to a possibly-unnoticed spot in the main table. Click a queued document to
+  open it, then "Edit" to fill in its metadata. Only the explicit "Done"
+  button — in the document's own detail view — clears the flag and moves
+  it out of the queue; saving an intermediate edit does not, so you can
   save your progress partway through without losing your place in the
   queue. Any document can be flagged this way, not just inbox imports —
   open a document and click "Flag for review" if you want to come back to
@@ -124,6 +126,21 @@ working" problem that motivated this project in the first place.
   can relate to more than one person through it, and every person-type
   field shares the same underlying list of names, so someone typed into
   Author autocompletes and searches the same as one typed into People.
+- **Reminders** — give any custom field the `Reminder` type (alongside
+  Text/Number/Date/Checkbox/Person) to turn it into a due-date source —
+  Renewal Date, Warranty End, Inspection Due, whatever you need, and a
+  document can carry more than one. Dossiary checks what's due whenever a
+  library opens, and on demand via the toolbar's "🔔 Check reminders"
+  button, listing anything due or overdue (soonest/most-overdue first)
+  with a per-row snooze — 1 week, 1 month, 3 months, or a custom date —
+  for anything you're not ready to handle yet; a snoozed reminder
+  resurfaces on its own once the snooze passes, no un-snooze step needed.
+  This is checked on demand only — see Limitations below.
+- **Quick "Add reminder"** — right-click any document (or use its detail
+  view) for a one-click reminder that needs no field configured first:
+  Today, Tomorrow, Next week, or a custom date. It's the same `Reminder`
+  field type under the hood, via a single reserved field created
+  automatically the first time you use it.
 - **Tag & organize** — category, subcategory, document type, payment
   method, amount, date, notes, people, custom fields, and free-form tags
   per document — a document can relate to more than one person, filterable
@@ -145,8 +162,9 @@ working" problem that motivated this project in the first place.
   People, Date, Imported, Amount, Tags); each one that supports filtering
   shows or hides its matching filter dropdown at the same time. The choice
   is saved in `library.sqlite` itself, so it travels with the library
-  folder rather than being tied to one browser or device. (Custom fields
-  as table columns/filters is planned but not built yet — see Limitations.)
+  folder rather than being tied to one browser or device. Any custom field
+  flagged to show as a column also gets its own filter dropdown here, the
+  same way the built-in fields do.
 - **The table header stays visible while scrolling** — useful once a
   library has enough documents that the list genuinely scrolls. The
   document list itself is a bounded, independently-scrolling area (not
@@ -506,7 +524,7 @@ settings
 fields
     id                INTEGER PRIMARY KEY
     name              TEXT UNIQUE
-    type              TEXT      -- 'text', 'number', 'date', 'checkbox', or 'person'
+    type              TEXT      -- 'text', 'number', 'date', 'checkbox', 'person', or 'reminder'
     show_as_column    INTEGER   -- 0/1; adds a sortable table column, and (text/
                                   -- checkbox types only) a toolbar filter dropdown.
                                   -- Not offered for 'person'-type fields (see below).
@@ -546,8 +564,8 @@ that's correct to assume for everyone).
 single-valued types, `fields` + `document_field_people` for `person`-type
 fields) — Organization, Year, Date From, Paid, Payment method, Amount,
 Currency, People, Author, Collaborator, whatever your library actually
-uses. Each field has a type (`text`/`number`/`date`/`checkbox`/`person`)
-that determines how it's rendered and how its value gets interpreted,
+uses. Each field has a type (`text`/`number`/`date`/`checkbox`/`person`/
+`reminder`) that determines how it's rendered and how its value gets interpreted,
 plus the `show_as_column`/`autocomplete` capability flags described above
 (not offered for `person`-type fields — a multi-valued field doesn't fit
 a single table cell or a useful filter dropdown the way a single-valued
@@ -663,6 +681,12 @@ separate genuinely distinct values.
   distinct feature that hasn't been built). A new person-type field is
   fully usable everywhere else — capture, edit, detail view, search — just
   not as a column or filter.
+- **No push notifications or background reminder checking.** Reminders are
+  checked only when a library opens, or when you click "Check reminders" —
+  a static, single-page app with no server has no way to run code, or wake
+  a browser tab, while it isn't open. This is the same "no silent,
+  automatic work" principle behind Inbox's own "Check inbox" button above,
+  applied to a read-only check instead of a write.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
 - **Needs network on first load** (to fetch the sql.js, Tesseract.js,

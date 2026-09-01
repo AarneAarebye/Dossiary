@@ -84,27 +84,29 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   neben `library.sqlite` und `files/`, und automatisch angelegt, genau wie
   `files/` — keine manuelle Einrichtung nötig, bevor Sie eine Datei von
   Hand hineinlegen oder `scan_watch.py` darauf zeigen lassen) Dateien
-  enthält, die noch warten. Klicken Sie auf „Review“, um sie zu sehen, und
-  fügen Sie sie mit Standardwerten hinzu (nur die Datei plus ein aus dem
-  Dateinamen abgeleiteter Titel) — die restlichen Metadaten bleiben leer,
-  zum späteren Ausfüllen über den Bearbeiten-Dialog des Dokuments. Dies
-  ergänzt das eigenständige Skript
+  enthält, die noch warten. Klicken Sie auf „Add all" (oder auf den stets
+  sichtbaren Werkzeugleisten-Button „📥 Check inbox" für Dateien, die erst
+  hinzukommen, während die Bibliothek bereits geöffnet ist), um alle
+  wartenden Dateien mit Standardwerten hinzuzufügen (nur die Datei plus ein
+  aus dem Dateinamen abgeleiteter Titel) — die restlichen Metadaten bleiben
+  leer, zum späteren Ausfüllen über den Bearbeiten-Dialog des Dokuments.
+  Dies ergänzt das eigenständige Skript
   [`scan_watch.py`](#scan_watchpy-hilfsskript-für-überwachte-ordner)
   weiter unten, das fertige Scans aus dem Speicherordner Ihrer Scan-Software
   in den `inbox/`-Ordner einer Bibliothek verschiebt — Dossiary selbst
   beobachtet niemals das Dateisystem und legt nie von selbst ein Dokument
-  an; ein Dokument aus der Inbox hinzuzufügen erfordert immer diesen
+  an; Dateien aus der Inbox hinzuzufügen erfordert immer diesen
   ausdrücklichen Klick.
 - **Prüfliste („Review queue“)** — eine zweite Stufe nach der Inbox: jedes
   aus der Inbox hinzugefügte Dokument (zu diesem Zeitpunkt sind Kategorie,
-  Typ und Datum noch leer) wird automatisch als „zu prüfen“ markiert und in
-  einem eigenen Bereich oberhalb der Haupttabelle angezeigt, statt an
-  einer möglicherweise unbemerkten Stelle darin einsortiert zu werden.
-  Klicken Sie bei einem Dokument in der Prüfliste auf „Edit“, um seine
-  Metadaten auszufüllen, oder klicken Sie auf die Zeile, um es zu öffnen.
-  Nur der ausdrückliche „Done“-Button — auf der Zeile in der Prüfliste
-  selbst oder in der Detailansicht des Dokuments — hebt die Markierung auf
-  und verschiebt das Dokument in die Haupttabelle; das Speichern einer
+  Typ und Datum noch leer) wird automatisch als „zu prüfen“ markiert und im
+  Navigationspunkt „🚩 Inbox“ neben „📁 All Documents“ und „🗑 Waste bin“
+  angezeigt, statt an einer möglicherweise unbemerkten Stelle in der
+  Haupttabelle einsortiert zu werden. Klicken Sie auf ein Dokument in der
+  Prüfliste, um es zu öffnen, und dann auf „Edit“, um seine Metadaten
+  auszufüllen. Nur der ausdrückliche „Done“-Button — in der Detailansicht
+  des Dokuments — hebt die Markierung auf und entfernt das Dokument aus
+  der Prüfliste; das Speichern einer
   Zwischenbearbeitung tut dies nicht, sodass Sie Ihren Fortschritt
   zwischenspeichern können, ohne Ihren Platz in der Prüfliste zu verlieren.
   Jedes Dokument kann auf diese Weise markiert werden, nicht nur
@@ -149,6 +151,25 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   liegende Namensliste zu — ein bei Autor eingetragener Name wird also
   genauso automatisch vervollständigt und durchsucht wie einer bei
   Personen.
+- **Erinnerungen** — geben Sie einem benutzerdefinierten Feld den Typ
+  `Reminder` (neben Text/Number/Date/Checkbox/Person), um es in eine
+  Fälligkeitsquelle zu verwandeln — Verlängerungsdatum, Garantieablauf,
+  Prüftermin, was auch immer Sie brauchen; ein Dokument kann mehr als eins
+  davon tragen. Dossiary prüft Fälliges beim Öffnen einer Bibliothek und
+  jederzeit auf Wunsch über den Button „🔔 Check reminders" in der
+  Symbolleiste, listet Fälliges oder Überfälliges auf (das dringendste
+  zuerst) und bietet pro Zeile ein Zurückstellen an — 1 Woche, 1 Monat, 3
+  Monate oder ein frei wählbares Datum — für alles, worum Sie sich noch
+  nicht kümmern möchten; eine zurückgestellte Erinnerung taucht von selbst
+  wieder auf, sobald die Frist verstrichen ist, ohne dass Sie sie manuell
+  reaktivieren müssten. Dies wird nur auf Anfrage geprüft — siehe
+  Einschränkungen unten.
+- **Schnelle „Add reminder"** — per Rechtsklick auf ein Dokument (oder über
+  dessen Detailansicht) eine Erinnerung mit einem Klick setzen, ganz ohne
+  vorher ein Feld einzurichten: Heute, Morgen, Nächste Woche oder ein
+  frei wählbares Datum. Dahinter steckt derselbe `Reminder`-Feldtyp, nur
+  über ein einziges, reserviertes Feld, das beim ersten Gebrauch
+  automatisch angelegt wird.
 - **Verschlagworten & organisieren** — Kategorie, Unterkategorie,
   Dokumenttyp, Zahlungsmethode, Betrag, Datum, Notizen, Personen,
   benutzerdefinierte Felder und freie Tags pro Dokument — ein Dokument
@@ -177,8 +198,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   passendes Filter-Dropdown ein oder aus. Die Auswahl wird in
   `library.sqlite` selbst gespeichert und reist damit mit dem
   Bibliotheksordner mit, statt an einen Browser oder ein Gerät gebunden zu
-  sein. (Benutzerdefinierte Felder als Tabellenspalten/Filter sind geplant,
-  aber noch nicht umgesetzt — siehe Einschränkungen.)
+  sein. Jedes benutzerdefinierte Feld, das als Spalte markiert ist, erhält
+  hier ebenfalls sein eigenes Filter-Dropdown, genau wie die eingebauten
+  Felder.
 - **Die Tabellenkopfzeile bleibt beim Scrollen sichtbar** — nützlich,
   sobald eine Bibliothek genug Dokumente enthält, dass die Liste wirklich
   scrollt. Die Dokumentliste selbst ist ein begrenzter, unabhängig
@@ -584,7 +606,7 @@ settings
 fields
     id                INTEGER PRIMARY KEY
     name              TEXT UNIQUE
-    type              TEXT      -- 'text', 'number', 'date', 'checkbox' oder 'person'
+    type              TEXT      -- 'text', 'number', 'date', 'checkbox', 'person' oder 'reminder'
     show_as_column    INTEGER   -- 0/1; fügt eine sortierbare Tabellenspalte hinzu, und (nur bei
                                   -- text/checkbox) ein Filter-Dropdown in der Symbolleiste.
                                   -- Nicht verfügbar für Felder vom Typ 'person' (siehe unten).
@@ -626,7 +648,7 @@ alle richtig anzunehmen wäre).
 `document_field_people` für Felder vom Typ `person`) — Organisation, Jahr,
 Datum von, Bezahlt, Zahlungsmethode, Betrag, Währung, Personen, Autor,
 Mitwirkende, was auch immer Ihre Bibliothek tatsächlich nutzt. Jedes Feld
-hat einen Typ (`text`/`number`/`date`/`checkbox`/`person`), der bestimmt,
+hat einen Typ (`text`/`number`/`date`/`checkbox`/`person`/`reminder`), der bestimmt,
 wie es dargestellt und wie sein Wert interpretiert wird, plus die oben
 beschriebenen Fähigkeits-Flags `show_as_column`/`autocomplete` (nicht
 verfügbar für Felder vom Typ `person` — ein mehrwertiges Feld passt nicht
@@ -765,6 +787,14 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   gebaute Funktion). Ein neues Feld vom Typ Person ist überall sonst voll
   nutzbar — Erfassung, Bearbeitung, Detailansicht, Suche — nur eben nicht
   als Spalte oder Filter.
+- **Keine Push-Benachrichtigungen oder Erinnerungsprüfung im Hintergrund.**
+  Erinnerungen werden nur beim Öffnen einer Bibliothek geprüft, oder wenn
+  Sie auf „Check reminders" klicken — eine statische Single-Page-App ohne
+  Server hat keine Möglichkeit, Code auszuführen oder einen Browser-Tab
+  aufzuwecken, während dieser nicht geöffnet ist. Dasselbe Prinzip „kein
+  stilles, automatisches Handeln" gilt bereits für den „Check inbox"-Button
+  der Inbox oben, hier nur auf eine reine Prüfung statt auf einen
+  Schreibvorgang angewendet.
 - **Erfordert Chrome oder Edge.** Safari und Firefox unterstützen zum
   Zeitpunkt der Erstellung die Schreibseite der File System Access API
   nicht.

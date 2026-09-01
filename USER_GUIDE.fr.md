@@ -181,6 +181,15 @@ brève.
   ajouter les vôtres (Auteur, Payé, Remboursable, tout ce dont vos
   documents ont besoin) directement depuis le formulaire de capture ou
   d'édition, par type de document.
+- **Rappels** — donnez à un champ personnalisé le type « Reminder » (date
+  de renouvellement, fin de garantie, tout ce qui nécessite un suivi), et
+  Dossiary vous préviendra le moment venu — automatiquement à l'ouverture
+  de la bibliothèque, ou à tout moment via le bouton « 🔔 Check reminders »
+  de la barre d'outils, avec un report possible si vous n'êtes pas encore
+  prêt à vous en occuper. Pour un rappel rapide sans configurer de champ,
+  faites un clic droit sur un document et choisissez « Add reminder ».
+  Rien ne s'exécute en arrière-plan — Dossiary ne vérifie que lorsque vous
+  ouvrez réellement l'application ou cliquez sur le bouton.
 
 ## Et ensuite ?
 

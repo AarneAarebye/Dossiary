@@ -178,6 +178,16 @@ kurz.
   kannst du eigene hinzufügen (Autor, Bezahlt, Erstattungsfähig, was
   auch immer deine Dokumente brauchen), direkt aus dem Erfassungs- oder
   Bearbeitungsformular heraus, pro Dokumenttyp.
+- **Erinnerungen** — gib einem benutzerdefinierten Feld den Typ
+  „Reminder" (Verlängerungsdatum, Garantieablauf, was auch immer eine
+  Erinnerung braucht), und Dossiary meldet sich, wenn es fällig wird —
+  entweder automatisch beim Öffnen der Bibliothek, oder jederzeit über
+  den Button „🔔 Check reminders" in der Symbolleiste, mit einer
+  Zurückstell-Option, falls du dich noch nicht darum kümmern möchtest.
+  Für eine schnelle Erinnerung ohne ein Feld einzurichten, per Rechtsklick
+  auf ein Dokument „Add reminder" wählen. Nichts läuft im Hintergrund —
+  Dossiary prüft nur, wenn du die App tatsächlich öffnest oder den Button
+  klickst.
 
 ## Wie geht es weiter?
 

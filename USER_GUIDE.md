@@ -164,6 +164,14 @@ get started, so this section is intentionally brief.
 - **Custom fields** — beyond the built-in fields, you can add your own
   (Author, Paid, Reimbursable, whatever your documents need) right from
   the capture or edit form, per document type.
+- **Reminders** — give a custom field the "Reminder" type (Renewal Date,
+  Warranty End, whatever needs a follow-up), and Dossiary lets you know
+  when it's due — either automatically when you open the library, or on
+  demand via the toolbar's "🔔 Check reminders" button, with a snooze if
+  you're not ready to deal with it yet. For a quick one-off without
+  setting up a field at all, right-click any document and choose "Add
+  reminder." Nothing runs in the background — Dossiary only ever checks
+  when you actually open it or click the button.
 
 ## Where to go next
 

@@ -6,8 +6,10 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 There's a real, runnable Playwright regression suite in `tests/` — **65
 scripts covering most of the app's actual functionality** (63 of them
-Playwright-driven; one, `test_i18n_coverage.py`, is a plain static
-check with no browser involved — see its own description below): capture, edit,
+Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
+check with no browser involved, and `test_scan_watch_version.py`, a
+standalone subprocess check of `scan_watch.py --version`'s output — see
+their own descriptions below): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
 option, including edit-time OCR against every page of a multi-page PDF,
