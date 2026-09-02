@@ -875,6 +875,7 @@
       bulkCreateAndAdd: 'Create & add', bulkArchive: 'Archive', bulkFlagForReview: 'Flag for review',
       bulkRestore: 'Restore', bulkClearSelection: 'Clear selection', bulkSelectedCount: '{count} selected',
       bulkAddToExisting: 'Add to existing', bulkReplaceExisting: 'Replace existing',
+      bulkFieldValueLabel: 'Value',
       bulkNewCollectionMenuItem: '+ New collection…',
       statsDocuments: 'documents', statsCategories: 'categories', statsCapturedHere: 'captured here',
       emptyBody: 'Open a Dossiary library folder, or start a brand new one here. Everything happens locally in your browser — nothing is uploaded.',
@@ -1045,6 +1046,7 @@
       bulkCreateAndAdd: 'Crear y añadir', bulkArchive: 'Archivar', bulkFlagForReview: 'Marcar para revisión',
       bulkRestore: 'Restaurar', bulkClearSelection: 'Borrar selección', bulkSelectedCount: '{count} seleccionados',
       bulkAddToExisting: 'Añadir a lo existente', bulkReplaceExisting: 'Reemplazar lo existente',
+      bulkFieldValueLabel: 'Valor',
       bulkNewCollectionMenuItem: '+ Nueva colección…',
       statsDocuments: 'documentos', statsCategories: 'categorías', statsCapturedHere: 'capturados aquí',
       emptyBody: 'Abre una carpeta de biblioteca de Dossiary, o crea una completamente nueva aquí. Todo ocurre localmente en tu navegador — no se sube nada.',
@@ -1215,6 +1217,7 @@
       bulkCreateAndAdd: 'Créer et ajouter', bulkArchive: 'Archiver', bulkFlagForReview: 'Marquer pour révision',
       bulkRestore: 'Restaurer', bulkClearSelection: 'Effacer la sélection', bulkSelectedCount: '{count} sélectionné(s)',
       bulkAddToExisting: 'Ajouter à l\'existant', bulkReplaceExisting: 'Remplacer l\'existant',
+      bulkFieldValueLabel: 'Valeur',
       bulkNewCollectionMenuItem: '+ Nouvelle collection…',
       statsDocuments: 'documents', statsCategories: 'catégories', statsCapturedHere: 'capturés ici',
       emptyBody: "Ouvrez un dossier de bibliothèque Dossiary, ou créez-en un tout nouveau ici. Tout se passe localement dans votre navigateur — rien n'est envoyé en ligne.",
@@ -1385,6 +1388,7 @@
       bulkCreateAndAdd: 'Erstellen & hinzufügen', bulkArchive: 'Archivieren', bulkFlagForReview: 'Zur Prüfung markieren',
       bulkRestore: 'Wiederherstellen', bulkClearSelection: 'Auswahl aufheben', bulkSelectedCount: '{count} ausgewählt',
       bulkAddToExisting: 'Zu Bestehendem hinzufügen', bulkReplaceExisting: 'Bestehendes ersetzen',
+      bulkFieldValueLabel: 'Wert',
       bulkNewCollectionMenuItem: '+ Neue Sammlung…',
       statsDocuments: 'Dokumente', statsCategories: 'Kategorien', statsCapturedHere: 'hier erfasst',
       emptyBody: 'Öffne einen Dossiary-Bibliotheksordner oder starte hier eine ganz neue Bibliothek. Alles geschieht lokal in deinem Browser — nichts wird hochgeladen.',
@@ -1555,6 +1559,7 @@
       bulkCreateAndAdd: '创建并添加', bulkArchive: '归档', bulkFlagForReview: '标记待审核',
       bulkRestore: '恢复', bulkClearSelection: '清除选择', bulkSelectedCount: '已选择 {count} 项',
       bulkAddToExisting: '添加到现有内容', bulkReplaceExisting: '替换现有内容',
+      bulkFieldValueLabel: '值',
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文档', statsCategories: '分类', statsCapturedHere: '在此录入',
       emptyBody: '打开一个 Dossiary 资料库文件夹，或在此创建一个全新的资料库。一切都在你的浏览器本地完成——不会上传任何内容。',
@@ -1755,6 +1760,7 @@
       bulkClearSelection: '清除選擇',
       bulkAddToExisting: '添加到現有內容',
       bulkReplaceExisting: '替換現有內容',
+      bulkFieldValueLabel: '值',
       bulkSelectedCount: '已選擇 {count} 項',
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文檔',
@@ -3889,6 +3895,47 @@
     `;
   }
 
+  // Bulk-edit's own generic (non-person) field renderer -- an "Apply to all"
+  // checkbox stands in for renderGenericFieldHtml()'s plain <label> (see the
+  // design spec's "The 'Apply' toggle" section), and there's no clear button
+  // or Date-today/Currency-default guess treatment, since a bulk edit never
+  // pre-fills a value to guess from or clear. A checkbox-type field shows a
+  // second, independent checkbox for its own Yes/No value, gated by the same
+  // Apply checkbox as every other field type.
+  function renderBulkGenericFieldHtml(field, orphaned){
+    const applyId = `bulk-apply-field-${field.id}`;
+    const inputId = `bulk-field-${field.id}`;
+    const orphanedClass = orphaned ? ' field-orphaned' : '';
+    const orphanedHint = orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : '';
+    const applyLabel = `
+      <label class="checkbox-label bulk-apply-label" for="${applyId}">
+        <input type="checkbox" id="${applyId}" class="bulk-apply-checkbox" data-bulk-target="${inputId}" />
+        ${escapeHtml(field.name)}
+      </label>
+    `;
+    if(field.type === 'checkbox'){
+      return `
+        <div class="field bulk-field${orphanedClass}">
+          ${applyLabel}
+          <label class="checkbox-label"><input type="checkbox" id="${inputId}" disabled /> ${t('bulkFieldValueLabel')}</label>
+          <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-field-${field.id}" style="display:none;"></div>
+          ${orphanedHint}
+        </div>
+      `;
+    }
+    let inputType = 'text', extra = '';
+    if(field.type === 'number'){ inputType = 'number'; extra = 'step="any"'; }
+    else if(field.type === 'date' || field.type === 'reminder'){ inputType = 'date'; }
+    return `
+      <div class="field bulk-field${orphanedClass}">
+        ${applyLabel}
+        <input type="${inputType}" id="${inputId}" ${extra} disabled />
+        <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-field-${field.id}" style="display:none;"></div>
+        ${orphanedHint}
+      </div>
+    `;
+  }
+
   // Rebuilds the capture ('f') or edit ('e') form's dynamic-fields container from
   // scratch to match whatever fields are configured for the given document type
   // (via document_type_fields), in their configured order. An unconfigured type
@@ -5841,6 +5888,17 @@
       .join('');
     wireCommaAutocomplete(el('bulk-tags'), 'tag-list');
     modalRoot.querySelectorAll('#bulk-person-fields input[type="text"]').forEach(input => wireCommaAutocomplete(input, 'person-list'));
+
+    el('bulk-generic-fields').innerHTML = bulkFieldUnion
+      .filter(({field}) => field.type !== 'person')
+      .map(({field, orphaned}) => renderBulkGenericFieldHtml(field, orphaned))
+      .join('');
+    modalRoot.querySelectorAll('#bulk-generic-fields .bulk-apply-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const target = el(cb.dataset.bulkTarget);
+        if(target) target.disabled = !cb.checked;
+      });
+    });
   }
 
   async function saveBulkEdit(ids){
@@ -5923,6 +5981,40 @@
             if(field.name === 'People') d.people = existing;
           }
         });
+      }
+
+      const genericFieldEntries = computeBulkFieldUnion(ids).filter(({field}) => field.type !== 'person');
+      for(const {field} of genericFieldEntries){
+        const applyCb = el(`bulk-apply-field-${field.id}`);
+        if(!applyCb || !applyCb.checked) continue;
+        const inputEl = el(`bulk-field-${field.id}`);
+        const value = field.type === 'checkbox' ? (inputEl.checked ? '1' : '0') : inputEl.value.trim();
+        ids.forEach(id => {
+          db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [id, field.id]);
+          if(value !== '') db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, field.id, value]);
+          const d = allDocs.find(x => x.id === id);
+          if(d){
+            if(!d.customFields) d.customFields = {};
+            if(value !== '') d.customFields[field.name] = value; else delete d.customFields[field.name];
+          }
+        });
+      }
+
+      // Rewrite every affected document's sidecar .txt with its complete
+      // post-edit state -- d has already been updated in-memory by every write
+      // block above, mirroring saveEditedDocument()'s own sidecar-rewrite step.
+      for(const id of ids){
+        const d = allDocs.find(x => x.id === id);
+        if(!d) continue;
+        const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
+        if(!sidecarBaseName) continue;
+        const otherPersonFieldsForSidecar = { ...(d.personFieldValues || {}) };
+        delete otherPersonFieldsForSidecar['People'];
+        await writeSidecarFile(sidecarBaseName, buildSidecarText({
+          title: d.title, category: d.category, subcategory: d.subcategory, documentType: d.document_type,
+          date: d.date, importDate: d.import_date, customFields: d.customFields || {}, personFields: otherPersonFieldsForSidecar,
+          people: d.people || [], notes: d.notes, ocrText: d.ocr_text, tags: d.tags || [],
+        }));
       }
 
       await persistDb();

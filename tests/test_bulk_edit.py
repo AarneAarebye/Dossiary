@@ -318,6 +318,73 @@ async def main2():
         await page.click('#bulk-edit-cancel-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 12: Vendor (configured only for Invoice, not Letter) shows
+        # with .field-orphaned styling since it isn't common to both selected
+        # types; a checkbox-type field shows its own separate value checkbox ===
+        await select_rows(page, [1, 3])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        vendor_field_orphaned = await page.locator('#bulk-field-2').locator('xpath=ancestor::div[contains(@class,"field-orphaned")]').count()
+        print("Vendor field renders with .field-orphaned styling:", vendor_field_orphaned == 1)
+
+        # === Scenario 13: checking Vendor's Apply box and typing a value writes
+        # it to every selected document, including doc 3 (Letter), where Vendor
+        # isn't normally configured at all -- same as editing an orphaned field
+        # already does for a single document ===
+        await page.check('#bulk-apply-field-2')
+        await page.fill('#bulk-field-2', 'New Vendor LLC')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        vendor_values = {r['document_id']: r['value'] for r in persisted['document_field_values'] if r['field_id'] == 2}
+        print("doc 1 Vendor bulk-set:", vendor_values.get(1) == 'New Vendor LLC')
+        print("doc 3 (orphaned) Vendor also bulk-set:", vendor_values.get(3) == 'New Vendor LLC')
+
+        # === Scenario 13b: a checkbox-type field's "Apply to all" and its own
+        # Yes/No value checkbox are independent -- doc 1 starts Paid=1, doc 2
+        # starts Paid=0. Toggling the VALUE checkbox while leaving Apply
+        # unchecked changes nothing on save; checking Apply then saves
+        # whatever the value checkbox currently shows (unchecked = "0") to
+        # every selected document regardless of each one's prior value ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        # The value checkbox is disabled (Apply is unchecked), so a real click can't
+        # toggle it -- set its .checked directly via JS to prove the independence
+        # property even in this edge case: since Apply stays unchecked, the field
+        # is skipped entirely on save regardless of what the (unreachable-by-a-real-
+        # user) value checkbox's state happens to be.
+        await page.evaluate("document.getElementById('bulk-field-3').checked = true")
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        paid_values = {r['document_id']: r['value'] for r in persisted['document_field_values'] if r['field_id'] == 3}
+        print("Paid untouched on both docs when only the value checkbox was toggled (Apply unchecked):", paid_values.get(1) == '1' and paid_values.get(2) == '0')
+
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('#bulk-apply-field-3')  # Apply checked; value checkbox left unchecked ("No")
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        paid_values = {r['document_id']: r['value'] for r in persisted['document_field_values'] if r['field_id'] == 3}
+        print("Paid bulk-set to '0' on both docs once Apply is checked:", paid_values.get(1) == '0' and paid_values.get(2) == '0')
+
+        # === Scenario 14: the sidecar .txt for an affected document reflects the
+        # complete post-edit state, not just the fields that changed ===
+        sidecar_text = await page.evaluate("""
+            (async () => {
+                const dir = await window.__TEST_ROOT.getDirectoryHandle('files');
+                const fh = await dir.getFileHandle('1_a.txt');
+                const f = await fh.getFile();
+                return await f.text();
+            })()
+        """)
+        print("sidecar reflects the bulk-set Vendor value:", 'New Vendor LLC' in sidecar_text)
+        print("sidecar still reflects the document's own unrelated title:", 'Invoice A' in sidecar_text)
+
         print("JS ERRORS (main2):", errors)
         await browser.close()
 
