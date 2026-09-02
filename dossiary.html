@@ -4927,6 +4927,15 @@
       if(e.target.closest('.select-col, .row-edit-col')) return;
       e.preventDefault();
       const id = Number(tr.dataset.id);
+      // A checked row, while 2+ are checked, gets the bulk menu instead --
+      // deliberately does NOT touch selectedDocId/the detail panel/single-row
+      // highlighting, since the action targets the whole multi-selection, not
+      // specifically the row that happened to be right-clicked (its checkbox
+      // already reflects its membership in that selection).
+      if(selectedDocIds.has(id) && selectedDocIds.size >= 2){
+        showBulkRowContextMenu(e.clientX, e.clientY);
+        return;
+      }
       selectedDocId = id;
       tbody.querySelectorAll('tr.row-selected').forEach(r => r.classList.remove('row-selected'));
       tr.classList.add('row-selected');
@@ -5234,6 +5243,45 @@
     }catch(e){
       alert(t('detailCopyClipboardError', {error: e.message}));
     }
+  }
+
+  // Right-click's bulk sibling to showRowContextMenu() -- shown instead of the
+  // single-document menu when the right-clicked row is part of a 2+-document
+  // selection. Deliberately minimal (just "Edit"): Archive/Delete/Flag for
+  // review already live in the bulk-action bar, so this menu doesn't duplicate
+  // them (see the design spec's "Entry points" section).
+  function showBulkRowContextMenu(x, y){
+    if(openRowContextMenu){ openRowContextMenu.remove(); openRowContextMenu = null; }
+
+    const menu = document.createElement('div');
+    menu.className = 'row-context-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'row-context-menu-item';
+    editBtn.textContent = t('detailEdit');
+    menu.appendChild(editBtn);
+
+    document.body.appendChild(menu);
+    openRowContextMenu = menu;
+
+    const closeMenu = () => {
+      if(openRowContextMenu === menu){ menu.remove(); openRowContextMenu = null; }
+      document.removeEventListener('click', closeMenu);
+      document.removeEventListener('contextmenu', closeMenu);
+    };
+
+    editBtn.addEventListener('click', () => {
+      openBulkEditForm([...selectedDocIds]);
+      closeMenu();
+    });
+
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+      document.addEventListener('contextmenu', closeMenu);
+    }, 0);
   }
 
   // Shows the row context menu at a fixed viewport position (clientX/clientY

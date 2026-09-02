@@ -470,6 +470,43 @@ async def main2():
         tags_hint_text_replace = await page.locator('#bulk-mixed-hint-tags').inner_text()
         print("switching to Replace mode shows the overwrite-warning wording:", tags_hint_visible_replace == 1 and overwrite_warning_en in tags_hint_text_replace.lower())
 
+        # === Scenario 19: right-clicking a CHECKED row while 2+ are selected
+        # shows the bulk context menu with exactly one item, "Edit" -- not the
+        # single-document menu ===
+        # Scenario 18 left the bulk-edit modal open (it never cancelled out),
+        # so close it first -- otherwise the modal backdrop intercepts the
+        # clicks below.
+        await page.click('#bulk-edit-cancel-btn')
+        await page.wait_for_timeout(150)
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [1, 2])
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(150)
+        bulk_menu_items = await page.locator('.row-context-menu .row-context-menu-item').all_inner_texts()
+        print("bulk context menu shows exactly one item, Edit:", bulk_menu_items == ['Edit'])
+        await page.mouse.click(10, 10)  # click outside to dismiss
+        await page.wait_for_timeout(150)
+
+        # === Scenario 20: right-clicking an UNCHECKED row keeps today's
+        # single-document menu, even while other rows are checked elsewhere ===
+        await page.click('tr[data-id="3"]', button='right')  # doc 3 not checked
+        await page.wait_for_timeout(150)
+        single_doc_menu_items = await page.locator('.row-context-menu .row-context-menu-item').all_inner_texts()
+        print("unchecked row still shows the single-document menu (more than one item):", len(single_doc_menu_items) > 1)
+        await page.mouse.click(10, 10)
+        await page.wait_for_timeout(150)
+
+        # === Scenario 21: clicking the bulk menu's "Edit" opens the bulk-edit
+        # modal for the checked selection ===
+        await page.click('tr[data-id="1"]', button='right')
+        await page.wait_for_timeout(150)
+        await page.click('.row-context-menu .row-context-menu-item:has-text("Edit")')
+        await page.wait_for_timeout(200)
+        bulk_modal_opened = await page.locator('#bulk-edit-save-btn').count()
+        print("bulk context menu's Edit opens the bulk-edit modal:", bulk_modal_opened == 1)
+        await page.click('#bulk-edit-cancel-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS (main2):", errors)
         await browser.close()
 
