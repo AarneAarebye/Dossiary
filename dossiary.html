@@ -876,6 +876,8 @@
       bulkRestore: 'Restore', bulkClearSelection: 'Clear selection', bulkSelectedCount: '{count} selected',
       bulkAddToExisting: 'Add to existing', bulkReplaceExisting: 'Replace existing',
       bulkFieldValueLabel: 'Value',
+      bulkMixedOverwriteWarning: 'Documents in this selection currently have different {field} — checking Apply (or choosing Replace) will overwrite ALL of them with the value you enter.',
+      bulkMixedAddedOnTop: 'Documents in this selection currently have different {field} — what you enter here is added on top of each document\'s own existing values; nothing is removed.',
       bulkNewCollectionMenuItem: '+ New collection…',
       statsDocuments: 'documents', statsCategories: 'categories', statsCapturedHere: 'captured here',
       emptyBody: 'Open a Dossiary library folder, or start a brand new one here. Everything happens locally in your browser — nothing is uploaded.',
@@ -1047,6 +1049,8 @@
       bulkRestore: 'Restaurar', bulkClearSelection: 'Borrar selección', bulkSelectedCount: '{count} seleccionados',
       bulkAddToExisting: 'Añadir a lo existente', bulkReplaceExisting: 'Reemplazar lo existente',
       bulkFieldValueLabel: 'Valor',
+      bulkMixedOverwriteWarning: 'Los documentos de esta selección tienen valores distintos de {field} — marcar Aplicar (o elegir Reemplazar) sobrescribirá TODOS con el valor que introduzcas.',
+      bulkMixedAddedOnTop: 'Los documentos de esta selección tienen {field} distintos — lo que escribas aquí se añade a los valores ya existentes de cada documento; no se elimina nada.',
       bulkNewCollectionMenuItem: '+ Nueva colección…',
       statsDocuments: 'documentos', statsCategories: 'categorías', statsCapturedHere: 'capturados aquí',
       emptyBody: 'Abre una carpeta de biblioteca de Dossiary, o crea una completamente nueva aquí. Todo ocurre localmente en tu navegador — no se sube nada.',
@@ -1218,6 +1222,8 @@
       bulkRestore: 'Restaurer', bulkClearSelection: 'Effacer la sélection', bulkSelectedCount: '{count} sélectionné(s)',
       bulkAddToExisting: 'Ajouter à l\'existant', bulkReplaceExisting: 'Remplacer l\'existant',
       bulkFieldValueLabel: 'Valeur',
+      bulkMixedOverwriteWarning: 'Les documents de cette sélection ont des {field} différents — cocher Appliquer (ou choisir Remplacer) écrasera TOUS les documents avec la valeur saisie.',
+      bulkMixedAddedOnTop: 'Les documents de cette sélection ont des {field} différents — ce que vous saisissez ici s\'ajoute aux valeurs déjà existantes de chaque document ; rien n\'est supprimé.',
       bulkNewCollectionMenuItem: '+ Nouvelle collection…',
       statsDocuments: 'documents', statsCategories: 'catégories', statsCapturedHere: 'capturés ici',
       emptyBody: "Ouvrez un dossier de bibliothèque Dossiary, ou créez-en un tout nouveau ici. Tout se passe localement dans votre navigateur — rien n'est envoyé en ligne.",
@@ -1389,6 +1395,8 @@
       bulkRestore: 'Wiederherstellen', bulkClearSelection: 'Auswahl aufheben', bulkSelectedCount: '{count} ausgewählt',
       bulkAddToExisting: 'Zu Bestehendem hinzufügen', bulkReplaceExisting: 'Bestehendes ersetzen',
       bulkFieldValueLabel: 'Wert',
+      bulkMixedOverwriteWarning: 'Die Dokumente in dieser Auswahl haben unterschiedliche {field} — wenn du „Anwenden" ankreuzt (oder „Ersetzen" wählst), werden ALLE mit dem eingegebenen Wert überschrieben.',
+      bulkMixedAddedOnTop: 'Die Dokumente in dieser Auswahl haben unterschiedliche {field} — was du hier einträgst, wird zu den vorhandenen Werten jedes Dokuments hinzugefügt; nichts wird entfernt.',
       bulkNewCollectionMenuItem: '+ Neue Sammlung…',
       statsDocuments: 'Dokumente', statsCategories: 'Kategorien', statsCapturedHere: 'hier erfasst',
       emptyBody: 'Öffne einen Dossiary-Bibliotheksordner oder starte hier eine ganz neue Bibliothek. Alles geschieht lokal in deinem Browser — nichts wird hochgeladen.',
@@ -1560,6 +1568,8 @@
       bulkRestore: '恢复', bulkClearSelection: '清除选择', bulkSelectedCount: '已选择 {count} 项',
       bulkAddToExisting: '添加到现有内容', bulkReplaceExisting: '替换现有内容',
       bulkFieldValueLabel: '值',
+      bulkMixedOverwriteWarning: '此选集中的文档目前有不同的 {field} —— 勾选“应用”（或选择“替换”）将用你输入的值覆盖所有文档。',
+      bulkMixedAddedOnTop: '此选集中的文档目前有不同的 {field} —— 你在此输入的内容会添加到每份文档已有的值之上，不会删除任何内容。',
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文档', statsCategories: '分类', statsCapturedHere: '在此录入',
       emptyBody: '打开一个 Dossiary 资料库文件夹，或在此创建一个全新的资料库。一切都在你的浏览器本地完成——不会上传任何内容。',
@@ -1761,6 +1771,8 @@
       bulkAddToExisting: '添加到現有內容',
       bulkReplaceExisting: '替換現有內容',
       bulkFieldValueLabel: '值',
+      bulkMixedOverwriteWarning: '此選集中的文檔目前有不同的 {field} —— 勾選“應用”（或選擇“替換”）將用你輸入的值覆蓋所有文檔。',
+      bulkMixedAddedOnTop: '此選集中的文檔目前有不同的 {field} —— 你在此輸入的內容會添加到每份文檔已有的值之上，不會刪除任何內容。',
       bulkSelectedCount: '已選擇 {count} 項',
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文檔',
@@ -4084,6 +4096,69 @@
     }).filter(Boolean);
   }
 
+  // "Mixed" means the selected documents don't all agree on this field's
+  // current value -- blank/unset counts as one shared value for this
+  // comparison, so "all blank" is NOT mixed, but "some set, some blank" is.
+  function bulkScalarMixed(ids, getValue){
+    const norm = v => (v === null || v === undefined || v === '') ? '' : v;
+    const values = new Set(ids.map(id => norm(getValue(allDocs.find(d => d.id === id)))));
+    return values.size > 1;
+  }
+  // Same idea for a multi-valued (Tags/person-type) field -- compares the
+  // selected documents' name/tag SETS, order-independent.
+  function bulkSetMixed(ids, getNames){
+    const serialize = names => [...(names || [])].map(n => n.toLowerCase()).sort().join('');
+    const values = new Set(ids.map(id => serialize(getNames(allDocs.find(d => d.id === id)))));
+    return values.size > 1;
+  }
+  function setBulkMixedHint(hintId, text, variant){
+    const hintEl = el(hintId);
+    if(!hintEl) return;
+    if(text){
+      hintEl.textContent = text;
+      hintEl.className = variant === 'warning' ? 'field-guess-hint' : 'field-orphaned-hint';
+      hintEl.style.display = '';
+    }else{
+      hintEl.style.display = 'none';
+    }
+  }
+
+  function refreshBulkMixedHints(ids){
+    const scalarChecks = [
+      { column: 'document_type', hintId: 'bulk-mixed-hint-type', labelKey: 'editDocTypeLabel' },
+      { column: 'category', hintId: 'bulk-mixed-hint-category', labelKey: 'editCategoryLabel' },
+      { column: 'subcategory', hintId: 'bulk-mixed-hint-subcategory', labelKey: 'editSubcategoryLabel' },
+      { column: 'date', hintId: 'bulk-mixed-hint-date', labelKey: 'editDateLabel' },
+      { column: 'notes', hintId: 'bulk-mixed-hint-notes', labelKey: 'captureNotesLabel' },
+    ];
+    scalarChecks.forEach(({column, hintId, labelKey}) => {
+      const mixed = bulkScalarMixed(ids, d => d[column]);
+      setBulkMixedHint(hintId, mixed ? t('bulkMixedOverwriteWarning', {field: t(labelKey)}) : '', 'warning');
+    });
+
+    const tagsMixed = bulkSetMixed(ids, d => d.tags);
+    const tagsModeInput = document.querySelector('input[name="bulk-tags-mode"]:checked');
+    const tagsMode = tagsModeInput ? tagsModeInput.value : 'add';
+    setBulkMixedHint('bulk-mixed-hint-tags',
+      tagsMixed ? t(tagsMode === 'replace' ? 'bulkMixedOverwriteWarning' : 'bulkMixedAddedOnTop', {field: t('captureTagsLabel')}) : '',
+      tagsMode === 'replace' ? 'warning' : 'info');
+
+    computeBulkFieldUnion(ids).forEach(({field}) => {
+      const hintId = `bulk-mixed-hint-field-${field.id}`;
+      if(field.type === 'person'){
+        const mixed = bulkSetMixed(ids, d => (d.personFieldValues || {})[field.name]);
+        const modeInput = document.querySelector(`input[name="bulk-field-${field.id}-mode"]:checked`);
+        const mode = modeInput ? modeInput.value : 'add';
+        setBulkMixedHint(hintId,
+          mixed ? t(mode === 'replace' ? 'bulkMixedOverwriteWarning' : 'bulkMixedAddedOnTop', {field: field.name}) : '',
+          mode === 'replace' ? 'warning' : 'info');
+      }else{
+        const mixed = bulkScalarMixed(ids, d => (d.customFields || {})[field.name]);
+        setBulkMixedHint(hintId, mixed ? t('bulkMixedOverwriteWarning', {field: field.name}) : '', 'warning');
+      }
+    });
+  }
+
   // "+ Add a custom field" only makes sense once a document type is entered -- a
   // custom field is always attached to *some* type, same reasoning as every other
   // dynamic field. Called on modal open and again on every type change/clear.
@@ -5899,6 +5974,11 @@
         if(target) target.disabled = !cb.checked;
       });
     });
+
+    modalRoot.querySelectorAll('input[type="radio"][name^="bulk-tags-mode"], input[type="radio"][name^="bulk-field-"]').forEach(radio => {
+      radio.addEventListener('change', () => refreshBulkMixedHints(ids));
+    });
+    refreshBulkMixedHints(ids);
   }
 
   async function saveBulkEdit(ids){

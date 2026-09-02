@@ -428,6 +428,48 @@ async def main2():
         print("doc 1 PONumber value also persisted despite the Document Type change:", po_values.get(1) == 'PO-12345')
         print("doc 2 PONumber value also persisted despite the Document Type change:", po_values.get(2) == 'PO-12345')
 
+        # === Scenario 16: a replace-semantics field with differing current
+        # values across the selection shows the overwrite-warning hint; the same
+        # field with identical values shows no hint at all. Doc 1 and doc 2 both
+        # have category="Finance" (uniform -- untouched by any earlier scenario
+        # above), but differ on subcategory ("Utilities" vs "Rent", also
+        # untouched above) -- mixed ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        subcategory_hint_visible = await page.locator('#bulk-mixed-hint-subcategory:visible').count()
+        print("mixed Subcategory shows the overwrite-warning hint:", subcategory_hint_visible == 1)
+        category_hint_visible = await page.locator('#bulk-mixed-hint-category:visible').count()
+        print("Category (both Finance -- uniform) shows no hint:", category_hint_visible == 0)
+        await page.click('#bulk-edit-cancel-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 17: an additive field (Tags) with differing tag sets shows
+        # the "added on top" hint on the default Add mode. By this point in the
+        # suite, every earlier Tags-mutating scenario's selection accumulated
+        # (no #bulk-clear-selection-btn between Scenarios 10/10b's own
+        # select_rows() calls and the selection already carried over from
+        # Scenario 9), so Scenario 10b's Replace-mode save actually landed on
+        # docs 1, 2, AND 3 -- all three now share the identical single tag
+        # "only-this-tag". Doc 4 was never part of any of those selections and
+        # still has no tags at all, so doc 1 + doc 4 is what's genuinely mixed ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [1, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        tags_hint_text_add = await page.locator('#bulk-mixed-hint-tags').inner_text()
+        print("mixed Tags on Add mode shows the 'added on top' hint:", 'Tags' in tags_hint_text_add or 'tags' in tags_hint_text_add.lower())
+
+        # === Scenario 18: switching that same field to Replace mode live-updates
+        # the hint to the overwrite-warning wording ===
+        await page.check('input[name="bulk-tags-mode"][value="replace"]')
+        await page.wait_for_timeout(150)
+        tags_hint_visible_replace = await page.locator('#bulk-mixed-hint-tags:visible').count()
+        overwrite_warning_en = "overwrite"
+        tags_hint_text_replace = await page.locator('#bulk-mixed-hint-tags').inner_text()
+        print("switching to Replace mode shows the overwrite-warning wording:", tags_hint_visible_replace == 1 and overwrite_warning_en in tags_hint_text_replace.lower())
+
         print("JS ERRORS (main2):", errors)
         await browser.close()
 
