@@ -124,6 +124,44 @@ multi-valued shape and "replace every selected document's People list
 with the exact same names" would almost never be the intended outcome of
 a bulk edit.
 
+### Mixed-value indicator
+
+For every field in the union, `openBulkEditForm()` also compares the
+selected documents' *current* values for that field (already available —
+`allDocs` already holds each selected document's full data, no extra
+query needed). A field is **mixed** when the selected documents don't all
+agree: for a scalar replace field, any two selected documents having a
+different value (blank/unset counts as one shared value for this
+comparison, so "all blank" or "all exactly `'Finance'`" is *not* mixed,
+but "some `'Finance'`, some blank" *is*); for an additive field, the
+selected documents' tag/person-name sets aren't all identical as sets
+(order doesn't matter). A field where every selected document already
+agrees gets no indicator at all — nothing to warn about.
+
+A mixed field shows a small hint line under it, worded differently by
+semantics, since the two behave differently on save:
+
+- **Additive fields** (Tags, person-type fields): *"Documents in this
+  selection currently have different {field} — what you enter here is
+  added on top of each document's own existing values; nothing is
+  removed."* Purely informational — there's no overwrite risk to warn
+  about, just a clarification of the (non-obvious, replace-by-default-
+  everywhere-else-in-this-app) additive behavior.
+- **Replace-semantics fields** (Document Type, Category, Subcategory,
+  Date, Notes, every generic field): *"Documents in this selection
+  currently have different {field} values — checking Apply will
+  overwrite ALL of them with the value you enter."* A real warning: this
+  is the one place a bulk edit can silently discard divergent existing
+  data, so it's called out before, not after, checking Apply.
+
+This is independent of, and can co-occur with, the `.field-orphaned`
+styling above — a field can be both "not configured for every selected
+document's type" and "mixed" (or orphaned-but-uniform, or
+configured-everywhere-but-mixed); the two indicators answer different
+questions (does this field apply everywhere vs. do the selected
+documents already agree on it) and both can be true or false
+independently.
+
 ### Excluded fields
 
 **Title** and the **OCR-text box** are not part of the bulk-edit form,
@@ -225,7 +263,9 @@ elsewhere in this codebase need to change.
     "Edit" label (may be able to reuse an existing generic key — confirm
     during planning), the bulk-action-bar button label, the modal title
     (`{count}`-parameterized, singular/plural pair), each "Apply to all"
-    checkbox's label/aria-label, and a post-save status message
+    checkbox's label/aria-label, the two mixed-value hint variants
+    (`{field}`-parameterized, one for additive fields and one for
+    replace-semantics fields), and a post-save status message
     (`{count}`-parameterized, singular/plural pair) — `zh-Hant` derived
     from the finished `zh-Hans` wording via OpenCC, matching this repo's
     established convention.
@@ -255,6 +295,11 @@ see `tests/CLAUDE.md`), covering at minimum:
 - Tags and a person-type field: typed values are added to each selected
   document's existing list without removing what was already there;
   leaving the input blank changes nothing.
+- Mixed-value indicator: a replace-semantics field seeded with differing
+  values across the selection shows the overwrite-warning hint; the same
+  field seeded with identical values (or all blank) across the selection
+  shows no hint at all. An additive field seeded with differing tag/
+  person sets shows the "added on top" hint; identical sets show no hint.
 - Saving with nothing checked and nothing typed is a genuine no-op (no
   `persistDb()`-visible change).
 - Selection survives a bulk-edit save (still checked afterward), unlike
