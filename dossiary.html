@@ -5909,6 +5909,18 @@
     statusEl.innerHTML = '<span class="spinner"></span> ' + t('statusSaving');
 
     try{
+      // Computed once, up front, before any write block below can mutate a
+      // selected document's in-memory document_type -- the field union the form
+      // actually rendered (and the person/generic write loops below must act on)
+      // is fixed for the life of this save, exactly like it's fixed for the life
+      // of the form itself (see computeBulkFieldUnion()'s own note and the design
+      // spec). Recomputing it fresh after the scalar-field write block would read
+      // each document's *new* document_type if Document Type's own Apply box was
+      // checked in the same save, silently dropping any other field that isn't
+      // configured for the new type -- even though its own Apply box is checked
+      // and it's still visibly showing a typed value in the (now-stale) form.
+      const fieldUnion = computeBulkFieldUnion(ids);
+
       const scalarFields = [
         { applyId: 'bulk-apply-type', inputId: 'bulk-type', column: 'document_type', trim: true },
         { applyId: 'bulk-apply-category', inputId: 'bulk-category', column: 'category', trim: true },
@@ -5954,7 +5966,7 @@
       }
 
       const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
-      const personFieldEntries = computeBulkFieldUnion(ids).filter(({field}) => field.type === 'person');
+      const personFieldEntries = fieldUnion.filter(({field}) => field.type === 'person');
       for(const {field} of personFieldEntries){
         const modeInput = document.querySelector(`input[name="bulk-field-${field.id}-mode"]:checked`);
         if(!modeInput) continue;
@@ -5983,7 +5995,7 @@
         });
       }
 
-      const genericFieldEntries = computeBulkFieldUnion(ids).filter(({field}) => field.type !== 'person');
+      const genericFieldEntries = fieldUnion.filter(({field}) => field.type !== 'person');
       for(const {field} of genericFieldEntries){
         const applyCb = el(`bulk-apply-field-${field.id}`);
         if(!applyCb || !applyCb.checked) continue;

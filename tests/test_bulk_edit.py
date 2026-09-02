@@ -205,10 +205,19 @@ SEED_WITH_FIELDS = {
         {"id": 1, "name": "Author", "type": "person", "show_as_column": 0, "autocomplete": 0},
         {"id": 2, "name": "Vendor", "type": "text", "show_as_column": 0, "autocomplete": 1},
         {"id": 3, "name": "Paid", "type": "checkbox", "show_as_column": 0, "autocomplete": 0},
+        # id 4 has NO pre-existing document_field_values on any document -- unlike
+        # Vendor/Paid above (which both have at least partial data, so they'd stay
+        # in a freshly-recomputed field union via hasDataFieldNames regardless of
+        # document_type). Configured only for Invoice, with zero pre-existing
+        # data, is what actually isolates Scenario 15's regression: a field that
+        # disappears from the union entirely once document_type changes, rather
+        # than merely getting re-flagged orphaned.
+        {"id": 4, "name": "PONumber", "type": "text", "show_as_column": 0, "autocomplete": 0},
     ],
     "document_type_fields": [
         {"document_type": "Invoice", "field_name": "Vendor", "position": 0},
         {"document_type": "Invoice", "field_name": "Paid", "position": 1},
+        {"document_type": "Invoice", "field_name": "PONumber", "position": 2},
         {"document_type": "Letter", "field_name": "Author", "position": 0},
     ],
     "document_field_values": [
@@ -384,6 +393,40 @@ async def main2():
         """)
         print("sidecar reflects the bulk-set Vendor value:", 'New Vendor LLC' in sidecar_text)
         print("sidecar still reflects the document's own unrelated title:", 'Invoice A' in sidecar_text)
+
+        # === Scenario 15 (regression): changing Document Type AND another field
+        # in the SAME save must not silently drop the other field. Docs 1/2 are
+        # both Invoice (PONumber-configured, with NO pre-existing PONumber value
+        # on either -- see the field-4 comment in SEED_WITH_FIELDS for why a
+        # field with zero pre-existing data is what actually isolates this bug,
+        # unlike Vendor/Paid which both carry partial data). Bulk-changing
+        # Document Type to "Letter" (which does NOT configure PONumber) in the
+        # same save that also sets PONumber's own value used to recompute the
+        # field union from each document's already-mutated (new) document_type,
+        # after the scalar-field write block ran -- since Letter doesn't
+        # configure PONumber and neither document has any existing PONumber
+        # data, the freshly-recomputed union drops the field entirely, silently
+        # skipping the write even though its own Apply box was checked and a
+        # value was typed. The field union must be computed once, up front, so
+        # both writes land regardless of what Document Type ends up being
+        # changed to in the same save ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('#bulk-apply-type')
+        await page.fill('#bulk-type', 'Letter')
+        await page.check('#bulk-apply-field-4')
+        await page.fill('#bulk-field-4', 'PO-12345')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        docs_by_id = {d['id']: d for d in persisted['documents']}
+        print("doc 1 Document Type bulk-changed to Letter:", docs_by_id[1]['document_type'] == 'Letter')
+        print("doc 2 Document Type bulk-changed to Letter:", docs_by_id[2]['document_type'] == 'Letter')
+        po_values = {r['document_id']: r['value'] for r in persisted['document_field_values'] if r['field_id'] == 4}
+        print("doc 1 PONumber value also persisted despite the Document Type change:", po_values.get(1) == 'PO-12345')
+        print("doc 2 PONumber value also persisted despite the Document Type change:", po_values.get(2) == 'PO-12345')
 
         print("JS ERRORS (main2):", errors)
         await browser.close()
