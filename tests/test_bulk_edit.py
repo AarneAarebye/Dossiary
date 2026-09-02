@@ -115,6 +115,80 @@ async def main():
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
 
+        # === Scenario 2: opening the bulk-edit form shows every scalar
+        # replace-semantics field genuinely blank (never pre-filled from any one
+        # selected document's own value) with its Apply checkbox unchecked ===
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        modal_title = await page.locator('.modal h2').inner_text()
+        print("modal title mentions the selected count:", "2" in modal_title)
+        for field_id, apply_id in [
+            ('bulk-type', 'bulk-apply-type'), ('bulk-category', 'bulk-apply-category'),
+            ('bulk-subcategory', 'bulk-apply-subcategory'), ('bulk-date', 'bulk-apply-date'),
+            ('bulk-notes', 'bulk-apply-notes'),
+        ]:
+            value = await page.locator(f'#{field_id}').input_value()
+            checked = await page.locator(f'#{apply_id}').is_checked()
+            disabled = await page.locator(f'#{field_id}').is_disabled()
+            print(f"{field_id} starts blank / Apply unchecked / input disabled:", value == '' and not checked and disabled)
+        await page.click('#bulk-edit-cancel-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 3: checking Apply and typing a value writes it to every
+        # selected document, and leaves an unselected document (id 4) untouched ===
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('#bulk-apply-category')
+        await page.fill('#bulk-category', 'Bulk-Set Category')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        docs_by_id = {d['id']: d for d in persisted['documents']}
+        print("doc 1 category bulk-set:", docs_by_id[1]['category'] == 'Bulk-Set Category')
+        print("doc 2 category bulk-set:", docs_by_id[2]['category'] == 'Bulk-Set Category')
+        print("doc 4 (not selected) category untouched:", docs_by_id[4]['category'] == 'Legal')
+        print("selection survives a bulk-edit save:", await page.locator('tr[data-id="1"] .row-select-checkbox').is_checked())
+
+        # === Scenario 4: leaving Apply unchecked on a field never touches it,
+        # regardless of what's typed into its input ===
+        await select_rows(page, [3, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.fill('#bulk-notes', 'should never be saved', force=True)  # Apply left unchecked (input disabled, so force the fill)
+        await page.check('#bulk-apply-subcategory')
+        await page.fill('#bulk-subcategory', 'Bulk-Set Subcategory')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        docs_by_id = {d['id']: d for d in persisted['documents']}
+        print("doc 3 notes untouched despite typed text (Apply unchecked):", docs_by_id[3]['notes'] is None)
+        print("doc 3 subcategory bulk-set (Apply checked):", docs_by_id[3]['subcategory'] == 'Bulk-Set Subcategory')
+
+        # === Scenario 5: Apply checked with a blank value is an explicit clear ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('#bulk-apply-category')  # leave input blank
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        docs_by_id = {d['id']: d for d in persisted['documents']}
+        print("doc 1 category cleared by Apply-checked + blank:", docs_by_id[1]['category'] is None)
+        print("doc 2 category cleared by Apply-checked + blank:", docs_by_id[2]['category'] is None)
+
+        # === Scenario 6: saving with every Apply box unchecked is a genuine no-op ===
+        await select_rows(page, [3, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        before = await read_db(page)
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        after = await read_db(page)
+        print("saving with nothing checked changes nothing:", before['documents'] == after['documents'])
+
         print("JS ERRORS so far:", errors)
         await browser.close()
 

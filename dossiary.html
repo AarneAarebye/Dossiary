@@ -954,6 +954,8 @@
       captureOcrDoneNoWords: 'Done, but no words with position data were found.',
       ocrFailedStatus: 'OCR failed: {error}', statusSaving: 'Saving…',
       captureSavedStatus: 'Saved "{title}" as #{id}.', statusSaveFailed: 'Save failed: {error}',
+      bulkEditModalTitleSingular: 'Edit {count} document', bulkEditModalTitlePlural: 'Edit {count} documents',
+      bulkEditSavedStatusSingular: 'Updated {count} document.', bulkEditSavedStatusPlural: 'Updated {count} documents.',
       editTitle: 'Edit document', editDocTypeLabel: 'Document type', editDocTypePlaceholder: 'Determines which fields show below',
       editDocTypeHint: "Not in the list? Type a new one — it'll be created.", editTitleLabel: 'Title', editDateLabel: 'Date',
       editCategoryLabel: 'Category', editSubcategoryLabel: 'Subcategory',
@@ -1121,6 +1123,8 @@
       captureOcrDoneNoWords: 'Listo, pero no se encontraron palabras con datos de posición.',
       ocrFailedStatus: 'Error de OCR: {error}', statusSaving: 'Guardando…',
       captureSavedStatus: 'Se guardó "{title}" como #{id}.', statusSaveFailed: 'Error al guardar: {error}',
+      bulkEditModalTitleSingular: 'Editar {count} documento', bulkEditModalTitlePlural: 'Editar {count} documentos',
+      bulkEditSavedStatusSingular: 'Se actualizó {count} documento.', bulkEditSavedStatusPlural: 'Se actualizaron {count} documentos.',
       editTitle: 'Editar documento', editDocTypeLabel: 'Tipo de documento', editDocTypePlaceholder: 'Determina qué campos se muestran abajo',
       editDocTypeHint: '¿No está en la lista? Escribe uno nuevo — se creará.', editTitleLabel: 'Título', editDateLabel: 'Fecha',
       editCategoryLabel: 'Categoría', editSubcategoryLabel: 'Subcategoría',
@@ -1288,6 +1292,8 @@
       captureOcrDoneNoWords: "Terminé, mais aucun mot avec des données de position n'a été trouvé.",
       ocrFailedStatus: "Échec de l'OCR : {error}", statusSaving: 'Enregistrement…',
       captureSavedStatus: 'Enregistré « {title} » sous #{id}.', statusSaveFailed: "Échec de l'enregistrement : {error}",
+      bulkEditModalTitleSingular: 'Modifier {count} document', bulkEditModalTitlePlural: 'Modifier {count} documents',
+      bulkEditSavedStatusSingular: '{count} document mis à jour.', bulkEditSavedStatusPlural: '{count} documents mis à jour.',
       editTitle: 'Modifier le document', editDocTypeLabel: 'Type de document', editDocTypePlaceholder: 'Détermine les champs affichés ci-dessous',
       editDocTypeHint: "Absent de la liste ? Saisissez-en un nouveau — il sera créé.", editTitleLabel: 'Titre', editDateLabel: 'Date',
       editCategoryLabel: 'Catégorie', editSubcategoryLabel: 'Sous-catégorie',
@@ -1455,6 +1461,8 @@
       captureOcrDoneNoWords: 'Fertig, aber es wurden keine Wörter mit Positionsdaten gefunden.',
       ocrFailedStatus: 'OCR fehlgeschlagen: {error}', statusSaving: 'Wird gespeichert…',
       captureSavedStatus: '"{title}" als #{id} gespeichert.', statusSaveFailed: 'Speichern fehlgeschlagen: {error}',
+      bulkEditModalTitleSingular: '{count} Dokument bearbeiten', bulkEditModalTitlePlural: '{count} Dokumente bearbeiten',
+      bulkEditSavedStatusSingular: '{count} Dokument aktualisiert.', bulkEditSavedStatusPlural: '{count} Dokumente aktualisiert.',
       editTitle: 'Dokument bearbeiten', editDocTypeLabel: 'Dokumenttyp', editDocTypePlaceholder: 'Bestimmt, welche Felder unten angezeigt werden',
       editDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.', editTitleLabel: 'Titel', editDateLabel: 'Datum',
       editCategoryLabel: 'Kategorie', editSubcategoryLabel: 'Unterkategorie',
@@ -1622,6 +1630,8 @@
       captureOcrDoneNoWords: '完成，但未找到带位置数据的单词。',
       ocrFailedStatus: 'OCR 失败：{error}', statusSaving: '正在保存…',
       captureSavedStatus: '已将 "{title}" 保存为 #{id}。', statusSaveFailed: '保存失败：{error}',
+      bulkEditModalTitleSingular: '编辑 {count} 份文档', bulkEditModalTitlePlural: '编辑 {count} 份文档',
+      bulkEditSavedStatusSingular: '已更新 {count} 份文档。', bulkEditSavedStatusPlural: '已更新 {count} 份文档。',
       editTitle: '编辑文档', editDocTypeLabel: '文档类型', editDocTypePlaceholder: '决定下方显示哪些字段',
       editDocTypeHint: '不在列表中？输入一个新类型即可自动创建。', editTitleLabel: '标题', editDateLabel: '日期',
       editCategoryLabel: '分类', editSubcategoryLabel: '子分类',
@@ -1885,6 +1895,10 @@
       statusSaving: '正在保存…',
       captureSavedStatus: '已將 "{title}" 保存爲 #{id}。',
       statusSaveFailed: '保存失敗：{error}',
+      bulkEditModalTitleSingular: '編輯 {count} 份文檔',
+      bulkEditModalTitlePlural: '編輯 {count} 份文檔',
+      bulkEditSavedStatusSingular: '已更新 {count} 份文檔。',
+      bulkEditSavedStatusPlural: '已更新 {count} 份文檔。',
       editTitle: '編輯文檔',
       editDocTypeLabel: '文檔類型',
       editDocTypePlaceholder: '決定下方顯示哪些字段',
@@ -5638,6 +5652,139 @@
       statusEl.className = 'status err';
       statusEl.textContent = t('detailPreviewGenerationFailed', {error: e.message});
       btn.disabled = false;
+    }
+  }
+
+  // --- bulk-edit modal (update metadata for 2+ selected documents at once) ---
+
+  function openBulkEditForm(ids){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${ids.length === 1 ? t('bulkEditModalTitleSingular', {count: ids.length}) : t('bulkEditModalTitlePlural', {count: ids.length})}</h2>
+
+          <div class="field field-prominent bulk-field">
+            <label class="checkbox-label bulk-apply-label" for="bulk-apply-type">
+              <input type="checkbox" id="bulk-apply-type" class="bulk-apply-checkbox" data-bulk-target="bulk-type" />
+              ${t('editDocTypeLabel')}
+            </label>
+            <input type="text" id="bulk-type" list="type-list" disabled />
+            <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-type" style="display:none;"></div>
+          </div>
+
+          <div class="field-row">
+            <div class="field bulk-field">
+              <label class="checkbox-label bulk-apply-label" for="bulk-apply-category">
+                <input type="checkbox" id="bulk-apply-category" class="bulk-apply-checkbox" data-bulk-target="bulk-category" />
+                ${t('editCategoryLabel')}
+              </label>
+              <input type="text" id="bulk-category" list="category-list" disabled />
+              <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-category" style="display:none;"></div>
+            </div>
+            <div class="field bulk-field">
+              <label class="checkbox-label bulk-apply-label" for="bulk-apply-subcategory">
+                <input type="checkbox" id="bulk-apply-subcategory" class="bulk-apply-checkbox" data-bulk-target="bulk-subcategory" />
+                ${t('editSubcategoryLabel')}
+              </label>
+              <input type="text" id="bulk-subcategory" list="subcategory-list" disabled />
+              <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-subcategory" style="display:none;"></div>
+            </div>
+          </div>
+
+          <div class="field bulk-field">
+            <label class="checkbox-label bulk-apply-label" for="bulk-apply-date">
+              <input type="checkbox" id="bulk-apply-date" class="bulk-apply-checkbox" data-bulk-target="bulk-date" />
+              ${t('editDateLabel')}
+            </label>
+            <input type="date" id="bulk-date" disabled />
+            <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-date" style="display:none;"></div>
+          </div>
+
+          <div class="field">
+            <label for="bulk-tags">${t('captureTagsLabel')}</label>
+            <input type="text" id="bulk-tags" placeholder="${t('captureTagsPlaceholder')}" />
+            <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-tags" style="display:none;"></div>
+          </div>
+
+          <div id="bulk-person-fields"></div>
+
+          <div class="field bulk-field">
+            <label class="checkbox-label bulk-apply-label" for="bulk-apply-notes">
+              <input type="checkbox" id="bulk-apply-notes" class="bulk-apply-checkbox" data-bulk-target="bulk-notes" />
+              ${t('captureNotesLabel')}
+            </label>
+            <textarea id="bulk-notes" rows="3" disabled></textarea>
+            <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-notes" style="display:none;"></div>
+          </div>
+
+          <div id="bulk-generic-fields"></div>
+
+          <div class="modal-actions">
+            <button class="primary" id="bulk-edit-save-btn">${t('editSaveChanges')}</button>
+            <button id="bulk-edit-cancel-btn">${t('commonCancel')}</button>
+          </div>
+          <div class="status" id="bulk-edit-status" style="padding:10px 0 0;"></div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('bulk-edit-cancel-btn').addEventListener('click', () => closeModal());
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    el('bulk-edit-save-btn').addEventListener('click', () => saveBulkEdit(ids));
+
+    modalRoot.querySelectorAll('.bulk-apply-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const target = el(cb.dataset.bulkTarget);
+        if(target) target.disabled = !cb.checked;
+      });
+    });
+  }
+
+  async function saveBulkEdit(ids){
+    const statusEl = el('bulk-edit-status');
+    const saveBtn = el('bulk-edit-save-btn');
+    saveBtn.disabled = true;
+    statusEl.className = 'status busy';
+    statusEl.innerHTML = '<span class="spinner"></span> ' + t('statusSaving');
+
+    try{
+      const scalarFields = [
+        { applyId: 'bulk-apply-type', inputId: 'bulk-type', column: 'document_type', trim: true },
+        { applyId: 'bulk-apply-category', inputId: 'bulk-category', column: 'category', trim: true },
+        { applyId: 'bulk-apply-subcategory', inputId: 'bulk-subcategory', column: 'subcategory', trim: true },
+        { applyId: 'bulk-apply-date', inputId: 'bulk-date', column: 'date', trim: false },
+        { applyId: 'bulk-apply-notes', inputId: 'bulk-notes', column: 'notes', trim: true },
+      ];
+      const scalarUpdates = {};
+      scalarFields.forEach(({applyId, inputId, column, trim}) => {
+        if(!el(applyId).checked) return;
+        const raw = el(inputId).value;
+        scalarUpdates[column] = (trim ? raw.trim() : raw) || null;
+      });
+      if(Object.keys(scalarUpdates).length){
+        const setClause = Object.keys(scalarUpdates).map(c => `${c} = ?`).join(', ');
+        const params = Object.values(scalarUpdates);
+        ids.forEach(id => db.run(`UPDATE documents SET ${setClause} WHERE id = ?`, [...params, id]));
+        ids.forEach(id => {
+          const d = allDocs.find(x => x.id === id);
+          if(d) Object.assign(d, scalarUpdates);
+        });
+      }
+
+      await persistDb();
+      renderStats(); populateFilters(); populateDatalists();
+      render();
+
+      setStatusT(ids.length === 1 ? 'bulkEditSavedStatusSingular' : 'bulkEditSavedStatusPlural', {count: ids.length}, 'ok');
+      closeModal();
+      return true;
+    }catch(e){
+      statusEl.className = 'status err';
+      statusEl.textContent = t('statusSaveFailed', {error: e.message});
+      saveBtn.disabled = false;
+      return false;
     }
   }
 
