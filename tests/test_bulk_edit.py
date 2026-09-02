@@ -300,6 +300,24 @@ async def main2():
         doc1_tags = sorted(tag_names[r['tag_id']] for r in persisted['document_tags'] if r['document_id'] == 1)
         print("Tags Replace mode discards prior tags:", doc1_tags == ['only-this-tag'])
 
+        # === Scenario 11: the comma-autocomplete dropdown for #bulk-tags
+        # renders positioned right under its own input, not off in some
+        # unrelated ancestor's corner (regression check for the
+        # .bulk-autocomplete-wrap positioning fix -- #bulk-tags has no
+        # .field-with-clear wrapper, unlike #e-tags/#f-tags, so it needs its
+        # own position:relative anchor for the dropdown to size against) ===
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.fill('#bulk-tags', 'only')
+        await page.wait_for_timeout(150)
+        input_box = await page.locator('#bulk-tags').bounding_box()
+        dropdown_box = await page.locator('#bulk-tags').locator('xpath=following::div[contains(@class,"comma-autocomplete-dropdown")][1]').bounding_box()
+        dropdown_near_input = dropdown_box is not None and abs(dropdown_box['y'] - input_box['y']) < 50
+        print("Tags autocomplete dropdown renders near its own input:", dropdown_near_input)
+        await page.click('#bulk-edit-cancel-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS (main2):", errors)
         await browser.close()
 

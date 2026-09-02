@@ -464,6 +464,13 @@
   .checkbox-label{ display:flex !important; align-items:center; gap:8px; cursor:pointer; text-transform:none !important; letter-spacing:normal !important; font-family:var(--font-sans) !important; font-size:13px !important; color:var(--text) !important; }
   .field-with-clear{ position:relative; }
   .field-with-clear input{ padding-right:30px !important; }
+  /* Positioning anchor for the comma-autocomplete dropdown on bulk-edit's Tags
+     and person-type field inputs, which have no clear button (so don't use
+     .field-with-clear itself -- that also forces padding-right:30px for a
+     clear button neither of these fields has). Without a position:relative
+     ancestor here, the dropdown (position:absolute) falls through to the
+     nearest one further up the DOM (.modal) and renders far from its input. */
+  .bulk-autocomplete-wrap{ position:relative; }
   .comma-autocomplete-dropdown{
     position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); z-index:40; max-height:220px; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,0.4);
@@ -3792,7 +3799,9 @@
     return `
       <div class="field${orphaned ? ' field-orphaned' : ''}">
         <label for="${inputId}">${t('fieldPersonLabelSuffix', {name: escapeHtml(field.name)})}</label>
-        <input type="text" id="${inputId}" placeholder="${t('fieldPersonPlaceholder')}" />
+        <div class="bulk-autocomplete-wrap">
+          <input type="text" id="${inputId}" placeholder="${t('fieldPersonPlaceholder')}" />
+        </div>
         <div class="bulk-mode-toggle">
           <label class="checkbox-label"><input type="radio" name="${modeName}" value="add" checked /> ${t('bulkAddToExisting')}</label>
           <label class="checkbox-label"><input type="radio" name="${modeName}" value="replace" /> ${t('bulkReplaceExisting')}</label>
@@ -5781,7 +5790,9 @@
 
           <div class="field">
             <label for="bulk-tags">${t('captureTagsLabel')}</label>
-            <input type="text" id="bulk-tags" placeholder="${t('captureTagsPlaceholder')}" />
+            <div class="bulk-autocomplete-wrap">
+              <input type="text" id="bulk-tags" placeholder="${t('captureTagsPlaceholder')}" />
+            </div>
             <div class="bulk-mode-toggle">
               <label class="checkbox-label"><input type="radio" name="bulk-tags-mode" value="add" checked /> ${t('bulkAddToExisting')}</label>
               <label class="checkbox-label"><input type="radio" name="bulk-tags-mode" value="replace" /> ${t('bulkReplaceExisting')}</label>
