@@ -736,6 +736,7 @@
         <button type="button" id="bulk-delete-btn" data-i18n="commonDelete">Delete</button>
         <button type="button" id="bulk-review-btn" data-i18n="bulkFlagForReview">Flag for review</button>
         <button type="button" id="bulk-restore-btn" style="display:none;" data-i18n="bulkRestore">Restore</button>
+        <button type="button" id="bulk-edit-btn" data-i18n="detailEdit">Edit</button>
         <button type="button" id="bulk-clear-selection-btn" data-i18n="bulkClearSelection">Clear selection</button>
       </div>
 
@@ -4771,6 +4772,7 @@
     el('bulk-archive-btn').style.display = isTrash ? 'none' : '';
     el('bulk-delete-btn').style.display = isTrash ? 'none' : '';
     el('bulk-review-btn').style.display = isTrash ? 'none' : '';
+    el('bulk-edit-btn').style.display = isTrash ? 'none' : '';
     el('bulk-restore-btn').style.display = isTrash ? '' : 'none';
     // Inbox already means "flagged" for everything visible there, so the bulk
     // action is Done (clear the flag), not Flag for review (set it) -- same
@@ -7152,6 +7154,7 @@
   el('bulk-delete-btn').addEventListener('click', () => bulkSetDeleted([...selectedDocIds], true));
   el('bulk-review-btn').addEventListener('click', () => bulkSetNeedsReview([...selectedDocIds], currentView !== 'inbox'));
   el('bulk-restore-btn').addEventListener('click', () => bulkSetDeleted([...selectedDocIds], false));
+  el('bulk-edit-btn').addEventListener('click', () => openBulkEditForm([...selectedDocIds]));
   el('bulk-clear-selection-btn').addEventListener('click', () => { selectedDocIds = new Set(); render(); });
 
   async function saveSmartCollection(){
