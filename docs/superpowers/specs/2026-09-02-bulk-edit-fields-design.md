@@ -96,9 +96,13 @@ for all of them. A checkbox-type field therefore shows *two* checkboxes
 side by side — "Apply to all" and the field's own Yes/No value — which is
 slightly busier than other field rows but unambiguous.
 
-Saving with every "Apply" box unchecked and no Tags/People typed is a
+Saving with every "Apply" box unchecked, every additive field left on its
+default "Add to existing" mode, and nothing typed anywhere is a genuine
 no-op — safe default, nothing changes, matching this app's general
-"nothing happens without an explicit action" principle.
+"nothing happens without an explicit action" principle. (An additive
+field switched to "Replace existing" and left blank is the one
+deliberate exception — see below — but that requires the explicit mode
+switch first.)
 
 ### Replace vs. additive fields
 
@@ -112,17 +116,36 @@ here). Checking the box and leaving the value blank is a valid, explicit
 that's a real and sometimes-wanted outcome (e.g. bulk-clearing a
 mistakenly-set field).
 
-**Additive semantics, no Apply checkbox needed**: Tags, and every
-person-type field. Typed names/tags are added to each selected document's
-existing list via the same find-or-create pattern capture/edit already
-use; nothing already on a document is ever removed by a bulk edit. A
-blank Tags/People input is unambiguously "nothing to add" — no toggle
-needed, unlike the replace-semantics fields above. This extends the
-additive behavior requested for Tags to every person-type field (People,
-Author, Collaborator, …), since they're the same comma-separated
-multi-valued shape and "replace every selected document's People list
-with the exact same names" would almost never be the intended outcome of
-a bulk edit.
+**Additive fields, with an Add/Replace mode toggle instead of an Apply
+checkbox**: Tags, and every person-type field. Each of these fields gets
+a small two-option toggle — **"Add to existing"** (default) /
+**"Replace existing"** — instead of the Apply checkbox the scalar fields
+use; the toggle itself is what makes replace-semantics fields' Apply
+checkbox unnecessary here, since selecting a mode at all is already the
+explicit action, and the default (Add) is safe on its own:
+
+- **Add to existing** (default): typed names/tags are added to each
+  selected document's existing list via the same find-or-create pattern
+  capture/edit already use; nothing already on a document is ever
+  removed. A blank input is unambiguously "nothing to add" — a genuine
+  no-op, matching every other field's blank-and-untouched default state.
+- **Replace existing**: typed names/tags become each selected document's
+  *entire* list for that field, discarding whatever was there before —
+  the same delete-then-reinsert `saveEditedDocument()` already uses for
+  Tags/People on a single document, just applied per selected document. A
+  blank input while Replace is selected is a valid, deliberate "clear
+  this field on every selected document," the same accepted "checked +
+  blank = clear" outcome the scalar replace-semantics fields already
+  allow — no extra confirmation beyond having chosen Replace mode in the
+  first place, consistent with this app's no-`confirm()`-dialogs
+  convention.
+
+This extends the additive-by-default behavior requested for Tags to every
+person-type field (People, Author, Collaborator, …), since they're the
+same comma-separated multi-valued shape, while still giving an explicit
+opt-in path to the "replace every selected document's list with the same
+values" outcome for the (rarer, but real — e.g. correcting a bulk-import
+mistake) cases where that's actually wanted.
 
 ### Mixed-value indicator
 
@@ -141,12 +164,17 @@ agrees gets no indicator at all — nothing to warn about.
 A mixed field shows a small hint line under it, worded differently by
 semantics, since the two behave differently on save:
 
-- **Additive fields** (Tags, person-type fields): *"Documents in this
-  selection currently have different {field} — what you enter here is
-  added on top of each document's own existing values; nothing is
-  removed."* Purely informational — there's no overwrite risk to warn
-  about, just a clarification of the (non-obvious, replace-by-default-
-  everywhere-else-in-this-app) additive behavior.
+- **Additive fields on "Add to existing"** (Tags, person-type fields):
+  *"Documents in this selection currently have different {field} — what
+  you enter here is added on top of each document's own existing values;
+  nothing is removed."* Purely informational — there's no overwrite risk
+  to warn about, just a clarification of the (non-obvious, replace-by-
+  default-everywhere-else-in-this-app) additive behavior.
+- **Additive fields switched to "Replace existing"**: the same wording as
+  the replace-semantics warning immediately below, since that's exactly
+  what will happen — *"Documents in this selection currently have
+  different {field} — replacing will overwrite ALL of them with the
+  exact list you enter."*
 - **Replace-semantics fields** (Document Type, Category, Subcategory,
   Date, Notes, every generic field): *"Documents in this selection
   currently have different {field} values — checking Apply will
@@ -177,19 +205,23 @@ single-document Edit form:
 
 ### Save
 
-On Save, for each checked replace-semantics field and each non-blank
-additive field, the same per-document write primitives
-`saveEditedDocument()`/`bulkSetArchived()` already use are applied across
-every selected id — `UPDATE documents SET <col> = ?` for the scalar
-columns (Document Type/Category/Subcategory/Date/Notes), delete-then-
-insert into `document_field_values` for generic fields, find-or-create
-plus additive link insert (skipping a link that already exists) for
-Tags/person-type fields — batched into exactly one `persistDb()` and one
-`render()` call at the end, following the exact reasoning
-`bulkSetArchived()`'s own spec already documents: looping individual
-single-document save functions would re-serialize the whole SQLite
-database once per selected document, which bulk actions exist specifically
-to avoid.
+On Save, for each checked replace-semantics field, and each additive
+field that's either non-blank or switched to "Replace existing," the same
+per-document write primitives `saveEditedDocument()`/`bulkSetArchived()`
+already use are applied across every selected id — `UPDATE documents SET
+<col> = ?` for the scalar columns (Document Type/Category/Subcategory/
+Date/Notes), delete-then-insert into `document_field_values` for generic
+fields. For Tags/person-type fields: **"Add to existing"** does a
+find-or-create plus additive link insert per selected document, skipping
+a link that already exists (never duplicates, never removes); **"Replace
+existing"** does the same delete-all-links-then-reinsert
+`saveEditedDocument()` already does for a single document's Tags/People,
+just looped per selected id. All of it batched into exactly one
+`persistDb()` and one `render()` call at the end, following the exact
+reasoning `bulkSetArchived()`'s own spec already documents: looping
+individual single-document save functions would re-serialize the whole
+SQLite database once per selected document, which bulk actions exist
+specifically to avoid.
 
 `archived`, `deleted`, and `needs_review` are never touched by a bulk
 edit — those already have their own dedicated bulk actions, and this
@@ -221,7 +253,10 @@ Category → Subcategory → Date → Tags → People (and other person-type
 fields) → Notes → the computed union of remaining generic custom fields
 (configured fields first, in the order their originating types list
 them, followed by any data-only orphaned additions) → Save changes /
-Cancel.
+Cancel. Every field row carries either an "Apply to all" checkbox
+(replace-semantics fields) or the "Add to existing" / "Replace existing"
+mode toggle (Tags and every person-type field) immediately beside its
+input, plus the mixed-value hint line underneath when applicable.
 
 No layout/CSS-calibration impact — this is a transient modal like
 `openEditForm()`, not new persistent chrome, so none of the
@@ -246,8 +281,8 @@ elsewhere in this codebase need to change.
 - `dossiary.html`:
   - New `openBulkEditForm(ids)` — builds and renders the modal, including
     the field-union computation described above.
-  - New `saveBulkEdit(ids)` — reads every field's Apply-checkbox/input
-    state and writes as described above.
+  - New `saveBulkEdit(ids)` — reads every field's Apply-checkbox/mode-
+    toggle/input state and writes as described above.
   - New context-menu builder for the checked-rows case, following the
     existing floating-menu pattern (`openDocCollectionMenu`, the Columns
     menu, the single-row context menu) — reuses that same visual language
@@ -263,9 +298,10 @@ elsewhere in this codebase need to change.
     "Edit" label (may be able to reuse an existing generic key — confirm
     during planning), the bulk-action-bar button label, the modal title
     (`{count}`-parameterized, singular/plural pair), each "Apply to all"
-    checkbox's label/aria-label, the two mixed-value hint variants
-    (`{field}`-parameterized, one for additive fields and one for
-    replace-semantics fields), and a post-save status message
+    checkbox's label/aria-label, the "Add to existing"/"Replace existing"
+    mode-toggle labels, the three mixed-value hint variants
+    (`{field}`-parameterized: additive-on-Add, additive-on-Replace, and
+    replace-semantics), and a post-save status message
     (`{count}`-parameterized, singular/plural pair) — `zh-Hant` derived
     from the finished `zh-Hans` wording via OpenCC, matching this repo's
     established convention.
@@ -292,14 +328,23 @@ see `tests/CLAUDE.md`), covering at minimum:
 - A checkbox-type field's "Apply to all" and its own value checkbox are
   independent — Apply unchecked leaves existing values alone regardless
   of the value checkbox's own state.
-- Tags and a person-type field: typed values are added to each selected
-  document's existing list without removing what was already there;
-  leaving the input blank changes nothing.
+- Tags and a person-type field on the default "Add to existing" mode:
+  typed values are added to each selected document's existing list
+  without removing what was already there; leaving the input blank
+  changes nothing.
+- Tags and a person-type field switched to "Replace existing": typed
+  values become each selected document's entire list, discarding
+  whatever was there before (seed documents with different pre-existing
+  tag/person sets to confirm each one's old values are actually gone, not
+  just added-to); a blank input on "Replace existing" clears the field on
+  every selected document.
 - Mixed-value indicator: a replace-semantics field seeded with differing
   values across the selection shows the overwrite-warning hint; the same
   field seeded with identical values (or all blank) across the selection
   shows no hint at all. An additive field seeded with differing tag/
-  person sets shows the "added on top" hint; identical sets show no hint.
+  person sets shows the "added on top" hint on "Add to existing" mode and
+  the overwrite-warning hint after switching to "Replace existing";
+  identical sets show no hint in either mode.
 - Saving with nothing checked and nothing typed is a genuine no-op (no
   `persistDb()`-visible change).
 - Selection survives a bulk-edit save (still checked afterward), unlike
