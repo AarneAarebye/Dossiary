@@ -867,6 +867,7 @@
       bulkAddToCollection: 'Add to collection ▾', bulkNewCollectionPlaceholder: 'New collection name',
       bulkCreateAndAdd: 'Create & add', bulkArchive: 'Archive', bulkFlagForReview: 'Flag for review',
       bulkRestore: 'Restore', bulkClearSelection: 'Clear selection', bulkSelectedCount: '{count} selected',
+      bulkAddToExisting: 'Add to existing', bulkReplaceExisting: 'Replace existing',
       bulkNewCollectionMenuItem: '+ New collection…',
       statsDocuments: 'documents', statsCategories: 'categories', statsCapturedHere: 'captured here',
       emptyBody: 'Open a Dossiary library folder, or start a brand new one here. Everything happens locally in your browser — nothing is uploaded.',
@@ -1036,6 +1037,7 @@
       bulkAddToCollection: 'Añadir a colección ▾', bulkNewCollectionPlaceholder: 'Nombre de la nueva colección',
       bulkCreateAndAdd: 'Crear y añadir', bulkArchive: 'Archivar', bulkFlagForReview: 'Marcar para revisión',
       bulkRestore: 'Restaurar', bulkClearSelection: 'Borrar selección', bulkSelectedCount: '{count} seleccionados',
+      bulkAddToExisting: 'Añadir a lo existente', bulkReplaceExisting: 'Reemplazar lo existente',
       bulkNewCollectionMenuItem: '+ Nueva colección…',
       statsDocuments: 'documentos', statsCategories: 'categorías', statsCapturedHere: 'capturados aquí',
       emptyBody: 'Abre una carpeta de biblioteca de Dossiary, o crea una completamente nueva aquí. Todo ocurre localmente en tu navegador — no se sube nada.',
@@ -1205,6 +1207,7 @@
       bulkAddToCollection: 'Ajouter à une collection ▾', bulkNewCollectionPlaceholder: 'Nom de la nouvelle collection',
       bulkCreateAndAdd: 'Créer et ajouter', bulkArchive: 'Archiver', bulkFlagForReview: 'Marquer pour révision',
       bulkRestore: 'Restaurer', bulkClearSelection: 'Effacer la sélection', bulkSelectedCount: '{count} sélectionné(s)',
+      bulkAddToExisting: 'Ajouter à l\'existant', bulkReplaceExisting: 'Remplacer l\'existant',
       bulkNewCollectionMenuItem: '+ Nouvelle collection…',
       statsDocuments: 'documents', statsCategories: 'catégories', statsCapturedHere: 'capturés ici',
       emptyBody: "Ouvrez un dossier de bibliothèque Dossiary, ou créez-en un tout nouveau ici. Tout se passe localement dans votre navigateur — rien n'est envoyé en ligne.",
@@ -1374,6 +1377,7 @@
       bulkAddToCollection: 'Zu Sammlung hinzufügen ▾', bulkNewCollectionPlaceholder: 'Neuer Sammlungsname',
       bulkCreateAndAdd: 'Erstellen & hinzufügen', bulkArchive: 'Archivieren', bulkFlagForReview: 'Zur Prüfung markieren',
       bulkRestore: 'Wiederherstellen', bulkClearSelection: 'Auswahl aufheben', bulkSelectedCount: '{count} ausgewählt',
+      bulkAddToExisting: 'Zu Bestehendem hinzufügen', bulkReplaceExisting: 'Bestehendes ersetzen',
       bulkNewCollectionMenuItem: '+ Neue Sammlung…',
       statsDocuments: 'Dokumente', statsCategories: 'Kategorien', statsCapturedHere: 'hier erfasst',
       emptyBody: 'Öffne einen Dossiary-Bibliotheksordner oder starte hier eine ganz neue Bibliothek. Alles geschieht lokal in deinem Browser — nichts wird hochgeladen.',
@@ -1543,6 +1547,7 @@
       bulkAddToCollection: '添加到收藏集 ▾', bulkNewCollectionPlaceholder: '新收藏集名称',
       bulkCreateAndAdd: '创建并添加', bulkArchive: '归档', bulkFlagForReview: '标记待审核',
       bulkRestore: '恢复', bulkClearSelection: '清除选择', bulkSelectedCount: '已选择 {count} 项',
+      bulkAddToExisting: '添加到现有内容', bulkReplaceExisting: '替换现有内容',
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文档', statsCategories: '分类', statsCapturedHere: '在此录入',
       emptyBody: '打开一个 Dossiary 资料库文件夹，或在此创建一个全新的资料库。一切都在你的浏览器本地完成——不会上传任何内容。',
@@ -1741,6 +1746,8 @@
       bulkFlagForReview: '標記待審覈',
       bulkRestore: '恢復',
       bulkClearSelection: '清除選擇',
+      bulkAddToExisting: '添加到現有內容',
+      bulkReplaceExisting: '替換現有內容',
       bulkSelectedCount: '已選擇 {count} 項',
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文檔',
@@ -3774,6 +3781,28 @@
     `;
   }
 
+  // Bulk-edit's own person-type field renderer -- structurally similar to
+  // renderPersonFieldHtml() but with the "Add to existing"/"Replace existing"
+  // mode toggle instead of a plain label + clear button, since a bulk edit
+  // never pre-fills a value and never offers a single-input clear (see the
+  // design spec's "Additive fields, with an Add/Replace mode toggle" section).
+  function renderBulkPersonFieldHtml(field, orphaned){
+    const inputId = `bulk-field-${field.id}`;
+    const modeName = `bulk-field-${field.id}-mode`;
+    return `
+      <div class="field${orphaned ? ' field-orphaned' : ''}">
+        <label for="${inputId}">${t('fieldPersonLabelSuffix', {name: escapeHtml(field.name)})}</label>
+        <input type="text" id="${inputId}" placeholder="${t('fieldPersonPlaceholder')}" />
+        <div class="bulk-mode-toggle">
+          <label class="checkbox-label"><input type="radio" name="${modeName}" value="add" checked /> ${t('bulkAddToExisting')}</label>
+          <label class="checkbox-label"><input type="radio" name="${modeName}" value="replace" /> ${t('bulkReplaceExisting')}</label>
+        </div>
+        <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-field-${field.id}" style="display:none;"></div>
+        ${orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : ''}
+      </div>
+    `;
+  }
+
   // Amount, Payment method, and Currency all used to be "sentinel" dynamic fields
   // with their own dedicated documents columns and bespoke rendering (Payment
   // method, Amount) or implicit Amount-pairing (Currency, which had no
@@ -3948,6 +3977,55 @@
     // and comma-separated -- see wireCommaAutocomplete()'s own comment for why this
     // replaces the native list="person-list" attribute rather than relying on it.
     container.querySelectorAll('input[list="person-list"]').forEach(input => wireCommaAutocomplete(input, 'person-list'));
+  }
+
+  // Computes the field-union a bulk edit shows: every field configured for ANY
+  // selected document's Document Type, plus any field ANY selected document
+  // currently holds a value for (covering a field removed from its type's
+  // configuration, or a reclassified document) -- see the design spec's
+  // "Field list: union across selected documents" section. `orphaned` is true
+  // when a field isn't configured for EVERY selected document's type, mirroring
+  // (but distinct in meaning from) applyDynamicFieldsForType()'s own orphaned-
+  // field concept: here it means "doesn't apply to every selected document's
+  // type," not "this one document has stale data."
+  function computeBulkFieldUnion(ids){
+    const docs = ids.map(id => allDocs.find(d => d.id === id)).filter(Boolean);
+    const distinctTypes = [...new Set(docs.map(d => (d.document_type || '').trim()))];
+
+    const configuredByType = {}; // fieldName -> Set of distinctTypes that configure it
+    distinctTypes.forEach(typeName => {
+      (typeFieldOrder[typeName] || []).forEach(({field: fieldName}) => {
+        if(!configuredByType[fieldName]) configuredByType[fieldName] = new Set();
+        configuredByType[fieldName].add(typeName);
+      });
+    });
+
+    const hasDataFieldNames = new Set();
+    docs.forEach(d => {
+      Object.keys(d.customFields || {}).forEach(name => hasDataFieldNames.add(name));
+      Object.keys(d.personFieldValues || {}).forEach(name => {
+        if((d.personFieldValues[name] || []).length) hasDataFieldNames.add(name);
+      });
+    });
+
+    const orderedNames = [];
+    const seen = new Set();
+    distinctTypes.forEach(typeName => {
+      (typeFieldOrder[typeName] || []).forEach(({field: fieldName}) => {
+        if(!seen.has(fieldName)){ seen.add(fieldName); orderedNames.push(fieldName); }
+      });
+    });
+    hasDataFieldNames.forEach(fieldName => {
+      if(!seen.has(fieldName)){ seen.add(fieldName); orderedNames.push(fieldName); }
+    });
+
+    return orderedNames.map(fieldName => {
+      const fieldDef = fieldDefs.find(f => f.name === fieldName);
+      if(!fieldDef) return null;
+      const configuredTypes = configuredByType[fieldName] || new Set();
+      const orphaned = configuredTypes.size < distinctTypes.length;
+      return { field: fieldDef, orphaned };
+    }).filter(Boolean);
   }
 
   // "+ Add a custom field" only makes sense once a document type is entered -- a
@@ -5704,6 +5782,10 @@
           <div class="field">
             <label for="bulk-tags">${t('captureTagsLabel')}</label>
             <input type="text" id="bulk-tags" placeholder="${t('captureTagsPlaceholder')}" />
+            <div class="bulk-mode-toggle">
+              <label class="checkbox-label"><input type="radio" name="bulk-tags-mode" value="add" checked /> ${t('bulkAddToExisting')}</label>
+              <label class="checkbox-label"><input type="radio" name="bulk-tags-mode" value="replace" /> ${t('bulkReplaceExisting')}</label>
+            </div>
             <div class="field-hint bulk-mixed-hint" id="bulk-mixed-hint-tags" style="display:none;"></div>
           </div>
 
@@ -5740,6 +5822,14 @@
         if(target) target.disabled = !cb.checked;
       });
     });
+
+    const bulkFieldUnion = computeBulkFieldUnion(ids);
+    el('bulk-person-fields').innerHTML = bulkFieldUnion
+      .filter(({field}) => field.type === 'person')
+      .map(({field, orphaned}) => renderBulkPersonFieldHtml(field, orphaned))
+      .join('');
+    wireCommaAutocomplete(el('bulk-tags'), 'tag-list');
+    modalRoot.querySelectorAll('#bulk-person-fields input[type="text"]').forEach(input => wireCommaAutocomplete(input, 'person-list'));
   }
 
   async function saveBulkEdit(ids){
@@ -5770,6 +5860,57 @@
         ids.forEach(id => {
           const d = allDocs.find(x => x.id === id);
           if(d) Object.assign(d, scalarUpdates);
+        });
+      }
+
+      const tagsMode = document.querySelector('input[name="bulk-tags-mode"]:checked').value;
+      const typedTagNames = el('bulk-tags').value.split(',').map(s => s.trim()).filter(Boolean);
+      if(typedTagNames.length || tagsMode === 'replace'){
+        ids.forEach(id => {
+          if(tagsMode === 'replace') db.run('DELETE FROM document_tags WHERE document_id = ?', [id]);
+          const d = allDocs.find(x => x.id === id);
+          const tagsForDoc = tagsMode === 'replace' ? [] : [...(d ? (d.tags || []) : [])];
+          typedTagNames.forEach(name => {
+            let tagId = tagNameToId[name];
+            if(tagId === undefined){
+              tagId = nextTagId++;
+              db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+              tagNameToId[name] = tagId;
+            }
+            db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
+            if(!tagsForDoc.includes(name)) tagsForDoc.push(name);
+          });
+          if(d) d.tags = tagsForDoc;
+        });
+      }
+
+      const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
+      const personFieldEntries = computeBulkFieldUnion(ids).filter(({field}) => field.type === 'person');
+      for(const {field} of personFieldEntries){
+        const modeInput = document.querySelector(`input[name="bulk-field-${field.id}-mode"]:checked`);
+        if(!modeInput) continue;
+        const mode = modeInput.value;
+        const typedNames = el(`bulk-field-${field.id}`).value.split(',').map(s => s.trim()).filter(Boolean);
+        if(!typedNames.length && mode !== 'replace') continue;
+        ids.forEach(id => {
+          if(mode === 'replace') db.run('DELETE FROM document_field_people WHERE document_id = ? AND field_id = ?', [id, field.id]);
+          const d = allDocs.find(x => x.id === id);
+          const existing = mode === 'replace' ? [] : [...((d && d.personFieldValues && d.personFieldValues[field.name]) || [])];
+          typedNames.forEach(name => {
+            let personId = personNameToId[name];
+            if(personId === undefined){
+              personId = nextPersonId++;
+              db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+              personNameToId[name] = personId;
+            }
+            db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, field.id, personId]);
+            if(!existing.includes(name)) existing.push(name);
+          });
+          if(d){
+            if(!d.personFieldValues) d.personFieldValues = {};
+            d.personFieldValues[field.name] = existing;
+            if(field.name === 'People') d.people = existing;
+          }
         });
       }
 

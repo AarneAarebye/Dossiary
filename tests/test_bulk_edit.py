@@ -193,3 +193,114 @@ async def main():
         await browser.close()
 
 asyncio.run(main())
+
+SEED_WITH_FIELDS = {
+    "documents": SEED["documents"],
+    # doc 1 starts with a pre-existing "old-tag" so Scenario 10b can prove
+    # Replace mode actually discards it (Add mode, tested in Scenario 10, has
+    # nothing to prove discarding since it never removes anything).
+    "tags": [{"id": 1, "name": "old-tag"}],
+    "document_tags": [{"document_id": 1, "tag_id": 1}],
+    "fields": [
+        {"id": 1, "name": "Author", "type": "person", "show_as_column": 0, "autocomplete": 0},
+        {"id": 2, "name": "Vendor", "type": "text", "show_as_column": 0, "autocomplete": 1},
+        {"id": 3, "name": "Paid", "type": "checkbox", "show_as_column": 0, "autocomplete": 0},
+    ],
+    "document_type_fields": [
+        {"document_type": "Invoice", "field_name": "Vendor", "position": 0},
+        {"document_type": "Invoice", "field_name": "Paid", "position": 1},
+        {"document_type": "Letter", "field_name": "Author", "position": 0},
+    ],
+    "document_field_values": [
+        {"document_id": 1, "field_id": 2, "value": "Acme Corp"},
+        {"document_id": 1, "field_id": 3, "value": "1"},
+        {"document_id": 2, "field_id": 3, "value": "0"},
+    ],
+    "document_field_people": [
+        {"document_id": 3, "field_id": 1, "person_id": 100},
+    ],
+    "people": [{"id": 100, "name": "Jane Author"}],
+}
+
+async def main2():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+        await route_stub(page)
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_WITH_FIELDS)});")
+        await page.click("#open-btn")
+        await page.wait_for_timeout(400)
+
+        # === Scenario 7: selecting an Invoice (Vendor-configured) and a Letter
+        # (Author-configured) shows both fields, Author rendered as a
+        # comma-separated person-type input with the Add/Replace toggle ===
+        await select_rows(page, [1, 3])  # doc 1 = Invoice, doc 3 = Letter
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        author_input_present = await page.locator('#bulk-field-1').count()
+        author_mode_toggle_present = await page.locator('input[name="bulk-field-1-mode"]').count()
+        print("Author (person-type) field rendered with its mode toggle:", author_input_present == 1 and author_mode_toggle_present == 2)
+
+        # === Scenario 8: default mode is "Add to existing" -- typing a name adds
+        # to doc 3's existing Author ("Jane Author") without removing it ===
+        await page.fill('#bulk-field-1', 'New Coauthor')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        author_links = [r for r in persisted['document_field_people'] if r['field_id'] == 1 and r['document_id'] == 3]
+        people_by_id = {p['id']: p['name'] for p in persisted['people']}
+        author_names = sorted(people_by_id[r['person_id']] for r in author_links)
+        print("Add mode keeps existing Author and adds the new one:", author_names == ['Jane Author', 'New Coauthor'])
+
+        # === Scenario 9: switching to "Replace existing" and saving discards
+        # whatever was there before ===
+        await select_rows(page, [1, 3])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('input[name="bulk-field-1-mode"][value="replace"]')
+        await page.fill('#bulk-field-1', 'Only This Author')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        author_links = [r for r in persisted['document_field_people'] if r['field_id'] == 1 and r['document_id'] == 3]
+        people_by_id = {p['id']: p['name'] for p in persisted['people']}
+        author_names = sorted(people_by_id[r['person_id']] for r in author_links)
+        print("Replace mode discards prior Author names:", author_names == ['Only This Author'])
+
+        # === Scenario 10: Tags default Add mode -- typed tags add without
+        # removing what's already there; blank input on Add mode is a no-op ===
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.fill('#bulk-tags', 'urgent')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        tag_names = {t['id']: t['name'] for t in persisted['tags']}
+        doc1_tags = sorted(tag_names[r['tag_id']] for r in persisted['document_tags'] if r['document_id'] == 1)
+        print("Tags Add mode adds a new tag, keeping the pre-existing one:", doc1_tags == ['old-tag', 'urgent'])
+
+        # === Scenario 10b: switching Tags to "Replace existing" and saving
+        # discards doc 1's pre-existing "old-tag"/"urgent" entirely, leaving
+        # only what was just typed ===
+        await select_rows(page, [1, 2])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('input[name="bulk-tags-mode"][value="replace"]')
+        await page.fill('#bulk-tags', 'only-this-tag')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        tag_names = {t['id']: t['name'] for t in persisted['tags']}
+        doc1_tags = sorted(tag_names[r['tag_id']] for r in persisted['document_tags'] if r['document_id'] == 1)
+        print("Tags Replace mode discards prior tags:", doc1_tags == ['only-this-tag'])
+
+        print("JS ERRORS (main2):", errors)
+        await browser.close()
+
+asyncio.run(main2())
