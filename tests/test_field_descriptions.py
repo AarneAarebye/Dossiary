@@ -184,7 +184,7 @@ async def main():
         # checked against the edit form, not just capture ===
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(300)
-        await page.click('button:has-text("Edit")')
+        await page.click('#edit-doc-btn')
         await page.wait_for_timeout(300)
         edit_category_hints = await page.evaluate(
             "() => Array.from(document.querySelector('label[for=\\'e-category\\']').closest('.field').querySelectorAll('.field-hint')).map(el => el.textContent)"
