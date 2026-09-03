@@ -2657,6 +2657,102 @@ this repo's git tags.
   though in practice every one of these three call sites only ever wires a
   freshly-rendered element, so the guard is defensive rather than
   load-bearing.
+- **Bulk edit** (`openBulkEditForm(ids)`, `saveBulkEdit(ids)`, reachable via a
+  new "Edit" button in the bulk-action bar and a minimal right-click context
+  menu on checked rows) lets someone set field values across every currently
+  selected document in one save. It's structurally parallel to the
+  single-document Edit form but with two deliberate differences forced by
+  operating on many documents at once instead of one: every field starts
+  genuinely blank (there's no single correct document to pre-fill from), and
+  every **replace-semantics** field (Document Type, Category, Subcategory,
+  Date, Notes, every generic custom field) carries its own "Apply to all"
+  checkbox, unchecked by default — only checked fields are written to any
+  document, and checking one with a blank value is a valid, explicit "clear
+  this on every selected document." This is necessary, not just a UX nicety:
+  "blank" already means different things per field type elsewhere in this app
+  (an unchecked checkbox field is real data, not "unset" — see
+  `readDynamicFieldValues()`'s own rule), so there's no value-based way to
+  distinguish "leave this alone" from "clear it" that works uniformly across
+  every field type; the explicit checkbox is the one mechanism that does.
+  **Tags and every person-type field (People, Author, Collaborator, …) get an
+  "Add to existing"/"Replace existing" mode toggle instead of an Apply
+  checkbox** — the toggle itself is the explicit opt-in (Add, the default, is
+  already a safe no-op on a blank input), so no separate checkbox is needed;
+  Replace mode reuses the exact delete-then-reinsert `saveEditedDocument()`
+  already does for a single document's Tags/People, looped per selected
+  document, and — like the scalar fields above — a blank input on Replace
+  mode is a deliberate, explicit "clear this on every selected document."
+  **Title and the OCR-text box are deliberately excluded** — bulk-setting
+  every selected document's title to the identical string has no sensible use
+  case (and would actively harm the table's own scannability), and OCR text
+  is per-file extracted content tied to that document's own file, not
+  metadata in the sense the rest of this form edits.
+  **`computeBulkFieldUnion(ids)`** computes, once per modal open, the union
+  of every field configured for *any* selected document's Document Type plus
+  any field *any* selected document currently holds a value for — since
+  selected documents can span different types with different
+  `document_type_fields` configurations. A field not common to *every*
+  selected document's type renders with the same `.field-orphaned`
+  class/hint the single-document Edit form already uses for a field no
+  longer configured for a document's current type — here it signals "this
+  field doesn't belong to every selected document's type, but applying it
+  here still writes it for all of them" (the same underlying mechanic as
+  editing a genuinely orphaned field on one document already does), a
+  related but distinct meaning from that form's own use of the same class,
+  worth keeping straight if this is ever touched again. The union is fixed
+  for the life of the form — it is **not** recomputed if the form's own
+  Document Type field is changed mid-edit, a deliberate scope cut to avoid
+  reconciling against the original per-document union for what would be a
+  rare case (changing Document Type as part of the same bulk edit that's
+  also setting other fields).
+  **The mixed-value indicator** (`bulkScalarMixed()`, `bulkSetMixed()`,
+  `refreshBulkMixedHints()`) flags, per field, whether the selected
+  documents' *current* values for it already disagree (blank/unset counts as
+  one shared value for this comparison — "all blank" isn't mixed, "some set,
+  some blank" is) — a field where everyone already agrees gets no hint at
+  all. Wording depends on semantics: an additive field on its default Add
+  mode gets a purely informational note ("what you enter is added on top,
+  nothing is removed"); a replace-semantics field, or an additive field
+  switched to Replace mode, gets a real overwrite warning ("checking Apply
+  will overwrite ALL of them with the value you enter") — re-evaluated live
+  whenever a Tags/person-field mode toggle changes, via a `change` listener
+  on every `input[name^="bulk-tags-mode"], input[name^="bulk-field-"]`
+  radio, so the hint's wording never lags behind the currently-selected mode.
+  **Every DB write for a bulk-edit save is batched into exactly one
+  `persistDb()`/`render()` call**, following the same reasoning
+  `bulkSetArchived()`/`bulkSetDeleted()`/`bulkSetNeedsReview()` already
+  document: looping per-document save functions would re-serialize the whole
+  SQLite database once per selected document, which bulk actions exist
+  specifically to avoid. Unlike those three functions, though, **a bulk-edit
+  save does NOT clear `selectedDocIds`** — editing field values doesn't
+  remove a document from the current view the way archiving/deleting/
+  flagging can, so keeping the selection lets someone chain a further bulk
+  action against the same documents without re-checking every row.
+  `saveBulkEdit()` also rewrites every affected document's sidecar `.txt`
+  (`sidecarBaseNameFromFilePath()`/`buildSidecarText()`/`writeSidecarFile()`,
+  the same three functions `saveEditedDocument()` already uses) from each
+  document's complete post-edit in-memory state, not just the fields that
+  changed — this has to run after every write block above has already
+  updated `d.customFields`/`d.personFieldValues`/`d.tags`/etc. in place, for
+  the same reason `saveEditedDocument()`'s own sidecar rewrite is its
+  next-to-last step, right before `persistDb()`.
+  **The right-click entry point (`showBulkRowContextMenu()`) is mutually
+  exclusive with the existing single-document context menu
+  (`showRowContextMenu()`) on a per-row basis, not a per-selection one**: the
+  existing row `contextmenu` listener branches to the bulk menu only when the
+  specific row that was right-clicked is itself checked AND `selectedDocIds`
+  has 2+ members — right-clicking an *unchecked* row still shows today's
+  single-document menu even while other rows are checked elsewhere, matching
+  Finder/Explorer/Gmail's own convention for this exact ambiguity. Unlike
+  `showRowContextMenu()`, the bulk branch deliberately does **not** touch
+  `selectedDocId`, the detail panel's content, or the single-row `.row-selected`
+  highlight — the action targets the whole multi-selection, not specifically
+  whichever row happened to be right-clicked, and that row's own checkbox
+  already reflects its membership in the selection the menu is about to act
+  on. The bulk menu itself is deliberately minimal — just "Edit" — since
+  Archive/Delete/Flag for review already have their own buttons in the
+  bulk-action bar; duplicating them in the context menu wasn't judged worth
+  the extra code for what's already one click away.
 
 ## How this was tested
 
