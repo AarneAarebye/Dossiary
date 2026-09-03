@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (65 scripts) + shared
+tests/                   Playwright regression suite (66 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2704,7 +2704,22 @@ this repo's git tags.
   Document Type field is changed mid-edit, a deliberate scope cut to avoid
   reconciling against the original per-document union for what would be a
   rare case (changing Document Type as part of the same bulk edit that's
-  also setting other fields).
+  also setting other fields). **`saveBulkEdit()` snapshots this same union
+  exactly once, as `const fieldUnion = computeBulkFieldUnion(ids)` at the
+  very top of its `try{}` block, before any write runs** — not because the
+  form's own field set can change mid-save (it can't; the form is already
+  closed by the time this runs), but because the scalar-field write block
+  immediately below it can mutate a selected document's in-memory
+  `d.document_type` (when Document Type's own Apply box is checked in the
+  same save), and `document_type` is exactly what `computeBulkFieldUnion()`
+  groups by. A live-reproduced bug during this feature's own review called
+  a fresh `computeBulkFieldUnion(ids)` *after* that mutation for the
+  person/generic write loops that follow — which then silently dropped any
+  other checked field not configured for a document's *new* type, discarding
+  a write the person had explicitly asked for with no error or indication
+  anything was skipped. Snapshotting once up front, before the mutation, is
+  what keeps every later write block acting on the same field set the form
+  actually rendered and the person actually saw when they checked those boxes.
   **The mixed-value indicator** (`bulkScalarMixed()`, `bulkSetMixed()`,
   `refreshBulkMixedHints()`) flags, per field, whether the selected
   documents' *current* values for it already disagree (blank/unset counts as

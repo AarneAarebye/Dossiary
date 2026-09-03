@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **65
-scripts covering most of the app's actual functionality** (63 of them
+There's a real, runnable Playwright regression suite in `tests/` — **66
+scripts covering most of the app's actual functionality** (64 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -530,7 +530,60 @@ button in the detail panel too (`#default-reminder-btn`, not
 from there — the specific panel-rendering regression this scenario exists
 to catch, since `openDetail()`'s `actionIdByKey` map is a separate,
 hardcoded lookup the context menu's own generic iteration doesn't depend
-on, so a missing entry there fails silently in the panel alone). This
+on, so a missing entry there fails silently in the panel alone); and
+bulk-editing across a multi-document selection (`test_bulk_edit.py`, 23
+scenarios across two `main()`/`main2()` runs) — both entry points, the
+bulk-action bar's own Edit button (visible with 1+ selected everywhere
+except the Waste bin, matching `#bulk-archive-btn`'s own rule, and using
+singular vs. plural modal-title wording correctly for exactly 1 selected
+document) and the right-click bulk context menu (a single "Edit" item,
+shown only when the specifically-right-clicked row is itself checked
+*and* 2+ rows are selected, falling back to today's ordinary
+single-document menu for an unchecked row even while others are checked
+elsewhere); every replace-semantics scalar field (Document Type,
+Category, Subcategory, Date, Notes, and every generic custom field)
+starting genuinely blank with its own "Apply to all" checkbox unchecked
+and its input disabled, Apply-checked-with-a-value writing to every
+selected document while leaving unselected ones untouched, Apply-checked-
+with-a-blank-value clearing it explicitly, and Apply-left-unchecked never
+writing regardless of what's typed into the (force-filled, since
+disabled) input; the additive Tags/person-type fields' Add/Replace mode
+toggle (Add keeping existing values and adding on top, Replace discarding
+them, both against a field — Author — pre-seeded with a real prior value
+so discarding is actually provable) plus its own comma-autocomplete
+dropdown positioning (`.bulk-autocomplete-wrap`, since `#bulk-tags` has no
+`.field-with-clear` wrapper the way `#e-tags`/`#f-tags` do); the generic
+custom-field union (`computeBulkFieldUnion()`) rendering a field common to
+every selected document's type normally and a field configured for only
+*some* of them with `.field-orphaned` styling, still fully writable to
+every selected document exactly like editing an orphaned field on one
+document already is, and a checkbox-type field's own value control
+correctly independent of its Apply checkbox; the mixed-value indicator
+(`bulkScalarMixed()`/`bulkSetMixed()`/`refreshBulkMixedHints()`) showing
+an overwrite warning only when selected documents' current values
+genuinely disagree, staying silent when they already agree, and switching
+an additive field's hint wording live between the informational
+"added on top" phrasing (Add mode) and the overwrite warning (Replace
+mode) the instant the mode toggle changes; sidecar `.txt` sync reflecting
+a bulk-set field's new value alongside the document's own unrelated,
+unchanged title; the live-reproduced Document-Type-plus-another-field
+same-save data-loss bug and its fix — bulk-changing Document Type to a
+type that doesn't configure a second, simultaneously-applied field no
+longer silently drops that field's own write, proving `saveBulkEdit()`'s
+field-union snapshot (taken once, before the scalar-field write block can
+mutate any document's in-memory `document_type`) actually holds; the
+spec-mandated "blank input on Replace mode is an explicit clear" property
+for both a Tags field and a person-type field (Author), each first forced
+to a known non-empty value via its own Replace-mode save — since the
+suite's own accumulated multi-scenario selection state makes relying on
+"whatever's there already" unreliable — then Replace-moded again with a
+blank input and confirmed to leave zero rows, not merely unchanged ones;
+and the one deliberate deviation from every other bulk action in this
+app — `bulkSetArchived()`/`bulkSetDeleted()`/`bulkSetNeedsReview()` all
+clear `selectedDocIds` on success, but a bulk-edit save does not, since
+changing field values (unlike archiving/deleting/flagging) never removes
+a document from the view its selection lives in — confirmed by checking a
+row's own checkbox stays checked immediately after a save). This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section
