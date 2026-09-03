@@ -493,6 +493,8 @@
   .copy-path-btn:hover{ color:var(--phosphor); }
   .copy-path-btn.copied{ color:var(--phosphor); text-decoration:none; }
   .checkbox-label input[type=checkbox]{ width:15px; height:15px; accent-color:var(--phosphor); cursor:pointer; }
+  .checkbox-label input[type=radio]{ width:15px; height:15px; accent-color:var(--phosphor); cursor:pointer; }
+  .bulk-mode-toggle{ display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; }
   .field-row{ display:flex; gap:12px; }
   .field-row .field{ flex:1; }
   .file-drop{
@@ -4123,7 +4125,7 @@
     }
   }
 
-  function refreshBulkMixedHints(ids){
+  function refreshBulkMixedHints(ids, fieldUnion){
     const scalarChecks = [
       { column: 'document_type', hintId: 'bulk-mixed-hint-type', labelKey: 'editDocTypeLabel' },
       { column: 'category', hintId: 'bulk-mixed-hint-category', labelKey: 'editCategoryLabel' },
@@ -4143,7 +4145,7 @@
       tagsMixed ? t(tagsMode === 'replace' ? 'bulkMixedOverwriteWarning' : 'bulkMixedAddedOnTop', {field: t('captureTagsLabel')}) : '',
       tagsMode === 'replace' ? 'warning' : 'info');
 
-    computeBulkFieldUnion(ids).forEach(({field}) => {
+    fieldUnion.forEach(({field}) => {
       const hintId = `bulk-mixed-hint-field-${field.id}`;
       if(field.type === 'person'){
         const mixed = bulkSetMixed(ids, d => (d.personFieldValues || {})[field.name]);
@@ -5997,13 +5999,6 @@
     document.addEventListener('keydown', onModalKeydown);
     el('bulk-edit-save-btn').addEventListener('click', () => saveBulkEdit(ids));
 
-    modalRoot.querySelectorAll('.bulk-apply-checkbox').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const target = el(cb.dataset.bulkTarget);
-        if(target) target.disabled = !cb.checked;
-      });
-    });
-
     const bulkFieldUnion = computeBulkFieldUnion(ids);
     el('bulk-person-fields').innerHTML = bulkFieldUnion
       .filter(({field}) => field.type === 'person')
@@ -6016,7 +6011,8 @@
       .filter(({field}) => field.type !== 'person')
       .map(({field, orphaned}) => renderBulkGenericFieldHtml(field, orphaned))
       .join('');
-    modalRoot.querySelectorAll('#bulk-generic-fields .bulk-apply-checkbox').forEach(cb => {
+
+    modalRoot.querySelectorAll('.bulk-apply-checkbox').forEach(cb => {
       cb.addEventListener('change', () => {
         const target = el(cb.dataset.bulkTarget);
         if(target) target.disabled = !cb.checked;
@@ -6024,9 +6020,9 @@
     });
 
     modalRoot.querySelectorAll('input[type="radio"][name^="bulk-tags-mode"], input[type="radio"][name^="bulk-field-"]').forEach(radio => {
-      radio.addEventListener('change', () => refreshBulkMixedHints(ids));
+      radio.addEventListener('change', () => refreshBulkMixedHints(ids, bulkFieldUnion));
     });
-    refreshBulkMixedHints(ids);
+    refreshBulkMixedHints(ids, bulkFieldUnion);
   }
 
   async function saveBulkEdit(ids){
@@ -6093,7 +6089,6 @@
         });
       }
 
-      const idToFieldName = Object.fromEntries(fieldDefs.map(f => [f.id, f.name]));
       const personFieldEntries = fieldUnion.filter(({field}) => field.type === 'person');
       for(const {field} of personFieldEntries){
         const modeInput = document.querySelector(`input[name="bulk-field-${field.id}-mode"]:checked`);

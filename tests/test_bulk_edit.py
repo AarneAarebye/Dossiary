@@ -189,6 +189,22 @@ async def main():
         after = await read_db(page)
         print("saving with nothing checked changes nothing:", before['documents'] == after['documents'])
 
+        # === Scenario 7: selecting exactly 1 document (the bulk-action bar's
+        # own Edit button shows with 1+ selected, not just 2+) uses the
+        # singular wording in the modal title, not the plural "N documents"
+        # form -- the eventual saved-status message is set synchronously
+        # right before closeModal() wipes the modal in the same tick, so it
+        # can't be reliably observed from here; the title is the testable
+        # half of this ternary ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        modal_title_one = await page.locator('.modal h2').inner_text()
+        print("modal title uses singular wording for exactly 1 selected document:", 'documents' not in modal_title_one.lower() and '1' in modal_title_one)
+        await page.click('#bulk-edit-cancel-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS so far:", errors)
         await browser.close()
 
@@ -506,6 +522,74 @@ async def main2():
         print("bulk context menu's Edit opens the bulk-edit modal:", bulk_modal_opened == 1)
         await page.click('#bulk-edit-cancel-btn')
         await page.wait_for_timeout(150)
+
+        # === Scenario 22 (spec-mandated): a blank input on Tags Replace mode
+        # is an explicit clear, not a no-op -- doc 2 and doc 4 are first
+        # forced to a known, identical tag set via a Replace-mode save (doc 4
+        # has never had a tag touch it before this point in the suite, and
+        # doc 2's own tag history above is accumulated/mixed, so Replace
+        # rather than Add is what guarantees a known starting value for both
+        # regardless of whatever came before), then the same Replace mode is
+        # used again with the input left blank ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [2, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('input[name="bulk-tags-mode"][value="replace"]')
+        await page.fill('#bulk-tags', 'seed-tag')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        tag_names = {t['id']: t['name'] for t in persisted['tags']}
+        doc2_tags_seeded = sorted(tag_names[r['tag_id']] for r in persisted['document_tags'] if r['document_id'] == 2)
+        doc4_tags_seeded = sorted(tag_names[r['tag_id']] for r in persisted['document_tags'] if r['document_id'] == 4)
+        print("both docs carry the known seeded tag before the blank-Replace test:", doc2_tags_seeded == ['seed-tag'] and doc4_tags_seeded == ['seed-tag'])
+
+        await select_rows(page, [2, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('input[name="bulk-tags-mode"][value="replace"]')
+        # #bulk-tags left blank
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        doc2_tags_after = [r for r in persisted['document_tags'] if r['document_id'] == 2]
+        doc4_tags_after = [r for r in persisted['document_tags'] if r['document_id'] == 4]
+        print("Tags Replace mode with a blank input clears doc 2's tags entirely:", doc2_tags_after == [])
+        print("Tags Replace mode with a blank input clears doc 4's tags entirely:", doc4_tags_after == [])
+
+        # === Scenario 23 (spec-mandated): the same "blank input on Replace
+        # mode is an explicit clear" property for a person-type field. Doc 3
+        # and doc 4 are both Letter-type (Author-configured, so this isn't
+        # exercising the orphaned-field path) and are first forced to a known
+        # Author value via a Replace-mode save, same reasoning as Scenario 22
+        # above, then Replace mode is used again with the input left blank ===
+        await page.click('#bulk-clear-selection-btn')
+        await select_rows(page, [3, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('input[name="bulk-field-1-mode"][value="replace"]')
+        await page.fill('#bulk-field-1', 'Seed Person')
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        people_by_id = {p['id']: p['name'] for p in persisted['people']}
+        doc3_author_seeded = sorted(people_by_id[r['person_id']] for r in persisted['document_field_people'] if r['field_id'] == 1 and r['document_id'] == 3)
+        doc4_author_seeded = sorted(people_by_id[r['person_id']] for r in persisted['document_field_people'] if r['field_id'] == 1 and r['document_id'] == 4)
+        print("both docs carry the known seeded Author before the blank-Replace test:", doc3_author_seeded == ['Seed Person'] and doc4_author_seeded == ['Seed Person'])
+
+        await select_rows(page, [3, 4])
+        await page.click('#bulk-edit-btn')
+        await page.wait_for_timeout(200)
+        await page.check('input[name="bulk-field-1-mode"][value="replace"]')
+        # #bulk-field-1 left blank
+        await page.click('#bulk-edit-save-btn')
+        await page.wait_for_timeout(300)
+        persisted = await read_db(page)
+        doc3_author_after = [r for r in persisted['document_field_people'] if r['field_id'] == 1 and r['document_id'] == 3]
+        doc4_author_after = [r for r in persisted['document_field_people'] if r['field_id'] == 1 and r['document_id'] == 4]
+        print("person-field Replace mode with a blank input clears doc 3's Author entirely:", doc3_author_after == [])
+        print("person-field Replace mode with a blank input clears doc 4's Author entirely:", doc4_author_after == [])
 
         print("JS ERRORS (main2):", errors)
         await browser.close()
