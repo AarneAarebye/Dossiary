@@ -545,6 +545,14 @@ async def main():
         # each write the correct persisted state and update reminderSnoozes/allDocs
         # in memory, exercised directly via their __DEBUG_ hooks (no UI yet -- Task 3
         # wires the real buttons) ===
+        # The seeded value just needs to be some already-passed/due date -- computed
+        # relative to today (like Scenario 7's own dates), not hardcoded, so this
+        # scenario's own assertion below stays correct regardless of which real day
+        # the suite runs on. (A hardcoded literal here once caused a real bug: once
+        # real time passed it, it became overdue, which made checkReminders()'s
+        # documented auto-surface-on-open behavior pop the Reminders modal on a
+        # later scenario's own reload, blocking its first click.)
+        seed8_reminder_date = (datetime.date.today() - datetime.timedelta(days=90)).isoformat()
         seed8 = {
             "documents": [
                 {
@@ -559,7 +567,7 @@ async def main():
                 {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
             ],
             "document_field_values": [
-                {"document_id": 1, "field_id": 1, "value": "2026-06-01"},
+                {"document_id": 1, "field_id": 1, "value": seed8_reminder_date},
             ],
             "reminder_snoozes": [],
         }
@@ -585,7 +593,7 @@ async def main():
         in_memory_dismissed = await page.evaluate("window.__DEBUG_reminderSnoozes['1:1']")
         print("dismissReminder() updates in-memory reminderSnoozes:", in_memory_dismissed == {'snoozedUntil': None, 'dismissed': True})
         still_has_value = await page.evaluate("window.__DEBUG_getCustomFieldValue(1, 'Renewal Date')")
-        print("dismissReminder() does NOT touch the field's own stored value:", still_has_value == '2026-06-01')
+        print("dismissReminder() does NOT touch the field's own stored value:", still_has_value == seed8_reminder_date)
 
         # reenableReminder
         await page.evaluate("window.__DEBUG_reenableReminder(1, 1)")
