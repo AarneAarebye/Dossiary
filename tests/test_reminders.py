@@ -536,6 +536,70 @@ async def main():
         """)
         print("doc 1 stays excluded after its dismissed field's value is changed to a brand-new date:", 1 not in result7b)
 
+        # === Scenario 8: dismissReminder()/reenableReminder()/clearReminderFieldValue()
+        # each write the correct persisted state and update reminderSnoozes/allDocs
+        # in memory, exercised directly via their __DEBUG_ hooks (no UI yet -- Task 3
+        # wires the real buttons) ===
+        seed8 = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc For Dismiss", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_field_values": [
+                {"document_id": 1, "field_id": 1, "value": "2026-06-01"},
+            ],
+            "reminder_snoozes": [],
+        }
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed8)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        async def read_db():
+            return await page.evaluate("""
+                (async () => {
+                    const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                    const f = await fh.getFile();
+                    return JSON.parse(await f.text());
+                })()
+            """)
+
+        # dismissReminder
+        await page.evaluate("window.__DEBUG_dismissReminder(1, 1)")
+        await page.wait_for_timeout(150)
+        persisted = await read_db()
+        snooze_row = next((s for s in persisted['reminder_snoozes'] if s['document_id'] == 1 and s['field_id'] == 1), None)
+        print("dismissReminder() persists dismissed=1:", snooze_row is not None and snooze_row['dismissed'] == 1)
+        in_memory_dismissed = await page.evaluate("window.__DEBUG_reminderSnoozes['1:1']")
+        print("dismissReminder() updates in-memory reminderSnoozes:", in_memory_dismissed == {'snoozedUntil': None, 'dismissed': True})
+        still_has_value = await page.evaluate("window.__DEBUG_getCustomFieldValue(1, 'Renewal Date')")
+        print("dismissReminder() does NOT touch the field's own stored value:", still_has_value == '2026-06-01')
+
+        # reenableReminder
+        await page.evaluate("window.__DEBUG_reenableReminder(1, 1)")
+        await page.wait_for_timeout(150)
+        persisted = await read_db()
+        snooze_row_after = next((s for s in persisted['reminder_snoozes'] if s['document_id'] == 1 and s['field_id'] == 1), None)
+        print("reenableReminder() deletes the reminder_snoozes row entirely:", snooze_row_after is None)
+        in_memory_after = await page.evaluate("window.__DEBUG_reminderSnoozes['1:1']")
+        print("reenableReminder() removes the in-memory entry too:", in_memory_after is None)
+
+        # clearReminderFieldValue
+        await page.evaluate("window.__DEBUG_clearReminderFieldValue(1, 1)")
+        await page.wait_for_timeout(150)
+        persisted = await read_db()
+        value_row = next((v for v in persisted['document_field_values'] if v['document_id'] == 1 and v['field_id'] == 1), None)
+        print("clearReminderFieldValue() deletes the document_field_values row:", value_row is None)
+        in_memory_value = await page.evaluate("window.__DEBUG_getCustomFieldValue(1, 'Renewal Date')")
+        print("clearReminderFieldValue() clears the in-memory customFields entry too:", in_memory_value is None)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
