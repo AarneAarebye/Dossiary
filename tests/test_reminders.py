@@ -717,6 +717,100 @@ async def main():
         modal_closed = await page.locator('.reminder-row').count()
         print("modal auto-closes once every row has been cleared via a mix of Dismiss/Delete/Snooze:", modal_closed == 0)
 
+        # === Scenario 10: a dismissed reminder-type field shows the
+        # "Reminders are dismissed" hint in the Edit form, an otherwise-identical
+        # non-dismissed one doesn't, and clicking Re-enable clears the dismissal
+        # (both the hint disappearing and checkReminders() including the field
+        # again) ===
+        seed10 = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc With Dismissed Field", "category": None, "document_type": "Policy",
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+                {"id": 2, "name": "Warranty End", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_type_fields": [
+                {"document_type": "Policy", "field_name": "Renewal Date", "position": 0},
+                {"document_type": "Policy", "field_name": "Warranty End", "position": 1},
+            ],
+            # Filled in below via JS, using real dates relative to today -- same reason
+            # Scenario 4's own seed does this rather than hardcoding literal dates: a
+            # hardcoded date drifts into "not due" (excluded by the lookahead window)
+            # or "overdue" depending purely on which real day the suite happens to run,
+            # which would make the final checkReminders()-inclusion assertion below
+            # flaky rather than deterministic.
+            "document_field_values": [],
+            "reminder_snoozes": [],
+        }
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed10)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        renewal_value = await page.evaluate("""
+            () => {
+                const today = window.__DEBUG_todayIsoDate();
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 1, today]);
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 2, today]);
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [1, 1, null, 1]);
+                window.__DEBUG_loadDocumentsFromDb();
+                return today;
+            }
+        """)
+
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(300)
+
+        renewal_hint = await page.locator('[data-dynamic-field="Renewal Date"] .reminder-reenable-btn').count()
+        warranty_hint = await page.locator('[data-dynamic-field="Warranty End"] .reminder-reenable-btn').count()
+        print("the dismissed field (Renewal Date) shows the Re-enable hint:", renewal_hint == 1)
+        print("the non-dismissed field (Warranty End) does not show it:", warranty_hint == 0)
+
+        # Capture form never shows this hint -- there's no document yet to check.
+        # By the time the capture form's own markup replaces modalRoot's content,
+        # the edit form (and its hint) is already gone -- no modal-specific
+        # selector scoping is needed, just confirm the hint's class is absent
+        # from the page entirely while the capture form is open.
+        await page.click('#cancel-edit-btn')
+        await page.wait_for_timeout(150)
+        await page.click('#add-btn')
+        await page.wait_for_timeout(200)
+        await page.fill('#f-type', 'Policy')
+        await page.wait_for_timeout(200)
+        # Blur #f-type (and dismiss its native datalist suggestion popup, which
+        # otherwise swallows the very next real mouse click in Chromium) before
+        # interacting with anything else in the modal.
+        await page.keyboard.press('Tab')
+        await page.wait_for_timeout(100)
+        capture_hint_count = await page.locator('.reminder-reenable-btn').count()
+        print("the capture form never shows a Re-enable hint (no document exists yet):", capture_hint_count == 0)
+        await page.click('#cancel-doc-btn')
+        await page.wait_for_timeout(150)
+
+        # Re-enable from the edit form
+        await page.click('tr[data-id="1"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(300)
+        await page.click('[data-dynamic-field="Renewal Date"] .reminder-reenable-btn')
+        await page.wait_for_timeout(200)
+        hint_gone = await page.locator('[data-dynamic-field="Renewal Date"] .reminder-reenable-btn').count()
+        print("clicking Re-enable removes the hint immediately:", hint_gone == 0)
+
+        still_shows_value = await page.locator('#e-field-1').input_value()
+        print("Re-enabling does not touch the field's own value:", still_shows_value == renewal_value)
+
+        due_after_reenable = await page.evaluate("window.__DEBUG_checkReminders()")
+        renewal_due_again = any(r['documentId'] == 1 and r['fieldName'] == 'Renewal Date' for r in due_after_reenable)
+        print("checkReminders() includes Renewal Date again after Re-enable:", renewal_due_again)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

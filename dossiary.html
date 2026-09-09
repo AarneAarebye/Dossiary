@@ -3864,7 +3864,7 @@
   // gates this. Any other blank Currency in edit -- no Amount at all -- still
   // means the document genuinely has none saved, not something to guess at.
   // Neither exception is available to any other field.
-  function renderGenericFieldHtml(prefix, field, existingValue, orphaned, amountFilled){
+  function renderGenericFieldHtml(prefix, field, existingValue, orphaned, amountFilled, documentId){
     const inputId = `${prefix}-field-${field.id}`;
     const orphanedClass = orphaned ? ' field-orphaned' : '';
     const orphanedHint = orphaned ? `<div class="field-orphaned-hint">${t('fieldOrphanedHint')}</div>` : '';
@@ -3900,6 +3900,15 @@
     const description = fieldDescriptions[field.name];
     const descriptionHint = description ? `<div class="field-hint">${escapeHtml(description)}</div>` : '';
 
+    // Only reminder-type fields can be dismissed, and only in the edit form (a
+    // real document, not a capture-in-progress) -- documentId is null from the
+    // capture form's own call sites, so this is naturally a no-op there.
+    const snoozeEntry = (field.type === 'reminder' && documentId != null) ? reminderSnoozes[`${documentId}:${field.id}`] : null;
+    const isDismissed = !!(snoozeEntry && snoozeEntry.dismissed);
+    const dismissedHint = isDismissed
+      ? `<div class="field-hint">${t('reminderDismissedHint')} <button type="button" class="copy-path-btn reminder-reenable-btn" data-document-id="${documentId}" data-field-id="${field.id}">${t('reminderReenableBtn')}</button></div>`
+      : '';
+
     return `
       <div class="field${orphanedClass}" data-dynamic-field="${escapeHtml(field.name)}" data-field-id="${field.id}">
         <label for="${inputId}">${escapeHtml(field.name)}</label>
@@ -3909,6 +3918,7 @@
         </div>
         ${guessHint}
         ${descriptionHint}
+        ${dismissedHint}
         ${orphanedHint}
       </div>
     `;
@@ -3968,7 +3978,7 @@
   // many-to-many relationship, not a `fields`-table row) -- Amount, Currency, and
   // Payment method all flow through the same generic `existingValues`/
   // renderGenericFieldHtml() path as any other custom field now.
-  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPersonFieldValues, isEdit){
+  function applyDynamicFieldsForType(prefix, typeName, existingValues, existingPersonFieldValues, isEdit, documentId){
     const container = el(`dynamic-fields-${prefix}`);
     if(!container) return;
     const entry = typeFieldOrder[(typeName || '').trim()] || [];
@@ -3995,7 +4005,7 @@
         return renderPersonFieldHtml(prefix, fieldDef, existingPeopleForField, false);
       }
       const existingValue = existingValues ? existingValues[fieldName] : undefined;
-      return renderGenericFieldHtml(prefix, fieldDef, existingValue, false, amountFilled);
+      return renderGenericFieldHtml(prefix, fieldDef, existingValue, false, amountFilled, documentId);
     }).join('');
 
     // When editing, a document can have real data in a field that isn't (or is no
@@ -4023,7 +4033,7 @@
           if(configuredNames.has(fieldName)) continue;
           const fieldDef = fieldDefs.find(f => f.name === fieldName);
           if(!fieldDef) continue;
-          orphanedHtml.push(renderGenericFieldHtml(prefix, fieldDef, existingValues[fieldName], true, amountFilled));
+          orphanedHtml.push(renderGenericFieldHtml(prefix, fieldDef, existingValues[fieldName], true, amountFilled, documentId));
         }
       }
       html += orphanedHtml.join('');
@@ -4052,6 +4062,14 @@
     // and comma-separated -- see wireCommaAutocomplete()'s own comment for why this
     // replaces the native list="person-list" attribute rather than relying on it.
     container.querySelectorAll('input[list="person-list"]').forEach(input => wireCommaAutocomplete(input, 'person-list'));
+    container.querySelectorAll('.reminder-reenable-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const docId = Number(btn.dataset.documentId);
+        const fieldId = Number(btn.dataset.fieldId);
+        await reenableReminder(docId, fieldId);
+        applyDynamicFieldsForType(prefix, typeName, existingValues, existingPersonFieldValues, isEdit, documentId);
+      });
+    });
   }
 
   // Computes the field-union a bulk edit shows: every field configured for ANY
@@ -6379,10 +6397,10 @@
       });
     }
 
-    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.personFieldValues, true);
+    applyDynamicFieldsForType('e', d.document_type || '', d.customFields, d.personFieldValues, true, d.id);
     updateAddFieldVisibility('e');
     el('e-type').addEventListener('change', () => {
-      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.personFieldValues, true);
+      applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.personFieldValues, true, d.id);
       updateAddFieldVisibility('e');
     });
     wireAddFieldControls('e');
@@ -6982,10 +7000,10 @@
     });
     el('run-ocr-btn').addEventListener('click', runOcr);
 
-    applyDynamicFieldsForType('f', defaultDocumentType || ''); // pre-filled default type's fields show immediately, if one is set
+    applyDynamicFieldsForType('f', defaultDocumentType || '', undefined, undefined, false, null); // pre-filled default type's fields show immediately, if one is set -- documentId is always null here, there's no document yet to check for a dismissal
     updateAddFieldVisibility('f');
     el('f-type').addEventListener('change', () => {
-      applyDynamicFieldsForType('f', el('f-type').value);
+      applyDynamicFieldsForType('f', el('f-type').value, undefined, undefined, false, null);
       updateAddFieldVisibility('f');
     });
     wireAddFieldControls('f');
