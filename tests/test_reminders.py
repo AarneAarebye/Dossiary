@@ -163,7 +163,7 @@ async def main():
                 return window.__DEBUG_reminderSnoozes['1:1'];
             }
         """)
-        print("after a second INSERT OR REPLACE on the same (document_id, field_id), the row's snoozed_until is the NEW value:", replaced_value == '2026-07-15')
+        print("after a second INSERT OR REPLACE on the same (document_id, field_id), the row's snoozed_until is the NEW value:", replaced_value['snoozedUntil'] == '2026-07-15')
 
         # The check above alone is vacuous: loadReminderSnoozes()'s for-of loop overwrites
         # the same "1:1" map key once per matching row, in insertion order, so it reads back
@@ -452,6 +452,89 @@ async def main():
         await page.wait_for_timeout(200)
         status_text = await page.locator('#status').inner_text()
         print("Check reminders with nothing due reports the empty-case status message:", 'no reminders' in status_text.lower())
+
+        # === Scenario 7: reminder_snoozes.dismissed loads into the new
+        # {snoozedUntil, dismissed} shape, and checkReminders() excludes a
+        # dismissed field unconditionally -- even one that's overdue with no
+        # snoozed_until at all, and even one whose snooze row also carries a
+        # stale future snoozed_until (dismissed must win regardless) ===
+        dismiss_seed = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc Dismissed No Snooze", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {
+                    "id": 2, "title": "Doc Dismissed With Stale Future Snooze", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {
+                    "id": 3, "title": "Doc Not Dismissed", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {  # doc 4: two reminder fields on the SAME document -- one dismissed
+                   # (Renewal Date), one left alone (Warranty End) -- proves dismissal is
+                   # scoped per-field, not per-document
+                    "id": 4, "title": "Doc Two Fields One Dismissed", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+                {"id": 2, "name": "Warranty End", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_field_values": [],
+            "reminder_snoozes": [],
+        }
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(dismiss_seed)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        result7 = await page.evaluate("""
+            () => {
+                const add = (days) => window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), days);
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 1, add(-5)]);  // overdue
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [2, 1, add(0)]);   // due today
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [3, 1, add(0)]);   // due today, never touched
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [4, 1, add(0)]);   // doc4 Renewal Date: due today, will be dismissed below
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [4, 2, add(0)]);   // doc4 Warranty End: due today, left alone
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [1, 1, null, 1]);
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [2, 1, add(30), 1]);
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [4, 1, null, 1]);
+                window.__DEBUG_loadDocumentsFromDb();
+                const loaded1 = window.__DEBUG_reminderSnoozes['1:1'];
+                const loaded2 = window.__DEBUG_reminderSnoozes['2:1'];
+                const due = window.__DEBUG_checkReminders();
+                return { loaded1, loaded2, dueIds: due.map(r => r.documentId), doc4Fields: due.filter(r => r.documentId === 4).map(r => r.fieldName) };
+            }
+        """)
+        print("dismissed row (no snooze) loads into memory as {snoozedUntil: null, dismissed: true}:", result7['loaded1'] == {'snoozedUntil': None, 'dismissed': True})
+        print("dismissed row (with a stale future snoozed_until) still loads dismissed=true:", result7['loaded2']['dismissed'] == True)
+        print("checkReminders() excludes both dismissed docs 1 and 2, includes docs 3 and 4:", sorted(result7['dueIds']) == [3, 4])
+        print("doc 4 contributes only Warranty End (Renewal Date dismissed, per-field not per-document):", result7['doc4Fields'] == ['Warranty End'])
+
+        # Editing doc 1's dismissed field to a brand-new date does NOT un-dismiss it --
+        # dismissal is scoped to (document_id, field_id), never to the specific value
+        # that was due at the time it was dismissed.
+        result7b = await page.evaluate("""
+            () => {
+                const add = (days) => window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), days);
+                window.__DEBUG_dbRun('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [1, 1]);
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 1, add(-1)]);
+                window.__DEBUG_loadDocumentsFromDb();
+                return window.__DEBUG_checkReminders().map(r => r.documentId);
+            }
+        """)
+        print("doc 1 stays excluded after its dismissed field's value is changed to a brand-new date:", 1 not in result7b)
 
         print("JS ERRORS:", errors)
         await browser.close()

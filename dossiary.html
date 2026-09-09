@@ -2187,7 +2187,7 @@
       field_name TEXT PRIMARY KEY, description TEXT
     );
     CREATE TABLE IF NOT EXISTS reminder_snoozes (
-      document_id INTEGER, field_id INTEGER, snoozed_until TEXT,
+      document_id INTEGER, field_id INTEGER, snoozed_until TEXT, dismissed INTEGER DEFAULT 0,
       PRIMARY KEY (document_id, field_id)
     );
   `;
@@ -2209,6 +2209,7 @@
     'ALTER TABLE documents ADD COLUMN needs_review INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN deleted INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN searchable_pdf_built INTEGER DEFAULT 0',
+    'ALTER TABLE reminder_snoozes ADD COLUMN dismissed INTEGER DEFAULT 0',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -2311,7 +2312,7 @@
   let reminderLookaheadDays = 30; // how many days ahead a reminder-type field value counts as "coming up soon"; see checkReminders()
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
 
-  let reminderSnoozes = {};    // { "<documentId>:<fieldId>": "<snoozed_until ISO date>", ... }
+  let reminderSnoozes = {};    // { "<documentId>:<fieldId>": { snoozedUntil, dismissed }, ... } -- snoozedUntil is an ISO date string or null, dismissed is a real boolean
 
   let collections = [];        // [{id, name, kind, criteria}, ...] from the `collections` table
   let collectionDocIds = {};   // { <collectionId>: Set<documentId> } -- manual collections only;
@@ -2436,8 +2437,9 @@
         if(!raw) continue;
         const dateOnly = raw.slice(0, 10);
         if(dateOnly > cutoff) continue;
-        const snoozedUntil = reminderSnoozes[`${d.id}:${field.id}`];
-        if(snoozedUntil && snoozedUntil > todayIso) continue;
+        const snoozeEntry = reminderSnoozes[`${d.id}:${field.id}`];
+        if(snoozeEntry && snoozeEntry.dismissed) continue;
+        if(snoozeEntry && snoozeEntry.snoozedUntil && snoozeEntry.snoozedUntil > todayIso) continue;
         results.push({ documentId: d.id, fieldId: field.id, fieldName: field.name, date: dateOnly, docTitle: displayName(d) });
       }
     }
@@ -3417,9 +3419,9 @@
 
   function loadReminderSnoozes(){
     reminderSnoozes = {};
-    const { rows } = queryAll('SELECT document_id, field_id, snoozed_until FROM reminder_snoozes');
-    for(const [documentId, fieldId, snoozedUntil] of rows){
-      reminderSnoozes[`${documentId}:${fieldId}`] = snoozedUntil;
+    const { rows } = queryAll('SELECT document_id, field_id, snoozed_until, dismissed FROM reminder_snoozes');
+    for(const [documentId, fieldId, snoozedUntil, dismissed] of rows){
+      reminderSnoozes[`${documentId}:${fieldId}`] = { snoozedUntil, dismissed: !!dismissed };
     }
     window.__DEBUG_reminderSnoozes = reminderSnoozes; // test-only hook (tests/test_reminders.py) -- the simplest way to assert on this module-private variable from outside the page's own closure
   }
@@ -3440,7 +3442,7 @@
   // place, so the map alone can't distinguish "deduped correctly" from "duplicated, but
   // the later row happened to win"). This returns every raw row so a caller can count
   // rows for a specific key directly, independent of the map projection above.
-  window.__DEBUG_reminderSnoozesRawRows = () => queryAll('SELECT document_id, field_id, snoozed_until FROM reminder_snoozes').rows;
+  window.__DEBUG_reminderSnoozesRawRows = () => queryAll('SELECT document_id, field_id, snoozed_until, dismissed FROM reminder_snoozes').rows;
   // Test-only hooks for checkReminders() and its helpers (tests/test_reminders.py Scenario 4)
   window.__DEBUG_todayIsoDate = todayIsoDate;
   window.__DEBUG_addDaysToIsoDate = addDaysToIsoDate;
@@ -5226,8 +5228,8 @@
   }
 
   async function snoozeReminder(documentId, fieldId, snoozedUntil){
-    reminderSnoozes[`${documentId}:${fieldId}`] = snoozedUntil;
-    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until) VALUES (?, ?, ?)', [documentId, fieldId, snoozedUntil]);
+    reminderSnoozes[`${documentId}:${fieldId}`] = { snoozedUntil, dismissed: false };
+    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [documentId, fieldId, snoozedUntil, 0]);
     await persistDb();
   }
 
