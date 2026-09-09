@@ -2527,6 +2527,52 @@ this repo's git tags.
   trick" paragraph above), just in a different order here (`closeModal()`
   runs first, before `selectedDocId` is even set, since closing the modal
   doesn't depend on which document ends up selected).
+  **Dismiss and Delete** (`dismissReminder()`, `reenableReminder()`,
+  `clearReminderFieldValue()`) extend the Reminders modal with two more
+  per-row actions alongside Snooze. Dismiss is the permanent form of a
+  snooze — "stop reminding me about this field on this document,
+  indefinitely" rather than "until a date" — sharing the exact same
+  `reminder_snoozes` row (same compound `(document_id, field_id)` key) via
+  a new `dismissed INTEGER DEFAULT 0` column rather than a separate table;
+  the two states are mutually exclusive on a given row, so setting either
+  one always clears the other (`dismissReminder()` writes `snoozed_until =
+  NULL`; `snoozeReminder()` writes `dismissed = 0`). `checkReminders()`
+  checks `dismissed` before it ever looks at `snoozed_until` — an active
+  dismissal excludes a reminder unconditionally, with no expiry, unlike an
+  ordinary snooze which resurfaces once `snoozed_until` passes.
+  **Dismissal is scoped to the field on the document, never to a specific
+  value** — editing "Renewal Date" to a brand-new date after dismissing it
+  does not un-dismiss it, matching the same `(document_id, field_id)`
+  granularity snoozing already uses. Delete
+  (`clearReminderFieldValue(documentId, fieldId)`) is the generalized form
+  of `clearDefaultReminder()` below, driven by an explicit field id instead
+  of the one reserved `'Reminder'` field name, so it works for any
+  reminder-type field. **`reminderSnoozes`'s in-memory shape changed** from
+  a bare `snoozed_until` string per key to `{snoozedUntil, dismissed}`, to
+  carry both pieces of state — `loadReminderSnoozes()`, `checkReminders()`,
+  `snoozeReminder()`, and the `__DEBUG_reminderSnoozes`/
+  `__DEBUG_reminderSnoozesRawRows` test hooks all moved together.
+  **`reenableReminder()` does a full `DELETE FROM reminder_snoozes`, not a
+  flag flip** — once re-enabled there's no other state worth keeping on
+  that row, so "re-enabled" and "a field that was never snoozed or
+  dismissed at all" end up in the identical, simplest state. Since a
+  permanent dismissal has no natural expiry the way a snooze does, the Edit
+  form shows a small hint under a dismissed reminder-type field ("Reminders
+  are dismissed for this field.") with a Re-enable link — this needed
+  `documentId` threaded as a new trailing parameter through
+  `applyDynamicFieldsForType()` and `renderGenericFieldHtml()`, neither of
+  which previously received it; the capture form's own two call sites pass
+  `null`, since there's no document yet for a dismissal to apply to, so the
+  hint never renders there. **`clearReminderFieldValue()` calls `render()`
+  but deliberately not `openDetail()`** — unlike `clearDefaultReminder()`,
+  which is only ever reached from a context already focused on one specific
+  document, Delete can be clicked repeatedly for several different
+  documents while working through the Reminders modal's list, and forcing
+  the persistent detail panel to jump to each one in turn would be a
+  jarring side effect of what's meant to be a quick cleanup action; if the
+  panel already happens to be open on the affected document, its displayed
+  value may lag until the next unrelated render/selection change, an
+  accepted, narrow tradeoff rather than a correctness issue.
 - **The default-reminder context menu** (`migrateDefaultReminderField()`,
   `buildDetailActions()`'s `'default-reminder'` action, `.reminder-flyout`)
   extends the Reminder-type custom fields note above with a single,
