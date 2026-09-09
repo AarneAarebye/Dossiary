@@ -799,6 +799,21 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click('#edit-doc-btn')
         await page.wait_for_timeout(300)
+
+        # Type an unsaved change into a DIFFERENT field on the same form before
+        # clicking Re-enable -- Re-enable has no legitimate reason to touch any
+        # field's rendered value except making its own hint disappear (it should
+        # do a targeted DOM removal, not a full applyDynamicFieldsForType()
+        # re-render from the document's originally-persisted values, which would
+        # silently discard this unsaved edit -- the same class of bug
+        # addInlineCustomField() already documents avoiding for itself). This
+        # must be another field INSIDE the dynamic-fields-e container (like
+        # Warranty End, #e-field-2) rather than a built-in field like Category --
+        # built-ins live in the edit form's static markup outside that container
+        # and are never touched by applyDynamicFieldsForType() at all, which
+        # would make the assertion pass vacuously even with the bug present.
+        await page.fill('#e-field-2', '2026-12-25')
+
         await page.click('[data-dynamic-field="Renewal Date"] .reminder-reenable-btn')
         await page.wait_for_timeout(200)
         hint_gone = await page.locator('[data-dynamic-field="Renewal Date"] .reminder-reenable-btn').count()
@@ -806,6 +821,9 @@ async def main():
 
         still_shows_value = await page.locator('#e-field-1').input_value()
         print("Re-enabling does not touch the field's own value:", still_shows_value == renewal_value)
+
+        warranty_after_reenable = await page.locator('#e-field-2').input_value()
+        print("Re-enabling does not discard an unsaved edit in a DIFFERENT dynamic field:", warranty_after_reenable == '2026-12-25')
 
         due_after_reenable = await page.evaluate("window.__DEBUG_checkReminders()")
         renewal_due_again = any(r['documentId'] == 1 and r['fieldName'] == 'Renewal Date' for r in due_after_reenable)

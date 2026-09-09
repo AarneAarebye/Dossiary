@@ -4067,7 +4067,15 @@
         const docId = Number(btn.dataset.documentId);
         const fieldId = Number(btn.dataset.fieldId);
         await reenableReminder(docId, fieldId);
-        applyDynamicFieldsForType(prefix, typeName, existingValues, existingPersonFieldValues, isEdit, documentId);
+        // A targeted removal of just this hint's own div, not a full
+        // applyDynamicFieldsForType() re-render -- re-rendering would rebuild the
+        // whole container from existingValues/existingPersonFieldValues (the
+        // document's originally-persisted values captured in this closure), silently
+        // discarding anything typed into OTHER fields on the same in-progress edit
+        // that hasn't been saved yet. Same principle addInlineCustomField() already
+        // follows for the same reason (see its own comment).
+        const hintDiv = btn.closest('.field-hint');
+        if(hintDiv) hintDiv.remove();
       });
     });
   }
