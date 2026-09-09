@@ -4,6 +4,9 @@
 # Git worktrees used for isolated agent workspaces
 .worktrees/
 
+# Superpowers skill scratch state (SDD workspaces, brainstorm-companion mockups)
+.superpowers/
+
 # Python
 __pycache__/
 *.pyc
