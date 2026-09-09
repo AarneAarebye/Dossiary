@@ -383,7 +383,12 @@ async def main():
         # and closes the modal
         remaining_row = page.locator('.reminder-row').first
         remaining_doc_id = await remaining_row.get_attribute('data-document-id')
-        await remaining_row.click()
+        # Click the row's own title text, not the row element's bounding-box center --
+        # Task 3's two new Dismiss/Delete buttons widened the row's right-hand
+        # `.reminder-snooze` control span enough that a plain center-click on the row
+        # itself can now land inside that span (which stops propagation) instead of
+        # the row's own click-to-open handler.
+        await remaining_row.locator('.reminder-row-title').click()
         await page.wait_for_timeout(200)
         modal_closed = await page.locator('.reminder-row').count()
         print("clicking a row closes the modal:", modal_closed == 0)
@@ -599,6 +604,110 @@ async def main():
         print("clearReminderFieldValue() deletes the document_field_values row:", value_row is None)
         in_memory_value = await page.evaluate("window.__DEBUG_getCustomFieldValue(1, 'Renewal Date')")
         print("clearReminderFieldValue() clears the in-memory customFields entry too:", in_memory_value is None)
+
+        # === Scenario 9: the Reminders modal's Dismiss and Delete buttons work
+        # end to end -- clicking either removes that row, persists the correct
+        # change, and the modal auto-closes once every row is gone via a mix of
+        # Dismiss/Delete/Snooze (not just Snooze alone, which Scenario 5 already
+        # covers) ===
+        seed9 = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc To Dismiss", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {
+                    "id": 2, "title": "Doc To Delete", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {
+                    "id": 3, "title": "Doc To Snooze", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+                {"id": 2, "name": "Warranty End", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_field_values": [],
+            "reminder_snoozes": [],
+        }
+        # Scenario 8's own seeded reminder value (2026-06-01) can be in the past by
+        # the time this suite actually runs, which makes its own library-open
+        # auto-open the Reminders modal (afterDbReady() -> checkReminders()) --
+        # harmless to that scenario's own __DEBUG_-driven assertions, but it leaves
+        # a modal backdrop sitting open that would otherwise block Scenario 9's own
+        # first UI click below. Close anything left open defensively so this
+        # scenario doesn't flake depending on which day it happens to run.
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed9)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                const today = window.__DEBUG_todayIsoDate();
+                const add = (days) => window.__DEBUG_addDaysToIsoDate(today, days);
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 1, today]);
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [2, 2, add(60)]); // doc 2's OTHER reminder field, deliberately outside the lookahead window (so it never shows its own modal row) -- must survive deleting field 1's value below
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [2, 1, today]);
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [3, 1, today]);
+                window.__DEBUG_loadDocumentsFromDb();
+            }
+        """)
+        due9 = await page.evaluate("window.__DEBUG_checkReminders()")
+        await page.evaluate("(due) => window.__DEBUG_openRemindersModal(due)", due9)
+        await page.wait_for_timeout(200)
+
+        buttons_present = await page.locator('.reminder-row[data-document-id="1"] .reminder-dismiss-btn').count()
+        delete_present = await page.locator('.reminder-row[data-document-id="1"] .reminder-delete-btn').count()
+        print("each row shows both a Dismiss and a Delete button:", buttons_present == 1 and delete_present == 1)
+        delete_is_danger = await page.locator('.reminder-row[data-document-id="1"] .reminder-delete-btn').get_attribute('class')
+        print("the Delete button carries the app's .danger styling:", 'danger' in (delete_is_danger or ''))
+
+        async def read_db():
+            return await page.evaluate("""
+                (async () => {
+                    const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                    const f = await fh.getFile();
+                    return JSON.parse(await f.text());
+                })()
+            """)
+
+        # Dismiss doc 1
+        await page.click('.reminder-row[data-document-id="1"] .reminder-dismiss-btn')
+        await page.wait_for_timeout(200)
+        doc1_gone = await page.locator('.reminder-row[data-document-id="1"]').count()
+        print("clicking Dismiss removes doc 1's row:", doc1_gone == 0)
+        persisted = await read_db()
+        doc1_snooze = next((s for s in persisted['reminder_snoozes'] if s['document_id'] == 1 and s['field_id'] == 1), None)
+        print("Dismiss persists dismissed=1 for doc 1:", doc1_snooze is not None and doc1_snooze['dismissed'] == 1)
+        doc1_value = next((v for v in persisted['document_field_values'] if v['document_id'] == 1 and v['field_id'] == 1), None)
+        print("Dismiss does NOT clear doc 1's stored value:", doc1_value is not None)
+
+        # Delete doc 2
+        await page.click('.reminder-row[data-document-id="2"] .reminder-delete-btn')
+        await page.wait_for_timeout(200)
+        doc2_gone = await page.locator('.reminder-row[data-document-id="2"]').count()
+        print("clicking Delete removes doc 2's row:", doc2_gone == 0)
+        persisted = await read_db()
+        doc2_value = next((v for v in persisted['document_field_values'] if v['document_id'] == 2 and v['field_id'] == 1), None)
+        print("Delete clears doc 2's stored value entirely:", doc2_value is None)
+        doc2_other_field_value = next((v for v in persisted['document_field_values'] if v['document_id'] == 2 and v['field_id'] == 2), None)
+        print("Delete leaves doc 2's OTHER reminder field (Warranty End) untouched:", doc2_other_field_value is not None)
+
+        # Snooze doc 3, then confirm the modal auto-closes once all three are gone
+        await page.locator('.reminder-row[data-document-id="3"] .reminder-snooze-select').select_option('1w')
+        await page.wait_for_timeout(200)
+        modal_closed = await page.locator('.reminder-row').count()
+        print("modal auto-closes once every row has been cleared via a mix of Dismiss/Delete/Snooze:", modal_closed == 0)
 
         print("JS ERRORS:", errors)
         await browser.close()

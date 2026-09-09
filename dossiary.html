@@ -5173,6 +5173,8 @@
             <option value="custom">${t('reminderSnoozeCustom')}</option>
           </select>
           <input type="date" class="reminder-snooze-custom-date" data-document-id="${r.documentId}" data-field-id="${r.fieldId}" min="${addDaysToIsoDate(todayIso, 1)}" style="display:none;" />
+          <button type="button" class="reminder-dismiss-btn" data-document-id="${r.documentId}" data-field-id="${r.fieldId}">${t('reminderDismissBtn')}</button>
+          <button type="button" class="reminder-delete-btn danger" data-document-id="${r.documentId}" data-field-id="${r.fieldId}">${t('reminderDeleteBtn')}</button>
         </span>
       </div>
     `;
@@ -5218,6 +5220,22 @@
         const fieldId = Number(dateInput.dataset.fieldId);
         await snoozeReminder(documentId, fieldId, dateInput.value);
         removeReminderRow(dateInput.closest('.reminder-row'));
+      });
+    });
+    modalRoot.querySelectorAll('.reminder-dismiss-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const documentId = Number(btn.dataset.documentId);
+        const fieldId = Number(btn.dataset.fieldId);
+        await dismissReminder(documentId, fieldId);
+        removeReminderRow(btn.closest('.reminder-row'));
+      });
+    });
+    modalRoot.querySelectorAll('.reminder-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const documentId = Number(btn.dataset.documentId);
+        const fieldId = Number(btn.dataset.fieldId);
+        await clearReminderFieldValue(documentId, fieldId);
+        removeReminderRow(btn.closest('.reminder-row'));
       });
     });
   }
