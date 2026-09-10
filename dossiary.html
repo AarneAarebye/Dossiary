@@ -3461,6 +3461,13 @@
   window.__DEBUG_dismissReminder = dismissReminder;
   window.__DEBUG_reenableReminder = reenableReminder;
   window.__DEBUG_clearReminderFieldValue = clearReminderFieldValue;
+  // Test-only: snoozeReminder() itself has no UI-driven way to exercise its own
+  // defensive `dismissed = 0` write against an already-dismissed row, since a
+  // dismissed field never shows a row in the Reminders modal in the first place
+  // (by design -- there's no Snooze control to click). Exposed directly, the same
+  // way the other reminder_snoozes-writing functions just above already are, so
+  // the real function runs (not a hand-copied duplicate of its own SQL).
+  window.__DEBUG_snoozeReminder = snoozeReminder;
   // Test-only: read a custom field value directly from a document's in-memory state,
   // for asserting that setDefaultReminder()/clearDefaultReminder() correctly update
   // the in-memory customFields object (distinct from database persistence).
@@ -5326,6 +5333,13 @@
     const fieldDef = fieldDefs.find(f => f.id === fieldId);
     db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [documentId, fieldId]);
     if(d.customFields && fieldDef) delete d.customFields[fieldDef.name];
+    // No stored value left means there's nothing left to stay dismissed (or
+    // snoozed) about -- same reasoning reenableReminder() above documents for
+    // its own DELETE. Inlined here (not a call to reenableReminder()) so this
+    // stays part of the one persistDb() this function already does, rather than
+    // a redundant second write.
+    delete reminderSnoozes[`${documentId}:${fieldId}`];
+    db.run('DELETE FROM reminder_snoozes WHERE document_id = ? AND field_id = ?', [documentId, fieldId]);
     await persistDb();
     render();
   }
@@ -5891,15 +5905,18 @@
   // The delete half of setDefaultReminder() above -- removes the value entirely
   // rather than writing a blank one, so the field goes back to not being an
   // orphaned field at all for this document (no value means nothing to orphan).
+  // Delegates to clearReminderFieldValue() (resolving fieldNameToId['Reminder']
+  // itself, since this call site has no explicit fieldId to hand it) rather than
+  // duplicating its document_field_values/reminder_snoozes cleanup -- the only
+  // things this wrapper adds on top are (a) that resolution and (b) the trailing
+  // openDetail() call, which exists because this is reached from the row
+  // context-menu flyout / detail panel, where switching to show that document
+  // makes sense -- unlike clearReminderFieldValue()'s own Reminders-modal call
+  // site, which deliberately skips openDetail() (see that function's own note).
   async function clearDefaultReminder(documentId){
-    const d = allDocs.find(x => x.id === documentId);
-    if(!d) return;
     const fieldId = fieldNameToId['Reminder'];
-    db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [documentId, fieldId]);
-    if(d.customFields) delete d.customFields['Reminder'];
-    await persistDb();
-    render();
-    openDetail(documentId);
+    await clearReminderFieldValue(documentId, fieldId);
+    openDetail(documentId); // refresh the panel so it reflects the new orphaned-field value if it's currently shown
   }
 
   // needs_review is a fully independent flag from archived -- deliberately no
