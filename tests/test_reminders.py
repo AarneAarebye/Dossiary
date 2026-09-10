@@ -878,9 +878,7 @@ async def main():
                 // The real snoozeReminder() call -- not a duplicate INSERT.
                 await window.__DEBUG_snoozeReminder(1, 1, newSnoozeUntil);
                 const after = window.__DEBUG_reminderSnoozes['1:1'];
-                const rawRows = window.__DEBUG_reminderSnoozesRawRows();
-                const rawRow = rawRows.find(r => r.document_id === 1 && r.field_id === 1);
-                return { before, after, rawRow, newSnoozeUntil };
+                return { before, after, newSnoozeUntil };
             }
         """)
         print("field starts dismissed:", result11['before'] == {'snoozedUntil': None, 'dismissed': True})
@@ -896,6 +894,108 @@ async def main():
         persisted_row = next((s for s in persisted11['reminder_snoozes'] if s['document_id'] == 1 and s['field_id'] == 1), None)
         print("snoozeReminder() persists dismissed=0, not a stale dismissed=1:", persisted_row is not None and persisted_row['dismissed'] == 0)
         print("snoozeReminder() persists the new snoozed_until:", persisted_row is not None and persisted_row['snoozed_until'] == result11['newSnoozeUntil'])
+
+        # === Scenario 12: clearing a reminder-type field's value also removes any
+        # lingering reminder_snoozes row for that exact (document_id, field_id) pair
+        # -- not just that document_field_values/customFields get cleared (already
+        # covered by Scenario 8/10 above). Exercises BOTH call paths:
+        # clearReminderFieldValue() directly (the Reminders modal's own Delete
+        # button), and clearDefaultReminder() (the row context-menu flyout's "Clear
+        # reminder"), which now delegates to it. The real end-to-end proof is the
+        # last step of each half: setting a brand-new value on the same field
+        # afterward and confirming checkReminders() actually includes it again --
+        # i.e. the field is NOT silently still excluded as if still dismissed,
+        # which is the exact bug this fix exists to prevent. ===
+        seed12 = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc Custom Field Cleared While Dismissed", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+                {
+                    "id": 2, "title": "Doc Default Reminder Cleared While Dismissed", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_field_values": [],
+            "reminder_snoozes": [],
+        }
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed12)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        # -- Half A: clearReminderFieldValue() (custom field, Reminders modal's Delete) --
+        result12a = await page.evaluate("""
+            () => {
+                const today = window.__DEBUG_todayIsoDate();
+                // A real stored value, plus a dismissal on top of it.
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 1, today]);
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [1, 1, null, 1]);
+                window.__DEBUG_loadDocumentsFromDb();
+                // Raw rows are plain [document_id, field_id, snoozed_until, dismissed]
+                // arrays (see queryAll()), not objects -- index, don't use dot access.
+                const rowExistsBefore = window.__DEBUG_reminderSnoozesRawRows().some(r => r[0] === 1 && r[1] === 1);
+                return { rowExistsBefore };
+            }
+        """)
+        print("Half A: doc 1's reminder_snoozes row exists before clearing:", result12a['rowExistsBefore'])
+        await page.evaluate("window.__DEBUG_clearReminderFieldValue(1, 1)")
+        await page.wait_for_timeout(150)
+        result12a2 = await page.evaluate("""
+            () => {
+                const rowGone = !window.__DEBUG_reminderSnoozesRawRows().some(r => r[0] === 1 && r[1] === 1);
+                return { rowGone };
+            }
+        """)
+        print("clearReminderFieldValue() deletes the reminder_snoozes row entirely (not just dismissed -> 0):", result12a2['rowGone'])
+        # Set a brand-new value afterward -- the real end-to-end proof that it isn't
+        # silently born already-dismissed.
+        due12a = await page.evaluate("""
+            () => {
+                const today = window.__DEBUG_todayIsoDate();
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [1, 1, today]);
+                window.__DEBUG_loadDocumentsFromDb();
+                return window.__DEBUG_checkReminders();
+            }
+        """)
+        print("checkReminders() includes doc 1's Renewal Date again after a brand-new value:", any(r['documentId'] == 1 and r['fieldName'] == 'Renewal Date' for r in due12a))
+
+        # -- Half B: clearDefaultReminder() (the reserved 'Reminder' field, the row
+        # context-menu flyout's "Clear reminder") --
+        reminder_field_id = await page.evaluate("window.__DEBUG_findFieldByName('Reminder').id")
+        await page.evaluate(f"""
+            () => {{
+                const fieldId = {reminder_field_id};
+                const today = window.__DEBUG_todayIsoDate();
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [2, fieldId, today]);
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [2, fieldId, null, 1]);
+                window.__DEBUG_loadDocumentsFromDb();
+            }}
+        """)
+        row_exists_before_b = await page.evaluate(f"window.__DEBUG_reminderSnoozesRawRows().some(r => r[0] === 2 && r[1] === {reminder_field_id})")
+        print("Half B: doc 2's reminder_snoozes row exists before clearing:", row_exists_before_b)
+        await page.evaluate("window.__DEBUG_clearDefaultReminder(2)")
+        await page.wait_for_timeout(150)
+        row_gone_b = await page.evaluate(f"!window.__DEBUG_reminderSnoozesRawRows().some(r => r[0] === 2 && r[1] === {reminder_field_id})")
+        print("clearDefaultReminder() (delegating to clearReminderFieldValue()) also deletes the reminder_snoozes row entirely:", row_gone_b)
+        due12b = await page.evaluate(f"""
+            () => {{
+                const fieldId = {reminder_field_id};
+                const today = window.__DEBUG_todayIsoDate();
+                window.__DEBUG_dbRun('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [2, fieldId, today]);
+                window.__DEBUG_loadDocumentsFromDb();
+                return window.__DEBUG_checkReminders();
+            }}
+        """)
+        print("checkReminders() includes doc 2's Reminder field again after a brand-new value:", any(r['documentId'] == 2 and r['fieldName'] == 'Reminder' for r in due12b))
 
         print("JS ERRORS:", errors)
         await browser.close()

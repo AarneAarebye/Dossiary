@@ -438,7 +438,7 @@ the moment of the click — stays on-screen, verified via
 non-vacuous by temporarily reverting the clamp and re-running the same
 scenario (it then correctly reports `False`, with the last item's
 `bottom` past 800px); and reminder-type custom fields (`test_reminders.py`,
-eleven scenarios — creating a `reminder`-type field inline via the same "+
+twelve scenarios — creating a `reminder`-type field inline via the same "+
 Add a custom field" flow and confirming it behaves identically to `date`
 end to end: the type option present in the dropdown, the field rendering
 as a native `<input type="date">` immediately after creation, the saved
@@ -535,12 +535,20 @@ its own `INSERT OR REPLACE` a second time, so the assertion actually exercises
 the app's own code path instead of just re-proving the stub's dedupe behavior;
 checked both in the in-memory `reminderSnoozes` map and the raw persisted row
 (`dismissed` back to `0`, `snoozed_until` set to the new date, not a stale
-leftover `dismissed = 1`). (A later final-review fix made
-`clearReminderFieldValue()` also delete any lingering `reminder_snoozes` row for
-the field it clears, and `clearDefaultReminder()` now delegates to it instead of
-duplicating its logic — see `CLAUDE.md`'s own note on this — but that fix has no
-dedicated scenario of its own yet in either this file or `test_default_reminder.py`,
-worth adding next time this area is touched.); and the default-reminder context
+leftover `dismissed = 1`). A later final-review fix made `clearReminderFieldValue()`
+also delete any lingering `reminder_snoozes` row for the field it clears, and
+`clearDefaultReminder()` now delegates to it instead of duplicating its logic
+(see `CLAUDE.md`'s own note on this) — Scenario 12 covers this end to end for
+**both** call paths: a custom reminder-type field cleared via
+`clearReminderFieldValue()` (the Reminders modal's own Delete button) and the
+reserved `'Reminder'` field cleared via `clearDefaultReminder()` (the row
+context-menu flyout's "Clear reminder"), each seeded with a real stored value
+*and* a dismissal on top of it, confirming the `reminder_snoozes` row is gone
+entirely (not merely flipped to `dismissed = 0`) via `__DEBUG_reminderSnoozesRawRows()`,
+and then — the real end-to-end proof, not just a DB-level check — setting a
+brand-new value on the same field afterward and confirming `checkReminders()`
+actually includes it again, i.e. the field is NOT silently still excluded as if
+still dismissed, which is the exact bug this fix exists to prevent; and the default-reminder context
 menu built on top of that feature (`test_default_reminder.py`, ten scenarios — the `'Reminder'`
 field auto-created by `migrateDefaultReminderField()` on a fresh library
 open, and reopening the same library confirmed not to duplicate it (same
