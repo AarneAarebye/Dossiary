@@ -2563,7 +2563,17 @@ this repo's git tags.
   `applyDynamicFieldsForType()` and `renderGenericFieldHtml()`, neither of
   which previously received it; the capture form's own two call sites pass
   `null`, since there's no document yet for a dismissal to apply to, so the
-  hint never renders there. **`clearReminderFieldValue()` calls `render()`
+  hint never renders there. **The Re-enable link's own click handler removes
+  only its own hint `<div>`** (`btn.closest('.field-hint').remove()`),
+  deliberately NOT by calling `applyDynamicFieldsForType()` again to rebuild
+  the whole dynamic-fields container — an earlier version of this feature did
+  exactly that, and it was a real bug (caught and fixed in this feature's own
+  review): that rebuild reads the document's *originally-persisted* values
+  (see the orphaned-field note above), so it would silently discard whatever
+  someone had already typed into any *other* field on the same, still-open
+  Edit form — the same class of hazard `addInlineCustomField()`'s own
+  "critical correctness property" note above exists to prevent for a
+  different action (adding a new custom field mid-edit). **`clearReminderFieldValue()` calls `render()`
   but deliberately not `openDetail()`** — unlike `clearDefaultReminder()`,
   which is only ever reached from a context already focused on one specific
   document, Delete can be clicked repeatedly for several different
@@ -2573,6 +2583,20 @@ this repo's git tags.
   panel already happens to be open on the affected document, its displayed
   value may lag until the next unrelated render/selection change, an
   accepted, narrow tradeoff rather than a correctness issue.
+  **Clearing a reminder-type field's value (Delete in the Reminders modal, or
+  "Clear reminder" in the row context-menu flyout — `clearDefaultReminder()`
+  now delegates straight to `clearReminderFieldValue()`, differing only in
+  resolving `fieldNameToId['Reminder']` and its own trailing `openDetail()`
+  call) also deletes any lingering `reminder_snoozes` row for that exact
+  `(document_id, field_id)` pair**, dismissal included — the same "no stored
+  value left means there's nothing left to stay dismissed about" reasoning
+  `reenableReminder()` already uses, inlined rather than calling
+  `reenableReminder()` itself to avoid a second, redundant `persistDb()`.
+  Without this, a dismissed reminder whose value gets cleared and later
+  re-set to a brand-new value would stay silently, invisibly dismissed —
+  `checkReminders()` would never surface it and no UI would show it as
+  dismissed anymore, since the Edit-form hint above only renders for a field
+  that still has a stored value.
 - **The default-reminder context menu** (`migrateDefaultReminderField()`,
   `buildDetailActions()`'s `'default-reminder'` action, `.reminder-flyout`)
   extends the Reminder-type custom fields note above with a single,

@@ -438,7 +438,7 @@ the moment of the click — stays on-screen, verified via
 non-vacuous by temporarily reverting the clamp and re-running the same
 scenario (it then correctly reports `False`, with the last item's
 `bottom` past 800px); and reminder-type custom fields (`test_reminders.py`,
-six scenarios — creating a `reminder`-type field inline via the same "+
+eleven scenarios — creating a `reminder`-type field inline via the same "+
 Add a custom field" flow and confirming it behaves identically to `date`
 end to end: the type option present in the dropdown, the field rendering
 as a native `<input type="date">` immediately after creation, the saved
@@ -489,8 +489,59 @@ reminder already in the seed surfacing the modal automatically with no
 manual action, the "Check reminders" toolbar button opening the same
 modal on demand, and that same button reporting the "No reminders due."
 empty-case status message when a freshly-opened library has nothing due
-at all); and the default-reminder context menu built on top of that
-feature (`test_default_reminder.py`, ten scenarios — the `'Reminder'`
+at all); the Dismiss/Delete feature added on top of Snooze — `reminder_snoozes.dismissed`
+loading into the `{snoozedUntil, dismissed}` in-memory shape and `checkReminders()`
+excluding a dismissed field unconditionally, even one that's overdue with no
+`snoozed_until` at all and even one whose row also still carries a stale future
+`snoozed_until` (dismissed must win regardless); dismissal scoped to the
+`(document_id, field_id)` pair, not the document — a 4-document seed proves both
+that editing a dismissed field's value to a brand-new date does NOT un-dismiss it,
+and that a document carrying two reminder fields with only one dismissed
+contributes only its non-dismissed field to `checkReminders()`'s results;
+`dismissReminder()`/`reenableReminder()`/`clearReminderFieldValue()` exercised
+directly via their `__DEBUG_` hooks for both persisted and in-memory state —
+Dismiss persists `dismissed=1` without touching the field's own stored value,
+Re-enable does a full `DELETE FROM reminder_snoozes` rather than a flag flip, and
+Delete removes the `document_field_values` row and the in-memory `customFields`
+entry alike; the Reminders modal's own Dismiss and Delete buttons end to end —
+present on every row alongside Snooze, the Delete button carrying the app's
+`.danger` styling, clicking Dismiss removing that row while leaving its stored
+value alone, clicking Delete removing its row while clearing its value AND
+leaving that same document's *other* reminder field untouched, and the modal
+auto-closing once every row is gone through a mix of Dismiss/Delete/Snooze
+rather than Snooze alone; and the Edit form's dismissed-field hint and Re-enable
+link — a dismissed reminder-type field shows a `.reminder-reenable-btn` hint an
+otherwise-identical non-dismissed field doesn't, the capture form never shows it
+at all (no document exists yet to be dismissed against), and clicking Re-enable
+removes only its own hint element and clears the dismissal
+(`checkReminders()` includes the field again) *without* discarding an unsaved
+edit already typed into a different dynamic field on the same still-open form —
+the specific regression this feature's own review round caught and fixed
+(Re-enable used to trigger a full `applyDynamicFieldsForType()` rebuild, which
+re-reads the document's originally-persisted values and silently wiped
+in-progress edits elsewhere on the form; see `CLAUDE.md`'s own note on this).
+Scenario 8's seeded reminder date is computed relative to `todayIsoDate()`
+rather than hardcoded, fixing a real flake an earlier hardcoded literal caused:
+once real time passed it, it became overdue, which made `checkReminders()`'s own
+documented auto-surface-on-open behavior pop the Reminders modal on a later
+scenario's reload and block its first click — Scenario 9 now defensively presses
+Escape before its own reload for the same reason. `snoozeReminder()`'s own
+defensive `dismissed = 0` write — untested until a later final-review pass, since
+no earlier scenario snoozed a field that was currently dismissed — is exercised
+by seeding a dismissed `reminder_snoozes` row via `__DEBUG_dbRun` (the same
+direct-write pattern Scenario 3 already uses for this table) and then calling the
+real function through a new `__DEBUG_snoozeReminder` hook rather than duplicating
+its own `INSERT OR REPLACE` a second time, so the assertion actually exercises
+the app's own code path instead of just re-proving the stub's dedupe behavior;
+checked both in the in-memory `reminderSnoozes` map and the raw persisted row
+(`dismissed` back to `0`, `snoozed_until` set to the new date, not a stale
+leftover `dismissed = 1`). (A later final-review fix made
+`clearReminderFieldValue()` also delete any lingering `reminder_snoozes` row for
+the field it clears, and `clearDefaultReminder()` now delegates to it instead of
+duplicating its logic — see `CLAUDE.md`'s own note on this — but that fix has no
+dedicated scenario of its own yet in either this file or `test_default_reminder.py`,
+worth adding next time this area is touched.); and the default-reminder context
+menu built on top of that feature (`test_default_reminder.py`, ten scenarios — the `'Reminder'`
 field auto-created by `migrateDefaultReminderField()` on a fresh library
 open, and reopening the same library confirmed not to duplicate it (same
 `id` before and after a simulated reload); `'Reminder'` rejected as a name
