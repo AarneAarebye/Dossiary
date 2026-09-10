@@ -647,13 +647,14 @@ async def main():
             "document_field_values": [],
             "reminder_snoozes": [],
         }
-        # Scenario 8's own seeded reminder value (2026-06-01) can be in the past by
-        # the time this suite actually runs, which makes its own library-open
-        # auto-open the Reminders modal (afterDbReady() -> checkReminders()) --
-        # harmless to that scenario's own __DEBUG_-driven assertions, but it leaves
-        # a modal backdrop sitting open that would otherwise block Scenario 9's own
-        # first UI click below. Close anything left open defensively so this
-        # scenario doesn't flake depending on which day it happens to run.
+        # Scenario 8's own seeded reminder value is deliberately overdue (computed
+        # relative to today, not hardcoded -- see that scenario's own comment),
+        # which makes its own library-open auto-open the Reminders modal
+        # (afterDbReady() -> checkReminders()) -- harmless to that scenario's own
+        # __DEBUG_-driven assertions, but it leaves a modal backdrop sitting open
+        # that would otherwise block Scenario 9's own first UI click below. Close
+        # anything left open defensively so this scenario doesn't flake depending
+        # on which day it happens to run.
         await page.keyboard.press('Escape')
         await page.wait_for_timeout(100)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed9)}); window.__TEST_ROOT.name = 'TestLib';")
@@ -828,6 +829,73 @@ async def main():
         due_after_reenable = await page.evaluate("window.__DEBUG_checkReminders()")
         renewal_due_again = any(r['documentId'] == 1 and r['fieldName'] == 'Renewal Date' for r in due_after_reenable)
         print("checkReminders() includes Renewal Date again after Re-enable:", renewal_due_again)
+
+        # === Scenario 11: snoozeReminder()'s own defensive `dismissed = 0` write
+        # actually clears a prior dismissal -- untested until now, since no existing
+        # scenario snoozes a field that's currently dismissed. A dismissed field
+        # never shows a row in the Reminders modal in the first place (by design --
+        # there's no Snooze control to click on one), so this is driven via the
+        # __DEBUG_snoozeReminder hook to call the real function directly rather than
+        # a UI click, the same reasoning __DEBUG_dismissReminder/__DEBUG_reenableReminder/
+        # __DEBUG_clearReminderFieldValue above are already driven that way. Deliberately
+        # exercises the real snoozeReminder() function itself (not a hand-copied
+        # duplicate of its own INSERT OR REPLACE via __DEBUG_dbRun), so this actually
+        # proves the app's own code path, not just the stub's dedupe behavior --
+        # Scenario 3 already covers that separately. ===
+        # Scenario 10 leaves the edit form open -- close it first so it doesn't
+        # block this scenario's own #reload-btn click below.
+        await page.click('#cancel-edit-btn')
+        await page.wait_for_timeout(150)
+        seed11 = {
+            "documents": [
+                {
+                    "id": 1, "title": "Doc Dismissed Then Snoozed", "category": None, "document_type": None,
+                    "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+                    "file_path": None, "original_file_path": None, "created_at": "2026-01-01T00:00:00Z",
+                    "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0,
+                },
+            ],
+            "tags": [], "document_tags": [],
+            "fields": [
+                {"id": 1, "name": "Renewal Date", "type": "reminder", "show_as_column": 0, "autocomplete": 0},
+            ],
+            "document_field_values": [],
+            "reminder_snoozes": [],
+        }
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed11)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+
+        result11 = await page.evaluate("""
+            async () => {
+                const add = (days) => window.__DEBUG_addDaysToIsoDate(window.__DEBUG_todayIsoDate(), days);
+                // Seed doc 1's field as currently dismissed, matching Scenario 3's own
+                // pattern of writing reminder_snoozes directly via __DEBUG_dbRun.
+                window.__DEBUG_dbRun('INSERT INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [1, 1, null, 1]);
+                window.__DEBUG_loadDocumentsFromDb();
+                const before = window.__DEBUG_reminderSnoozes['1:1'];
+                const newSnoozeUntil = add(7);
+                // The real snoozeReminder() call -- not a duplicate INSERT.
+                await window.__DEBUG_snoozeReminder(1, 1, newSnoozeUntil);
+                const after = window.__DEBUG_reminderSnoozes['1:1'];
+                const rawRows = window.__DEBUG_reminderSnoozesRawRows();
+                const rawRow = rawRows.find(r => r.document_id === 1 && r.field_id === 1);
+                return { before, after, rawRow, newSnoozeUntil };
+            }
+        """)
+        print("field starts dismissed:", result11['before'] == {'snoozedUntil': None, 'dismissed': True})
+        print("snoozeReminder() clears dismissed in memory:", result11['after']['dismissed'] == False)
+        print("snoozeReminder() sets the new snoozedUntil in memory:", result11['after']['snoozedUntil'] == result11['newSnoozeUntil'])
+        persisted11 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        persisted_row = next((s for s in persisted11['reminder_snoozes'] if s['document_id'] == 1 and s['field_id'] == 1), None)
+        print("snoozeReminder() persists dismissed=0, not a stale dismissed=1:", persisted_row is not None and persisted_row['dismissed'] == 0)
+        print("snoozeReminder() persists the new snoozed_until:", persisted_row is not None and persisted_row['snoozed_until'] == result11['newSnoozeUntil'])
 
         print("JS ERRORS:", errors)
         await browser.close()
