@@ -70,6 +70,174 @@ async def main():
         await page.click('#fs-done-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 2: unset scan_bridge_url shows "not configured" with no
+        # fetch attempted, and both buttons are present in the toolbar ===
+        seed_no_url = {}
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        scan_btn_present = await page.locator('#scan-btn').count()
+        scan_multi_btn_present = await page.locator('#scan-multi-btn').count()
+        print("Scan button present in toolbar:", scan_btn_present == 1)
+        print("Scan Multi button present in toolbar:", scan_multi_btn_present == 1)
+
+        await page.evaluate("""
+            () => {
+                window.__FETCH_CALLED = false;
+                window.fetch = async (url, opts) => { window.__FETCH_CALLED = true; throw new Error('fetch should not have been called'); };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(150)
+        fetch_called_when_unconfigured = await page.evaluate("window.__FETCH_CALLED")
+        print("fetch NOT attempted when scan_bridge_url is unset:", fetch_called_when_unconfigured == False)
+        status_text_unconfigured = await page.locator('#status').inner_text()
+        print("status shows 'not configured' message:", 'Field Settings' in status_text_unconfigured)
+
+        # === Scenario 3: configured URL, successful scan (ok:true) runs the
+        # Inbox pipeline and navigates to the Inbox view ===
+        seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        # Stage a file in inbox/ the same way scanix500 would have written one,
+        # so the Inbox pipeline this success path triggers has something real
+        # to pick up -- __addInboxFile is stub_studio2.js's own existing helper
+        # for exactly this, already used by tests/test_inbox.py.
+        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan1.pdf', new Uint8Array([1,2,3]));")
+
+        await page.evaluate("""
+            () => {
+                window.__FETCH_URLS = [];
+                window.fetch = async (url, opts) => {
+                    window.__FETCH_URLS.push(url);
+                    return new Response(JSON.stringify({ok: true, partial: false, message: '/tmp/scans/scan_1.pdf', output_paths: ['/tmp/scans/scan_1.pdf']}), {status: 200});
+                };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        fetch_url_scan = await page.evaluate("window.__FETCH_URLS[0]")
+        print("Scan button POSTs to the 'Dossiary Scan' profile path:", fetch_url_scan == 'http://127.0.0.1:8765/scan/Dossiary%20Scan')
+        current_view_is_inbox_after_success = await page.locator('#nav-item-inbox.active').count()
+        print("view navigates to Inbox after a successful scan:", current_view_is_inbox_after_success == 1)
+        buttons_reenabled_after_success = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a successful scan:", buttons_reenabled_after_success)
+
+        # === Scenario 4: Scan Multi POSTs to the distinct 'Dossiary Scan Multi'
+        # profile path, not the same URL as Scan ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.__FETCH_URLS = [];
+                window.fetch = async (url, opts) => {
+                    window.__FETCH_URLS.push(url);
+                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: []}), {status: 200});
+                };
+            }
+        """)
+        await page.click('#scan-multi-btn')
+        await page.wait_for_timeout(300)
+        fetch_url_scan_multi = await page.evaluate("window.__FETCH_URLS[0]")
+        print("Scan Multi button POSTs to the 'Dossiary Scan Multi' profile path:", fetch_url_scan_multi == 'http://127.0.0.1:8765/scan/Dossiary%20Scan%20Multi')
+
+        # === Scenario 5: partial scan (ok:false, partial:true) still runs the
+        # Inbox pipeline AND shows the bridge's own message ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan2.pdf', new Uint8Array([1,2,3]));")
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response(JSON.stringify({ok: false, partial: true, message: 'Multi-feed detected at sheet 3', output_paths: ['/tmp/scans/scan_2.pdf']}), {status: 200});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        view_is_inbox_after_partial = await page.locator('#nav-item-inbox.active').count()
+        print("view navigates to Inbox after a partial scan (a usable file was still written):", view_is_inbox_after_partial == 1)
+        status_after_partial = await page.locator('#status').inner_text()
+        print("status shows the bridge's own partial-scan message:", 'Multi-feed detected at sheet 3' in status_after_partial)
+
+        # === Scenario 6: hard failure (ok:false, partial:false) shows the
+        # bridge's own message and does NOT run the Inbox pipeline ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        rows_before_failure = await page.locator('#doc-tbody tr').count()
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response(JSON.stringify({ok: false, partial: false, message: 'Scanner not found', output_paths: []}), {status: 200});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_failure = await page.locator('#status').inner_text()
+        print("status shows the bridge's own failure message:", 'Scanner not found' in status_after_failure)
+        rows_after_failure = await page.locator('#doc-tbody tr').count()
+        print("no new document was added on a hard failure:", rows_after_failure == rows_before_failure)
+        buttons_reenabled_after_failure = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a hard failure:", buttons_reenabled_after_failure)
+
+        # === Scenario 7: HTTP 404 (unknown profile) shows a clear status,
+        # re-enables both buttons, no Inbox pipeline run ===
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response(JSON.stringify({error: "no profile named 'Dossiary Scan'"}), {status: 404});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_404 = await page.locator('#status').inner_text()
+        print("status shows 'profile not configured' on a 404:", 'Dossiary Scan' in status_after_404)
+        buttons_reenabled_after_404 = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a 404:", buttons_reenabled_after_404)
+
+        # === Scenario 8: HTTP 409 (already scanning) shows a clear status ===
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response(JSON.stringify({error: 'a scan is already in progress'}), {status: 409});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_409 = await page.locator('#status').inner_text()
+        print("status shows 'already scanning' on a 409:", len(status_after_409) > 0 and 'already' in status_after_409.lower())
+        buttons_reenabled_after_409 = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a 409:", buttons_reenabled_after_409)
+
+        # === Scenario 9: network failure (fetch rejects entirely, e.g.
+        # scanix500-menubar isn't running) shows a clear status naming the URL ===
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => { throw new TypeError('Failed to fetch'); };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_network_failure = await page.locator('#status').inner_text()
+        print("status names the configured URL when the bridge is unreachable:", 'http://127.0.0.1:8765' in status_after_network_failure)
+        buttons_reenabled_after_network_failure = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a network failure:", buttons_reenabled_after_network_failure)
+
+        # === Scenario 10: both buttons are disabled while a request is in
+        # flight (a slow-resolving fetch, checked mid-flight before it resolves) ===
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Promise((resolve) => {
+                    window.__RESOLVE_SLOW_FETCH = () => resolve(new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: []}), {status: 200}));
+                });
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(150)  # request is now in flight, not yet resolved
+        buttons_disabled_mid_flight = await page.evaluate("document.getElementById('scan-btn').disabled && document.getElementById('scan-multi-btn').disabled")
+        print("both buttons disabled while a scan request is in flight:", buttons_disabled_mid_flight)
+        await page.evaluate("window.__RESOLVE_SLOW_FETCH()")
+        await page.wait_for_timeout(200)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

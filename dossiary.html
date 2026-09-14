@@ -691,6 +691,8 @@
         <button id="manage-collections-btn" data-i18n="toolbarManageCollections">⚙ Manage collections</button>
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
         <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
+        <button id="scan-btn" data-i18n="toolbarScan">📷 Scan</button>
+        <button id="scan-multi-btn" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
         <button id="reload-btn" data-i18n="toolbarSwitchLibrary">Switch library</button>
         <button id="detail-panel-toggle-btn" data-i18n="toolbarDetailsToggle">☰ Details</button>
@@ -870,7 +872,7 @@
       toolbarAmountMinTitle: 'Min amount', toolbarAmountMaxTitle: 'Max amount', toolbarAmountUnsetLabel: 'Amount not set',
       toolbarAmountMinClearAriaLabel: 'Clear min amount', toolbarAmountMaxClearAriaLabel: 'Clear max amount',
       toolbarManageFields: '⚙ Manage fields', toolbarManageCollections: '⚙ Manage collections',
-      toolbarCheckInbox: '📥 Check inbox', toolbarCheckReminders: '🔔 Check reminders', toolbarAddDocument: '＋ Add document',
+      toolbarCheckInbox: '📥 Check inbox', toolbarCheckReminders: '🔔 Check reminders', toolbarScan: '📷 Scan', toolbarScanMulti: '📸 Scan Multi', toolbarAddDocument: '＋ Add document',
       toolbarSwitchLibrary: 'Switch library', toolbarColumns: '⚙ Columns', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Add all',
       bulkAddToCollection: 'Add to collection ▾', bulkNewCollectionPlaceholder: 'New collection name',
@@ -1016,6 +1018,13 @@
       dragdropPartialFailureSingular: ' {count} file could not be added.',
       dragdropPartialFailurePlural: ' {count} files could not be added.',
       dragdropNoFilesWaiting: 'No files waiting in {folder}.', reminderNoneDue: 'No reminders due.',
+      scanBridgeNotConfigured: 'Configure the scanner bridge URL in Field Settings first.',
+      scanScanning: 'Scanning…',
+      scanBridgeUnreachable: "Couldn't reach the scanner bridge at {url} — is scanix500-menubar running?",
+      scanProfileNotConfigured: 'Profile "{profile}" isn\'t configured in scanix500 — create it in the menu bar app.',
+      scanAlreadyInProgress: 'A scan is already in progress.',
+      scanPartialMessage: 'Scan partially completed: {message}',
+      scanFailedMessage: 'Scan failed: {message}',
       dragdropCouldNotAddAnyOfCountSingular: 'Could not add any of the {count} file in {folder}.',
       dragdropCouldNotAddAnyOfCountPlural: 'Could not add any of the {count} files in {folder}.',
       dragdropAddedToReviewQueueSingular: 'Added {count} document to the review queue from {folder}.',
@@ -1044,7 +1053,7 @@
       toolbarAmountMinTitle: 'Importe mín.', toolbarAmountMaxTitle: 'Importe máx.', toolbarAmountUnsetLabel: 'Importe sin definir',
       toolbarAmountMinClearAriaLabel: 'Borrar importe mínimo', toolbarAmountMaxClearAriaLabel: 'Borrar importe máximo',
       toolbarManageFields: '⚙ Administrar campos', toolbarManageCollections: '⚙ Administrar colecciones',
-      toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarCheckReminders: '🔔 Ver recordatorios', toolbarAddDocument: '＋ Añadir documento',
+      toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarCheckReminders: '🔔 Ver recordatorios', toolbarScan: '📷 Escanear', toolbarScanMulti: '📸 Escaneo múltiple', toolbarAddDocument: '＋ Añadir documento',
       toolbarSwitchLibrary: 'Cambiar de biblioteca', toolbarColumns: '⚙ Columnas', toolbarDetailsToggle: '☰ Detalles',
       inboxBannerAddAll: 'Añadir todo',
       bulkAddToCollection: 'Añadir a colección ▾', bulkNewCollectionPlaceholder: 'Nombre de la nueva colección',
@@ -1190,6 +1199,13 @@
       dragdropPartialFailureSingular: ' {count} archivo no se pudo añadir.',
       dragdropPartialFailurePlural: ' {count} archivos no se pudieron añadir.',
       dragdropNoFilesWaiting: 'No hay archivos esperando en {folder}.', reminderNoneDue: 'No hay recordatorios pendientes.',
+      scanBridgeNotConfigured: 'Configure primero la URL del puente del escáner en Configuración de campos.',
+      scanScanning: 'Escaneando…',
+      scanBridgeUnreachable: 'No se pudo conectar con el puente del escáner en {url}; ¿está scanix500-menubar en ejecución?',
+      scanProfileNotConfigured: 'El perfil "{profile}" no está configurado en scanix500; créelo en la aplicación de la barra de menús.',
+      scanAlreadyInProgress: 'Ya hay un escaneo en curso.',
+      scanPartialMessage: 'Escaneo completado parcialmente: {message}',
+      scanFailedMessage: 'Error al escanear: {message}',
       dragdropCouldNotAddAnyOfCountSingular: 'No se pudo añadir ninguno de los {count} archivo en {folder}.',
       dragdropCouldNotAddAnyOfCountPlural: 'No se pudo añadir ninguno de los {count} archivos en {folder}.',
       dragdropAddedToReviewQueueSingular: 'Se añadió {count} documento a la cola de revisión desde {folder}.',
@@ -1218,7 +1234,7 @@
       toolbarAmountMinTitle: 'Montant min.', toolbarAmountMaxTitle: 'Montant max.', toolbarAmountUnsetLabel: 'Montant non défini',
       toolbarAmountMinClearAriaLabel: 'Effacer le montant min.', toolbarAmountMaxClearAriaLabel: 'Effacer le montant max.',
       toolbarManageFields: '⚙ Gérer les champs', toolbarManageCollections: '⚙ Gérer les collections',
-      toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarCheckReminders: '🔔 Vérifier les rappels', toolbarAddDocument: '＋ Ajouter un document',
+      toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarCheckReminders: '🔔 Vérifier les rappels', toolbarScan: '📷 Numériser', toolbarScanMulti: '📸 Numérisation multiple', toolbarAddDocument: '＋ Ajouter un document',
       toolbarSwitchLibrary: 'Changer de bibliothèque', toolbarColumns: '⚙ Colonnes', toolbarDetailsToggle: '☰ Détails',
       inboxBannerAddAll: 'Tout ajouter',
       bulkAddToCollection: 'Ajouter à une collection ▾', bulkNewCollectionPlaceholder: 'Nom de la nouvelle collection',
@@ -1364,6 +1380,13 @@
       dragdropPartialFailureSingular: " {count} fichier n'a pas pu être ajouté.",
       dragdropPartialFailurePlural: " {count} fichiers n'ont pas pu être ajoutés.",
       dragdropNoFilesWaiting: 'Aucun fichier en attente dans {folder}.', reminderNoneDue: 'Aucun rappel à traiter.',
+      scanBridgeNotConfigured: "Configurez d'abord l'URL du pont du scanner dans les paramètres des champs.",
+      scanScanning: 'Numérisation en cours…',
+      scanBridgeUnreachable: 'Impossible de joindre le pont du scanner à {url} — scanix500-menubar est-il lancé ?',
+      scanProfileNotConfigured: 'Le profil « {profile} » n\'est pas configuré dans scanix500 — créez-le dans l\'application de la barre de menus.',
+      scanAlreadyInProgress: 'Une numérisation est déjà en cours.',
+      scanPartialMessage: 'Numérisation partiellement terminée : {message}',
+      scanFailedMessage: 'Échec de la numérisation : {message}',
       dragdropCouldNotAddAnyOfCountSingular: "Impossible d'ajouter le fichier ({count}) dans {folder}.",
       dragdropCouldNotAddAnyOfCountPlural: "Impossible d'ajouter aucun des {count} fichiers dans {folder}.",
       dragdropAddedToReviewQueueSingular: '{count} document ajouté à la file de révision depuis {folder}.',
@@ -1392,7 +1415,7 @@
       toolbarAmountMinTitle: 'Betrag min.', toolbarAmountMaxTitle: 'Betrag max.', toolbarAmountUnsetLabel: 'Betrag nicht gesetzt',
       toolbarAmountMinClearAriaLabel: 'Mindestbetrag löschen', toolbarAmountMaxClearAriaLabel: 'Höchstbetrag löschen',
       toolbarManageFields: '⚙ Felder verwalten', toolbarManageCollections: '⚙ Sammlungen verwalten',
-      toolbarCheckInbox: '📥 Posteingang prüfen', toolbarCheckReminders: '🔔 Erinnerungen prüfen', toolbarAddDocument: '＋ Dokument hinzufügen',
+      toolbarCheckInbox: '📥 Posteingang prüfen', toolbarCheckReminders: '🔔 Erinnerungen prüfen', toolbarScan: '📷 Scannen', toolbarScanMulti: '📸 Mehrfach scannen', toolbarAddDocument: '＋ Dokument hinzufügen',
       toolbarSwitchLibrary: 'Bibliothek wechseln', toolbarColumns: '⚙ Spalten', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Alle hinzufügen',
       bulkAddToCollection: 'Zu Sammlung hinzufügen ▾', bulkNewCollectionPlaceholder: 'Neuer Sammlungsname',
@@ -1538,6 +1561,13 @@
       dragdropPartialFailureSingular: ' {count} Datei konnte nicht hinzugefügt werden.',
       dragdropPartialFailurePlural: ' {count} Dateien konnten nicht hinzugefügt werden.',
       dragdropNoFilesWaiting: 'Keine Dateien warten in {folder}.', reminderNoneDue: 'Keine fälligen Erinnerungen.',
+      scanBridgeNotConfigured: 'Bitte zuerst die Scanner-Bridge-URL in den Feldeinstellungen konfigurieren.',
+      scanScanning: 'Scan läuft…',
+      scanBridgeUnreachable: 'Die Scanner-Bridge unter {url} ist nicht erreichbar — läuft scanix500-menubar?',
+      scanProfileNotConfigured: 'Profil „{profile}" ist in scanix500 nicht konfiguriert — bitte in der Menüleisten-App anlegen.',
+      scanAlreadyInProgress: 'Es läuft bereits ein Scan.',
+      scanPartialMessage: 'Scan teilweise abgeschlossen: {message}',
+      scanFailedMessage: 'Scan fehlgeschlagen: {message}',
       dragdropCouldNotAddAnyOfCountSingular: 'Konnte keine der {count} Datei in {folder} hinzufügen.',
       dragdropCouldNotAddAnyOfCountPlural: 'Konnte keine der {count} Dateien in {folder} hinzufügen.',
       dragdropAddedToReviewQueueSingular: '{count} Dokument aus {folder} zur Prüfung hinzugefügt.',
@@ -1566,7 +1596,7 @@
       toolbarAmountMinTitle: '最小金额', toolbarAmountMaxTitle: '最大金额', toolbarAmountUnsetLabel: '金额未设置',
       toolbarAmountMinClearAriaLabel: '清除最小金额', toolbarAmountMaxClearAriaLabel: '清除最大金额',
       toolbarManageFields: '⚙ 管理字段', toolbarManageCollections: '⚙ 管理收藏集',
-      toolbarCheckInbox: '📥 检查收件箱', toolbarCheckReminders: '🔔 检查提醒', toolbarAddDocument: '＋ 添加文档',
+      toolbarCheckInbox: '📥 检查收件箱', toolbarCheckReminders: '🔔 检查提醒', toolbarScan: '📷 扫描', toolbarScanMulti: '📸 多页扫描', toolbarAddDocument: '＋ 添加文档',
       toolbarSwitchLibrary: '切换资料库', toolbarColumns: '⚙ 列', toolbarDetailsToggle: '☰ 详情',
       inboxBannerAddAll: '全部添加',
       bulkAddToCollection: '添加到收藏集 ▾', bulkNewCollectionPlaceholder: '新收藏集名称',
@@ -1712,6 +1742,13 @@
       dragdropPartialFailureSingular: ' 有 {count} 个文件无法添加。',
       dragdropPartialFailurePlural: ' 有 {count} 个文件无法添加。',
       dragdropNoFilesWaiting: '{folder} 中没有等待处理的文件。', reminderNoneDue: '没有到期的提醒。',
+      scanBridgeNotConfigured: '请先在字段设置中配置扫描桥接地址。',
+      scanScanning: '扫描中…',
+      scanBridgeUnreachable: '无法连接到 {url} 的扫描桥接 —— scanix500-menubar 正在运行吗？',
+      scanProfileNotConfigured: 'scanix500 中未配置配置文件"{profile}" —— 请在菜单栏应用中创建。',
+      scanAlreadyInProgress: '已有扫描正在进行中。',
+      scanPartialMessage: '扫描部分完成：{message}',
+      scanFailedMessage: '扫描失败：{message}',
       dragdropCouldNotAddAnyOfCountSingular: '无法添加 {folder} 中的 {count} 个文件中的任何一个。',
       dragdropCouldNotAddAnyOfCountPlural: '无法添加 {folder} 中的 {count} 个文件中的任何一个。',
       dragdropAddedToReviewQueueSingular: '已从 {folder} 将 {count} 个文档添加到审核队列。',
@@ -1764,7 +1801,7 @@
       toolbarAmountMaxClearAriaLabel: '清除最大金額',
       toolbarManageFields: '⚙ 管理字段',
       toolbarManageCollections: '⚙ 管理收藏集',
-      toolbarCheckInbox: '📥 檢查收件箱', toolbarCheckReminders: '🔔 檢查提醒', toolbarAddDocument: '＋ 添加文檔',
+      toolbarCheckInbox: '📥 檢查收件箱', toolbarCheckReminders: '🔔 檢查提醒', toolbarScan: '📷 掃描', toolbarScanMulti: '📸 多頁掃描', toolbarAddDocument: '＋ 添加文檔',
       toolbarSwitchLibrary: '切換資料庫',
       toolbarColumns: '⚙ 列', toolbarDetailsToggle: '☰ 詳情',
       inboxBannerAddAll: '全部添加',
@@ -2009,6 +2046,13 @@
       dragdropPartialFailureSingular: ' 有 {count} 個文件無法添加。',
       dragdropPartialFailurePlural: ' 有 {count} 個文件無法添加。',
       dragdropNoFilesWaiting: '{folder} 中沒有等待處理的文件。', reminderNoneDue: '沒有到期的提醒。',
+      scanBridgeNotConfigured: '請先在字段設置中配置掃描橋接地址。',
+      scanScanning: '掃描中…',
+      scanBridgeUnreachable: '無法連接到 {url} 的掃描橋接 —— scanix500-menubar 正在運行嗎？',
+      scanProfileNotConfigured: 'scanix500 中未配置配置文件"{profile}" —— 請在菜單欄應用中創建。',
+      scanAlreadyInProgress: '已有掃描正在進行中。',
+      scanPartialMessage: '掃描部分完成：{message}',
+      scanFailedMessage: '掃描失敗：{message}',
       dragdropCouldNotAddAnyOfCountSingular: '無法添加 {folder} 中的 {count} 個文件中的任何一個。',
       dragdropCouldNotAddAnyOfCountPlural: '無法添加 {folder} 中的 {count} 個文件中的任何一個。',
       dragdropAddedToReviewQueueSingular: '已從 {folder} 將 {count} 個文檔添加到審覈隊列。',
@@ -7714,6 +7758,60 @@
     openRemindersModal(due);
   }
 
+  const SCAN_PROFILE_NAME = 'Dossiary Scan';
+  const SCAN_MULTI_PROFILE_NAME = 'Dossiary Scan Multi';
+
+  // Triggers a real scan via the scanix500 HTTP bridge (a separate app --
+  // see docs/superpowers/specs/2026-09-14-scanix500-bridge-design.md for the
+  // full two-repo design). profileName is one of the two fixed constants
+  // above; the bridge's own profile system (configured once, manually, in
+  // scanix500's menu bar app) decides where the resulting PDF actually gets
+  // written -- it's expected to be the current library's real inbox/ folder,
+  // so a successful scan is picked up by the exact same checkInbox()/
+  // addAllInboxFilesAndShowStatus() pair the "Check inbox" button already
+  // uses, with no new ingestion code here.
+  async function triggerScan(profileName){
+    if(!scanBridgeUrl){ setStatusT('scanBridgeNotConfigured', null, 'err'); return; }
+    el('scan-btn').disabled = true;
+    el('scan-multi-btn').disabled = true;
+    setStatusT('scanScanning', null, 'busy');
+    try{
+      const response = await fetch(`${scanBridgeUrl}/scan/${encodeURIComponent(profileName)}`, { method: 'POST' });
+      if(response.status === 404){ setStatusT('scanProfileNotConfigured', {profile: profileName}, 'err'); return; }
+      if(response.status === 409){ setStatusT('scanAlreadyInProgress', null, 'err'); return; }
+      const result = await response.json();
+      if(result.ok){
+        await checkInbox();
+        await addAllInboxFilesAndShowStatus();
+        return;
+      }
+      if(result.partial){
+        // A partial scan (e.g. a multi-feed jam) still wrote a usable file --
+        // run the Inbox pipeline same as a full success, but the bridge's own
+        // message (naming what went wrong) is more important than the Inbox
+        // pipeline's own "Added N document(s)" report, so it's shown last,
+        // deliberately overwriting that report as the final status line.
+        await checkInbox();
+        await addAllInboxFilesAndShowStatus();
+        setStatusT('scanPartialMessage', {message: result.message}, 'err');
+        return;
+      }
+      setStatusT('scanFailedMessage', {message: result.message}, 'err');
+    }catch(e){
+      // Covers both a genuine network failure (bridge unreachable) and a
+      // malformed/non-JSON response body (e.g. scanBridgeUrl misconfigured
+      // to point at some unrelated server) -- either way, nothing about the
+      // configured bridge worked, so the same message applies.
+      setStatusT('scanBridgeUnreachable', {url: scanBridgeUrl}, 'err');
+    }finally{
+      // try/finally, not a re-enable call on each branch above, so the
+      // buttons can never be left stuck disabled regardless of which path
+      // was taken or whether an exception was thrown.
+      el('scan-btn').disabled = false;
+      el('scan-multi-btn').disabled = false;
+    }
+  }
+
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
   // reflects whatever checkInbox() found the one time it runs automatically
@@ -7724,6 +7822,8 @@
   // writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
   el('check-reminders-btn').addEventListener('click', checkRemindersAndShowStatus);
+  el('scan-btn').addEventListener('click', () => triggerScan(SCAN_PROFILE_NAME));
+  el('scan-multi-btn').addEventListener('click', () => triggerScan(SCAN_MULTI_PROFILE_NAME));
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a
