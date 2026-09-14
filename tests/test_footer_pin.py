@@ -130,24 +130,32 @@ async def main():
         # table row isn't clipped, because .table-wrap's own padding-bottom
         # absorbs the difference (the same known effect the 641-1280px
         # in-between-band section below already accounts for). Each nav
-        # style clears that effect at a different width, verified with a
-        # finer 700-1100px sweep at this exact 720px viewport height:
-        # tabs' proxy becomes reliable at 900px (boxGap goes from a false
-        # -52/-67px at 700-850px to a real, trustworthy 16px at 900px);
-        # sidebar's real clip stays tight (-3.5px) from 700-850px, then
-        # relaxes sharply to -40.5px at 900px and further at 1000/1100px
-        # (an earlier version of this comment guessed 900px as sidebar's
-        # own worst case, which was wrong -- 900px already has 40px+ of
-        # unused margin there, real coverage but not a sensitive one,
-        # since a future regression smaller than that margin would slip
-        # through undetected). So: 800px is included specifically to keep
+        # style clears that effect at a different width -- **tabs'
+        # threshold was recalibrated from 900px to 1050px when the Scan/
+        # Scan Multi toolbar buttons widened the width band where .toolbar
+        # wraps onto an extra row**: a fresh 700-1600px sweep (20px steps,
+        # same methodology as always) against the real, unbumped .table-wrap
+        # constants found the box-edge proxy's own gap only turns reliably
+        # non-negative starting at 1020px for tabs (a false, large negative
+        # "overlap" is reported at every width below that, even though the
+        # *real* last table row is never clipped anywhere in the whole
+        # 700-1600px sweep -- see CLAUDE.md's own note on this for the full
+        # story of why a CSS bump was tried first, then reverted once this
+        # was the actual root cause). 1050px was picked for tabs_tight with
+        # ~30px of margin above that measured 1020px transition point, and
+        # keeps the existing 1000/1100px sample widths on the correct side
+        # of the line (1000px still routes to the real-content check;
+        # 1100px is safely past the transition and can trust the proxy).
+        # Sidebar's own transition point (1240px, measured the same sweep)
+        # didn't move past its existing 1280px threshold, so sidebar_tight
+        # is unchanged. So: 800px is included specifically to keep
         # sidebar's *actual* tightest point covered by a real, sensitive
         # check, and both nav styles fall back to the real
         # last-row-visibility check below their own reliability threshold
-        # (900px for tabs, 1280px for sidebar) rather than the proxy. ===
+        # (1050px for tabs, 1280px for sidebar) rather than the proxy. ===
         for width in [800, 1000, 1100, 1280, 1440]:
             await open_seeded_library(page, width, 720, 'tabs')
-            tabs_tight = width >= 900
+            tabs_tight = width >= 1050
             if tabs_tight:
                 await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden", min_gap=-2)
             else:

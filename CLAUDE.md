@@ -173,11 +173,11 @@ this repo's git tags.
   regardless of what's literally written. The actual fix was to stop
   fighting that rule and lean into it: make `.table-wrap` an intentional,
   bounded scroll container for both axes, so sticky has exactly one clear,
-  correctly-scrolling ancestor. **`X` is `456` by default (top-tab nav),
-  `416` with `.nav-style-sidebar`, `530` with `.bulk-bar-visible`, and `490`
+  correctly-scrolling ancestor. **`X` is `414` by default (top-tab nav),
+  `374` with `.nav-style-sidebar`, `488` with `.bulk-bar-visible`, and `448`
   with both** (see the "Top-level nav" and "Collections" notes below for the
   nav-style/bulk-bar dimensions) — the bulk-action bar adds its own
-  **74px** on desktop (`530 - 456 = 74`, `490 - 416 = 74`) and **102px** on
+  **74px** on desktop (`488 - 414 = 74`, `448 - 374 = 74`) and **102px** on
   mobile (`494 - 392 = 102`, `518 - 416 = 102`) whenever any row is
   selected, regardless of nav style — derivable directly from the constants
   quoted here and in the mobile note below, not a separately-measured
@@ -226,57 +226,64 @@ this repo's git tags.
   tightened further, per the "accept extra gap, never accept overlap"
   principle repeated throughout this note: the potential savings were
   small relative to the risk of reopening a real overlap at a
-  narrower width. **These four desktop numbers were bumped a fourth time
-  (from `414`/`374`/`488`/`448` to the current `456`/`416`/`530`/`490` —
-  a uniform +42px across all four) by the Scan/Scan Multi toolbar
-  buttons**: those two new buttons (see the scanix500 HTTP-bridge spec
-  under `docs/superpowers/`) pushed `.toolbar` onto an extra wrapped row
-  across a noticeably wider tabs-mode desktop band than any prior bump —
-  `test_footer_pin.py`'s own fixed 720px-viewport sweep (800/1000/1100/
-  1280/1440px) reported a real `AssertionError` at exactly 1000px
-  (`nav=tabs`, both bulk-bar states, gap `-43.0px`, far past the accepted
-  `-2px` bound), and a finer empirical sweep run to find the true
-  worst-case width (not just the test's own sampled points, the same
-  "sweep to find the worst-case new bump needed" methodology every prior
-  bump in this note used) found the worst point was actually `-45.0px`,
-  around 900-1000px tabs / similarly around 1160-1220px sidebar.
-  **This bump is unusual among the four documented here in one respect,
-  worth recording rather than glossing over**: a follow-up check using
+  narrower width. **A fourth bump was tried, then reverted, over the
+  Scan/Scan Multi toolbar buttons — worth recording in full, since it's
+  the one case in this note's history where the "just bump the constants"
+  playbook turned out to be the wrong fix.** Those two new buttons (see
+  the scanix500 HTTP-bridge spec under `docs/superpowers/`) pushed
+  `.toolbar` onto an extra wrapped row across a noticeably wider
+  tabs-mode desktop band than any prior bump — `test_footer_pin.py`'s own
+  fixed 720px-viewport sweep (800/1000/1100/1280/1440px) reported a real
+  `AssertionError` at exactly 1000px (`nav=tabs`, both bulk-bar states,
+  gap `-43.0px`, far past the accepted `-2px` bound). A first pass
+  applied the same uniform-bump playbook every prior round in this note
+  used (`414`/`374`/`488`/`448` → `456`/`416`/`530`/`490`, +42px across
+  all four, chasing a finer-swept worst case of `-45.0px`) and it did
+  make the suite pass — but a follow-up check using
   `measure_last_row_not_clipped()` (the real, content-based check this
   file's own "in-between width band" section already relies on, rather
   than the coarser `measure()` box-edge proxy) across the *entire*
   700-1600px range, both nav styles, both bulk-bar states, found the real
   last table row was **never** actually clipped behind the footer
-  anywhere in that sweep before this bump — the large negative numbers
-  the box-edge proxy reported were the same "`.table-wrap`'s own generous
-  `70px` padding-bottom absorbs the difference" artifact this note's
-  "in-between width band" section already documents, just larger this
-  time because the two new buttons widened the width band where the
-  toolbar wraps onto extra rows, pushing that band out past the `900px`/
-  `1280px` widths `test_footer_pin.py`'s own `tabs_tight`/`sidebar_tight`
-  flags assume are past the artifact zone and safe to trust the proxy at.
-  In other words, no real user-facing overlap was ever introduced by
-  these two buttons — but `test_footer_pin.py`'s own reliability
-  thresholds for when its box-edge proxy can be trusted are now stale for
-  this taller toolbar, and re-calibrating those thresholds is outside
-  this task's own scope (`dossiary.html` only). Applying the same uniform
-  bump this note's every prior round used is still the correct call
-  despite that: it makes the existing regression suite green with no risk
-  of a real overlap at any width (increasing these constants only ever
-  shrinks `.table-wrap`'s own max-height further, so a bump sized to a
-  proxy artifact can't itself introduce a real regression, per the
-  "accept extra gap, never accept overlap" principle above), at the cost
-  of real table height purely to satisfy a now-overcautious proxy
-  reading rather than a genuine content-overflow requirement. Re-verified
-  post-bump: every `test_footer_pin.py` scenario passes (the 1000px tabs
-  scenario that failed pre-bump now reads `gap=-1.0px`), and
-  `test_collections.py`'s own Scenario 30 calibration check and
-  `test_detail_panel.py`'s full suite (the panel reuses these same four
-  constants — see its own paragraph further below) both pass unchanged.
-  Sidebar mode's own known, accepted dead space at `≥1440px` grows by
-  this same uniform `+42px` in lockstep, same as every prior round —
-  measured directly post-bump at `43.0px` at exactly `1440px` width
-  (up from `1.0px` pre-bump). **Since the
+  anywhere in that sweep, even against the *original*, never-bumped
+  constants. The `-43px`/`-45px` `measure()` was reporting was the same
+  "`.table-wrap`'s own generous `70px` padding-bottom absorbs the
+  difference" artifact this note's "in-between width band" section
+  already documents — just larger this time because the two new buttons
+  widened the width band where the toolbar wraps onto extra rows, pushing
+  that band out past the `900px` width `test_footer_pin.py`'s own
+  `tabs_tight` flag assumed was safely past the artifact zone. **The real
+  fix was correcting that stale threshold, not spending table height on a
+  CSS bump the actual content never needed.** A fresh 700-1600px sweep
+  (20px steps) against the original, un-bumped constants found the
+  box-edge proxy's own gap only turns reliably non-negative starting at
+  1020px for tabs (sidebar's own transition, 1240px, hadn't moved past
+  its existing 1280px threshold at all) — `test_footer_pin.py`'s
+  `tabs_tight` flag was moved from `width >= 900` to `width >= 1050`
+  (~30px of margin above the measured 1020px transition; `sidebar_tight`
+  left unchanged at `1280`), the CSS bump was reverted back to
+  `414`/`374`/`488`/`448`, and the full sweep re-verified green against
+  *both* changes together — including the 1000px-tabs case that
+  originally failed, which the corrected threshold now correctly routes
+  through the real-content check instead of the stale proxy. **One
+  genuine implementation slip surfaced while reverting the bump, worth
+  keeping as institutional memory**: a blind find-and-replace on the
+  pixel values (`456`→`414`, `416`→`374`, `530`→`488`, `490`→`448`)
+  silently corrupted the *mobile* breakpoint's own, entirely unrelated
+  `416px` constant (`nav-style-sidebar`'s mobile `bulkbar=hidden` value,
+  never touched by the desktop bump in the first place) purely because it
+  happened to share a literal numeric value with one of the desktop
+  constants being reverted — caught immediately by a resulting mobile
+  320px test failure that had no business appearing from a desktop-only
+  change, fixed by hand, and confirmed independently correct once the
+  full 67-file suite went green again. The lesson: even a numeric,
+  seemingly mechanical revert needs to be scoped to the right selectors,
+  not just the right numbers — two CSS rules can share a literal value by
+  pure coincidence. `test_collections.py`'s own Scenario 30 calibration
+  check and `test_detail_panel.py`'s full suite (the panel reuses these
+  same four constants — see its own paragraph further below) were
+  re-verified passing against the final, reverted-and-corrected state,
+  not just `test_footer_pin.py` alone. **Since the
   footer became fixed, permanently-visible chrome (`position: fixed; bottom:
   0;`, see the footer's own note elsewhere in this file), all four numbers
   above also include its rendered height (62px at normal widths)** — the
@@ -1466,7 +1473,7 @@ this repo's git tags.
   row for the panel to ever reflect there, same "hidden when the control
   is inert for this view" pattern already used for "Show archived".
   **The panel deliberately reuses `.table-wrap`'s own four `max-height`
-  calibration constants (456/416/530/490, plus their nav-style/bulk-bar
+  calibration constants (414/374/488/448, plus their nav-style/bulk-bar
   combinations) for its own `max-height`, rather than introducing new
   ones** — the panel is a flex sibling of `.table-wrap` inside a new
   `.table-detail-row` wrapper, sitting at exactly the same vertical offset
