@@ -642,7 +642,33 @@ app — `bulkSetArchived()`/`bulkSetDeleted()`/`bulkSetNeedsReview()` all
 clear `selectedDocIds` on success, but a bulk-edit save does not, since
 changing field values (unlike archiving/deleting/flagging) never removes
 a document from the view its selection lives in — confirmed by checking a
-row's own checkbox stays checked immediately after a save). This
+row's own checkbox stays checked immediately after a save), and the Scan/Scan
+Multi toolbar buttons (`test_scan_bridge.py` — `scan_bridge_url` defaulting
+empty on a fresh library and persisting across a reopen once configured;
+both buttons showing a "not configured" status with no network request
+attempted when the URL is unset, flipping to active once configured; a
+successful scan response running `checkInbox()` to add the PDF scanix500
+wrote to `inbox/`, then navigating to the Inbox view to surface the new
+document; Scan vs. Scan Multi POSTing to their own distinct, hardcoded
+profile-name endpoints (`Dossiary Scan` and `Dossiary Scan Multi`); a
+partial scan result (`ok: false, partial: true`, e.g. a multi-feed jam)
+still running the Inbox pipeline since a real file was written, but
+surfacing the bridge's own error message on the status line instead of
+the "Added N document(s)" report — the jam warning is more important; a
+hard failure (`ok: false, partial: false`) showing only the bridge's error
+message with no document added at all; distinct, legible status messages
+for 404/409/network-failure/malformed-response outcomes; both buttons
+staying correctly disabled throughout a request and always re-enabled via
+`try/finally`, regardless of outcome, never stuck disabled; a single
+scenario confirming the entire flow end to end from `scan_bridge_url`
+empty through configuration, successful scan, and Inbox pipeline
+integration. **By design, `window.fetch` is overridden per-scenario
+directly in `test_scan_bridge.py` itself** rather than added to the shared
+`stub_studio2.js`, since `dossiary.html` calls `fetch()` in exactly this
+one feature and no other test file's app code ever touches it — keeping
+the stub lightweight and focused on database/filesystem/Dialog stubbing,
+not HTTP).
+This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
 silently drift the way it once did (an earlier version of this section

@@ -1909,6 +1909,56 @@ this repo's git tags.
   never stage anything, since every fresh process starts with an empty dict
   and therefore always treats every file as newly-seen on its first (and
   only) pass.
+- **Scan / Scan Multi toolbar buttons** (`#scan-btn`/`#scan-multi-btn`,
+  `triggerScan()`, `SCAN_PROFILE_NAME`/`SCAN_MULTI_PROFILE_NAME`) let a
+  person trigger a real scan on a physical scanner directly from Dossiary's
+  toolbar, via a separate companion app: `scanix500` (a sibling repo,
+  `AarneAarebye/iX500`) drives a specific ScanSnap iX500 directly via SANE
+  and embeds a small local HTTP bridge in its own macOS menu bar app
+  (`scanix500-menubar`). Dossiary has no direct scanner integration itself
+  — see the "No direct scanner integration in the app itself" note above,
+  which still holds; this feature works *around* that boundary by talking
+  to a companion native app over `fetch()`, the same way `scan_watch.py`
+  works around it by watching a folder, not by Dossiary itself gaining
+  hardware access.
+  **`scan_bridge_url`** (a `settings` row, `loadScanBridgeUrl()`/
+  `saveScanBridgeUrl()`, configured via a new Field Settings text field) is
+  the bridge's base URL — unset by default, in which case both buttons show
+  a "not configured" status with no network request attempted at all.
+  **The two buttons trigger two fixed, hardcoded scanix500 profile names —
+  `"Dossiary Scan"` and `"Dossiary Scan Multi"` — not anything user-
+  configurable.** The person creates both profiles once, manually, in
+  scanix500's own menu bar app (Add Profile…), with their destination set
+  to this library's real `inbox/` folder; scanix500's own README documents
+  this exact contract from its side. **Scan Multi is not "duplex" or
+  "multi-page" in the legacy Mariner Paperless sense** (that app's original
+  Scan/Scan Multi distinction was simplex vs. duplex, and scanix500 has no
+  simplex mode — it always does ADF duplex capture with automatic blank-
+  page filtering) — this feature deliberately repurposes the two-button
+  layout for scanix500's own genuinely distinct capability instead:
+  `split-on-blank`, letting several physical documents be fed in one ADF
+  load and come back as separate PDFs.
+  **`triggerScan(profileName)` never invents a new document-ingestion
+  path** — scanix500 already writes the finished PDF directly into the
+  profile's configured destination folder (the library's `inbox/`), so a
+  successful (`ok: true`) response just calls the *existing*
+  `checkInbox()`/`addAllInboxFilesAndShowStatus()` pair verbatim, the same
+  call the "Check inbox" button already makes — there is no separate
+  Scan-specific way a document lands in the library. A partial result
+  (`ok: false, partial: true` — e.g. a multi-feed jam that still produced a
+  usable file) still runs that same pipeline, since a real file was
+  written, but shows the bridge's own message afterward rather than the
+  Inbox pipeline's own "Added N document(s)" report — the jam warning is
+  more important information and deliberately becomes the final status
+  line. A hard failure (`ok: false, partial: false`) shows the bridge's
+  message and does not touch the Inbox at all. Both buttons are disabled
+  for the duration of a request and always re-enabled via `try/finally`,
+  regardless of which outcome (success, 404, 409, network failure,
+  malformed response) actually occurred — never left stuck disabled.
+  **No polling, no progress bar** — the request simply blocks until
+  scanix500's own bridge resolves it (which itself blocks until the real
+  scan finishes), matching the "single explicit click, wait for the real
+  result" pattern `checkInbox()`'s own button already established.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.
