@@ -982,6 +982,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Default document type (pre-fills "Add document")',
       fieldSettingsDefaultCurrencyLabel: 'Default currency (guessed on new captures, e.g. EUR)',
       fieldSettingsReminderLookaheadLabel: 'Reminder lookahead (days)',
+      fieldSettingsScanBridgeUrlLabel: 'Scanner bridge URL (e.g. http://127.0.0.1:8765)',
       fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
       fieldSettingsDescriptionsHeading: 'Field Descriptions', fieldSettingsDescriptionPlaceholder: 'No description set',
       fieldSettingsNoDocTypes: 'No document types in use yet. Type one into the Add/Edit document form first.',
@@ -1155,6 +1156,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Tipo de documento predeterminado (precompleta "Añadir documento")',
       fieldSettingsDefaultCurrencyLabel: 'Moneda predeterminada (se sugiere en nuevas capturas, p. ej., EUR)',
       fieldSettingsReminderLookaheadLabel: 'Antelación de recordatorios (días)',
+      fieldSettingsScanBridgeUrlLabel: 'URL del puente del escáner (p. ej. http://127.0.0.1:8765)',
       fieldSettingsColDocTypes: 'Tipos de documento', fieldSettingsColFields: 'Campos', fieldSettingsColDisplayFields: 'Campos mostrados',
       fieldSettingsDescriptionsHeading: 'Descripciones de campos', fieldSettingsDescriptionPlaceholder: 'Sin descripción',
       fieldSettingsNoDocTypes: 'Aún no hay tipos de documento en uso. Escribe uno primero en el formulario de Añadir/Editar documento.',
@@ -1328,6 +1330,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Type de document par défaut (préremplit « Ajouter un document »)',
       fieldSettingsDefaultCurrencyLabel: 'Devise par défaut (suggérée pour les nouvelles captures, p. ex. EUR)',
       fieldSettingsReminderLookaheadLabel: 'Anticipation des rappels (jours)',
+      fieldSettingsScanBridgeUrlLabel: 'URL du pont du scanner (p. ex. http://127.0.0.1:8765)',
       fieldSettingsColDocTypes: 'Types de document', fieldSettingsColFields: 'Champs', fieldSettingsColDisplayFields: 'Champs affichés',
       fieldSettingsDescriptionsHeading: 'Descriptions des champs', fieldSettingsDescriptionPlaceholder: 'Aucune description',
       fieldSettingsNoDocTypes: "Aucun type de document n'est encore utilisé. Saisissez-en un d'abord dans le formulaire Ajouter/Modifier un document.",
@@ -1501,6 +1504,7 @@
       fieldSettingsDefaultDocTypeLabel: 'Standard-Dokumenttyp (füllt "Dokument hinzufügen" vor)',
       fieldSettingsDefaultCurrencyLabel: 'Standardwährung (wird bei neuen Erfassungen vorgeschlagen, z. B. EUR)',
       fieldSettingsReminderLookaheadLabel: 'Erinnerungsvorlauf (Tage)',
+      fieldSettingsScanBridgeUrlLabel: 'Scanner-Bridge-URL (z. B. http://127.0.0.1:8765)',
       fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
       fieldSettingsDescriptionsHeading: 'Feldbeschreibungen', fieldSettingsDescriptionPlaceholder: 'Keine Beschreibung',
       fieldSettingsNoDocTypes: 'Noch keine Dokumenttypen in Verwendung. Gib zuerst einen im Formular "Dokument hinzufügen/bearbeiten" ein.',
@@ -1674,6 +1678,7 @@
       fieldSettingsDefaultDocTypeLabel: '默认文档类型（预填入"添加文档"）',
       fieldSettingsDefaultCurrencyLabel: '默认货币（新录入时自动猜测，例如 EUR）',
       fieldSettingsReminderLookaheadLabel: '提醒提前天数',
+      fieldSettingsScanBridgeUrlLabel: '扫描桥接地址（例如 http://127.0.0.1:8765）',
       fieldSettingsColDocTypes: '文档类型', fieldSettingsColFields: '字段', fieldSettingsColDisplayFields: '显示字段',
       fieldSettingsDescriptionsHeading: '字段说明', fieldSettingsDescriptionPlaceholder: '未设置说明',
       fieldSettingsNoDocTypes: '尚未使用任何文档类型。请先在添加/编辑文档表单中输入一个。',
@@ -1956,6 +1961,7 @@
       fieldSettingsDefaultDocTypeLabel: '默認文檔類型（預填入"添加文檔"）',
       fieldSettingsDefaultCurrencyLabel: '默認貨幣（新錄入時自動猜測，例如 EUR）',
       fieldSettingsReminderLookaheadLabel: '提醒提前天數',
+      fieldSettingsScanBridgeUrlLabel: '掃描橋接地址（例如 http://127.0.0.1:8765）',
       fieldSettingsColDocTypes: '文檔類型',
       fieldSettingsColFields: '字段',
       fieldSettingsColDisplayFields: '顯示字段',
@@ -2310,6 +2316,7 @@
   let defaultDocumentType = null; // prefills Document Type when opening "Add document"
   let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
   let reminderLookaheadDays = 30; // how many days ahead a reminder-type field value counts as "coming up soon"; see checkReminders()
+  let scanBridgeUrl = null; // base URL of the scanix500 HTTP bridge (e.g. "http://127.0.0.1:8765"), configured per-library; unset means the Scan/Scan Multi buttons show a "not configured" status instead of attempting a request
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
 
   let reminderSnoozes = {};    // { "<documentId>:<fieldId>": { snoozedUntil, dismissed }, ... } -- snoozedUntil is an ISO date string or null, dismissed is a real boolean
@@ -3058,7 +3065,7 @@
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
-    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30;
+    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null;
     collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     reminderSnoozes = {};
     selectedDocId = null;
@@ -3190,6 +3197,7 @@
     loadDefaultDocumentType();
     loadDefaultCurrency();
     loadReminderLookaheadDays();
+    loadScanBridgeUrl();
     loadNavStyle();
     loadDetailPanelExpanded();
     loadSortState();
@@ -3269,6 +3277,22 @@
     const parsed = parseInt(value, 10);
     reminderLookaheadDays = (Number.isFinite(parsed) && parsed >= 0) ? parsed : 30;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('reminder_lookahead_days', ?)", [String(reminderLookaheadDays)]);
+    await persistDb();
+  }
+
+  // Base URL of the scanix500 HTTP bridge (see the "Reminder-type custom
+  // fields" and "The default-reminder context menu" architecture notes above
+  // for the general pattern this follows) -- a per-library settings row,
+  // same as default_currency. Unset until someone configures it; the
+  // Scan/Scan Multi toolbar buttons check this before attempting a request.
+  function loadScanBridgeUrl(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'scan_bridge_url'").rows;
+    scanBridgeUrl = rows.length ? rows[0][0] : null;
+  }
+
+  async function saveScanBridgeUrl(value){
+    scanBridgeUrl = value.trim() || null;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('scan_bridge_url', ?)", [scanBridgeUrl || '']);
     await persistDb();
   }
 
@@ -6631,6 +6655,10 @@
               <label for="fs-reminder-lookahead">${t('fieldSettingsReminderLookaheadLabel')}</label>
               <input type="number" id="fs-reminder-lookahead" min="0" step="1" value="${reminderLookaheadDays}" />
             </div>
+            <div class="field">
+              <label for="fs-scan-bridge-url">${t('fieldSettingsScanBridgeUrlLabel')}</label>
+              <input type="text" id="fs-scan-bridge-url" value="${escapeHtml(scanBridgeUrl || '')}" placeholder="http://127.0.0.1:8765" />
+            </div>
           </div>
           <div class="fs-columns">
             <div class="fs-col">
@@ -6663,6 +6691,7 @@
     el('fs-default-type').addEventListener('change', (e) => saveDefaultDocumentType(e.target.value));
     el('fs-default-currency').addEventListener('change', (e) => saveDefaultCurrency(e.target.value));
     el('fs-reminder-lookahead').addEventListener('change', (e) => saveReminderLookaheadDays(e.target.value));
+    el('fs-scan-bridge-url').addEventListener('change', (e) => saveScanBridgeUrl(e.target.value));
 
     renderFieldSettingsTypeList();
     renderFieldSettingsFieldColumns();
