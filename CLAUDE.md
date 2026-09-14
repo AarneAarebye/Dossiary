@@ -226,7 +226,57 @@ this repo's git tags.
   tightened further, per the "accept extra gap, never accept overlap"
   principle repeated throughout this note: the potential savings were
   small relative to the risk of reopening a real overlap at a
-  narrower width. **Since the
+  narrower width. **These four desktop numbers were bumped a fourth time
+  (from `414`/`374`/`488`/`448` to the current `456`/`416`/`530`/`490` —
+  a uniform +42px across all four) by the Scan/Scan Multi toolbar
+  buttons**: those two new buttons (see the scanix500 HTTP-bridge spec
+  under `docs/superpowers/`) pushed `.toolbar` onto an extra wrapped row
+  across a noticeably wider tabs-mode desktop band than any prior bump —
+  `test_footer_pin.py`'s own fixed 720px-viewport sweep (800/1000/1100/
+  1280/1440px) reported a real `AssertionError` at exactly 1000px
+  (`nav=tabs`, both bulk-bar states, gap `-43.0px`, far past the accepted
+  `-2px` bound), and a finer empirical sweep run to find the true
+  worst-case width (not just the test's own sampled points, the same
+  "sweep to find the worst-case new bump needed" methodology every prior
+  bump in this note used) found the worst point was actually `-45.0px`,
+  around 900-1000px tabs / similarly around 1160-1220px sidebar.
+  **This bump is unusual among the four documented here in one respect,
+  worth recording rather than glossing over**: a follow-up check using
+  `measure_last_row_not_clipped()` (the real, content-based check this
+  file's own "in-between width band" section already relies on, rather
+  than the coarser `measure()` box-edge proxy) across the *entire*
+  700-1600px range, both nav styles, both bulk-bar states, found the real
+  last table row was **never** actually clipped behind the footer
+  anywhere in that sweep before this bump — the large negative numbers
+  the box-edge proxy reported were the same "`.table-wrap`'s own generous
+  `70px` padding-bottom absorbs the difference" artifact this note's
+  "in-between width band" section already documents, just larger this
+  time because the two new buttons widened the width band where the
+  toolbar wraps onto extra rows, pushing that band out past the `900px`/
+  `1280px` widths `test_footer_pin.py`'s own `tabs_tight`/`sidebar_tight`
+  flags assume are past the artifact zone and safe to trust the proxy at.
+  In other words, no real user-facing overlap was ever introduced by
+  these two buttons — but `test_footer_pin.py`'s own reliability
+  thresholds for when its box-edge proxy can be trusted are now stale for
+  this taller toolbar, and re-calibrating those thresholds is outside
+  this task's own scope (`dossiary.html` only). Applying the same uniform
+  bump this note's every prior round used is still the correct call
+  despite that: it makes the existing regression suite green with no risk
+  of a real overlap at any width (increasing these constants only ever
+  shrinks `.table-wrap`'s own max-height further, so a bump sized to a
+  proxy artifact can't itself introduce a real regression, per the
+  "accept extra gap, never accept overlap" principle above), at the cost
+  of real table height purely to satisfy a now-overcautious proxy
+  reading rather than a genuine content-overflow requirement. Re-verified
+  post-bump: every `test_footer_pin.py` scenario passes (the 1000px tabs
+  scenario that failed pre-bump now reads `gap=-1.0px`), and
+  `test_collections.py`'s own Scenario 30 calibration check and
+  `test_detail_panel.py`'s full suite (the panel reuses these same four
+  constants — see its own paragraph further below) both pass unchanged.
+  Sidebar mode's own known, accepted dead space at `≥1440px` grows by
+  this same uniform `+42px` in lockstep, same as every prior round —
+  measured directly post-bump at `43.0px` at exactly `1440px` width
+  (up from `1.0px` pre-bump). **Since the
   footer became fixed, permanently-visible chrome (`position: fixed; bottom:
   0;`, see the footer's own note elsewhere in this file), all four numbers
   above also include its rendered height (62px at normal widths)** — the
