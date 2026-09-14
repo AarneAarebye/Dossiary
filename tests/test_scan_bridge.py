@@ -166,6 +166,11 @@ async def main():
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
+        # Stage a real file in inbox/ first (same as Scenario 3/5) -- without
+        # this, both the before and after row counts are 0 regardless of
+        # whether the Inbox pipeline correctly got skipped or wrongly ran,
+        # so the assertion below couldn't actually catch a regression.
+        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan3.pdf', new Uint8Array([1,2,3]));")
         rows_before_failure = await page.locator('#doc-tbody tr').count()
         await page.evaluate("""
             () => {
@@ -237,6 +242,22 @@ async def main():
         print("both buttons disabled while a scan request is in flight:", buttons_disabled_mid_flight)
         await page.evaluate("window.__RESOLVE_SLOW_FETCH()")
         await page.wait_for_timeout(200)
+
+        # === Scenario 11: a malformed (non-JSON) response body from a
+        # misconfigured scan_bridge_url is treated the same as a network
+        # failure -- the try/catch around response.json() covers this, not
+        # just genuine connection failures ===
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response('not valid json', {status: 200});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_malformed = await page.locator('#status').inner_text()
+        print("status names the configured URL when the bridge response is malformed:", 'http://127.0.0.1:8765' in status_after_malformed)
+        buttons_reenabled_after_malformed = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a malformed response:", buttons_reenabled_after_malformed)
 
         print("JS ERRORS:", errors)
         await browser.close()

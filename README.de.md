@@ -79,6 +79,13 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da
   ein Browser keine Möglichkeit hat, Scanner-Hardware direkt anzusteuern
   — siehe Einschränkungen unten.
+- **Scan / Scan Multi** — zwei Werkzeugleisten-Buttons („📷 Scan" und „📸
+  Scan Multi"), die tatsächlich einen echten Scan auslösen, indem sie mit
+  [`scanix500`](https://github.com/AarneAarebye/iX500) sprechen, einer
+  separaten, optionalen Begleit-App, die einen bestimmten Scanner direkt
+  ansteuert und dafür eine kleine lokale HTTP-Bridge bereitstellt, die
+  Dossiary aufrufen kann — siehe Einschränkungen unten für die Voraussetzungen
+  und die Einrichtung.
 - **Inbox** — ein dezentes gelbes Banner erscheint beim Öffnen einer
   Bibliothek, wenn deren `inbox/`-Ordner (im Bibliotheks-Wurzelverzeichnis,
   neben `library.sqlite` und `files/`, und automatisch angelegt, genau wie
@@ -733,11 +740,26 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   document first?“ im Erfassungsformular bietet nur Anleitungen zum
   Scannen außerhalb der App und anschließendem Auswählen der entstandenen
   Datei über die normale Dateiauswahl; einen Scan selbst auslösen kann er
-  nicht. Für einen automatisierteren Ablauf „scannen → erscheint bereit
-  zur Prüfung“ siehe die Inbox-Funktion und
+  nicht, jedenfalls nicht von sich aus. Für einen automatisierteren Ablauf
+  „scannen → erscheint bereit zur Prüfung“ siehe die Inbox-Funktion und
   [`scan_watch.py`](#scan_watchpy-hilfsskript-für-überwachte-ordner)
   oben — auch dort ist, wie beabsichtigt, weiterhin ein expliziter Klick
   in der App nötig, um jede Datei tatsächlich als Dokument hinzuzufügen.
+
+  Die Werkzeugleisten-Buttons „📷 Scan"/„📸 Scan Multi" (siehe Funktionen
+  oben) sind der eine Weg, auf dem Dossiary tatsächlich einen echten Scan
+  auslöst — aber nur, indem sie mit einer separaten, optionalen
+  Begleit-App sprechen, [`scanix500`](https://github.com/AarneAarebye/iX500),
+  nicht dadurch, dass Dossiary selbst Zugriff auf Scanner-Hardware erhält;
+  die oben beschriebene grundlegende Plattform-Einschränkung bleibt
+  weiterhin bestehen. `scanix500` steuert einen bestimmten ScanSnap
+  iX500-Scanner direkt an und stellt eine kleine lokale HTTP-Bridge
+  bereit, die der Browser-Tab von Dossiary über `fetch()` aufrufen kann.
+  So wird es eingerichtet: `scanix500`s eigene Menüleisten-App installieren
+  und starten, dann deren Bridge-URL einmalig in Dossiarys
+  Feldeinstellungen (`scan_bridge_url`) eintragen. Ohne diese installierte,
+  laufende und konfigurierte Begleit-App zeigen beide Buttons einen klaren
+  Hinweis „nicht konfiguriert“ statt stillschweigend nichts zu tun.
 - **Das erneute Verbinden mit einer zuletzt geöffneten Bibliothek braucht
   weiterhin einen Klick.** Browser lassen eine Seite nach einem Neuladen
   nicht stillschweigend wieder auf das Dateisystem zugreifen — selbst mit

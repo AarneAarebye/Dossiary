@@ -67,6 +67,12 @@ working" problem that motivated this project in the first place.
   scan it first — Image Capture or Preview on macOS, the Windows Scan app
   on Windows, detected automatically — since a browser has no way to drive
   scanner hardware directly — see Limitations below.
+- **Scan / Scan Multi** — two toolbar buttons ("📷 Scan" and "📸 Scan
+  Multi") that *do* trigger a real scan, by talking to
+  [`scanix500`](https://github.com/AarneAarebye/iX500), a separate,
+  optional companion app that drives a specific scanner directly and
+  exposes a small local HTTP bridge Dossiary can call — see Limitations
+  below for what this requires and how it's configured.
 - **Inbox** — a lightweight amber banner appears on opening a library if its
   `inbox/` folder (at the library root, alongside `library.sqlite` and
   `files/`, and created automatically the same way `files/` is — no manual
@@ -638,11 +644,24 @@ separate genuinely distinct values.
   instructions (tailored to your OS — Image Capture/Preview on macOS,
   Windows Scan on Windows, a generic pointer elsewhere) for scanning outside
   the app and then picking the resulting file with the normal file picker;
-  it can't trigger a scan itself. For a more
+  it can't trigger a scan itself, on its own. For a more
   automated "scan → shows up ready to review" workflow, see the Inbox
   feature and [`scan_watch.py`](#scan_watchpy-watched-folder-helper) above
   — that still requires an explicit in-app click to actually add each file
   as a document, by design.
+
+  The toolbar's "📷 Scan"/"📸 Scan Multi" buttons (see Features above) are
+  the one way Dossiary *does* trigger a real scan — but only by talking to
+  a separate, optional companion app,
+  [`scanix500`](https://github.com/AarneAarebye/iX500), not by gaining any
+  scanner-hardware access itself; the underlying platform limitation above
+  is still real and unchanged. `scanix500` drives a specific ScanSnap iX500
+  scanner directly and runs a small local HTTP bridge that Dossiary's
+  browser tab can call over `fetch()`. To use it: install and run
+  `scanix500`'s own menu bar app, then set its bridge URL once in
+  Dossiary's Field Settings (`scan_bridge_url`). Without that companion app
+  installed, running, and configured, both buttons show a clear "not
+  configured" status message rather than doing nothing silently.
 - **Reconnecting a recent library still needs one click.** Browsers won't
   let a page silently regain filesystem access after a reload — even with
   a library remembered in the Recent libraries list (see Features above),

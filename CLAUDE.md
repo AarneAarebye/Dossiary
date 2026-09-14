@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (66 scripts) + shared
+tests/                   Playwright regression suite (67 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -173,11 +173,11 @@ this repo's git tags.
   regardless of what's literally written. The actual fix was to stop
   fighting that rule and lean into it: make `.table-wrap` an intentional,
   bounded scroll container for both axes, so sticky has exactly one clear,
-  correctly-scrolling ancestor. **`X` is `414` by default (top-tab nav),
-  `374` with `.nav-style-sidebar`, `488` with `.bulk-bar-visible`, and `448`
+  correctly-scrolling ancestor. **`X` is `456` by default (top-tab nav),
+  `416` with `.nav-style-sidebar`, `530` with `.bulk-bar-visible`, and `490`
   with both** (see the "Top-level nav" and "Collections" notes below for the
   nav-style/bulk-bar dimensions) — the bulk-action bar adds its own
-  **74px** on desktop (`488 - 414 = 74`, `448 - 374 = 74`) and **102px** on
+  **74px** on desktop (`530 - 456 = 74`, `490 - 416 = 74`) and **102px** on
   mobile (`494 - 392 = 102`, `518 - 416 = 102`) whenever any row is
   selected, regardless of nav style — derivable directly from the constants
   quoted here and in the mobile note below, not a separately-measured
@@ -1466,7 +1466,7 @@ this repo's git tags.
   row for the panel to ever reflect there, same "hidden when the control
   is inert for this view" pattern already used for "Show archived".
   **The panel deliberately reuses `.table-wrap`'s own four `max-height`
-  calibration constants (414/374/488/448, plus their nav-style/bulk-bar
+  calibration constants (456/416/530/490, plus their nav-style/bulk-bar
   combinations) for its own `max-height`, rather than introducing new
   ones** — the panel is a flex sibling of `.table-wrap` inside a new
   `.table-detail-row` wrapper, sitting at exactly the same vertical offset
@@ -1959,6 +1959,26 @@ this repo's git tags.
   scanix500's own bridge resolves it (which itself blocks until the real
   scan finishes), matching the "single explicit click, wait for the real
   result" pattern `checkInbox()`'s own button already established.
+  **`triggerScan()` sets no request timeout and uses no `AbortController`**
+  — a deliberate consequence of that same "block until the real result"
+  design, not an oversight: a large Scan Multi batch can legitimately take
+  several minutes on real hardware, so an arbitrary client-side timeout
+  would just mean the button re-enables while scanix500 is still mid-scan.
+  The accepted tradeoff is that a bridge that hangs forever (crashed
+  mid-request, stuck talking to the scanner, etc.) leaves both buttons
+  disabled for the rest of the session — `finally{}` only ever runs once
+  `fetch()` itself settles, one way or the other — and the only recovery
+  is reloading the page. **`checkInbox()`/`addAllInboxFilesAndShowStatus()`
+  run inside `triggerScan()`'s own `try{}` block**, alongside the `fetch()`
+  call itself — both already swallow their own internal errors today, so
+  in practice neither one throws, but if either ever did, that throw would
+  be caught by the same `catch` that handles a genuinely unreachable
+  bridge, and reported via the same `scanBridgeUnreachable` status message
+  rather than as a distinct post-scan ingestion failure. Worth stating
+  explicitly rather than leaving a future reader to assume the shared
+  `try{}` is a deliberate error-unification design; it's just where the
+  boundary happens to fall given that a successful scan's own follow-up
+  work has nowhere else convenient to run.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.

@@ -7772,10 +7772,10 @@
   // uses, with no new ingestion code here.
   async function triggerScan(profileName){
     if(!scanBridgeUrl){ setStatusT('scanBridgeNotConfigured', null, 'err'); return; }
-    el('scan-btn').disabled = true;
-    el('scan-multi-btn').disabled = true;
-    setStatusT('scanScanning', null, 'busy');
     try{
+      el('scan-btn').disabled = true;
+      el('scan-multi-btn').disabled = true;
+      setStatusT('scanScanning', null, 'busy');
       const response = await fetch(`${scanBridgeUrl}/scan/${encodeURIComponent(profileName)}`, { method: 'POST' });
       if(response.status === 404){ setStatusT('scanProfileNotConfigured', {profile: profileName}, 'err'); return; }
       if(response.status === 409){ setStatusT('scanAlreadyInProgress', null, 'err'); return; }
@@ -7793,10 +7793,10 @@
         // deliberately overwriting that report as the final status line.
         await checkInbox();
         await addAllInboxFilesAndShowStatus();
-        setStatusT('scanPartialMessage', {message: result.message}, 'err');
+        setStatusT('scanPartialMessage', {message: result.message || String(response.status)}, 'err');
         return;
       }
-      setStatusT('scanFailedMessage', {message: result.message}, 'err');
+      setStatusT('scanFailedMessage', {message: result.message || String(response.status)}, 'err');
     }catch(e){
       // Covers both a genuine network failure (bridge unreachable) and a
       // malformed/non-JSON response body (e.g. scanBridgeUrl misconfigured

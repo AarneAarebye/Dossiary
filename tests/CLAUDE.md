@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **66
-scripts covering most of the app's actual functionality** (64 of them
+There's a real, runnable Playwright regression suite in `tests/` — **67
+scripts covering most of the app's actual functionality** (65 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -655,14 +655,24 @@ partial scan result (`ok: false, partial: true`, e.g. a multi-feed jam)
 still running the Inbox pipeline since a real file was written, but
 surfacing the bridge's own error message on the status line instead of
 the "Added N document(s)" report — the jam warning is more important; a
-hard failure (`ok: false, partial: false`) showing only the bridge's error
-message with no document added at all; distinct, legible status messages
-for 404/409/network-failure/malformed-response outcomes; both buttons
-staying correctly disabled throughout a request and always re-enabled via
-`try/finally`, regardless of outcome, never stuck disabled; a single
-scenario confirming the entire flow end to end from `scan_bridge_url`
-empty through configuration, successful scan, and Inbox pipeline
-integration. **By design, `window.fetch` is overridden per-scenario
+hard failure (`ok: false, partial: false`, verified against a library with
+a real file staged in `inbox/` first, so the "no document was added"
+assertion could actually fail if the Inbox pipeline wrongly ran) showing
+only the bridge's error message with no document added at all; distinct,
+legible status messages for 404/409/network-failure/malformed-response
+outcomes — the malformed-response scenario feeds a non-JSON response body
+through the same `try/catch` a network failure hits, confirming
+`triggerScan()` doesn't distinguish the two; both buttons staying
+correctly disabled throughout a request and always re-enabled via
+`try/finally`, regardless of outcome, never stuck disabled. This coverage
+is spread across eleven scenarios, not one — settings persistence first
+(Scenario 1), then the unconfigured/not-attempted case (Scenario 2), then
+one scenario apiece for the button/`triggerScan()` outcome matrix (success,
+Scan Multi's distinct profile endpoint, partial, hard failure, 404, 409,
+network failure, in-flight disabled state, and the malformed-response case
+last), so end-to-end confidence in the whole flow comes from that matrix
+as a set, not from any single scenario. **By design, `window.fetch` is
+overridden per-scenario
 directly in `test_scan_bridge.py` itself** rather than added to the shared
 `stub_studio2.js`, since `dossiary.html` calls `fetch()` in exactly this
 one feature and no other test file's app code ever touches it — keeping
