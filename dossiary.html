@@ -7881,6 +7881,12 @@
       statusEl.textContent = t('scanConnectFailed', {url});
       return;
     }
+    if(!el('scan-connect-port')){
+      // The dialog was dismissed (Cancel/close/backdrop/Escape) while this
+      // probe was still in flight -- don't silently save a URL or start a
+      // scan the person already walked away from.
+      return;
+    }
     await saveScanBridgeUrl(url);
     closeModal();
     await triggerScan(profileName);

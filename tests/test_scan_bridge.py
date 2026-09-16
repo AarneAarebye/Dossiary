@@ -188,6 +188,47 @@ async def main():
         dialog_closed_after_cancel = await page.locator('#scan-connect-port').count()
         print("Cancel closes the dialog:", dialog_closed_after_cancel == 0)
 
+        # === Scenario 2d: clicking Cancel while a port probe is still in
+        # flight prevents that probe from silently saving a URL or starting
+        # a scan once it resolves ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => { throw new TypeError('Failed to fetch'); };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.__RESOLVE_SLOW_PROBE = null;
+                window.fetch = async (url, opts) => new Promise((resolve) => {
+                    window.__RESOLVE_SLOW_PROBE = () => resolve(new Response(JSON.stringify({service: 'scanix500-bridge'}), {status: 200}));
+                });
+            }
+        """)
+        await page.fill('#scan-connect-port', '9999')
+        await page.click('#scan-connect-submit-btn')
+        await page.wait_for_timeout(150)  # probe is now in flight, not yet resolved
+        await page.click('#scan-connect-cancel-btn')
+        await page.wait_for_timeout(150)
+        dialog_closed_after_cancel_mid_probe = await page.locator('#scan-connect-port').count()
+        print("dialog closes immediately on Cancel, even mid-probe:", dialog_closed_after_cancel_mid_probe == 0)
+        await page.evaluate("window.__RESOLVE_SLOW_PROBE()")
+        await page.wait_for_timeout(300)
+        saved_url_after_cancel = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                const dbState = JSON.parse(await f.text());
+                const row = dbState.settings.find(s => s.key === 'scan_bridge_url');
+                return row ? row.value : null;
+            })()
+        """)
+        print("scan_bridge_url was NOT silently saved after Cancel, even once the in-flight probe resolved successfully:", saved_url_after_cancel == None)
+
         # === Scenario 3: configured URL, successful scan (ok:true) runs the
         # Inbox pipeline and navigates to the Inbox view ===
         seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
