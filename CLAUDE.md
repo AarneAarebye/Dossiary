@@ -1929,9 +1929,14 @@ this repo's git tags.
   works around it by watching a folder, not by Dossiary itself gaining
   hardware access.
   **`scan_bridge_url`** (a `settings` row, `loadScanBridgeUrl()`/
-  `saveScanBridgeUrl()`, configured via a new Field Settings text field) is
-  the bridge's base URL — unset by default, in which case both buttons show
-  a "not configured" status with no network request attempted at all.
+  `saveScanBridgeUrl()`) is the bridge's base URL. As of the 2026-09-16
+  auto-connect amendment (see
+  `docs/superpowers/specs/2026-09-16-scan-bridge-auto-connect-design.md`
+  and `docs/superpowers/plans/2026-09-16-scan-bridge-auto-connect.md`),
+  it's no longer purely manual — see the auto-connect paragraph below for
+  how it gets set without typing anything, in the common case. The Field
+  Settings text field (`#fs-scan-bridge-url`) still exists as a manual
+  override/escape hatch, unchanged.
   **The two buttons trigger two fixed, hardcoded scanix500 profile names —
   `"Dossiary Scan"` and `"Dossiary Scan Multi"` — not anything user-
   configurable.** The person creates both profiles once, manually, in
@@ -1945,13 +1950,16 @@ this repo's git tags.
   layout for scanix500's own genuinely distinct capability instead:
   `split-on-blank`, letting several physical documents be fed in one ADF
   load and come back as separate PDFs.
-  **`triggerScan(profileName)` never invents a new document-ingestion
-  path** — scanix500 already writes the finished PDF directly into the
-  profile's configured destination folder (the library's `inbox/`), so a
-  successful (`ok: true`) response just calls the *existing*
-  `checkInbox()`/`addAllInboxFilesAndShowStatus()` pair verbatim, the same
-  call the "Check inbox" button already makes — there is no separate
-  Scan-specific way a document lands in the library. A partial result
+  **`triggerScan(profileName)` still routes every scan through the
+  existing Inbox pipeline, never a separate ingestion path — but see the
+  auto-connect paragraph below for a real change to how the file gets
+  there.** As of the 2026-09-16 amendment, Dossiary itself decodes the
+  response's `files` field and writes the bytes into the library's own
+  `inbox/` folder (scanix500 no longer needs to write to a location
+  Dossiary can read at all), and only *then* calls the same
+  `checkInbox()`/`addAllInboxFilesAndShowStatus()` pair as before — so a
+  scan still always lands exactly like any other Inbox-staged file, just
+  via a different placement mechanism now. A partial result
   (`ok: false, partial: true` — e.g. a multi-feed jam that still produced a
   usable file) still runs that same pipeline, since a real file was
   written, but shows the bridge's own message afterward rather than the
@@ -1986,6 +1994,38 @@ this repo's git tags.
   `try{}` is a deliberate error-unification design; it's just where the
   boundary happens to fall given that a successful scan's own follow-up
   work has nowhere else convenient to run.
+  **Auto-connect (2026-09-16 amendment)**: the "must manually type
+  `scan_bridge_url` before either button works" gate is gone. Clicking
+  Scan or Scan Multi with no stored `scan_bridge_url` now probes
+  `GET http://localhost:8765/health` first (`probeScanBridgeHealth()`, a
+  short client-side `AbortController` timeout — unlike `triggerScan()`'s
+  own deliberately un-timed-out POST) — a reachable default port is
+  adopted silently, no dialog shown, and the originally-clicked scan
+  proceeds immediately. An unreachable default port opens a small
+  "Configure Scanner Connection" dialog (`openScanConnectDialog()`/
+  `submitScanConnectDialog()`) with one Port field; a later scan against
+  an already-configured URL that fails at the network level (not a 404/409
+  from a reachable bridge) reopens the same dialog rather than just
+  showing an unreachable-bridge status with no recovery path. The
+  pre-existing Field Settings `scan_bridge_url` text field is untouched
+  and still works as a manual override. **The scanned file itself now
+  travels over the connection, not the filesystem**: `triggerScan()`
+  decodes every entry in the response's `files` array (base64) and writes
+  it into the library's own `inbox/` via `writeScanFilesToInbox()`, with
+  `uniqueInboxFilename()` guarding against overwriting an unrelated
+  same-named file already staged there, before running the unchanged
+  `checkInbox()`/`addAllInboxFilesAndShowStatus()` pipeline. A
+  missing/malformed `files` array on an otherwise-`ok` response (an older
+  bridge that predates this change) is a hard failure, not a silent
+  no-op — it falls into the same `scanBridgeUnreachable`-style catch a
+  malformed JSON response already used. One consequence worth stating
+  plainly: a scanix500 profile's `destination` folder no longer needs to
+  point at any specific Dossiary library's `inbox/` — it's now purely a
+  local safety-net copy on the scanix500 side (see that repo's own
+  README). Per-library scanix500 profiles were considered during this
+  amendment's design and explicitly rejected for the same reason: once the
+  file arrives over the connection, scanix500 never needs to know which
+  library it's serving.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.

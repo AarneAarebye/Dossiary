@@ -642,42 +642,67 @@ app — `bulkSetArchived()`/`bulkSetDeleted()`/`bulkSetNeedsReview()` all
 clear `selectedDocIds` on success, but a bulk-edit save does not, since
 changing field values (unlike archiving/deleting/flagging) never removes
 a document from the view its selection lives in — confirmed by checking a
-row's own checkbox stays checked immediately after a save), and the Scan/Scan
-Multi toolbar buttons (`test_scan_bridge.py` — `scan_bridge_url` defaulting
-empty on a fresh library and persisting across a reopen once configured;
-both buttons showing a "not configured" status with no network request
-attempted when the URL is unset, flipping to active once configured; a
-successful scan response running `checkInbox()` to add the PDF scanix500
-wrote to `inbox/`, then navigating to the Inbox view to surface the new
-document; Scan vs. Scan Multi POSTing to their own distinct, hardcoded
-profile-name endpoints (`Dossiary Scan` and `Dossiary Scan Multi`); a
-partial scan result (`ok: false, partial: true`, e.g. a multi-feed jam)
-still running the Inbox pipeline since a real file was written, but
-surfacing the bridge's own error message on the status line instead of
-the "Added N document(s)" report — the jam warning is more important; a
-hard failure (`ok: false, partial: false`, verified against a library with
-a real file staged in `inbox/` first, so the "no document was added"
-assertion could actually fail if the Inbox pipeline wrongly ran) showing
-only the bridge's error message with no document added at all; distinct,
-legible status messages for 404/409/network-failure/malformed-response
-outcomes — the malformed-response scenario feeds a non-JSON response body
-through the same `try/catch` a network failure hits, confirming
-`triggerScan()` doesn't distinguish the two; both buttons staying
+row's own checkbox stays checked immediately after a save), and the Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
+`scan_bridge_url` defaulting empty on a fresh library and persisting
+across a reopen once configured; the auto-connect flow added in the
+2026-09-16 amendment — an unconfigured `scan_bridge_url` probing the
+default port's `/health` endpoint and adopting it silently on success with
+no dialog shown at all (Scenario 2); the "Configure Scanner Connection"
+dialog opening on a default-port failure, pre-filled with `8765`,
+rejecting a non-numeric port without attempting to connect, staying open
+with an inline error naming the attempted port when a manually-entered
+port also fails, closing and saving + proceeding with the original scan
+once one succeeds, and Cancel dismissing it with no scan ever attempted
+(Scenario 2b/2c) — plus Cancel clicked while a port probe is still
+in-flight, confirming that in-flight probe can't silently save a URL or
+start a scan once it later resolves, even successfully (Scenario 2d,
+added in a later fix round after the plan's own task briefs were
+written); a network failure against an *already-configured* URL
+reopening that same dialog instead of just showing a static
+unreachable-bridge status (Scenario 9, replacing its own earlier,
+now-superseded "just show a status" version) — Scan vs. Scan Multi
+POSTing to their own distinct, hardcoded profile-name endpoints
+(`Dossiary Scan` and `Dossiary Scan Multi`, Scenario 4); a successful scan
+response's `files` field (base64-encoded file bytes) being decoded and
+written directly into `inbox/` by `triggerScan()` itself, with no manual
+pre-staging, then picked up by the existing `checkInbox()` pipeline and
+surfaced via the Inbox nav view (Scenario 3); a partial scan result
+(`ok: false, partial: true`, e.g. a multi-feed jam) still writing and
+ingesting its `files` entry, but surfacing the bridge's own error message
+on the status line instead of the "Added N document(s)" report — the jam
+warning is more important (Scenario 5); a hard failure (`ok: false,
+partial: false`, verified against a library with a real file staged in
+`inbox/` first, so the "no document was added" assertion could actually
+fail if the Inbox pipeline wrongly ran) showing only the bridge's error
+message with no document added at all (Scenario 6, unchanged); distinct,
+legible status messages for 404/409/network-failure/malformed-JSON
+outcomes (Scenarios 7, 8, 11, unchanged) — the malformed-JSON scenario
+feeds a non-JSON response body through the same `try/catch` a genuinely
+malformed `files` array now also hits, confirming `triggerScan()` treats
+both as "the bridge answered, but not correctly" rather than "reconfigure
+the port"; a missing/malformed `files` field on an otherwise-`ok` response
+(an older bridge that predates this field) being a hard failure, not a
+silent no-op, with no document added (Scenario 12, new); a file already
+staged in `inbox/` under the same name a bridge-delivered file would use
+NOT being silently overwritten — both end up as separate documents,
+proving the new collision-avoidance logic actually renames rather than
+clobbers (Scenario 13, new); a multi-file result (Scan Multi /
+split-on-blank producing several PDFs) writing and ingesting every file in
+`files`, not just the first (Scenario 14, new); and both buttons staying
 correctly disabled throughout a request and always re-enabled via
-`try/finally`, regardless of outcome, never stuck disabled. This coverage
-is spread across eleven scenarios, not one — settings persistence first
-(Scenario 1), then the unconfigured/not-attempted case (Scenario 2), then
-one scenario apiece for the button/`triggerScan()` outcome matrix (success,
-Scan Multi's distinct profile endpoint, partial, hard failure, 404, 409,
-network failure, in-flight disabled state, and the malformed-response case
-last), so end-to-end confidence in the whole flow comes from that matrix
-as a set, not from any single scenario. **By design, `window.fetch` is
-overridden per-scenario
-directly in `test_scan_bridge.py` itself** rather than added to the shared
-`stub_studio2.js`, since `dossiary.html` calls `fetch()` in exactly this
-one feature and no other test file's app code ever touches it — keeping
-the stub lightweight and focused on database/filesystem/Dialog stubbing,
-not HTTP).
+`try/finally`, regardless of outcome, never stuck disabled (Scenario 10,
+unchanged). This coverage is spread across fourteen numbered scenarios (2
+and 9 replaced from the original eleven, three appended, plus 2b/2c/2d as
+sub-parts of Scenario 2's own auto-connect matrix), not one — settings
+persistence first (Scenario 1), then the full auto-connect matrix
+(Scenarios 2/2b/2c/2d), then one scenario apiece for the button/`triggerScan()`
+outcome matrix, so end-to-end confidence in the whole flow comes from that
+matrix as a set, not from any single scenario. **By design, `window.fetch`
+is overridden per-scenario directly in `test_scan_bridge.py` itself**
+rather than added to the shared `stub_studio2.js`, since `dossiary.html`
+calls `fetch()` in exactly this one feature and no other test file's app
+code ever touches it — keeping the stub lightweight and focused on
+database/filesystem/Dialog stubbing, not HTTP).
 This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description
