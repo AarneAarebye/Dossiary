@@ -229,24 +229,35 @@ async def main():
         """)
         print("scan_bridge_url was NOT silently saved after Cancel, even once the in-flight probe resolved successfully:", saved_url_after_cancel == None)
 
-        # === Scenario 3: configured URL, successful scan (ok:true) runs the
-        # Inbox pipeline and navigates to the Inbox view ===
+        # === Scenario 3 (updated): configured URL, successful scan
+        # response includes a `files` array -- triggerScan() itself
+        # decodes and writes the file into inbox/ (no manual pre-staging
+        # needed), then the existing checkInbox()/
+        # addAllInboxFilesAndShowStatus() pipeline picks it up and
+        # navigates to the Inbox view ===
+        # This is the first definition of seed_with_url_and_inbox_file in
+        # the file (Scenarios 4-9 below all reuse this same variable) --
+        # keep this definition line even though Task 1's own Scenario 9
+        # replacement also happens to redeclare it locally there; Python
+        # allows the harmless redefinition, and this one is the one that
+        # actually needs to exist for everything between here and Scenario
+        # 9 to have it in scope.
         seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
-        # Stage a file in inbox/ the same way scanix500 would have written one,
-        # so the Inbox pipeline this success path triggers has something real
-        # to pick up -- __addInboxFile is stub_studio2.js's own existing helper
-        # for exactly this, already used by tests/test_inbox.py.
-        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan1.pdf', new Uint8Array([1,2,3]));")
 
         await page.evaluate("""
             () => {
                 window.__FETCH_URLS = [];
                 window.fetch = async (url, opts) => {
                     window.__FETCH_URLS.push(url);
-                    return new Response(JSON.stringify({ok: true, partial: false, message: '/tmp/scans/scan_1.pdf', output_paths: ['/tmp/scans/scan_1.pdf']}), {status: 200});
+                    const content = btoa('scanned pdf bytes');
+                    return new Response(JSON.stringify({
+                        ok: true, partial: false, message: '/tmp/scans/scan_1.pdf',
+                        output_paths: ['/tmp/scans/scan_1.pdf'],
+                        files: [{filename: 'scan_1.pdf', content_base64: content}],
+                    }), {status: 200});
                 };
             }
         """)
@@ -256,6 +267,8 @@ async def main():
         print("Scan button POSTs to the 'Dossiary Scan' profile path:", fetch_url_scan == 'http://127.0.0.1:8765/scan/Dossiary%20Scan')
         current_view_is_inbox_after_success = await page.locator('#nav-item-inbox.active').count()
         print("view navigates to Inbox after a successful scan:", current_view_is_inbox_after_success == 1)
+        rows_after_success = await page.locator('#doc-tbody tr').count()
+        print("the scanned file from the `files` field was ingested as a document:", rows_after_success == 1)
         buttons_reenabled_after_success = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a successful scan:", buttons_reenabled_after_success)
 
@@ -269,7 +282,7 @@ async def main():
                 window.__FETCH_URLS = [];
                 window.fetch = async (url, opts) => {
                     window.__FETCH_URLS.push(url);
-                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: []}), {status: 200});
+                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: [], files: []}), {status: 200});
                 };
             }
         """)
@@ -278,21 +291,28 @@ async def main():
         fetch_url_scan_multi = await page.evaluate("window.__FETCH_URLS[0]")
         print("Scan Multi button POSTs to the 'Dossiary Scan Multi' profile path:", fetch_url_scan_multi == 'http://127.0.0.1:8765/scan/Dossiary%20Scan%20Multi')
 
-        # === Scenario 5: partial scan (ok:false, partial:true) still runs the
-        # Inbox pipeline AND shows the bridge's own message ===
+        # === Scenario 5 (updated): partial scan (ok:false, partial:true)
+        # includes a `files` entry for the usable file it did produce --
+        # still runs the Inbox pipeline AND shows the bridge's own message ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
-        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan2.pdf', new Uint8Array([1,2,3]));")
         await page.evaluate("""
             () => {
-                window.fetch = async (url, opts) => new Response(JSON.stringify({ok: false, partial: true, message: 'Multi-feed detected at sheet 3', output_paths: ['/tmp/scans/scan_2.pdf']}), {status: 200});
+                const content = btoa('partial scan pdf bytes');
+                window.fetch = async (url, opts) => new Response(JSON.stringify({
+                    ok: false, partial: true, message: 'Multi-feed detected at sheet 3',
+                    output_paths: ['/tmp/scans/scan_2.pdf'],
+                    files: [{filename: 'scan_2.pdf', content_base64: content}],
+                }), {status: 200});
             }
         """)
         await page.click('#scan-btn')
         await page.wait_for_timeout(300)
         view_is_inbox_after_partial = await page.locator('#nav-item-inbox.active').count()
         print("view navigates to Inbox after a partial scan (a usable file was still written):", view_is_inbox_after_partial == 1)
+        rows_after_partial = await page.locator('#doc-tbody tr').count()
+        print("the partial scan's usable file was ingested as a document:", rows_after_partial == 1)
         status_after_partial = await page.locator('#status').inner_text()
         print("status shows the bridge's own partial-scan message:", 'Multi-feed detected at sheet 3' in status_after_partial)
 
@@ -401,6 +421,76 @@ async def main():
         print("status names the configured URL when the bridge response is malformed:", 'http://127.0.0.1:8765' in status_after_malformed)
         buttons_reenabled_after_malformed = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a malformed response:", buttons_reenabled_after_malformed)
+
+        # === Scenario 12: an ok:true response missing the `files` field
+        # entirely (e.g. talking to an older bridge that hasn't shipped it
+        # yet) is treated as a hard failure -- scanBridgeUnreachable-style
+        # status, not a silent no-op, and no document is added ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        rows_before_missing_files = await page.locator('#doc-tbody tr').count()
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response(JSON.stringify({ok: true, partial: false, message: '/tmp/scans/scan_1.pdf', output_paths: ['/tmp/scans/scan_1.pdf']}), {status: 200});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_missing_files = await page.locator('#status').inner_text()
+        print("status shows the bridge-unreachable-style message when `files` is missing:", 'http://127.0.0.1:8765' in status_after_missing_files)
+        rows_after_missing_files = await page.locator('#doc-tbody tr').count()
+        print("no document was added when `files` is missing:", rows_after_missing_files == rows_before_missing_files)
+        buttons_reenabled_after_missing_files = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a missing-files response:", buttons_reenabled_after_missing_files)
+
+        # === Scenario 13: a file already staged in inbox/ under the same
+        # name the bridge's `files` entry uses is NOT overwritten -- the
+        # newly-written file gets a disambiguated name, and both end up as
+        # separate documents ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan_1.pdf', new Uint8Array([9, 9, 9]));")
+        await page.evaluate("""
+            () => {
+                const content = btoa('new scan bytes, different from the pre-staged file');
+                window.fetch = async (url, opts) => new Response(JSON.stringify({
+                    ok: true, partial: false, message: '/tmp/scans/scan_1.pdf',
+                    output_paths: ['/tmp/scans/scan_1.pdf'],
+                    files: [{filename: 'scan_1.pdf', content_base64: content}],
+                }), {status: 200});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        rows_after_collision = await page.locator('#doc-tbody tr').count()
+        print("both the pre-staged file and the newly-written file were ingested as separate documents:", rows_after_collision == 2)
+
+        # === Scenario 14: a multi-file result (Scan Multi / split-on-blank
+        # producing several PDFs) writes and ingests every file in `files`,
+        # not just the first ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                const content1 = btoa('first document bytes');
+                const content2 = btoa('second document bytes');
+                window.fetch = async (url, opts) => new Response(JSON.stringify({
+                    ok: true, partial: false, message: '2 documents',
+                    output_paths: ['/tmp/scans/scan_1.pdf', '/tmp/scans/scan_2.pdf'],
+                    files: [
+                        {filename: 'scan_1.pdf', content_base64: content1},
+                        {filename: 'scan_2.pdf', content_base64: content2},
+                    ],
+                }), {status: 200});
+            }
+        """)
+        await page.click('#scan-multi-btn')
+        await page.wait_for_timeout(300)
+        rows_after_multi = await page.locator('#doc-tbody tr').count()
+        print("both files from a multi-file scan result were ingested as separate documents:", rows_after_multi == 2)
 
         print("JS ERRORS:", errors)
         await browser.close()

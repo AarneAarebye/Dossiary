@@ -7904,6 +7904,53 @@
   // so a successful scan is picked up by the exact same checkInbox()/
   // addAllInboxFilesAndShowStatus() pair the "Check inbox" button already
   // uses, with no new ingestion code here.
+  // Finds a filename inside dirHandle that doesn't already exist, so
+  // writing a bridge-delivered scan into inbox/ never silently overwrites
+  // an unrelated file already staged there (a manually dropped file, or a
+  // previous scan's own output that hasn't been ingested yet). Not
+  // atomic against a concurrent writer -- matches this app's existing
+  // single-writer, single-tab concurrency assumption (see the Tag
+  // dedup note elsewhere in this file's own architecture notes).
+  async function uniqueInboxFilename(dirHandle, name){
+    const dot = name.lastIndexOf('.');
+    const base = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : '';
+    let candidate = name;
+    let n = 1;
+    while(true){
+      try{
+        await dirHandle.getFileHandle(candidate, { create: false });
+      }catch(e){
+        return candidate; // NotFoundError -- this name is free
+      }
+      candidate = `${base} (${n})${ext}`;
+      n++;
+    }
+  }
+
+  // Decodes and writes every entry in a scan response's `files` array into
+  // the library's own inbox/ folder, so the existing checkInbox()/
+  // addAllInboxFilesAndShowStatus() pipeline picks them up exactly like
+  // any other staged file -- no separate ingestion path. Throws on any
+  // malformed entry or write failure; triggerScan()'s own catch block
+  // turns that into the existing scanBridgeUnreachable-style status
+  // message, the same as a malformed JSON response already does.
+  async function writeScanFilesToInbox(files){
+    const dirHandle = await rootDirHandle.getDirectoryHandle('inbox', { create: true });
+    for(const entry of files){
+      if(!entry || typeof entry.filename !== 'string' || typeof entry.content_base64 !== 'string'){
+        throw new Error('malformed files entry from scan bridge');
+      }
+      const bytes = Uint8Array.from(atob(entry.content_base64), c => c.charCodeAt(0));
+      const name = safeFilename(entry.filename, 'scan.pdf');
+      const uniqueName = await uniqueInboxFilename(dirHandle, name);
+      const fileHandle = await dirHandle.getFileHandle(uniqueName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+    }
+  }
+
   async function triggerScan(profileName){
     if(!scanBridgeUrl){
       await connectScanBridgeAndTrigger(profileName);
@@ -7929,19 +7976,24 @@
       if(response.status === 404){ setStatusT('scanProfileNotConfigured', {profile: profileName}, 'err'); return; }
       if(response.status === 409){ setStatusT('scanAlreadyInProgress', null, 'err'); return; }
       const result = await response.json();
-      if(result.ok){
+      if(result.ok || result.partial){
+        // A malformed/missing `files` array here means the bridge is
+        // reachable but doesn't speak this protocol version (e.g. an
+        // older scanix500-menubar that predates the files field) -- a
+        // hard failure, not a silent no-op, so it must not fall through
+        // to the Inbox pipeline as if nothing were wrong. Falls into the
+        // same catch block below as a malformed JSON response already
+        // does.
+        if(!Array.isArray(result.files)) throw new Error('missing files field in bridge response');
+        await writeScanFilesToInbox(result.files);
         await checkInbox();
         await addAllInboxFilesAndShowStatus();
-        return;
-      }
-      if(result.partial){
+        if(result.ok) return;
         // A partial scan (e.g. a multi-feed jam) still wrote a usable file --
         // run the Inbox pipeline same as a full success, but the bridge's own
         // message (naming what went wrong) is more important than the Inbox
         // pipeline's own "Added N document(s)" report, so it's shown last,
         // deliberately overwriting that report as the final status line.
-        await checkInbox();
-        await addAllInboxFilesAndShowStatus();
         setStatusT('scanPartialMessage', {message: result.message || String(response.status)}, 'err');
         return;
       }
