@@ -70,8 +70,10 @@ async def main():
         await page.click('#fs-done-btn')
         await page.wait_for_timeout(150)
 
-        # === Scenario 2: unset scan_bridge_url shows "not configured" with no
-        # fetch attempted, and both buttons are present in the toolbar ===
+        # === Scenario 2: unset scan_bridge_url -- clicking Scan probes the
+        # default port's /health endpoint first; a reachable bridge is
+        # adopted silently (saved, and the original scan proceeds) with no
+        # dialog ever shown ===
         seed_no_url = {}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
@@ -83,16 +85,108 @@ async def main():
 
         await page.evaluate("""
             () => {
-                window.__FETCH_CALLED = false;
-                window.fetch = async (url, opts) => { window.__FETCH_CALLED = true; throw new Error('fetch should not have been called'); };
+                window.__FETCH_CALLS = [];
+                window.fetch = async (url, opts) => {
+                    window.__FETCH_CALLS.push(url);
+                    if(url.endsWith('/health')) return new Response(JSON.stringify({service: 'scanix500-bridge'}), {status: 200});
+                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: [], files: []}), {status: 200});
+                };
             }
         """)
         await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        fetch_calls_scenario2 = await page.evaluate("window.__FETCH_CALLS")
+        print("health probe hit the default port first:", len(fetch_calls_scenario2) >= 1 and fetch_calls_scenario2[0] == 'http://localhost:8765/health')
+        dialog_shown = await page.locator('#scan-connect-port').count()
+        print("no configure dialog shown when the default port is reachable:", dialog_shown == 0)
+        saved_url = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                const dbState = JSON.parse(await f.text());
+                const row = dbState.settings.find(s => s.key === 'scan_bridge_url');
+                return row ? row.value : null;
+            })()
+        """)
+        print("scan_bridge_url auto-saved as the default port's URL:", saved_url == 'http://localhost:8765')
+
+        # === Scenario 2b: default port unreachable -- the Configure Scanner
+        # Connection dialog opens; entering a different port that IS
+        # reachable saves it and proceeds with the original scan ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.__FETCH_CALLS = [];
+                window.fetch = async (url, opts) => {
+                    window.__FETCH_CALLS.push(url);
+                    if(url.startsWith('http://localhost:8765')) throw new TypeError('Failed to fetch');
+                    if(url.endsWith('/health')) return new Response(JSON.stringify({service: 'scanix500-bridge'}), {status: 200});
+                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: [], files: []}), {status: 200});
+                };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        dialog_shown_after_default_fails = await page.locator('#scan-connect-port').count()
+        print("configure dialog opens when the default port is unreachable:", dialog_shown_after_default_fails == 1)
+        prefilled_port = await page.evaluate("document.getElementById('scan-connect-port').value")
+        print("dialog's port field pre-filled with 8765:", prefilled_port == '8765')
+
+        await page.fill('#scan-connect-port', '9999')
+        await page.click('#scan-connect-submit-btn')
+        await page.wait_for_timeout(300)
+        dialog_closed_after_success = await page.locator('#scan-connect-port').count()
+        print("dialog closes once the manually-entered port connects successfully:", dialog_closed_after_success == 0)
+        saved_manual_url = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                const dbState = JSON.parse(await f.text());
+                const row = dbState.settings.find(s => s.key === 'scan_bridge_url');
+                return row ? row.value : null;
+            })()
+        """)
+        print("scan_bridge_url saved as the manually-entered port's URL:", saved_manual_url == 'http://localhost:9999')
+        fetch_calls_2b = await page.evaluate("window.__FETCH_CALLS")
+        print("the original scan proceeded after connecting:", any(u == 'http://localhost:9999/scan/Dossiary%20Scan' for u in fetch_calls_2b))
+
+        # === Scenario 2c: an invalid port entry is rejected without
+        # attempting to connect; a validly-formatted but also-unreachable
+        # port keeps the dialog open with an inline error; Cancel dismisses
+        # it with no scan ever attempted ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => { throw new TypeError('Failed to fetch'); };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+
+        await page.fill('#scan-connect-port', 'abc')
+        await page.click('#scan-connect-submit-btn')
         await page.wait_for_timeout(150)
-        fetch_called_when_unconfigured = await page.evaluate("window.__FETCH_CALLED")
-        print("fetch NOT attempted when scan_bridge_url is unset:", fetch_called_when_unconfigured == False)
-        status_text_unconfigured = await page.locator('#status').inner_text()
-        print("status shows 'not configured' message:", 'Field Settings' in status_text_unconfigured)
+        invalid_port_message = await page.locator('#scan-connect-status').inner_text()
+        print("dialog rejects a non-numeric port without attempting to connect:", len(invalid_port_message) > 0)
+        dialog_still_open_after_invalid = await page.locator('#scan-connect-port').count()
+        print("dialog stays open after an invalid port entry:", dialog_still_open_after_invalid == 1)
+
+        await page.fill('#scan-connect-port', '9999')
+        await page.click('#scan-connect-submit-btn')
+        await page.wait_for_timeout(300)
+        dialog_stays_open_after_failed_manual_entry = await page.locator('#scan-connect-port').count()
+        print("dialog stays open when the manually-entered port also fails:", dialog_stays_open_after_failed_manual_entry == 1)
+        error_shown = await page.locator('#scan-connect-status').inner_text()
+        print("dialog shows an inline error naming the attempted port:", '9999' in error_shown)
+
+        await page.click('#scan-connect-cancel-btn')
+        await page.wait_for_timeout(150)
+        dialog_closed_after_cancel = await page.locator('#scan-connect-port').count()
+        print("Cancel closes the dialog:", dialog_closed_after_cancel == 0)
 
         # === Scenario 3: configured URL, successful scan (ok:true) runs the
         # Inbox pipeline and navigates to the Inbox view ===
@@ -213,8 +307,14 @@ async def main():
         buttons_reenabled_after_409 = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a 409:", buttons_reenabled_after_409)
 
-        # === Scenario 9: network failure (fetch rejects entirely, e.g.
-        # scanix500-menubar isn't running) shows a clear status naming the URL ===
+        # === Scenario 9 (updated): a network failure against an
+        # ALREADY-configured scan_bridge_url reopens the Configure Scanner
+        # Connection dialog, instead of just showing an unreachable-bridge
+        # status with no recovery path ===
+        seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
                 window.fetch = async (url, opts) => { throw new TypeError('Failed to fetch'); };
@@ -222,10 +322,12 @@ async def main():
         """)
         await page.click('#scan-btn')
         await page.wait_for_timeout(300)
-        status_after_network_failure = await page.locator('#status').inner_text()
-        print("status names the configured URL when the bridge is unreachable:", 'http://127.0.0.1:8765' in status_after_network_failure)
+        dialog_shown_after_network_failure = await page.locator('#scan-connect-port').count()
+        print("configure dialog opens after a network failure against a configured URL:", dialog_shown_after_network_failure == 1)
         buttons_reenabled_after_network_failure = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a network failure:", buttons_reenabled_after_network_failure)
+        await page.click('#scan-connect-cancel-btn')
+        await page.wait_for_timeout(150)
 
         # === Scenario 10: both buttons are disabled while a request is in
         # flight (a slow-resolving fetch, checked mid-flight before it resolves) ===
