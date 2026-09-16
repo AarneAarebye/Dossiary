@@ -1032,6 +1032,8 @@
       scanConnectInvalidPort: 'Enter a valid port number.',
       scanConnectProbing: 'Connecting…',
       scanConnectFailed: "Couldn't reach a scanner bridge at {url}.",
+      scanBadRequest: 'The scanner bridge rejected the request: {message}',
+      scanBridgeOutdated: "The scanner bridge didn't recognize this request — update scanix500-menubar to the latest version.",
       dragdropCouldNotAddAnyOfCountSingular: 'Could not add any of the {count} file in {folder}.',
       dragdropCouldNotAddAnyOfCountPlural: 'Could not add any of the {count} files in {folder}.',
       dragdropAddedToReviewQueueSingular: 'Added {count} document to the review queue from {folder}.',
@@ -1220,6 +1222,8 @@
       scanConnectInvalidPort: 'Introduzca un número de puerto válido.',
       scanConnectProbing: 'Conectando…',
       scanConnectFailed: 'No se pudo conectar con un puente del escáner en {url}.',
+      scanBadRequest: 'El puente del escáner rechazó la solicitud: {message}',
+      scanBridgeOutdated: 'El puente del escáner no reconoció esta solicitud — actualice scanix500-menubar a la última versión.',
       dragdropCouldNotAddAnyOfCountSingular: 'No se pudo añadir ninguno de los {count} archivo en {folder}.',
       dragdropCouldNotAddAnyOfCountPlural: 'No se pudo añadir ninguno de los {count} archivos en {folder}.',
       dragdropAddedToReviewQueueSingular: 'Se añadió {count} documento a la cola de revisión desde {folder}.',
@@ -1408,6 +1412,8 @@
       scanConnectInvalidPort: 'Saisissez un numéro de port valide.',
       scanConnectProbing: 'Connexion en cours…',
       scanConnectFailed: 'Impossible de joindre un pont du scanner à {url}.',
+      scanBadRequest: 'Le pont du scanner a rejeté la requête : {message}',
+      scanBridgeOutdated: "Le pont du scanner n'a pas reconnu cette requête — mettez à jour scanix500-menubar vers la dernière version.",
       dragdropCouldNotAddAnyOfCountSingular: "Impossible d'ajouter le fichier ({count}) dans {folder}.",
       dragdropCouldNotAddAnyOfCountPlural: "Impossible d'ajouter aucun des {count} fichiers dans {folder}.",
       dragdropAddedToReviewQueueSingular: '{count} document ajouté à la file de révision depuis {folder}.',
@@ -1596,6 +1602,8 @@
       scanConnectInvalidPort: 'Bitte eine gültige Portnummer eingeben.',
       scanConnectProbing: 'Verbindung wird hergestellt…',
       scanConnectFailed: 'Es konnte keine Scanner-Bridge unter {url} erreicht werden.',
+      scanBadRequest: 'Die Scanner-Bridge hat die Anfrage abgelehnt: {message}',
+      scanBridgeOutdated: 'Die Scanner-Bridge hat diese Anfrage nicht erkannt — bitte scanix500-menubar auf die neueste Version aktualisieren.',
       dragdropCouldNotAddAnyOfCountSingular: 'Konnte keine der {count} Datei in {folder} hinzufügen.',
       dragdropCouldNotAddAnyOfCountPlural: 'Konnte keine der {count} Dateien in {folder} hinzufügen.',
       dragdropAddedToReviewQueueSingular: '{count} Dokument aus {folder} zur Prüfung hinzugefügt.',
@@ -1784,6 +1792,8 @@
       scanConnectInvalidPort: '请输入有效的端口号。',
       scanConnectProbing: '正在连接…',
       scanConnectFailed: '无法连接到 {url} 的扫描桥接。',
+      scanBadRequest: '扫描桥接拒绝了该请求：{message}',
+      scanBridgeOutdated: '扫描桥接无法识别此请求 —— 请将 scanix500-menubar 更新到最新版本。',
       dragdropCouldNotAddAnyOfCountSingular: '无法添加 {folder} 中的 {count} 个文件中的任何一个。',
       dragdropCouldNotAddAnyOfCountPlural: '无法添加 {folder} 中的 {count} 个文件中的任何一个。',
       dragdropAddedToReviewQueueSingular: '已从 {folder} 将 {count} 个文档添加到审核队列。',
@@ -2095,6 +2105,8 @@
       scanConnectInvalidPort: '請輸入有效的端口號。',
       scanConnectProbing: '正在連接…',
       scanConnectFailed: '無法連接到 {url} 的掃描橋接。',
+      scanBadRequest: '掃描橋接拒絕了該請求：{message}',
+      scanBridgeOutdated: '掃描橋接無法識別此請求 —— 請將 scanix500-menubar 更新到最新版本。',
       dragdropCouldNotAddAnyOfCountSingular: '無法添加 {folder} 中的 {count} 個文件中的任何一個。',
       dragdropCouldNotAddAnyOfCountPlural: '無法添加 {folder} 中的 {count} 個文件中的任何一個。',
       dragdropAddedToReviewQueueSingular: '已從 {folder} 將 {count} 個文檔添加到審覈隊列。',
@@ -7827,19 +7839,19 @@
   // first -- no dialog shown at all on success, the person's first click
   // just works -- falling back to the manual "Configure Scanner
   // Connection" dialog only if that fails.
-  async function connectScanBridgeAndTrigger(profileName){
+  async function connectScanBridgeAndTrigger(isMulti){
     const defaultUrl = `http://localhost:${SCAN_BRIDGE_DEFAULT_PORT}`;
     setStatusT('scanConnectProbing', null, 'busy');
     const reachable = await probeScanBridgeHealth(defaultUrl);
     if(reachable){
       await saveScanBridgeUrl(defaultUrl);
-      await triggerScan(profileName);
+      await triggerScan(isMulti);
       return;
     }
-    openScanConnectDialog(profileName);
+    openScanConnectDialog(isMulti);
   }
 
-  function openScanConnectDialog(profileName){
+  function openScanConnectDialog(isMulti){
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -7864,10 +7876,10 @@
     el('scan-connect-cancel-btn').addEventListener('click', closeModal);
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
-    el('scan-connect-submit-btn').addEventListener('click', () => submitScanConnectDialog(profileName));
+    el('scan-connect-submit-btn').addEventListener('click', () => submitScanConnectDialog(isMulti));
   }
 
-  async function submitScanConnectDialog(profileName){
+  async function submitScanConnectDialog(isMulti){
     const portInput = el('scan-connect-port');
     const statusEl = el('scan-connect-status');
     const port = portInput.value.trim();
@@ -7893,13 +7905,10 @@
     }
     await saveScanBridgeUrl(url);
     closeModal();
-    await triggerScan(profileName);
+    await triggerScan(isMulti);
   }
 
   let scanRequestInFlight = false;
-
-  const SCAN_PROFILE_NAME = 'Dossiary Scan';
-  const SCAN_MULTI_PROFILE_NAME = 'Dossiary Scan Multi';
 
   // Triggers a real scan via the scanix500 HTTP bridge (a separate app --
   // see docs/superpowers/specs/2026-09-14-scanix500-bridge-design.md and
@@ -7958,9 +7967,9 @@
     }
   }
 
-  async function triggerScan(profileName){
+  async function triggerScan(isMulti){
     if(!scanBridgeUrl){
-      await connectScanBridgeAndTrigger(profileName);
+      await connectScanBridgeAndTrigger(isMulti);
       return;
     }
     try{
@@ -7969,7 +7978,16 @@
       setStatusT('scanScanning', null, 'busy');
       let response;
       try{
-        response = await fetch(`${scanBridgeUrl}/scan/${encodeURIComponent(profileName)}`, { method: 'POST' });
+        // skip_blank_filter/skip_ocr are always sent false -- Dossiary
+        // never exposes them as user-configurable settings, matching the
+        // old profiles' own unedited defaults. split_on_blank is the one
+        // flag that actually distinguishes the two buttons.
+        const params = new URLSearchParams({
+          skip_blank_filter: 'false',
+          skip_ocr: 'false',
+          split_on_blank: isMulti ? 'true' : 'false',
+        });
+        response = await fetch(`${scanBridgeUrl}/scan?${params}`, { method: 'POST' });
       }catch(networkErr){
         // Genuinely couldn't reach anything at scanBridgeUrl (bridge down,
         // wrong port after a restart, etc.) -- offer to reconfigure rather
@@ -7977,10 +7995,25 @@
         // path. Distinct from a malformed/non-JSON response below, which
         // means something DID answer at this URL, just not correctly --
         // reopening the port dialog wouldn't help there.
-        openScanConnectDialog(profileName);
+        openScanConnectDialog(isMulti);
         return;
       }
-      if(response.status === 404){ setStatusT('scanProfileNotConfigured', {profile: profileName}, 'err'); return; }
+      if(response.status === 400){
+        // Should never happen from a correctly-built request -- defensive
+        // only, e.g. a version mismatch where the bridge's own validation
+        // rules differ from what Dossiary sends.
+        const errorBody = await response.json().catch(() => null);
+        setStatusT('scanBadRequest', {message: (errorBody && errorBody.error) || String(response.status)}, 'err');
+        return;
+      }
+      if(response.status === 404){
+        // No more per-profile lookup, so this no longer means "profile not
+        // configured" -- it means the bridge doesn't recognize this request
+        // shape at all, almost certainly an outdated scanix500-menubar that
+        // predates the parameterized /scan endpoint.
+        setStatusT('scanBridgeOutdated', null, 'err');
+        return;
+      }
       if(response.status === 409){ setStatusT('scanAlreadyInProgress', null, 'err'); return; }
       const result = await response.json();
       if(result.ok || result.partial){
@@ -8040,8 +8073,8 @@
     }
   }
 
-  el('scan-btn').addEventListener('click', () => startScan(SCAN_PROFILE_NAME));
-  el('scan-multi-btn').addEventListener('click', () => startScan(SCAN_MULTI_PROFILE_NAME));
+  el('scan-btn').addEventListener('click', () => startScan(false));
+  el('scan-multi-btn').addEventListener('click', () => startScan(true));
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a

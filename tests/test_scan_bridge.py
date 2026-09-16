@@ -7,6 +7,12 @@ APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ si
 import asyncio, json
 from playwright.async_api import async_playwright
 
+# The exact query string Dossiary's own triggerScan() builds via
+# URLSearchParams for the two toolbar buttons -- skip_blank_filter/skip_ocr
+# are always 'false', only split_on_blank varies.
+SCAN_URL_SUFFIX = 'skip_blank_filter=false&skip_ocr=false&split_on_blank=false'
+SCAN_MULTI_URL_SUFFIX = 'skip_blank_filter=false&skip_ocr=false&split_on_blank=true'
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -150,7 +156,7 @@ async def main():
         """)
         print("scan_bridge_url saved as the manually-entered port's URL:", saved_manual_url == 'http://localhost:9999')
         fetch_calls_2b = await page.evaluate("window.__FETCH_CALLS")
-        print("the original scan proceeded after connecting:", any(u == 'http://localhost:9999/scan/Dossiary%20Scan' for u in fetch_calls_2b))
+        print("the original scan proceeded after connecting:", any(u == f'http://localhost:9999/scan?{SCAN_URL_SUFFIX}' for u in fetch_calls_2b))
 
         # === Scenario 2c: an invalid port entry is rejected without
         # attempting to connect; a validly-formatted but also-unreachable
@@ -237,11 +243,11 @@ async def main():
         # navigates to the Inbox view ===
         # This is the first definition of seed_with_url_and_inbox_file in
         # the file (Scenarios 4-9 below all reuse this same variable) --
-        # keep this definition line even though Task 1's own Scenario 9
-        # replacement also happens to redeclare it locally there; Python
-        # allows the harmless redefinition, and this one is the one that
-        # actually needs to exist for everything between here and Scenario
-        # 9 to have it in scope.
+        # keep this definition line even though the network-failure
+        # scenario further down also happens to redeclare it locally
+        # there; Python allows the harmless redefinition, and this one is
+        # the one that actually needs to exist for everything between
+        # here and that scenario to have it in scope.
         seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
@@ -264,7 +270,7 @@ async def main():
         await page.click('#scan-btn')
         await page.wait_for_timeout(300)
         fetch_url_scan = await page.evaluate("window.__FETCH_URLS[0]")
-        print("Scan button POSTs to the 'Dossiary Scan' profile path:", fetch_url_scan == 'http://127.0.0.1:8765/scan/Dossiary%20Scan')
+        print("Scan button POSTs with split_on_blank=false:", fetch_url_scan == f'http://127.0.0.1:8765/scan?{SCAN_URL_SUFFIX}')
         current_view_is_inbox_after_success = await page.locator('#nav-item-inbox.active').count()
         print("view navigates to Inbox after a successful scan:", current_view_is_inbox_after_success == 1)
         rows_after_success = await page.locator('#doc-tbody tr').count()
@@ -272,8 +278,8 @@ async def main():
         buttons_reenabled_after_success = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a successful scan:", buttons_reenabled_after_success)
 
-        # === Scenario 4: Scan Multi POSTs to the distinct 'Dossiary Scan Multi'
-        # profile path, not the same URL as Scan ===
+        # === Scenario 4 (updated): Scan Multi POSTs with split_on_blank=true,
+        # a distinct query string from plain Scan ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
         await page.click('#reload-btn')
         await page.wait_for_timeout(300)
@@ -289,7 +295,7 @@ async def main():
         await page.click('#scan-multi-btn')
         await page.wait_for_timeout(300)
         fetch_url_scan_multi = await page.evaluate("window.__FETCH_URLS[0]")
-        print("Scan Multi button POSTs to the 'Dossiary Scan Multi' profile path:", fetch_url_scan_multi == 'http://127.0.0.1:8765/scan/Dossiary%20Scan%20Multi')
+        print("Scan Multi button POSTs with split_on_blank=true:", fetch_url_scan_multi == f'http://127.0.0.1:8765/scan?{SCAN_MULTI_URL_SUFFIX}')
 
         # === Scenario 5 (updated): partial scan (ok:false, partial:true)
         # includes a `files` entry for the usable file it did produce --
@@ -341,19 +347,39 @@ async def main():
         buttons_reenabled_after_failure = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a hard failure:", buttons_reenabled_after_failure)
 
-        # === Scenario 7: HTTP 404 (unknown profile) shows a clear status,
-        # re-enables both buttons, no Inbox pipeline run ===
+        # === Scenario 7 (updated): HTTP 404 no longer means "unknown
+        # profile" (there's no more profile to look up) -- it means the
+        # bridge doesn't recognize this request shape at all, almost
+        # certainly an outdated scanix500-menubar that predates the
+        # parameterized /scan endpoint. Shows a clear status naming the
+        # likely cause, re-enables both buttons, no Inbox pipeline run ===
         await page.evaluate("""
             () => {
-                window.fetch = async (url, opts) => new Response(JSON.stringify({error: "no profile named 'Dossiary Scan'"}), {status: 404});
+                window.fetch = async (url, opts) => new Response(JSON.stringify({error: 'not found'}), {status: 404});
             }
         """)
         await page.click('#scan-btn')
         await page.wait_for_timeout(300)
         status_after_404 = await page.locator('#status').inner_text()
-        print("status shows 'profile not configured' on a 404:", 'Dossiary Scan' in status_after_404)
+        print("status shows the bridge-outdated message on a 404:", 'scanix500-menubar' in status_after_404)
         buttons_reenabled_after_404 = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
         print("both buttons re-enabled after a 404:", buttons_reenabled_after_404)
+
+        # === Scenario 7b (new): HTTP 400 (malformed/missing scan
+        # parameters -- should never happen from Dossiary's own
+        # correctly-built request, but is still handled defensively) shows
+        # the bridge's own error message, re-enables both buttons ===
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => new Response(JSON.stringify({error: "missing or invalid parameter(s): skip_ocr (each must be 'true' or 'false')"}), {status: 400});
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        status_after_400 = await page.locator('#status').inner_text()
+        print("status shows the bridge's own error message on a 400:", 'skip_ocr' in status_after_400)
+        buttons_reenabled_after_400 = await page.evaluate("!document.getElementById('scan-btn').disabled && !document.getElementById('scan-multi-btn').disabled")
+        print("both buttons re-enabled after a 400:", buttons_reenabled_after_400)
 
         # === Scenario 8: HTTP 409 (already scanning) shows a clear status ===
         await page.evaluate("""
@@ -369,7 +395,7 @@ async def main():
         print("both buttons re-enabled after a 409:", buttons_reenabled_after_409)
 
         # === Scenario 9 (updated): a network failure against an
-        # ALREADY-configured scan_bridge_url reopens the Configure Scanner
+        # ALREADY-CONFIGURED scan_bridge_url reopens the Configure Scanner
         # Connection dialog, instead of just showing an unreachable-bridge
         # status with no recovery path ===
         seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
