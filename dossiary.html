@@ -2402,7 +2402,7 @@
   let defaultDocumentType = null; // prefills Document Type when opening "Add document"
   let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
   let reminderLookaheadDays = 30; // how many days ahead a reminder-type field value counts as "coming up soon"; see checkReminders()
-  let scanBridgeUrl = null; // base URL of the scanix500 HTTP bridge (e.g. "http://127.0.0.1:8765"), configured per-library; unset means the Scan/Scan Multi buttons show a "not configured" status instead of attempting a request
+  let scanBridgeUrl = null; // base URL of the scanix500 HTTP bridge (e.g. "http://127.0.0.1:8765"), configured per-library; unset no longer blocks either button -- see connectScanBridgeAndTrigger() below, which auto-probes the default port and falls back to a manual-entry dialog instead of just showing a static status
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
 
   let reminderSnoozes = {};    // { "<documentId>:<fieldId>": { snoozedUntil, dismissed }, ... } -- snoozedUntil is an ISO date string or null, dismissed is a real boolean
@@ -3369,8 +3369,9 @@
   // Base URL of the scanix500 HTTP bridge (see the "Reminder-type custom
   // fields" and "The default-reminder context menu" architecture notes above
   // for the general pattern this follows) -- a per-library settings row,
-  // same as default_currency. Unset until someone configures it; the
-  // Scan/Scan Multi toolbar buttons check this before attempting a request.
+  // same as default_currency. Unset until someone configures it, or until
+  // connectScanBridgeAndTrigger() auto-adopts a reachable default-port
+  // bridge on first use.
   function loadScanBridgeUrl(){
     const rows = queryAll("SELECT value FROM settings WHERE key = 'scan_bridge_url'").rows;
     scanBridgeUrl = rows.length ? rows[0][0] : null;
@@ -7812,7 +7813,9 @@
     const timeoutId = setTimeout(() => controller.abort(), SCAN_BRIDGE_HEALTH_TIMEOUT_MS);
     try{
       const response = await fetch(`${url}/health`, { method: 'GET', signal: controller.signal });
-      return response.ok;
+      if(!response.ok) return false;
+      const body = await response.json().catch(() => null);
+      return !!body && body.service === 'scanix500-bridge';
     }catch(e){
       return false;
     }finally{
@@ -7826,6 +7829,7 @@
   // Connection" dialog only if that fails.
   async function connectScanBridgeAndTrigger(profileName){
     const defaultUrl = `http://localhost:${SCAN_BRIDGE_DEFAULT_PORT}`;
+    setStatusT('scanConnectProbing', null, 'busy');
     const reachable = await probeScanBridgeHealth(defaultUrl);
     if(reachable){
       await saveScanBridgeUrl(defaultUrl);
@@ -7892,18 +7896,21 @@
     await triggerScan(profileName);
   }
 
+  let scanRequestInFlight = false;
+
   const SCAN_PROFILE_NAME = 'Dossiary Scan';
   const SCAN_MULTI_PROFILE_NAME = 'Dossiary Scan Multi';
 
   // Triggers a real scan via the scanix500 HTTP bridge (a separate app --
-  // see docs/superpowers/specs/2026-09-14-scanix500-bridge-design.md for the
-  // full two-repo design). profileName is one of the two fixed constants
-  // above; the bridge's own profile system (configured once, manually, in
-  // scanix500's menu bar app) decides where the resulting PDF actually gets
-  // written -- it's expected to be the current library's real inbox/ folder,
-  // so a successful scan is picked up by the exact same checkInbox()/
-  // addAllInboxFilesAndShowStatus() pair the "Check inbox" button already
-  // uses, with no new ingestion code here.
+  // see docs/superpowers/specs/2026-09-14-scanix500-bridge-design.md and
+  // its 2026-09-16 auto-connect amendment for the full two-repo design).
+  // profileName is one of the two fixed constants above. As of the
+  // 2026-09-16 amendment, Dossiary itself decodes the response's `files`
+  // field and writes the scanned bytes into the current library's own
+  // inbox/ folder (see writeScanFilesToInbox() above) -- the bridge no
+  // longer needs to write anywhere Dossiary can read -- and only then
+  // calls the same checkInbox()/addAllInboxFilesAndShowStatus() pair the
+  // "Check inbox" button already uses, with no new ingestion code here.
   // Finds a filename inside dirHandle that doesn't already exist, so
   // writing a bridge-delivered scan into inbox/ never silently overwrites
   // an unrelated file already staged there (a manually dropped file, or a
@@ -8023,8 +8030,18 @@
   // writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
   el('check-reminders-btn').addEventListener('click', checkRemindersAndShowStatus);
-  el('scan-btn').addEventListener('click', () => triggerScan(SCAN_PROFILE_NAME));
-  el('scan-multi-btn').addEventListener('click', () => triggerScan(SCAN_MULTI_PROFILE_NAME));
+  async function startScan(profileName){
+    if(scanRequestInFlight) return;
+    scanRequestInFlight = true;
+    try{
+      await triggerScan(profileName);
+    }finally{
+      scanRequestInFlight = false;
+    }
+  }
+
+  el('scan-btn').addEventListener('click', () => startScan(SCAN_PROFILE_NAME));
+  el('scan-multi-btn').addEventListener('click', () => startScan(SCAN_MULTI_PROFILE_NAME));
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a

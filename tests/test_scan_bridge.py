@@ -395,7 +395,7 @@ async def main():
         await page.evaluate("""
             () => {
                 window.fetch = async (url, opts) => new Promise((resolve) => {
-                    window.__RESOLVE_SLOW_FETCH = () => resolve(new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: []}), {status: 200}));
+                    window.__RESOLVE_SLOW_FETCH = () => resolve(new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: [], files: []}), {status: 200}));
                 });
             }
         """)
@@ -491,6 +491,68 @@ async def main():
         await page.wait_for_timeout(300)
         rows_after_multi = await page.locator('#doc-tbody tr').count()
         print("both files from a multi-file scan result were ingested as separate documents:", rows_after_multi == 2)
+
+        # === Scenario 15: a 200 response from /health that doesn't identify
+        # itself as the scanix500 bridge (e.g. an unrelated local service
+        # answering on the same port) is NOT adopted -- the configure
+        # dialog opens instead of silently trusting it ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => {
+                    if(url.endsWith('/health')) return new Response(JSON.stringify({status: 'ok'}), {status: 200});
+                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: [], files: []}), {status: 200});
+                };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        dialog_shown_for_unidentified_service = await page.locator('#scan-connect-port').count()
+        print("configure dialog opens when /health responds 200 but doesn't identify as the scanix500 bridge:", dialog_shown_for_unidentified_service == 1)
+        saved_url_for_unidentified_service = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                const dbState = JSON.parse(await f.text());
+                const row = dbState.settings.find(s => s.key === 'scan_bridge_url');
+                return row ? row.value : null;
+            })()
+        """)
+        print("scan_bridge_url was NOT saved for an unidentified service:", saved_url_for_unidentified_service == None)
+        await page.click('#scan-connect-cancel-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 16: clicking Scan again while a scan flow is already
+        # probing does not start a second, concurrent probe ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.__HEALTH_PROBE_COUNT = 0;
+                window.__RESOLVE_SLOW_HEALTH = null;
+                window.fetch = async (url, opts) => {
+                    if(url.endsWith('/health')){
+                        window.__HEALTH_PROBE_COUNT++;
+                        return new Promise((resolve) => {
+                            window.__RESOLVE_SLOW_HEALTH = () => resolve(new Response(JSON.stringify({service: 'scanix500-bridge'}), {status: 200}));
+                        });
+                    }
+                    return new Response(JSON.stringify({ok: true, partial: false, message: 'ok', output_paths: [], files: []}), {status: 200});
+                };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(150)  # probe is now in flight
+        await page.click('#scan-btn')
+        await page.click('#scan-multi-btn')
+        await page.wait_for_timeout(150)
+        probe_count_mid_flight = await page.evaluate("window.__HEALTH_PROBE_COUNT")
+        print("a second click while a scan flow is already probing does not start a second probe:", probe_count_mid_flight == 1)
+        await page.evaluate("window.__RESOLVE_SLOW_HEALTH()")
+        await page.wait_for_timeout(300)
 
         print("JS ERRORS:", errors)
         await browser.close()
