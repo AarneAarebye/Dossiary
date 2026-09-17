@@ -1917,7 +1917,7 @@ this repo's git tags.
   and therefore always treats every file as newly-seen on its first (and
   only) pass.
 - **Scan / Scan Multi toolbar buttons** (`#scan-btn`/`#scan-multi-btn`,
-  `triggerScan()`, `SCAN_PROFILE_NAME`/`SCAN_MULTI_PROFILE_NAME`) let a
+  `triggerScan()`) let a
   person trigger a real scan on a physical scanner directly from Dossiary's
   toolbar, via a separate companion app: `scanix500` (a sibling repo,
   `AarneAarebye/iX500`) drives a specific ScanSnap iX500 directly via SANE
@@ -1937,20 +1937,34 @@ this repo's git tags.
   how it gets set without typing anything, in the common case. The Field
   Settings text field (`#fs-scan-bridge-url`) still exists as a manual
   override/escape hatch, unchanged.
-  **The two buttons trigger two fixed, hardcoded scanix500 profile names —
-  `"Dossiary Scan"` and `"Dossiary Scan Multi"` — not anything user-
-  configurable.** The person creates both profiles once, manually, in
-  scanix500's own menu bar app (Add Profile…), with their destination set
-  to this library's real `inbox/` folder; scanix500's own README documents
-  this exact contract from its side. **Scan Multi is not "duplex" or
-  "multi-page" in the legacy Mariner Paperless sense** (that app's original
-  Scan/Scan Multi distinction was simplex vs. duplex, and scanix500 has no
-  simplex mode — it always does ADF duplex capture with automatic blank-
-  page filtering) — this feature deliberately repurposes the two-button
-  layout for scanix500's own genuinely distinct capability instead:
-  `split-on-blank`, letting several physical documents be fed in one ADF
-  load and come back as separate PDFs.
-  **`triggerScan(profileName)` still routes every scan through the
+  **As of the 2026-09-16 parameterized-scan amendment, there is no more
+  profile at all — Dossiary sends its scan settings directly as query
+  parameters on the request** (`?skip_blank_filter=false&skip_ocr=false&split_on_blank=<isMulti>`,
+  built via `URLSearchParams` in `triggerScan()`). The person no longer
+  needs to manually create anything in scanix500's own menu bar app before
+  either button works — see
+  `docs/superpowers/specs/2026-09-16-scan-bridge-parameterized-scan-design.md`
+  and `docs/superpowers/plans/2026-09-16-scan-bridge-parameterized-scan.md`
+  for the full two-repo design; scanix500's own `route_scan_request()`
+  builds an ephemeral, never-persisted `Profile` from these same three
+  parameters rather than looking one up. `skip_blank_filter`/`skip_ocr`
+  are always sent `false` — Dossiary doesn't expose them as
+  user-configurable settings, matching the old profiles' own unedited
+  defaults — only `split_on_blank` varies between the two buttons.
+  **Scan Multi is not "duplex" or "multi-page" in the legacy Mariner
+  Paperless sense** (that app's original Scan/Scan Multi distinction was
+  simplex vs. duplex, and scanix500 has no simplex mode — it always does
+  ADF duplex capture with automatic blank-page filtering) — this feature
+  deliberately repurposes the two-button layout for scanix500's own
+  genuinely distinct capability instead: `split-on-blank`, letting several
+  physical documents be fed in one ADF load and come back as separate
+  PDFs. **This was a breaking, non-backward-compatible wire change** — a
+  `404` from the bridge no longer means "unknown profile" (there's no more
+  profile to be unknown); it means the bridge doesn't recognize this
+  request shape at all, most likely because it predates this amendment.
+  Dossiary and scanix500 must be updated together; see scanix500's own
+  README for the exact coordination note from its side.
+  **`triggerScan(isMulti)` still routes every scan through the
   existing Inbox pipeline, never a separate ingestion path — but see the
   auto-connect paragraph below for a real change to how the file gets
   there.** As of the 2026-09-16 amendment, Dossiary itself decodes the
