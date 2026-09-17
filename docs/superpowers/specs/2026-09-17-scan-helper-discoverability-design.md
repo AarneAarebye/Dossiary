@@ -57,10 +57,14 @@ running locally), and a direct link to its latest GitHub release
 bare repo — a release page's own asset list is the actual next step someone
 needs, not a repo's file tree.
 
-Like every other static string in this app, the paragraph text and link
-label get `data-i18n` attributes and entries in all 6 `STRINGS.*` blocks —
-the link's `href` itself is not translated (it's a URL, not UI copy), only
-the surrounding text is.
+Like every other string in this app, the paragraph text and link label get
+entries in all 6 `STRINGS.*` blocks. Since `openFieldSettingsModal()`'s
+whole template is rebuilt from scratch on every open (not static page
+markup), this follows the established convention for that class of
+content — inline `${t('key')}` calls at template-build time, not
+`data-i18n` attributes, which only resolve on markup that survives across
+renders. The link's `href` itself is not translated (it's a URL, not UI
+copy), only the surrounding text is.
 
 ### The Configure Scanner Connection dialog gains a persistent download line
 
@@ -71,7 +75,8 @@ failure): a "Don't have the scan helper installed? [Download it]" link,
 pointing at the same release URL as the Field Settings section. This sits
 alongside the existing, unchanged Port field — not a replacement for it, and
 not conditionally shown. Same i18n treatment as the Field Settings section —
-a new `data-i18n` key across all 6 languages.
+`openScanConnectDialog()` is also rebuilt fresh on every open, so this uses
+inline `${t('key')}` calls too, with new entries across all 6 languages.
 
 **Why not detect which case applies and show only the relevant one:** a
 browser's `fetch()` cannot distinguish "nothing is listening on this port"
