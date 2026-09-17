@@ -580,6 +580,36 @@ async def main():
         await page.evaluate("window.__RESOLVE_SLOW_HEALTH()")
         await page.wait_for_timeout(300)
 
+        # === Scenario 17 (new): Field Settings has a "Scanner Integration"
+        # section explaining what's needed and linking to scanix500-menubar's
+        # latest release, next to the existing scan_bridge_url override field ===
+        await page.click('#manage-fields-btn')
+        await page.wait_for_timeout(200)
+        scanner_integration_heading_count = await page.locator('.fs-scanner-integration h3').count()
+        print("Field Settings shows a Scanner Integration heading:", scanner_integration_heading_count == 1)
+        scanner_integration_link_href = await page.locator('.fs-scanner-integration a').get_attribute('href')
+        print("the Field Settings link points at scanix500-menubar's latest release:", scanner_integration_link_href == 'https://github.com/AarneAarebye/iX500/releases/latest')
+        await page.click('#fs-done-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 18 (new): the Configure Scanner Connection dialog
+        # always shows a persistent download link alongside the Port field,
+        # regardless of why the probe failed -- not conditionally shown ===
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""
+            () => {
+                window.fetch = async (url, opts) => { throw new TypeError('Failed to fetch'); };
+            }
+        """)
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        download_link_href = await page.locator('.modal a[target="_blank"]').get_attribute('href')
+        print("the dialog shows a persistent download link pointing at the latest release:", download_link_href == 'https://github.com/AarneAarebye/iX500/releases/latest')
+        await page.click('#scan-connect-cancel-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
