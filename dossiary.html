@@ -7817,7 +7817,7 @@
   const SCAN_BRIDGE_HEALTH_TIMEOUT_MS = 3000;
 
   // Probes GET <url>/health with a short client-side timeout -- unlike
-  // triggerScan()'s own deliberately-un-timed-out POST /scan/<profile>
+  // triggerScan()'s own deliberately-un-timed-out POST /scan
   // (see that function's own comment below), this is a pure reachability
   // check and should fail fast rather than hang the auto-connect flow.
   async function probeScanBridgeHealth(url){
@@ -7913,7 +7913,7 @@
   // Triggers a real scan via the scanix500 HTTP bridge (a separate app --
   // see docs/superpowers/specs/2026-09-14-scanix500-bridge-design.md and
   // its 2026-09-16 auto-connect amendment for the full two-repo design).
-  // profileName is one of the two fixed constants above. As of the
+  // isMulti is true for Scan Multi, false for plain Scan. As of the
   // 2026-09-16 amendment, Dossiary itself decodes the response's `files`
   // field and writes the scanned bytes into the current library's own
   // inbox/ folder (see writeScanFilesToInbox() above) -- the bridge no
@@ -8063,11 +8063,11 @@
   // writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
   el('check-reminders-btn').addEventListener('click', checkRemindersAndShowStatus);
-  async function startScan(profileName){
+  async function startScan(isMulti){
     if(scanRequestInFlight) return;
     scanRequestInFlight = true;
     try{
-      await triggerScan(profileName);
+      await triggerScan(isMulti);
     }finally{
       scanRequestInFlight = false;
     }

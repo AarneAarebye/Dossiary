@@ -1982,7 +1982,7 @@ this repo's git tags.
   line. A hard failure (`ok: false, partial: false`) shows the bridge's
   message and does not touch the Inbox at all. Both buttons are disabled
   for the duration of a request and always re-enabled via `try/finally`,
-  regardless of which outcome (success, 404, 409, network failure,
+  regardless of which outcome (success, 400, 404, 409, network failure,
   malformed response) actually occurred — never left stuck disabled.
   **No polling, no progress bar** — the request simply blocks until
   scanix500's own bridge resolves it (which itself blocks until the real
@@ -2018,7 +2018,7 @@ this repo's git tags.
   proceeds immediately. An unreachable default port opens a small
   "Configure Scanner Connection" dialog (`openScanConnectDialog()`/
   `submitScanConnectDialog()`) with one Port field; a later scan against
-  an already-configured URL that fails at the network level (not a 404/409
+  an already-configured URL that fails at the network level (not a 400/404/409
   from a reachable bridge) reopens the same dialog rather than just
   showing an unreachable-bridge status with no recovery path. The
   pre-existing Field Settings `scan_bridge_url` text field is untouched
