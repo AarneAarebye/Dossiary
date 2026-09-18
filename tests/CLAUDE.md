@@ -698,12 +698,19 @@ than clobbers (Scenario 13, unchanged); a multi-file result (Scan Multi /
 split-on-blank producing several PDFs) writing and ingesting every file
 in `files`, not just the first (Scenario 14, unchanged); a `/health`
 responder that doesn't identify itself as the scanix500 bridge NOT being
-silently adopted (Scenario 15, unchanged); and both buttons staying
+silently adopted (Scenario 15, unchanged); both buttons staying
 correctly disabled throughout a request and always re-enabled via
 `try/finally`, regardless of outcome, never stuck disabled (Scenario 10,
 unchanged), plus a re-entrancy guard against a second click starting a
-second concurrent probe (Scenario 16, unchanged). This coverage is
-spread across sixteen numbered scenarios (2b/2c/2d sub-parts of Scenario
+second concurrent probe (Scenario 16, unchanged); Field Settings' own
+"Scanner Integration" section rendering a heading and a link to
+scanix500-menubar's latest release (Scenario 17, new, from the
+2026-09-17 scan-helper-discoverability amendment); and the Configure
+Scanner Connection dialog always showing a persistent download link
+alongside its Port field, regardless of why the probe failed — not
+conditionally, since a `fetch()` failure alone can't distinguish "not
+installed" from "wrong port" (Scenario 18, new). This coverage is
+spread across eighteen numbered scenarios (2b/2c/2d sub-parts of Scenario
 2's own auto-connect matrix, 7b a sub-part of Scenario 7's own
 status-handling matrix), not one — settings persistence first (Scenario
 1), then the full auto-connect matrix (Scenarios 2/2b/2c/2d), then one

@@ -2040,6 +2040,23 @@ this repo's git tags.
   amendment's design and explicitly rejected for the same reason: once the
   file arrives over the connection, scanix500 never needs to know which
   library it's serving.
+  **Scan helper discoverability (2026-09-17 amendment)**: installing
+  scanix500-menubar was previously undiscoverable from within Dossiary
+  itself — nothing named it, explained it, or linked to it. Field
+  Settings now has a "Scanner Integration" section (`.fs-scanner-integration`,
+  next to the `scan_bridge_url` manual-override field) explaining what's
+  needed and linking directly to scanix500-menubar's latest GitHub
+  release, and the "Configure Scanner Connection" dialog
+  (`openScanConnectDialog()`) shows a persistent "Don't have the scan
+  helper installed?" download link alongside its existing Port field,
+  every time it opens — not conditionally, since a browser `fetch()`
+  failure can't distinguish "nothing installed" from "installed on a
+  different port" from "blocked by a firewall"; all three surface as the
+  same generic network error. This is purely additive UI — no change to
+  the bridge's wire contract, to `triggerScan()`'s own request/response
+  handling, or to scanix500-menubar's own feature set. See
+  `docs/superpowers/specs/2026-09-17-scan-helper-discoverability-design.md`
+  for the full design.
 - **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.
