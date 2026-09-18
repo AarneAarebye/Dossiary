@@ -171,7 +171,7 @@
   .columns-menu-item input{ accent-color:var(--phosphor); }
   .columns-menu-item label{ cursor:pointer; user-select:none; }
   .fs-columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
-  .fs-col h3, .fs-descriptions h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
+  .fs-col h3, .fs-descriptions h3, .fs-scanner-integration h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
   .fs-list{ border:1px solid var(--line); border-radius:var(--radius); max-height:280px; overflow-y:auto; background:var(--ink-2); }
   .fs-list-item{ padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid rgba(217,210,189,0.06); display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .fs-list-item:last-child{ border-bottom:none; }
@@ -986,8 +986,8 @@
       fieldSettingsReminderLookaheadLabel: 'Reminder lookahead (days)',
       fieldSettingsScanBridgeUrlLabel: 'Scanner bridge URL (e.g. http://127.0.0.1:8765)',
       fieldSettingsScannerIntegrationHeading: 'Scanner Integration',
-      fieldSettingsScannerIntegrationText: 'Scanning from the toolbar needs a small companion app, scanix500-menubar, running locally on your Mac.',
-      fieldSettingsScannerIntegrationLink: 'Download scanix500-menubar',
+      fieldSettingsScannerIntegrationText: 'Scanning from the toolbar needs a small companion app, scanix500-menubar, set up once and run locally on your Mac.',
+      fieldSettingsScannerIntegrationLink: 'Get scanix500-menubar',
       fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
       fieldSettingsDescriptionsHeading: 'Field Descriptions', fieldSettingsDescriptionPlaceholder: 'No description set',
       fieldSettingsNoDocTypes: 'No document types in use yet. Type one into the Add/Edit document form first.',
@@ -1031,8 +1031,8 @@
       scanConnectTitle: 'Connect to Scanner',
       scanConnectInstructions: "Couldn't reach the scanner bridge on the default port. Check scanix500-menubar's own menu for its current port, then enter it below.",
       scanConnectPortLabel: 'Port',
-      scanConnectDownloadPrompt: "Don't have the scan helper installed?",
-      scanConnectDownloadLink: 'Download it',
+      scanConnectDownloadPrompt: "Don't have the scan helper set up yet?",
+      scanConnectDownloadLink: 'Set it up',
       scanConnectSubmit: 'Connect',
       scanConnectInvalidPort: 'Enter a valid port number.',
       scanConnectProbing: 'Connecting…',
@@ -1181,8 +1181,8 @@
       fieldSettingsReminderLookaheadLabel: 'Antelación de recordatorios (días)',
       fieldSettingsScanBridgeUrlLabel: 'URL del puente del escáner (p. ej. http://127.0.0.1:8765)',
       fieldSettingsScannerIntegrationHeading: 'Integración del escáner',
-      fieldSettingsScannerIntegrationText: 'Escanear desde la barra de herramientas requiere una pequeña aplicación complementaria, scanix500-menubar, ejecutándose localmente en su Mac.',
-      fieldSettingsScannerIntegrationLink: 'Descargar scanix500-menubar',
+      fieldSettingsScannerIntegrationText: 'Escanear desde la barra de herramientas requiere una pequeña aplicación complementaria, scanix500-menubar, configurada una vez y ejecutada localmente en su Mac.',
+      fieldSettingsScannerIntegrationLink: 'Obtener scanix500-menubar',
       fieldSettingsColDocTypes: 'Tipos de documento', fieldSettingsColFields: 'Campos', fieldSettingsColDisplayFields: 'Campos mostrados',
       fieldSettingsDescriptionsHeading: 'Descripciones de campos', fieldSettingsDescriptionPlaceholder: 'Sin descripción',
       fieldSettingsNoDocTypes: 'Aún no hay tipos de documento en uso. Escribe uno primero en el formulario de Añadir/Editar documento.',
@@ -1226,8 +1226,8 @@
       scanConnectTitle: 'Conectar con el escáner',
       scanConnectInstructions: 'No se pudo conectar con el puente del escáner en el puerto predeterminado. Consulte el puerto actual en el propio menú de scanix500-menubar e introdúzcalo a continuación.',
       scanConnectPortLabel: 'Puerto',
-      scanConnectDownloadPrompt: '¿No tiene instalado el ayudante de escaneo?',
-      scanConnectDownloadLink: 'Descargarlo',
+      scanConnectDownloadPrompt: '¿Aún no ha configurado el ayudante de escaneo?',
+      scanConnectDownloadLink: 'Configurarlo',
       scanConnectSubmit: 'Conectar',
       scanConnectInvalidPort: 'Introduzca un número de puerto válido.',
       scanConnectProbing: 'Conectando…',
@@ -1376,8 +1376,8 @@
       fieldSettingsReminderLookaheadLabel: 'Anticipation des rappels (jours)',
       fieldSettingsScanBridgeUrlLabel: 'URL du pont du scanner (p. ex. http://127.0.0.1:8765)',
       fieldSettingsScannerIntegrationHeading: 'Intégration du scanner',
-      fieldSettingsScannerIntegrationText: "Numériser depuis la barre d'outils nécessite une petite application complémentaire, scanix500-menubar, exécutée localement sur votre Mac.",
-      fieldSettingsScannerIntegrationLink: 'Télécharger scanix500-menubar',
+      fieldSettingsScannerIntegrationText: "Numériser depuis la barre d'outils nécessite une petite application complémentaire, scanix500-menubar, configurée une fois et exécutée localement sur votre Mac.",
+      fieldSettingsScannerIntegrationLink: 'Obtenir scanix500-menubar',
       fieldSettingsColDocTypes: 'Types de document', fieldSettingsColFields: 'Champs', fieldSettingsColDisplayFields: 'Champs affichés',
       fieldSettingsDescriptionsHeading: 'Descriptions des champs', fieldSettingsDescriptionPlaceholder: 'Aucune description',
       fieldSettingsNoDocTypes: "Aucun type de document n'est encore utilisé. Saisissez-en un d'abord dans le formulaire Ajouter/Modifier un document.",
@@ -1421,8 +1421,8 @@
       scanConnectTitle: 'Connexion au scanner',
       scanConnectInstructions: "Impossible de joindre le pont du scanner sur le port par défaut. Consultez le port actuel dans le menu de scanix500-menubar, puis saisissez-le ci-dessous.",
       scanConnectPortLabel: 'Port',
-      scanConnectDownloadPrompt: "Vous n'avez pas installé l'assistant de numérisation ?",
-      scanConnectDownloadLink: 'Le télécharger',
+      scanConnectDownloadPrompt: "Vous n'avez pas encore configuré l'assistant de numérisation ?",
+      scanConnectDownloadLink: 'Le configurer',
       scanConnectSubmit: 'Connecter',
       scanConnectInvalidPort: 'Saisissez un numéro de port valide.',
       scanConnectProbing: 'Connexion en cours…',
@@ -1571,8 +1571,8 @@
       fieldSettingsReminderLookaheadLabel: 'Erinnerungsvorlauf (Tage)',
       fieldSettingsScanBridgeUrlLabel: 'Scanner-Bridge-URL (z. B. http://127.0.0.1:8765)',
       fieldSettingsScannerIntegrationHeading: 'Scanner-Integration',
-      fieldSettingsScannerIntegrationText: 'Zum Scannen über die Symbolleiste wird eine kleine Begleit-App, scanix500-menubar, benötigt, die lokal auf dem Mac läuft.',
-      fieldSettingsScannerIntegrationLink: 'scanix500-menubar herunterladen',
+      fieldSettingsScannerIntegrationText: 'Zum Scannen über die Symbolleiste wird eine kleine Begleit-App, scanix500-menubar, benötigt — einmalig eingerichtet und danach lokal auf dem Mac laufend.',
+      fieldSettingsScannerIntegrationLink: 'scanix500-menubar einrichten',
       fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
       fieldSettingsDescriptionsHeading: 'Feldbeschreibungen', fieldSettingsDescriptionPlaceholder: 'Keine Beschreibung',
       fieldSettingsNoDocTypes: 'Noch keine Dokumenttypen in Verwendung. Gib zuerst einen im Formular "Dokument hinzufügen/bearbeiten" ein.',
@@ -1616,8 +1616,8 @@
       scanConnectTitle: 'Mit Scanner verbinden',
       scanConnectInstructions: 'Die Scanner-Bridge konnte auf dem Standardport nicht erreicht werden. Den aktuellen Port im Menü von scanix500-menubar nachsehen und unten eingeben.',
       scanConnectPortLabel: 'Port',
-      scanConnectDownloadPrompt: 'Noch keinen Scan-Helfer installiert?',
-      scanConnectDownloadLink: 'Jetzt herunterladen',
+      scanConnectDownloadPrompt: 'Scan-Helfer noch nicht eingerichtet?',
+      scanConnectDownloadLink: 'Jetzt einrichten',
       scanConnectSubmit: 'Verbinden',
       scanConnectInvalidPort: 'Bitte eine gültige Portnummer eingeben.',
       scanConnectProbing: 'Verbindung wird hergestellt…',
@@ -1766,8 +1766,8 @@
       fieldSettingsReminderLookaheadLabel: '提醒提前天数',
       fieldSettingsScanBridgeUrlLabel: '扫描桥接地址（例如 http://127.0.0.1:8765）',
       fieldSettingsScannerIntegrationHeading: '扫描仪集成',
-      fieldSettingsScannerIntegrationText: '从工具栏扫描需要一个小型配套应用 scanix500-menubar，在您的 Mac 上本地运行。',
-      fieldSettingsScannerIntegrationLink: '下载 scanix500-menubar',
+      fieldSettingsScannerIntegrationText: '从工具栏扫描需要一个小型配套应用 scanix500-menubar，只需设置一次，即可在您的 Mac 上本地运行。',
+      fieldSettingsScannerIntegrationLink: '设置 scanix500-menubar',
       fieldSettingsColDocTypes: '文档类型', fieldSettingsColFields: '字段', fieldSettingsColDisplayFields: '显示字段',
       fieldSettingsDescriptionsHeading: '字段说明', fieldSettingsDescriptionPlaceholder: '未设置说明',
       fieldSettingsNoDocTypes: '尚未使用任何文档类型。请先在添加/编辑文档表单中输入一个。',
@@ -1811,8 +1811,8 @@
       scanConnectTitle: '连接扫描仪',
       scanConnectInstructions: '无法在默认端口连接到扫描桥接。请在 scanix500-menubar 的菜单中查看当前端口，然后在下方输入。',
       scanConnectPortLabel: '端口',
-      scanConnectDownloadPrompt: '还没有安装扫描助手？',
-      scanConnectDownloadLink: '立即下载',
+      scanConnectDownloadPrompt: '还没有设置扫描助手？',
+      scanConnectDownloadLink: '立即设置',
       scanConnectSubmit: '连接',
       scanConnectInvalidPort: '请输入有效的端口号。',
       scanConnectProbing: '正在连接…',
@@ -2069,9 +2069,9 @@
       fieldSettingsDefaultCurrencyLabel: '默認貨幣（新錄入時自動猜測，例如 EUR）',
       fieldSettingsReminderLookaheadLabel: '提醒提前天數',
       fieldSettingsScanBridgeUrlLabel: '掃描橋接地址（例如 http://127.0.0.1:8765）',
-      fieldSettingsScannerIntegrationHeading: '掃描儀整合',
-      fieldSettingsScannerIntegrationText: '從工具列掃描需要一個小型配套應用 scanix500-menubar，在您的 Mac 上本地執行。',
-      fieldSettingsScannerIntegrationLink: '下載 scanix500-menubar',
+      fieldSettingsScannerIntegrationHeading: '掃描儀集成',
+      fieldSettingsScannerIntegrationText: '從工具欄掃描需要一個小型配套應用 scanix500-menubar，只需設置一次，即可在您的 Mac 上本地運行。',
+      fieldSettingsScannerIntegrationLink: '設置 scanix500-menubar',
       fieldSettingsColDocTypes: '文檔類型',
       fieldSettingsColFields: '字段',
       fieldSettingsColDisplayFields: '顯示字段',
@@ -2129,8 +2129,8 @@
       scanConnectTitle: '連接掃描儀',
       scanConnectInstructions: '無法在默認端口連接到掃描橋接。請在 scanix500-menubar 的菜單中查看當前端口，然後在下方輸入。',
       scanConnectPortLabel: '端口',
-      scanConnectDownloadPrompt: '還沒有安裝掃描助手？',
-      scanConnectDownloadLink: '立即下載',
+      scanConnectDownloadPrompt: '還沒有設置掃描助手？',
+      scanConnectDownloadLink: '立即設置',
       scanConnectSubmit: '連接',
       scanConnectInvalidPort: '請輸入有效的端口號。',
       scanConnectProbing: '正在連接…',
@@ -6794,7 +6794,7 @@
             <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 8px;">
               ${t('fieldSettingsScannerIntegrationText')}
             </p>
-            <a href="https://github.com/AarneAarebye/iX500/releases/latest" target="_blank" rel="noopener noreferrer">${t('fieldSettingsScannerIntegrationLink')}</a>
+            <a href="https://github.com/AarneAarebye/iX500" target="_blank" rel="noopener noreferrer" style="color:var(--phosphor); font-weight:600; font-size:13px;">${t('fieldSettingsScannerIntegrationLink')}</a>
           </div>
           <div class="fs-columns">
             <div class="fs-col">
@@ -7902,7 +7902,7 @@
             <input type="text" id="scan-connect-port" value="${SCAN_BRIDGE_DEFAULT_PORT}" />
           </div>
           <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:8px 0 0;">
-            ${t('scanConnectDownloadPrompt')} <a href="https://github.com/AarneAarebye/iX500/releases/latest" target="_blank" rel="noopener noreferrer">${t('scanConnectDownloadLink')}</a>
+            ${t('scanConnectDownloadPrompt')} <a href="https://github.com/AarneAarebye/iX500" target="_blank" rel="noopener noreferrer" id="scan-connect-download-link" style="color:var(--phosphor); font-weight:600; font-size:13px;">${t('scanConnectDownloadLink')}</a>
           </p>
           <div id="scan-connect-status" class="doc-sub" style="margin-top:8px; min-height:1.2em;"></div>
           <div class="modal-actions" style="margin-top:16px;">

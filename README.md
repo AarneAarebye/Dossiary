@@ -657,11 +657,11 @@ separate genuinely distinct values.
   scanner-hardware access itself; the underlying platform limitation above
   is still real and unchanged. `scanix500` drives a specific ScanSnap iX500
   scanner directly and runs a small local HTTP bridge that Dossiary's
-  browser tab can call over `fetch()`. To use it: install and run
-  `scanix500`'s own menu bar app, then set its bridge URL once in
-  Dossiary's Field Settings (`scan_bridge_url`). Without that companion app
-  installed, running, and configured, both buttons show a clear "not
-  configured" status message rather than doing nothing silently.
+  browser tab can call over `fetch()`. Clicking either button auto-probes
+  the bridge's default port and connects silently if it's found — no setup
+  needed beyond having `scanix500`'s own menu bar app running. If it isn't
+  found, a "Configure Scanner Connection" dialog opens with a Port field
+  and a link to get the companion app set up.
 - **Reconnecting a recent library still needs one click.** Browsers won't
   let a page silently regain filesystem access after a reload — even with
   a library remembered in the Recent libraries list (see Features above),

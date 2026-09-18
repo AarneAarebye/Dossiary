@@ -588,7 +588,9 @@ async def main():
         scanner_integration_heading_count = await page.locator('.fs-scanner-integration h3').count()
         print("Field Settings shows a Scanner Integration heading:", scanner_integration_heading_count == 1)
         scanner_integration_link_href = await page.locator('.fs-scanner-integration a').get_attribute('href')
-        print("the Field Settings link points at scanix500-menubar's latest release:", scanner_integration_link_href == 'https://github.com/AarneAarebye/iX500/releases/latest')
+        print("the Field Settings link points at the iX500 repo root:", scanner_integration_link_href == 'https://github.com/AarneAarebye/iX500')
+        scanner_integration_link_text = await page.locator('.fs-scanner-integration a').inner_text()
+        print("the Field Settings link has real, translated text:", bool(scanner_integration_link_text) and scanner_integration_link_text != 'fieldSettingsScannerIntegrationLink')
         await page.click('#fs-done-btn')
         await page.wait_for_timeout(150)
 
@@ -605,8 +607,10 @@ async def main():
         """)
         await page.click('#scan-btn')
         await page.wait_for_timeout(300)
-        download_link_href = await page.locator('.modal a[target="_blank"]').get_attribute('href')
-        print("the dialog shows a persistent download link pointing at the latest release:", download_link_href == 'https://github.com/AarneAarebye/iX500/releases/latest')
+        download_link_href = await page.locator('#scan-connect-download-link').get_attribute('href')
+        print("the dialog shows a persistent download link pointing at the iX500 repo root:", download_link_href == 'https://github.com/AarneAarebye/iX500')
+        download_link_text = await page.locator('#scan-connect-download-link').inner_text()
+        print("the dialog's download link has real, translated text:", bool(download_link_text) and download_link_text != 'scanConnectDownloadLink')
         await page.click('#scan-connect-cancel-btn')
         await page.wait_for_timeout(150)
 
