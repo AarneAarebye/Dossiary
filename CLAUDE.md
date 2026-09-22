@@ -2057,7 +2057,8 @@ this repo's git tags.
   handling, or to scanix500-menubar's own feature set. See
   `docs/superpowers/specs/2026-09-17-scan-helper-discoverability-design.md`
   for the full design.
-- **Searchable PDF generation** (JPEG/PNG only): `runOcr()` requests
+- **Searchable PDF generation** (JPEG/PNG images, and — as of the
+  2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
   `recognize()` call only returns plain text, not per-word bounding boxes.
   `flattenOcrWords()` flattens the `blocks -> paragraphs -> lines -> words`
@@ -2087,6 +2088,36 @@ this repo's git tags.
     `migrate_to_new_library.py` produces for migrated documents and that
     Mariner Paperless itself used. See "Preserving an original file on
     ingestion" below for what happens when a searchable PDF *isn't* built.
+  **PDF capture OCR (2026-09-22 amendment)**: the capture form's "Run OCR"
+  button and language selector, previously hard-disabled for any non-image
+  upload, now also work for PDFs — an opt-in click before Save, at parity
+  with images, not an automatic zero-click process. Clicking it on a PDF
+  first checks every page for real, pre-existing text via pdf.js's
+  `page.getTextContent()`; if any page has substantial real text, the whole
+  document is treated as already-searchable and OCR is skipped entirely —
+  the file saves completely untouched, since rebuilding an already-digital
+  PDF through the rasterize-and-overlay technique below would only degrade
+  it for no benefit. Otherwise, every page is rendered via
+  `renderPdfPageToCanvas()` (the same helper `runOcrForEdit()` already
+  uses) and OCR'd individually with `{blocks: true}` — unlike
+  `runOcrForEdit()`'s own PDF path, which only needs plain text, capture-time
+  OCR also needs each page's word-position data, since it feeds the
+  searchable-PDF rebuild at Save. `buildSearchablePdf()` itself was
+  generalized from a single-page function to `buildSearchablePdf(pages)`,
+  taking an array of `{dataUrl, imageFormat, dims, words}` entries and
+  looping `addPage()` for entries after the first — every existing
+  image-capture call site now passes a single-element array, reusing the
+  exact same per-page placement logic and the same two jsPDF unit gotchas
+  documented above, rather than a second parallel implementation. The
+  resulting rebuilt PDF is, necessarily, a rasterized copy of the original
+  scanned pages (an image background per page, same as the image-capture
+  case) — there is no code path anywhere in this app for merging a new text
+  layer into an existing PDF's own vector/text content, which is exactly
+  why the already-has-real-text check above exists: to make sure this
+  rasterize-and-rebuild path is only ever taken for PDFs that didn't have
+  real content worth preserving in the first place. See
+  `docs/superpowers/specs/2026-09-22-pdf-capture-ocr-design.md` for the
+  full design.
 - **Preserving an original file on ingestion** (`writeOriginalToSubfolder()`,
   called unconditionally from both `saveNewDocument()` and `addInboxFile()`)
   reverses what used to be true only for the searchable-PDF path above:

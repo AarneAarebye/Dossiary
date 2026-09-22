@@ -14,8 +14,21 @@ tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
 option, including edit-time OCR against every page of a multi-page PDF,
 not just the first), PDF page count display (capture/edit/detail, and its
-correct absence for image documents), searchable PDF generation,
-thumbnails/previews (`test_thumbnails.py`'s original Scenarios 1-2 and all
+correct absence for image documents), searchable PDF generation
+(`test_searchable_pdf.py` — a PDF that already has real text skips OCR
+entirely and saves untouched (`searchable_pdf_built` stays `0`, `ocr_text`
+stays empty); a 3-page scanned PDF with no real text gets OCR'd page-by-page
+(verified via the combined `ocr_text` containing three copies of the stub's
+"Hello World" recognition output, and via `window.__JSPDF_CALLS` showing
+exactly one `addImage` call per page) and rebuilt into a multi-page
+searchable PDF; and a PDF saved without ever clicking "Run OCR" is left
+completely alone, matching this repo's own "don't silently do things a
+person didn't ask for" principle. Also note the `tests/stub_studio2.js`
+extension this required: pdf.js's fake `getPage()` gained a `getTextContent()`
+method, controllable via a new `window.__STUB_PDF_HAS_REAL_TEXT` flag
+(default falsy, so every pre-existing PDF-OCR test's behavior is completely
+unaffected unless a test explicitly opts in to simulating an already-text-
+bearing PDF)), thumbnails/previews (`test_thumbnails.py`'s original Scenarios 1-2 and all
 of `test_regenerate.py` exercising real image/PDF-thumbnail generation and
 regeneration, but only against a patched copy of the app with
 `SHOW_DOCUMENT_PREVIEW` forced to `true`, not the shipped default, now that
