@@ -20,7 +20,8 @@ entirely and saves untouched (`searchable_pdf_built` stays `0`, `ocr_text`
 stays empty); a 3-page scanned PDF with no real text gets OCR'd page-by-page
 (verified via the combined `ocr_text` containing three copies of the stub's
 "Hello World" recognition output, and via `window.__JSPDF_CALLS` showing
-exactly one `addImage` call per page) and rebuilt into a multi-page
+exactly one `addImage` call per page and exactly 2 `addPage()` calls (one per
+page after the first, for the 3-page scenario)) and rebuilt into a multi-page
 searchable PDF; and a PDF saved without ever clicking "Run OCR" is left
 completely alone, matching this repo's own "don't silently do things a
 person didn't ask for" principle. Also note the `tests/stub_studio2.js`
