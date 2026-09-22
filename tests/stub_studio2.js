@@ -327,6 +327,15 @@ window.Tesseract = {
     return {
       recognize: async (file, options, output) => {
         window.__STUB_LOG.push('recognize called with output=' + JSON.stringify(output));
+        // Controllable slow-resolving recognize(), for tests exercising a race between
+        // a long-running OCR call and the person picking a different file before it
+        // resolves. Off by default (every existing scenario resolves immediately,
+        // completely unaffected) -- a test opts in by setting window.__STUB_OCR_SLOW
+        // to true before triggering OCR, then calls window.__RESOLVE_SLOW_OCR() once
+        // it's done whatever it needed to do while the call was still in flight.
+        if (window.__STUB_OCR_SLOW) {
+          await new Promise((resolve) => { window.__RESOLVE_SLOW_OCR = resolve; });
+        }
         return {
           data: {
             text: 'Hello World',

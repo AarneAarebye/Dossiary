@@ -203,6 +203,59 @@ async def main():
         print("a PDF saved without ever clicking Run OCR is not rebuilt:", doc4.get('searchable_pdf_built') == 0)
         print("a PDF saved without ever clicking Run OCR has no ocr_text:", not doc4.get('ocr_text'))
 
+        # === Scenario: switching to a different file while a PDF's OCR run is
+        # still in flight must never let that stale run's results land on the
+        # file that's actually current by the time it resolves -- see the
+        # pendingFile !== file guard added to runOcr() for this exact race. ===
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = false;")
+        await page.evaluate("window.__STUB_PDF_NUM_PAGES = 1;")
+        await page.evaluate("window.__STUB_OCR_SLOW = true;")
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        with open('race_a.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 race file A")
+        await page.set_input_files('#file-input', 'race_a.pdf')
+        await page.wait_for_timeout(150)
+
+        await page.click('#run-ocr-btn')
+        # Give the in-flight run enough time to reach the (blocked) recognize()
+        # call -- it awaits window.__RESOLVE_SLOW_OCR being invoked, which hasn't
+        # happened yet, so this run is now genuinely stuck mid-flight.
+        await page.wait_for_timeout(300)
+
+        with open('race_b.png', 'wb') as f:
+            f.write(png_bytes)
+        await page.set_input_files('#file-input', 'race_b.png')
+        await page.wait_for_timeout(150)
+        ocr_text_cleared_on_switch = await page.locator('#f-ocr-text').input_value()
+        print("OCR text box is cleared immediately on switching files, before the stale run even resolves:", ocr_text_cleared_on_switch == '')
+
+        # Now let file A's stale run finish -- it should discover pendingFile no
+        # longer matches what it started with, and bail without touching anything.
+        await page.evaluate("window.__RESOLVE_SLOW_OCR()")
+        await page.wait_for_timeout(300)
+
+        ocr_text_after_stale_run_resolves = await page.locator('#f-ocr-text').input_value()
+        print("OCR text box still empty after the stale PDF run resolves late:", ocr_text_after_stale_run_resolves == '')
+
+        await page.fill('#f-title', 'Switched File During OCR')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+
+        db_state_5 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        doc5 = [d for d in db_state_5['documents'] if d['id'] == 5][0]
+        print("the switched-to file was saved as a plain, untouched file (no rebuild):", doc5.get('searchable_pdf_built') == 0)
+        print("the switched-to file's own ocr_text is empty, not file A's stale 'Hello World':", not doc5.get('ocr_text'))
+        print("the saved file_path is the switched-to PNG, not a rebuilt PDF:", doc5.get('file_path', '').endswith('.png'))
+
+        await page.evaluate("window.__STUB_OCR_SLOW = false;")
+
         print("JS ERRORS:", errors)
         await browser.close()
 

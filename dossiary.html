@@ -7087,6 +7087,7 @@
     pendingOcrText = '';
     pendingOcrWords = null;
     pendingImageDims = null;
+    pendingPdfOcrPages = null;
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
@@ -7241,6 +7242,11 @@
     pendingOcrWords = null;
     pendingImageDims = null;
     pendingPdfOcrPages = null;
+    // Clear any OCR text left over from a previously-picked file -- otherwise it
+    // lingers in the textarea (and in pendingOcrText, which would get saved) across
+    // a file switch, even though it no longer has anything to do with this file.
+    pendingOcrText = '';
+    el('f-ocr-text').value = '';
     el('save-doc-btn').disabled = false;
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf';
@@ -7271,14 +7277,23 @@
 
   async function runOcr(){
     if(!pendingFile) return;
+    // A fixed reference to the file THIS run is for. A multi-page PDF's OCR can take
+    // minutes; if the person picks a different file (or closes/reopens the capture
+    // modal) before this run resolves, `pendingFile` will have moved on to point at
+    // something else by the time any of the awaits below finish. Every assignment of
+    // this run's results is guarded against that below (`pendingFile !== file`), so a
+    // stale run can never silently overwrite a newer file's own pending OCR state --
+    // the same guard idea getPdfPageCount()'s own .then() callback already uses for
+    // the (much shorter-lived) page-count note.
+    const file = pendingFile;
     const lang = el('ocr-lang').value;
     const ocrStatusEl = el('ocr-status');
     el('run-ocr-btn').disabled = true;
     try{
-      if(pendingFile.type === 'application/pdf'){
+      if(file.type === 'application/pdf'){
         ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingPdf');
         const pdfjsLib = await ensurePdfJs();
-        const buf = await pendingFile.arrayBuffer();
+        const buf = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
 
         // Skip OCR entirely for a PDF that already has real, selectable text --
@@ -7301,6 +7316,8 @@
           hasRealText = false;
         }
 
+        if(pendingFile !== file) return; // a different file has been picked since -- bail without touching its state
+
         if(hasRealText){
           pendingPdfOcrPages = null;
           ocrStatusEl.textContent = t('captureOcrPdfAlreadyText');
@@ -7312,6 +7329,7 @@
         const pages = [];
         const pageTexts = [];
         for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+          if(pendingFile !== file){ await worker.terminate(); return; } // bail mid-loop, same reason
           ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrRecognizingPage', {page: pageNum, total: pdf.numPages});
           const canvas = await renderPdfPageToCanvas(pdf, pageNum, 2);
           // Request the {blocks:true} output specifically -- capture-time OCR needs
@@ -7327,6 +7345,8 @@
           });
         }
         await worker.terminate();
+
+        if(pendingFile !== file) return; // bail before applying results if the file changed during the last page's recognize
 
         pendingOcrText = pageTexts.join('\n\n').trim();
         el('f-ocr-text').value = pendingOcrText;
@@ -7347,13 +7367,16 @@
       const worker = await Tesseract.createWorker(lang.split('+'));
       // Request the {blocks:true} output specifically -- by default Tesseract.js v5+
       // only returns plain text, not the per-word bounding boxes a searchable PDF needs.
-      const { data } = await worker.recognize(pendingFile, {}, { blocks: true });
+      const { data } = await worker.recognize(file, {}, { blocks: true });
       await worker.terminate();
+
+      if(pendingFile !== file) return; // bail before applying results if the file changed during recognize
+
       pendingOcrText = data.text || '';
       el('f-ocr-text').value = pendingOcrText;
 
       pendingOcrWords = flattenOcrWords(data);
-      const dataUrl = await fileToDataUrl(pendingFile);
+      const dataUrl = await fileToDataUrl(file);
       pendingImageDims = await loadImageDimensions(dataUrl);
 
       ocrStatusEl.textContent = pendingOcrWords.length
@@ -7362,7 +7385,7 @@
           : t('captureOcrDoneWordsPlural', {count: pendingOcrWords.length}))
         : t('captureOcrDoneNoWords');
     }catch(e){
-      ocrStatusEl.textContent = t('ocrFailedStatus', {error: e.message});
+      if(pendingFile === file) ocrStatusEl.textContent = t('ocrFailedStatus', {error: e.message});
     }finally{
       el('run-ocr-btn').disabled = false;
     }

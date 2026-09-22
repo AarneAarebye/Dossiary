@@ -992,20 +992,28 @@ this repo's git tags.
   `resolveFileHandle(d.file_path)`), only refreshes `e-ocr-text`, and
   deliberately does **not** request word-position data or touch
   `file_path`/rebuild any PDF — consistent with editing being
-  metadata-only (see the "Editing" note above). **`runOcrForEdit()`
-  handles PDFs, `runOcr()` doesn't** — it renders every page via
-  `renderPdfPageToCanvas()` (a higher-resolution sibling of
-  `generateThumbnail()`'s PDF path; OCR accuracy degrades badly at
-  thumbnail resolution, so this is intentionally a separate function
+  metadata-only (see the "Editing" note above). **Both `runOcrForEdit()`
+  and `runOcr()` handle PDFs now** (see the "Searchable PDF generation"
+  note's own 2026-09-22 PDF capture OCR amendment for `runOcr()`'s own PDF
+  path) — the real remaining difference between them isn't PDF support
+  itself, it's what each one does with the result: `runOcr()` requests the
+  per-word position data and can rebuild the file into a searchable PDF at
+  Save, `runOcrForEdit()` stays plain-text/metadata-only, exactly as the
+  paragraph above already describes. `runOcrForEdit()`'s own PDF handling
+  renders every page via `renderPdfPageToCanvas()` (a higher-resolution
+  sibling of `generateThumbnail()`'s PDF path; OCR accuracy degrades badly
+  at thumbnail resolution, so this is intentionally a separate function
   with its own `scale` parameter, not a shared one with a size flag),
   called once per page in a loop (`for(let pageNum = 1; pageNum <=
   pdf.numPages; pageNum++)`), with each page's recognized text joined
   together — not just the first page, see the "How this was tested"
   section's note on multi-page PDF OCR — and passes each resulting
   canvas straight to Tesseract, which accepts canvas elements directly
-  as an image source. If capture-mode OCR is ever extended to support
-  PDFs too, reuse `renderPdfPageToCanvas()` rather than duplicating the
-  pdf.js rendering logic a third time.
+  as an image source. Capture-mode OCR was later extended to support PDFs
+  too (the 2026-09-22 amendment referenced above), and it does exactly
+  what this note used to only suggest doing: it reuses this same
+  `renderPdfPageToCanvas()` helper rather than duplicating the pdf.js
+  rendering logic a third time.
 - **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
   only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
   via delete-then-reinsert of that document's links (not a diff), reusing
@@ -1720,11 +1728,13 @@ this repo's git tags.
   memory. If you add a new column, add the migration in the same change —
   don't just add it to `SCHEMA` and assume everyone's starting fresh;
   people have real libraries with real captured documents already.
-- **OCR (Tesseract.js) only runs on images, not PDFs.** Recognizing a PDF
-  would require first rendering its first page to a canvas client-side (e.g.
-  via pdf.js) before handing it to Tesseract — not implemented. The UI
-  disables the OCR button and explains this for PDF uploads; don't silently
-  attempt OCR on a PDF file object, it will not work as expected.
+- **OCR now runs on both images and PDFs** — see the 2026-09-22 PDF capture
+  OCR amendment under "Searchable PDF generation" further below for the PDF
+  path's own details (page-by-page rendering via `renderPdfPageToCanvas()`,
+  the already-has-real-text skip check, and the multi-page searchable-PDF
+  rebuild). This used to be images-only, with the OCR button hard-disabled
+  for any PDF upload; don't reintroduce that restriction or assume a PDF
+  file object silently fails OCR — it doesn't anymore.
 - **OCR language options** (`#ocr-lang` in capture, `#e-ocr-lang` in edit —
   kept in sync, same option list in both) are just language codes passed to
   `Tesseract.createWorker(lang.split('+'))`; Tesseract.js resolves each code
