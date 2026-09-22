@@ -352,6 +352,9 @@ window.Tesseract = {
 window.__JSPDF_CALLS = [];
 class FakeJsPDFDoc {
   constructor(opts) { window.__JSPDF_CALLS.push({ type: 'construct', opts }); this._textCalls = []; }
+  // Needed by buildSearchablePdf()'s multi-page path (dossiary.html), which calls
+  // doc.addPage([width, height], orientation) once per page after the first.
+  addPage(...args) { window.__JSPDF_CALLS.push({ type: 'addPage', args }); }
   addImage(...args) { window.__JSPDF_CALLS.push({ type: 'addImage', args: [args[0] ? 'dataurl...' : args[0], args[1], args[2], args[3], args[4], args[5]] }); }
   setFontSize(size) { window.__JSPDF_CALLS.push({ type: 'setFontSize', size }); }
   text(str, x, y, options) { this._textCalls.push({ str, x, y, options }); window.__JSPDF_CALLS.push({ type: 'text', str, x, y, options }); }
@@ -372,6 +375,13 @@ window.pdfjsLib = {
         numPages: (window.__STUB_PDF_NUM_PAGES || 1),
         getPage: async (n) => ({
           getViewport: (opts2) => ({ width: 200 * (opts2.scale || 1), height: 260 * (opts2.scale || 1) }),
+          // Controllable via window.__STUB_PDF_HAS_REAL_TEXT (default falsy/false) --
+          // lets a test simulate a PDF that already has real embedded text, without
+          // affecting any existing test that never sets this flag (they all continue
+          // to see empty text content, exactly as before this was added).
+          getTextContent: async () => ({
+            items: window.__STUB_PDF_HAS_REAL_TEXT ? [{ str: 'This PDF already has real embedded text content in it.' }] : [],
+          }),
           render: (renderCtx) => ({
             promise: (async () => {
               const ctx = renderCtx.canvasContext;

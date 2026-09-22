@@ -17,7 +17,7 @@ async def main():
 
         async def route_handler(route):
             url = route.request.url
-            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url:
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
                 await route.fulfill(body="/* stubbed */", content_type='application/javascript')
             else:
                 await route.continue_()
@@ -103,6 +103,104 @@ async def main():
         modal_meta_text = await page.locator('.modal-meta').inner_text()
         print("modal shows File path:", 'File' in modal_meta_text and 'EmptyLibrary/files/1_Scanned Letter.pdf' in modal_meta_text)
         print("modal shows Original path:", 'Original' in modal_meta_text and 'EmptyLibrary/files/1_Scanned Letter/scan.png' in modal_meta_text)
+
+        # === Scenario: a PDF that already has real, selectable text -- OCR is
+        # skipped entirely, and the file saves completely untouched ===
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = true;")
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        with open('already_text.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 already has text")
+        await page.set_input_files('#file-input', 'already_text.pdf')
+        await page.wait_for_timeout(150)
+
+        run_ocr_enabled_for_pdf = not await page.locator('#run-ocr-btn').is_disabled()
+        print("Run OCR button is enabled for a PDF upload:", run_ocr_enabled_for_pdf)
+
+        await page.click('#run-ocr-btn')
+        await page.wait_for_timeout(300)
+        already_text_status = await page.locator('#ocr-status').inner_text()
+        print("status for a PDF that already has real text:", already_text_status)
+
+        await page.fill('#f-title', 'Already Searchable PDF')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+
+        db_state_2 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        doc2 = [d for d in db_state_2['documents'] if d['id'] == 2][0]
+        print("already-searchable PDF was NOT rebuilt (searchable_pdf_built should be 0):", doc2.get('searchable_pdf_built'))
+        print("already-searchable PDF's ocr_text is empty (OCR never ran):", not doc2.get('ocr_text'))
+
+        # === Scenario: a scanned (no real text) multi-page PDF gets OCR'd page by
+        # page and rebuilt into a multi-page searchable PDF ===
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = false;")
+        await page.evaluate("window.__STUB_PDF_NUM_PAGES = 3;")
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        with open('scanned_multipage.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 scanned multipage")
+        await page.set_input_files('#file-input', 'scanned_multipage.pdf')
+        await page.wait_for_timeout(150)
+
+        await page.click('#run-ocr-btn')
+        await page.wait_for_timeout(500)
+        multipage_status = await page.locator('#ocr-status').inner_text()
+        print("status after OCR'ing a 3-page scanned PDF:", multipage_status)
+        multipage_ocr_text = await page.locator('#f-ocr-text').input_value()
+        print("OCR text combines all 3 pages:", multipage_ocr_text.count('Hello World') == 3)
+
+        # Reset the jsPDF call log so the upcoming per-page addImage count reflects only
+        # this document's own save, not also the single-page document saved earlier above.
+        await page.evaluate("window.__JSPDF_CALLS = [];")
+        await page.fill('#f-title', 'Scanned Multipage PDF')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(400)
+
+        jspdf_calls_multipage = await page.evaluate("window.__JSPDF_CALLS")
+        addimage_calls = [c for c in jspdf_calls_multipage if c['type'] == 'addImage']
+        addpage_present = any(c['type'] == 'construct' for c in jspdf_calls_multipage)
+        print("jsPDF got one addImage call per page (3):", len(addimage_calls) == 3)
+
+        db_state_3 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        doc3 = [d for d in db_state_3['documents'] if d['id'] == 3][0]
+        print("scanned multi-page PDF was rebuilt (searchable_pdf_built should be 1):", doc3.get('searchable_pdf_built'))
+        print("scanned multi-page PDF's ocr_text was populated:", bool(doc3.get('ocr_text')))
+
+        # === Scenario: a scanned single-page PDF with no OCR run at all still
+        # saves normally, with the OCR button available but never clicked ===
+        await page.evaluate("window.__STUB_PDF_NUM_PAGES = 1;")
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        with open('unocred.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 never ocred")
+        await page.set_input_files('#file-input', 'unocred.pdf')
+        await page.wait_for_timeout(150)
+        await page.fill('#f-title', 'Never OCRd PDF')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+
+        db_state_4 = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        doc4 = [d for d in db_state_4['documents'] if d['id'] == 4][0]
+        print("a PDF saved without ever clicking Run OCR is not rebuilt:", doc4.get('searchable_pdf_built') == 0)
+        print("a PDF saved without ever clicking Run OCR has no ocr_text:", not doc4.get('ocr_text'))
 
         print("JS ERRORS:", errors)
         await browser.close()

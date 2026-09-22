@@ -967,6 +967,7 @@
       captureOcrDoneWordsSingular: 'Done — {count} word positioned for a searchable PDF.',
       captureOcrDoneWordsPlural: 'Done — {count} words positioned for a searchable PDF.',
       captureOcrDoneNoWords: 'Done, but no words with position data were found.',
+      captureOcrPdfAlreadyText: 'This PDF already has real, searchable text — OCR skipped.',
       ocrFailedStatus: 'OCR failed: {error}', statusSaving: 'Saving…',
       captureSavedStatus: 'Saved "{title}" as #{id}.', statusSaveFailed: 'Save failed: {error}',
       bulkEditModalTitleSingular: 'Edit {count} document', bulkEditModalTitlePlural: 'Edit {count} documents',
@@ -1162,6 +1163,7 @@
       captureOcrDoneWordsSingular: 'Listo — {count} palabra posicionada para un PDF con texto buscable.',
       captureOcrDoneWordsPlural: 'Listo — {count} palabras posicionadas para un PDF con texto buscable.',
       captureOcrDoneNoWords: 'Listo, pero no se encontraron palabras con datos de posición.',
+      captureOcrPdfAlreadyText: 'Este PDF ya tiene texto real y buscable — OCR omitido.',
       ocrFailedStatus: 'Error de OCR: {error}', statusSaving: 'Guardando…',
       captureSavedStatus: 'Se guardó "{title}" como #{id}.', statusSaveFailed: 'Error al guardar: {error}',
       bulkEditModalTitleSingular: 'Editar {count} documento', bulkEditModalTitlePlural: 'Editar {count} documentos',
@@ -1357,6 +1359,7 @@
       captureOcrDoneWordsSingular: 'Terminé — {count} mot positionné pour un PDF avec texte interrogeable.',
       captureOcrDoneWordsPlural: 'Terminé — {count} mots positionnés pour un PDF avec texte interrogeable.',
       captureOcrDoneNoWords: "Terminé, mais aucun mot avec des données de position n'a été trouvé.",
+      captureOcrPdfAlreadyText: 'Ce PDF contient déjà du texte réel et interrogeable — OCR ignoré.',
       ocrFailedStatus: "Échec de l'OCR : {error}", statusSaving: 'Enregistrement…',
       captureSavedStatus: 'Enregistré « {title} » sous #{id}.', statusSaveFailed: "Échec de l'enregistrement : {error}",
       bulkEditModalTitleSingular: 'Modifier {count} document', bulkEditModalTitlePlural: 'Modifier {count} documents',
@@ -1552,6 +1555,7 @@
       captureOcrDoneWordsSingular: 'Fertig — {count} Wort für ein durchsuchbares PDF positioniert.',
       captureOcrDoneWordsPlural: 'Fertig — {count} Wörter für ein durchsuchbares PDF positioniert.',
       captureOcrDoneNoWords: 'Fertig, aber es wurden keine Wörter mit Positionsdaten gefunden.',
+      captureOcrPdfAlreadyText: 'Dieses PDF enthält bereits echten, durchsuchbaren Text — OCR übersprungen.',
       ocrFailedStatus: 'OCR fehlgeschlagen: {error}', statusSaving: 'Wird gespeichert…',
       captureSavedStatus: '"{title}" als #{id} gespeichert.', statusSaveFailed: 'Speichern fehlgeschlagen: {error}',
       bulkEditModalTitleSingular: '{count} Dokument bearbeiten', bulkEditModalTitlePlural: '{count} Dokumente bearbeiten',
@@ -1747,6 +1751,7 @@
       captureOcrDoneWordsSingular: '完成——已为可搜索 PDF 定位 {count} 个单词。',
       captureOcrDoneWordsPlural: '完成——已为可搜索 PDF 定位 {count} 个单词。',
       captureOcrDoneNoWords: '完成，但未找到带位置数据的单词。',
+      captureOcrPdfAlreadyText: '此 PDF 已包含真实的可搜索文本 —— 已跳过 OCR。',
       ocrFailedStatus: 'OCR 失败：{error}', statusSaving: '正在保存…',
       captureSavedStatus: '已将 "{title}" 保存为 #{id}。', statusSaveFailed: '保存失败：{error}',
       bulkEditModalTitleSingular: '编辑 {count} 份文档', bulkEditModalTitlePlural: '编辑 {count} 份文档',
@@ -2037,6 +2042,7 @@
       captureOcrDoneWordsSingular: '完成——已爲可搜索 PDF 定位 {count} 個單詞。',
       captureOcrDoneWordsPlural: '完成——已爲可搜索 PDF 定位 {count} 個單詞。',
       captureOcrDoneNoWords: '完成，但未找到帶位置數據的單詞。',
+      captureOcrPdfAlreadyText: '此 PDF 已包含真實的可搜索文本 —— 已跳過 OCR。',
       ocrFailedStatus: 'OCR 失敗：{error}',
       statusSaving: '正在保存…',
       captureSavedStatus: '已將 "{title}" 保存爲 #{id}。',
@@ -2480,6 +2486,7 @@
   let pendingOcrText = '';
   let pendingOcrWords = null;      // flat array of {text, bbox:{x0,y0,x1,y1}} from Tesseract, or null if no OCR run
   let pendingImageDims = null;     // {width, height} in pixels of the picked image, or null for non-images
+  let pendingPdfOcrPages = null;   // array of {dataUrl, imageFormat, dims, words} per page (one entry per PDF page), or null if no PDF OCR run
 
   const el = (id) => document.getElementById(id);
   const statusEl = el('status');
@@ -2849,27 +2856,44 @@
   // Builds a searchable PDF: the original image as a full-page background, with each
   // OCR'd word placed as invisible, selectable text positioned over its bounding box.
   // This is the same "sandwich" technique tools like ocrmypdf use. Returns a Uint8Array.
-  async function buildSearchablePdf(imageDataUrl, imageFormat, dims, words){
+  // Takes one entry per output page -- { dataUrl, imageFormat, dims, words } --
+  // and builds a multi-page PDF, one full-page image background plus an invisible
+  // OCR'd text overlay per page. A single-image capture (the original use case)
+  // simply passes a one-element array; this is a widening of the function's
+  // contract, not a second parallel implementation, so both the image-capture
+  // path and the PDF-capture path below share the exact same placement logic
+  // and the same two jsPDF unit gotchas documented on each below.
+  async function buildSearchablePdf(pages){
     const { jsPDF } = await ensureJsPdf();
-    const { width, height } = dims;
+    const first = pages[0];
     const doc = new jsPDF({
-      orientation: width > height ? 'landscape' : 'portrait',
+      orientation: first.dims.width > first.dims.height ? 'landscape' : 'portrait',
       unit: 'px',
-      format: [width, height],
+      format: [first.dims.width, first.dims.height],
       compress: true,
       // Without this, jsPDF's 'px' unit uses a non-1:1 scale factor historically kept
       // for backwards compatibility. This hotfix makes 1 unit == 1 real image pixel,
       // matching the coordinates addImage() and Tesseract's bbox both use.
       hotfixes: ['px_scaling'],
     });
-    doc.addImage(imageDataUrl, imageFormat, 0, 0, width, height);
 
     const PX_TO_PT = 0.75; // setFontSize() always takes points, regardless of document unit
-    for(const word of words){
-      const { y0, y1, x0 } = word.bbox;
-      const wordHeightPx = Math.max(1, y1 - y0);
-      doc.setFontSize(wordHeightPx * PX_TO_PT);
-      doc.text(word.text, x0, y1, { renderingMode: 'invisible', baseline: 'alphabetic' });
+    const addPageContent = (page) => {
+      const { width, height } = page.dims;
+      doc.addImage(page.dataUrl, page.imageFormat, 0, 0, width, height);
+      for(const word of page.words){
+        const { y0, y1, x0 } = word.bbox;
+        const wordHeightPx = Math.max(1, y1 - y0);
+        doc.setFontSize(wordHeightPx * PX_TO_PT);
+        doc.text(word.text, x0, y1, { renderingMode: 'invisible', baseline: 'alphabetic' });
+      }
+    };
+
+    addPageContent(first);
+    for(let i = 1; i < pages.length; i++){
+      const page = pages[i];
+      doc.addPage([page.dims.width, page.dims.height], page.dims.width > page.dims.height ? 'landscape' : 'portrait');
+      addPageContent(page);
     }
 
     return doc.output('arraybuffer');
@@ -7216,10 +7240,12 @@
     pendingFile = file;
     pendingOcrWords = null;
     pendingImageDims = null;
+    pendingPdfOcrPages = null;
     el('save-doc-btn').disabled = false;
     const isImage = file.type.startsWith('image/');
-    el('run-ocr-btn').disabled = !isImage;
-    el('ocr-lang').disabled = !isImage;
+    const isPdf = file.type === 'application/pdf';
+    el('run-ocr-btn').disabled = !isImage && !isPdf;
+    el('ocr-lang').disabled = !isImage && !isPdf;
 
     const previewArea = el('file-preview-area');
     if(isImage){
@@ -7229,8 +7255,8 @@
         : t('pickedOcrOtherImageNote');
       previewArea.innerHTML = `<div class="file-preview"><img src="${url}" alt="${t('sharedDocumentPreviewAlt')}"/><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}</div><div class="doc-sub">${pdfNote}</div></div></div>`;
     }else{
-      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}${file.type === 'application/pdf' ? t('pickedOcrNotAvailablePdf') : ''}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
-      if(file.type === 'application/pdf'){
+      previewArea.innerHTML = `<div class="file-preview"><div class="file-icon">${escapeHtml(file.name.split('.').pop().toUpperCase())}</div><div><div class="doc-title">${escapeHtml(file.name)}</div><div class="doc-sub">${t('pickedFileSizeKb', {size: (file.size/1024).toFixed(0)})}</div><div class="doc-sub" id="f-page-count"></div></div></div>`;
+      if(isPdf){
         // Fire-and-forget: don't block showing the rest of the preview on this.
         // Guarded by pendingFile === file so a fast pick-another-file doesn't let a
         // stale count land on the new file's preview after this one resolves late.
@@ -7248,8 +7274,74 @@
     const lang = el('ocr-lang').value;
     const ocrStatusEl = el('ocr-status');
     el('run-ocr-btn').disabled = true;
-    ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingEngine');
     try{
+      if(pendingFile.type === 'application/pdf'){
+        ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingPdf');
+        const pdfjsLib = await ensurePdfJs();
+        const buf = await pendingFile.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+        // Skip OCR entirely for a PDF that already has real, selectable text --
+        // rebuilding it as a rasterized image-plus-text-layer would only degrade
+        // an already-searchable document for no benefit. A simple length check is
+        // enough here; this only needs to distinguish "this page has real embedded
+        // text" from "this page is an image with nothing behind it", not classify
+        // exactly how much text there is.
+        let hasRealText = false;
+        try{
+          for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+            const page = await pdf.getPage(pageNum);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str || '').join('').trim();
+            if(pageText.length >= 20){ hasRealText = true; break; }
+          }
+        }catch(e){
+          // Fail open toward attempting OCR rather than silently skipping it if the
+          // text-content check itself throws.
+          hasRealText = false;
+        }
+
+        if(hasRealText){
+          pendingPdfOcrPages = null;
+          ocrStatusEl.textContent = t('captureOcrPdfAlreadyText');
+          return;
+        }
+
+        const Tesseract = await ensureTesseract();
+        const worker = await Tesseract.createWorker(lang.split('+'));
+        const pages = [];
+        const pageTexts = [];
+        for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+          ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrRecognizingPage', {page: pageNum, total: pdf.numPages});
+          const canvas = await renderPdfPageToCanvas(pdf, pageNum, 2);
+          // Request the {blocks:true} output specifically -- capture-time OCR needs
+          // per-word bounding boxes for the searchable-PDF rebuild below, unlike
+          // runOcrForEdit()'s own PDF path, which only needs plain text.
+          const { data } = await worker.recognize(canvas, {}, { blocks: true });
+          pageTexts.push(data.text || '');
+          pages.push({
+            dataUrl: canvas.toDataURL('image/png'),
+            imageFormat: 'PNG',
+            dims: { width: canvas.width, height: canvas.height },
+            words: flattenOcrWords(data),
+          });
+        }
+        await worker.terminate();
+
+        pendingOcrText = pageTexts.join('\n\n').trim();
+        el('f-ocr-text').value = pendingOcrText;
+        pendingPdfOcrPages = pages;
+
+        const totalWords = pages.reduce((sum, p) => sum + p.words.length, 0);
+        ocrStatusEl.textContent = totalWords
+          ? (totalWords === 1
+            ? t('captureOcrDoneWordsSingular', {count: totalWords})
+            : t('captureOcrDoneWordsPlural', {count: totalWords}))
+          : t('captureOcrDoneNoWords');
+        return;
+      }
+
+      ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrLoadingEngine');
       const Tesseract = await ensureTesseract();
       ocrStatusEl.innerHTML = '<span class="spinner"></span> ' + t('ocrRecognizing');
       const worker = await Tesseract.createWorker(lang.split('+'));
@@ -7385,8 +7477,11 @@
 
     try{
       const id = nextDocId++;
-      const canBuildSearchablePdf = pendingOcrWords && pendingOcrWords.length && pendingImageDims
+      const isImageWithOcr = pendingOcrWords && pendingOcrWords.length && pendingImageDims
         && (pendingFile.type === 'image/jpeg' || pendingFile.type === 'image/png');
+      const isPdfWithOcr = pendingFile.type === 'application/pdf' && pendingPdfOcrPages && pendingPdfOcrPages.length
+        && pendingPdfOcrPages.some(p => p.words.length);
+      const canBuildSearchablePdf = isImageWithOcr || isPdfWithOcr;
 
       let filePathForDb, sidecarBaseName;
 
@@ -7397,9 +7492,14 @@
       let searchablePdfBuilt = 0;
 
       if(canBuildSearchablePdf){
-        const imageFormat = pendingFile.type === 'image/jpeg' ? 'JPEG' : 'PNG';
-        const dataUrl = await fileToDataUrl(pendingFile);
-        const pdfBytes = await buildSearchablePdf(dataUrl, imageFormat, pendingImageDims, pendingOcrWords);
+        let pdfBytes;
+        if(isPdfWithOcr){
+          pdfBytes = await buildSearchablePdf(pendingPdfOcrPages);
+        }else{
+          const imageFormat = pendingFile.type === 'image/jpeg' ? 'JPEG' : 'PNG';
+          const dataUrl = await fileToDataUrl(pendingFile);
+          pdfBytes = await buildSearchablePdf([{ dataUrl, imageFormat, dims: pendingImageDims, words: pendingOcrWords }]);
+        }
 
         const processedName = `${id}_${baseName}.pdf`;
         const processedHandle = await filesDirHandle.getFileHandle(processedName, { create: true });
