@@ -164,8 +164,9 @@ async def main():
 
         jspdf_calls_multipage = await page.evaluate("window.__JSPDF_CALLS")
         addimage_calls = [c for c in jspdf_calls_multipage if c['type'] == 'addImage']
-        addpage_present = any(c['type'] == 'construct' for c in jspdf_calls_multipage)
+        addpage_calls = [c for c in jspdf_calls_multipage if c['type'] == 'addPage']
         print("jsPDF got one addImage call per page (3):", len(addimage_calls) == 3)
+        print("jsPDF got one addPage call per page after the first (2):", len(addpage_calls) == 2)
 
         db_state_3 = await page.evaluate("""
             (async () => {
