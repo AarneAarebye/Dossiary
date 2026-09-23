@@ -1312,6 +1312,67 @@ this repo's git tags.
   `#app-nav`/`.toolbar`/etc.; the browser's own print dialog already offers "Save
   as PDF" on every platform this app targets, so no separate PDF-generation path
   was needed.
+  **Report drill-down (2026-09-22 amendment)**: every Reports row -- each
+  breakdown value, the "(none)" row, and each currency group's own Grand
+  Total row -- is clickable, jumping to an ordinary, filtered view of the
+  real document table showing exactly the documents that contributed to it.
+  `computeReportGroups()` gained a `docIds` array per row (and a
+  `grandTotalDocIds` array on the group, computed the same
+  independently-of-the-rows way `grandTotal` itself already is) --
+  `renderReportsView()` wires a click handler on each `<tr>` (breakdown rows
+  and the `<tfoot>` Grand Total row alike, both carrying `.report-row` plus
+  `data-group-idx`/`data-row-idx` attributes so the listener can look the
+  right row back up in `groups`, which stays in closure scope) that calls
+  `drillIntoReportRow(docIds, label)`. This reuses the exact same
+  `currentView`/`matchesView()`/`setView()` machinery every other nav view
+  already runs through, rather than a bespoke rendering path: a new
+  `'report-drilldown'` value added to `setView()`'s allowlist, and a new
+  `matchesView()` branch (`reportDrilldownIds.has(d.id)`, same
+  archived/needs-review-inclusive semantics as Reports and Collections,
+  since this is conceptually the same kind of saved/curated view) is all it
+  took to get the detail panel, right-click context menu, and bulk actions
+  working here for free -- none of them needed to change at all.
+  `reportDrilldownIds` (a `Set`) and `reportDrilldownLabel` (a string) are
+  session-only module-level state, reset in `resetAll()` -- there is
+  deliberately no persistence here, matching the spec's explicit scope cut
+  ("this is an ephemeral, per-click state -- not a saved Collection").
+  **`docIds` is a frozen snapshot, not a live filter**: it's captured once,
+  at the moment a row is clicked, from whichever documents
+  `computeReportGroups()` happened to iterate into that row at that moment
+  -- editing a document afterward (e.g. changing its Category away from the
+  value just drilled into) doesn't remove it from the still-open drill-down;
+  only a *future* click on a freshly-rendered report produces a new
+  snapshot. Deleting a document (Waste bin) still removes it immediately,
+  since `matchesView()`'s existing `deleted` exclusion runs before every
+  other branch, including this new one, exactly like every other view.
+  A banner (`#report-drilldown-banner`, reusing the `.inbox-banner` CSS
+  class verbatim for identical styling -- deliberately not a new CSS block)
+  shows the row's label, a document count (`reportDrilldownCountSingular`/
+  `Plural`, the same count-dependent key-pair convention every other
+  count-dependent string in this app uses), and a "← Back to Reports" link
+  that calls `setView('reports')` -- the same conditional-banner pattern
+  `#inbox-banner`/`updateInboxBanner()` already established for the Inbox
+  view's own staged-files notice, right down to being driven from
+  `render()`'s own normal document-table path via a new
+  `updateReportDrilldownBanner()` call. Because `setView()` only resets
+  `currentView`/`selectedDocIds` -- never search text, the breakdown-field
+  dropdown, or the Reports-only date-range filter -- "Back to Reports"
+  naturally restores the Reports view exactly as it was left, with no extra
+  state-preservation code needed. **The Grand Total row's own label**
+  (`reportDrilldownGrandTotalLabel`, e.g. "Grand total (EUR)") and a
+  **multi-valued breakdown row's label** (`reportDrilldownMultiValueLabel`,
+  e.g. "People includes: Jana" -- distinct from
+  `reportDrilldownRowLabel`'s plain "Category: Mail" for a single-valued
+  breakdown) are two separate i18n keys, chosen by the same `group.multiValued`
+  flag `renderReportsView()`'s own caption already reads, so a multi-valued
+  drill-down's banner is explicit that the shown set isn't an exclusive
+  partition -- the same document can legitimately appear in more than one
+  row's drill-down (e.g. a document with both "Alice" and "Bob" values
+  appears in both people's drill-downs), mirroring the existing "counted
+  once per name" caption Reports already shows for multi-valued
+  breakdowns. See
+  `docs/superpowers/specs/2026-09-22-reports-drilldown-design.md` for the
+  full design.
 - **Collections** (`collections` + `collection_documents` tables,
   `openManageCollectionsModal()`, `createManualCollection()`,
   `addDocumentsToCollection()`) are user-created document groupings, manually

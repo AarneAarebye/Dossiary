@@ -164,8 +164,22 @@ computed Grand total; the multi-valued People-breakdown row-inflation
 caveat and its on-screen caption, switched to without leaving the Reports
 view; the date-range filter narrowing totals by the document's own Date
 field and correctly excluding a document with no date set once a bound is
-active; and the print button/`@media print` layout hiding the nav and
-toolbar), Collections (`test_collections.py` — manual and smart collection
+active; the print button/`@media print` layout hiding the nav and
+toolbar; and, extending this same file, the drill-down feature added on
+top of it -- clicking a breakdown row landing on an ordinary, filtered
+document-table view of exactly the documents that contributed to that row
+(a Category breakdown's "Travel" row resolving to exactly the 3 documents
+that share it); "Back to Reports" restoring the Reports view; clicking a
+currency group's own Grand Total row showing every document in that
+group, independent of the breakdown field; clicking a "(none)" row
+showing only documents genuinely missing that field; "Back to Reports"
+specifically preserving the breakdown-field dropdown's own selection and
+the Reports-only date-range filter, not just returning to the view;
+and a multi-valued (People) breakdown's drill-down proving the per-row
+snapshot isn't artificially made exclusive -- a document with two People
+values (Alice and Bob) shows up in both that Alice row's own drill-down
+and that Bob row's own drill-down, not just whichever one happened to be
+clicked first), Collections (`test_collections.py` — manual and smart collection
 view routing and live re-evaluation of Smart Collection criteria whenever
 filters change; toolbar filters composing correctly on top of a
 collection's own scope; "Save as Smart Collection" visibility (scoped to
