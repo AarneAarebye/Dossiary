@@ -1230,7 +1230,8 @@ this repo's git tags.
   those filters compose correctly with whichever view is active for free,
   which the old separate Review Queue/Waste Bin renderers never supported
   (neither had its own search or category filtering at all).
-  **`currentView`** (`'all'` | `'inbox'` | `'trash'`) is session-only,
+  **`currentView`** (`'all'` | `'inbox'` | `'trash'` | `'reports'` |
+  `'report-drilldown'` | `'collection-<id>'`) is session-only,
   never persisted — always starts `'all'` on every library open, via
   `resetAll()`. Switching views does **not** reset search text, filter
   selects, or "Show archived" — only the document set changes.
@@ -2290,7 +2291,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 344 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 351 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2522,7 +2523,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (344 keys apiece now, not ~260), and
+  grew from two top-level keys to six (351 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.

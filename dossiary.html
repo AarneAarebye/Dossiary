@@ -278,20 +278,20 @@
      320-640px range now that it's fixed at one row. See CLAUDE.md for the
      full story, including a now-closed 320px+bulk-bar footer-overlap
      corner that this fix resolved as a side effect. */
-  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 414px); }
-  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 374px); }
-  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 488px); }
-  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 448px); }
+  .table-wrap{ padding:0 32px 70px; overflow:auto; max-height:calc(100vh - 414px - var(--drilldown-banner-height, 0px)); }
+  #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 374px - var(--drilldown-banner-height, 0px)); }
+  #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 488px - var(--drilldown-banner-height, 0px)); }
+  #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 448px - var(--drilldown-banner-height, 0px)); }
   .table-detail-row{ display:flex; align-items:flex-start; }
   .table-detail-row .table-wrap{ flex:1; min-width:0; }
   .detail-panel{
     display:none; flex-direction:column; flex:0 0 340px; width:340px;
     background:var(--panel); border-left:1px solid var(--line);
-    padding:20px 24px; overflow:auto; max-height:calc(100vh - 414px);
+    padding:20px 24px; overflow:auto; max-height:calc(100vh - 414px - var(--drilldown-banner-height, 0px));
   }
-  #main-layout.nav-style-sidebar .detail-panel{ max-height:calc(100vh - 374px); }
-  #main-layout.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 488px); }
-  #main-layout.nav-style-sidebar.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 448px); }
+  #main-layout.nav-style-sidebar .detail-panel{ max-height:calc(100vh - 374px - var(--drilldown-banner-height, 0px)); }
+  #main-layout.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 488px - var(--drilldown-banner-height, 0px)); }
+  #main-layout.nav-style-sidebar.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 448px - var(--drilldown-banner-height, 0px)); }
   #main-layout.detail-panel-expanded .detail-panel{ display:flex; }
   /* Reports renders its own aggregate content, not the shared document table --
      the panel has no row to reflect there and must never stay visible (or
@@ -542,11 +542,11 @@
     .row-edit-btn{ display:inline-block; opacity:0; }
     #doc-tbody tr:hover .row-edit-btn{ opacity:1; }
     .row-edit-btn:hover{ color:var(--phosphor); background:rgba(79,224,166,0.12); }
-    header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; flex-wrap:nowrap; overflow-x:auto; } .table-wrap{ padding:0 16px 32px; max-height:calc(100vh - 392px); }
+    header{ padding:20px 16px 16px; } .toolbar{ padding:14px 16px; flex-wrap:nowrap; overflow-x:auto; } .table-wrap{ padding:0 16px 32px; max-height:calc(100vh - 392px - var(--drilldown-banner-height, 0px)); }
     .toolbar > *{ flex-shrink:0; }
-    #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 416px); }
-    #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 494px); padding-bottom:0; }
-    #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 518px); padding-bottom:0; }
+    #main-layout.nav-style-sidebar .table-wrap{ max-height:calc(100vh - 416px - var(--drilldown-banner-height, 0px)); }
+    #main-layout.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 494px - var(--drilldown-banner-height, 0px)); padding-bottom:0; }
+    #main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap{ max-height:calc(100vh - 518px - var(--drilldown-banner-height, 0px)); padding-bottom:0; }
     #main-layout.detail-panel-expanded .detail-panel{ display:none; }
     .stats{ display:none; } .modal{ padding:20px 16px 22px; } .field-row{ flex-direction:column; }
     footer{ padding:16px 16px 20px; } .inbox-banner{ margin:0 16px 14px; flex-direction:column; align-items:flex-start; }
@@ -4850,12 +4850,24 @@
     const banner = el('report-drilldown-banner');
     if(currentView === 'report-drilldown'){
       banner.style.display = 'flex';
-      const count = reportDrilldownIds.size;
+      const count = allDocs.filter(d => matchesView(d, 'report-drilldown', showArchivedToggle.checked)).length;
       const countText = count === 1 ? t('reportDrilldownCountSingular', {count}) : t('reportDrilldownCountPlural', {count});
       el('report-drilldown-banner-text').textContent = `${reportDrilldownLabel} — ${countText}`;
     } else {
       banner.style.display = 'none';
     }
+    // Account for the banner's own rendered height in .table-wrap/.detail-panel's
+    // scroll budget (see the CSS var this feeds, --drilldown-banner-height) --
+    // computed dynamically here rather than yet more hardcoded max-height
+    // combos, since a fixed-pixel guess is exactly the class of fragile fix
+    // CLAUDE.md's own .table-wrap note warns has caused repeated real bugs.
+    // Measuring after display is set means getBoundingClientRect() reflects
+    // the banner's real, current rendered size (it can itself wrap onto two
+    // lines at narrow widths, same as .toolbar can -- this self-corrects for
+    // that instead of assuming a fixed height). The +14 matches .inbox-banner's
+    // own bottom margin (see its CSS rule), since this banner reuses that class.
+    const bannerHeight = banner.style.display === 'flex' ? Math.ceil(banner.getBoundingClientRect().height) + 14 : 0;
+    document.documentElement.style.setProperty('--drilldown-banner-height', bannerHeight + 'px');
   }
 
   // Formats a raw document_field_values string for display, based on the field's
@@ -5177,12 +5189,16 @@
     updateReportDrilldownBanner();
     // For collections, compute the denominator directly since navCounts only has keys for all/inbox/trash.
     // report-drilldown has no navCounts entry either (it's not one of the four
-    // persistent nav views) -- its own denominator is just the snapshot's own size.
+    // persistent nav views) -- its own denominator is the live count of documents
+    // still matching the frozen snapshot (reportDrilldownIds.size would instead
+    // report the raw, never-shrinking snapshot size, which goes stale the moment
+    // a document in it is deleted -- see updateReportDrilldownBanner()'s own
+    // identical live-count computation, which this mirrors).
     let denominator;
     if(currentView.startsWith('collection-')){
       denominator = allDocs.filter(d => matchesView(d, currentView, showArchivedToggle.checked)).length;
     } else if(currentView === 'report-drilldown'){
-      denominator = reportDrilldownIds.size;
+      denominator = allDocs.filter(d => matchesView(d, 'report-drilldown', showArchivedToggle.checked)).length;
     } else {
       denominator = navCounts[currentView];
     }

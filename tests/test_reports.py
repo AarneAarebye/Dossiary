@@ -371,6 +371,32 @@ async def main():
         await page.click('#report-drilldown-back-btn')
         await page.wait_for_timeout(150)
 
+        # === Scenario 19: deleting a document while its drill-down is open updates
+        # both the banner's own count and the "Showing X of Y" count-line's
+        # denominator immediately -- neither should keep reporting the frozen
+        # snapshot's raw, pre-deletion size. Drill into Travel/EUR (docs 1, 2, 7 --
+        # 3 documents, per Scenario 13), then delete doc 2 from its detail panel. ===
+        await page.select_option('#report-breakdown-field', 'category')
+        await page.wait_for_timeout(150)
+        await click_report_row_by_label(page, 0, 'Travel')
+        await page.wait_for_timeout(150)
+        banner_text_before_delete = await page.locator('#report-drilldown-banner-text').inner_text()
+        count_line_before_delete = await page.locator('#count-line').inner_text()
+        print("Before delete, banner mentions a count of 3:", "3" in banner_text_before_delete)
+        print("Before delete, count-line mentions a total of 3:", "3" in count_line_before_delete)
+        await page.click('tr[data-id="2"]')
+        await page.wait_for_timeout(200)
+        await page.click('#delete-toggle-btn')
+        await page.wait_for_timeout(200)
+        remaining_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => Number(e.dataset.id)).sort((a,b) => a-b)')
+        banner_text_after_delete = await page.locator('#report-drilldown-banner-text').inner_text()
+        count_line_after_delete = await page.locator('#count-line').inner_text()
+        print("After deleting doc 2, drill-down table shows only docs 1 and 7:", remaining_ids)
+        print("After delete, banner now shows a count of 2 (not the stale frozen 3):", "2" in banner_text_after_delete and "3" not in banner_text_after_delete)
+        print("After delete, count-line denominator now shows 2 (not the stale frozen 3):", "of 2" in count_line_after_delete)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
