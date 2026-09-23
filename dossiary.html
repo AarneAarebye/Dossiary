@@ -5158,6 +5158,8 @@
       // selectedDocIds on every view switch, so this just makes the bar's own DOM
       // catch up to that (already-empty) selection state, same as every other view.
       renderBulkActionBar();
+      // Hide the drill-down banner when navigating back to Reports view
+      el('report-drilldown-banner').style.display = 'none';
       return;
     }
     mainLayout.classList.remove('view-reports');
