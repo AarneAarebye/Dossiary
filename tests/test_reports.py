@@ -100,6 +100,21 @@ SEED = {
     ],
 }
 
+async def click_report_row_by_label(page, currency_group_index, label_text):
+    """Clicks the row (breakdown row or Grand Total row) in the given currency
+    group whose first cell reads exactly label_text. Locating by cell text,
+    not row index, keeps these scenarios robust to sort-order changes in
+    computeReportGroups()."""
+    group = page.locator('.report-currency-group').nth(currency_group_index)
+    rows = group.locator('.report-table tbody tr, .report-table tfoot tr')
+    n = await rows.count()
+    for i in range(n):
+        text = (await rows.nth(i).locator('td').first.inner_text()).strip()
+        if text == label_text:
+            await rows.nth(i).click()
+            return
+    raise AssertionError(f"No report row with label {label_text!r} found in currency group {currency_group_index}")
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -270,6 +285,91 @@ async def main():
         report_td_color = await page.locator('.report-table td').first.evaluate("el => getComputedStyle(el).color")
         print("Report table text is black under print media:", report_td_color == 'rgb(0, 0, 0)')
         await page.emulate_media(media="screen")
+
+        # === Scenario 13: clicking a breakdown row (Category "Travel" in the EUR
+        # group -- docs 1, 2, 7, per Scenario 7's own breakdown) lands on the
+        # report-drilldown view showing exactly those documents, with the correct
+        # banner text and document count ===
+        await page.click('#nav-item-reports')
+        await page.wait_for_timeout(150)
+        await click_report_row_by_label(page, 0, 'Travel')
+        await page.wait_for_timeout(150)
+        table_visible_drilldown = await page.locator('#table-wrap').is_visible()
+        drilldown_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => Number(e.dataset.id)).sort((a,b) => a-b)')
+        banner_visible = await page.locator('#report-drilldown-banner').is_visible()
+        banner_text = await page.locator('#report-drilldown-banner-text').inner_text()
+        print("Table visible after clicking a breakdown row:", table_visible_drilldown)
+        print("Drill-down shows exactly docs 1, 2, 7 (Travel/EUR):", drilldown_ids)
+        print("Drill-down banner visible:", banner_visible)
+        print("Drill-down banner text names the row and a count:", "Travel" in banner_text and "3" in banner_text)
+
+        # === Scenario 14: "Back to Reports" returns to the Reports view ===
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
+        back_view_is_reports = await page.locator('#reports-view').is_visible()
+        back_banner_hidden = not await page.locator('#report-drilldown-banner').is_visible()
+        print("Back to Reports restores the Reports view:", back_view_is_reports)
+        print("Drill-down banner hidden again after Back:", back_banner_hidden)
+
+        # === Scenario 15: clicking the Grand Total row shows every document in
+        # that currency group (EUR: docs 1, 2, 4, 7) ===
+        await click_report_row_by_label(page, 0, 'Grand total')
+        await page.wait_for_timeout(150)
+        grand_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => Number(e.dataset.id)).sort((a,b) => a-b)')
+        grand_banner_text = await page.locator('#report-drilldown-banner-text').inner_text()
+        print("Grand Total drill-down shows all 4 EUR-group docs (1, 2, 4, 7):", grand_ids)
+        print("Grand Total banner mentions the currency and a count of 4:", "EUR" in grand_banner_text and "4" in grand_banner_text)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 16: clicking a "(none)" row -- switch breakdown to People
+        # first (docs 4 and 7 have no People at all, per Scenario 8's own setup) ===
+        await page.select_option('#report-breakdown-field', 'people')
+        await page.wait_for_timeout(150)
+        await click_report_row_by_label(page, 0, '(none)')
+        await page.wait_for_timeout(150)
+        none_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => Number(e.dataset.id)).sort((a,b) => a-b)')
+        print("'(none)' row drill-down shows only docs missing People (4, 7):", none_ids)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 17: "Back to Reports" preserves the breakdown-field
+        # selection and date-range filter -- set both before drilling in ===
+        await page.select_option('#report-breakdown-field', 'people')
+        await page.fill('#report-date-from', '2026-01-01')
+        await page.wait_for_timeout(150)
+        await click_report_row_by_label(page, 0, 'Grand total')
+        await page.wait_for_timeout(150)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
+        breakdown_after_back = await page.locator('#report-breakdown-field').input_value()
+        date_from_after_back = await page.locator('#report-date-from').input_value()
+        print("Breakdown field selection survives Back to Reports:", breakdown_after_back == 'people')
+        print("Date-range filter survives Back to Reports:", date_from_after_back == '2026-01-01')
+        await page.fill('#report-date-from', '')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 18: a multi-valued (People) row's drill-down includes a
+        # document that also belongs to another row, proving the snapshot isn't
+        # artificially made exclusive -- doc 1 has both Alice and Bob, so it must
+        # appear in BOTH the Alice-row drill-down and the Bob-row drill-down ===
+        await page.select_option('#report-breakdown-field', 'people')
+        await page.wait_for_timeout(150)
+        await click_report_row_by_label(page, 0, 'Alice')
+        await page.wait_for_timeout(150)
+        alice_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => Number(e.dataset.id)).sort((a,b) => a-b)')
+        print("Alice-row drill-down (docs 1, 2):", alice_ids)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
+        await page.select_option('#report-breakdown-field', 'people')
+        await page.wait_for_timeout(150)
+        await click_report_row_by_label(page, 0, 'Bob')
+        await page.wait_for_timeout(150)
+        bob_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => Number(e.dataset.id)).sort((a,b) => a-b)')
+        print("Bob-row drill-down (doc 1 only):", bob_ids)
+        print("Doc 1 belongs to both the Alice and Bob drill-downs (not made artificially exclusive):", 1 in alice_ids and 1 in bob_ids)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(150)
 
         print("JS ERRORS:", errors)
         await browser.close()

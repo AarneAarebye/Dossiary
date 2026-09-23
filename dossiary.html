@@ -332,13 +332,15 @@
   .report-caption{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin:0 0 10px; }
   .report-table{ min-width:0; }
   .report-table tfoot td{ font-weight:600; border-top:2px solid var(--line); padding:11px 14px; }
-  /* Report headers aren't sortable and report rows aren't clickable, unlike the
-     generic .table/thead/tbody styling this reuses -- override the inherited
-     clickable/sortable hover cues so they don't mislead. */
+  /* Report headers still aren't sortable -- override the inherited sortable hover
+     cue so it doesn't mislead. Body/footer rows, unlike headers, ARE now
+     clickable (see drillIntoReportRow()), so they get a pointer cursor and a
+     hover highlight instead of the inherited-but-wrong "clickable row" default
+     this app's plain .table styling already establishes elsewhere. */
   .report-table thead th{ cursor:default; }
   .report-table thead th:hover{ color:var(--text-dim); }
-  .report-table tbody tr{ cursor:default; }
-  .report-table tbody tr:hover{ background:transparent; }
+  .report-table tbody tr, .report-table tfoot tr{ cursor:pointer; }
+  .report-table tbody tr:hover, .report-table tfoot tr:hover{ background:var(--ink-2); }
   #reports-empty{ font-family:var(--font-mono); font-size:13px; color:var(--text-dim); }
   .report-print-btn{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 14px; border-radius:var(--radius); cursor:pointer; margin-bottom:16px; }
   .report-print-btn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
@@ -732,6 +734,11 @@
 
       <div class="count-line" id="count-line" style="display:none;"></div>
 
+      <div class="inbox-banner" id="report-drilldown-banner" style="display:none;">
+        <span id="report-drilldown-banner-text"></span>
+        <button type="button" id="report-drilldown-back-btn" data-i18n="reportDrilldownBackLink">← Back to Reports</button>
+      </div>
+
       <div class="bulk-action-bar" id="bulk-action-bar" style="display:none;">
         <span id="bulk-action-count"></span>
         <div class="bulk-collection-menu-wrap" id="bulk-collection-menu-wrap">
@@ -1004,6 +1011,9 @@
       reportsColCount: 'Count', reportsColTotal: 'Total', reportsGrandTotal: 'Grand total',
       reportsNoDocuments: 'No documents match the current filters.', reportsPrintButton: '🖨 Print',
       reportsBreakdownCategory: 'Category', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'People',
+      reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} includes: {value}',
+      reportDrilldownGrandTotalLabel: 'Grand total ({currency})', reportDrilldownBackLink: '← Back to Reports',
+      reportDrilldownCountSingular: '{count} document', reportDrilldownCountPlural: '{count} documents',
       librariesTitle: 'Open source libraries',
       librariesIntro: 'Loaded from a CDN at runtime, only when a feature that needs it is actually used. None of it ever sees your documents except locally, in your own browser.',
       librariesUseSqlJs: 'Reading/writing library.sqlite (SQLite compiled to WebAssembly)',
@@ -1200,6 +1210,9 @@
       reportsColCount: 'Recuento', reportsColTotal: 'Total', reportsGrandTotal: 'Total general',
       reportsNoDocuments: 'Ningún documento coincide con los filtros actuales.', reportsPrintButton: '🖨 Imprimir',
       reportsBreakdownCategory: 'Categoría', reportsBreakdownType: 'Tipo', reportsBreakdownPeople: 'Personas',
+      reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} incluye: {value}',
+      reportDrilldownGrandTotalLabel: 'Total general ({currency})', reportDrilldownBackLink: '← Volver a Informes',
+      reportDrilldownCountSingular: '{count} documento', reportDrilldownCountPlural: '{count} documentos',
       librariesTitle: 'Bibliotecas de código abierto',
       librariesIntro: 'Se cargan desde una CDN en tiempo de ejecución, solo cuando realmente se usa una función que las necesita. Ninguna de ellas ve tus documentos, salvo localmente, en tu propio navegador.',
       librariesUseSqlJs: 'Lectura/escritura de library.sqlite (SQLite compilado a WebAssembly)',
@@ -1396,6 +1409,9 @@
       reportsColCount: 'Nombre', reportsColTotal: 'Total', reportsGrandTotal: 'Total général',
       reportsNoDocuments: 'Aucun document ne correspond aux filtres actuels.', reportsPrintButton: '🖨 Imprimer',
       reportsBreakdownCategory: 'Catégorie', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'Personnes',
+      reportDrilldownRowLabel: '{field} : {value}', reportDrilldownMultiValueLabel: '{field} inclut : {value}',
+      reportDrilldownGrandTotalLabel: 'Total général ({currency})', reportDrilldownBackLink: '← Retour aux rapports',
+      reportDrilldownCountSingular: '{count} document', reportDrilldownCountPlural: '{count} documents',
       librariesTitle: 'Bibliothèques open source',
       librariesIntro: "Chargées depuis un CDN au moment de l'exécution, uniquement lorsqu'une fonctionnalité qui en a besoin est réellement utilisée. Aucune d'elles ne voit jamais vos documents, sauf localement, dans votre propre navigateur.",
       librariesUseSqlJs: 'Lecture/écriture de library.sqlite (SQLite compilé en WebAssembly)',
@@ -1592,6 +1608,9 @@
       reportsColCount: 'Anzahl', reportsColTotal: 'Summe', reportsGrandTotal: 'Gesamtsumme',
       reportsNoDocuments: 'Keine Dokumente entsprechen den aktuellen Filtern.', reportsPrintButton: '🖨 Drucken',
       reportsBreakdownCategory: 'Kategorie', reportsBreakdownType: 'Typ', reportsBreakdownPeople: 'Personen',
+      reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} enthält: {value}',
+      reportDrilldownGrandTotalLabel: 'Gesamtsumme ({currency})', reportDrilldownBackLink: '← Zurück zu Berichten',
+      reportDrilldownCountSingular: '{count} Dokument', reportDrilldownCountPlural: '{count} Dokumente',
       librariesTitle: 'Open-Source-Bibliotheken',
       librariesIntro: 'Wird zur Laufzeit von einem CDN geladen, nur wenn eine Funktion sie tatsächlich benötigt. Keine davon bekommt deine Dokumente jemals zu sehen — außer lokal, in deinem eigenen Browser.',
       librariesUseSqlJs: 'Lesen/Schreiben von library.sqlite (SQLite, kompiliert zu WebAssembly)',
@@ -1788,6 +1807,9 @@
       reportsColCount: '文档数', reportsColTotal: '小计', reportsGrandTotal: '总计',
       reportsNoDocuments: '没有符合当前筛选条件的文档。', reportsPrintButton: '🖨 打印',
       reportsBreakdownCategory: '分类', reportsBreakdownType: '类型', reportsBreakdownPeople: '人员',
+      reportDrilldownRowLabel: '{field}：{value}', reportDrilldownMultiValueLabel: '{field}包含：{value}',
+      reportDrilldownGrandTotalLabel: '总计（{currency}）', reportDrilldownBackLink: '← 返回报表',
+      reportDrilldownCountSingular: '{count} 份文档', reportDrilldownCountPlural: '{count} 份文档',
       librariesTitle: '开源库',
       librariesIntro: '仅在实际使用相关功能时才会在运行时从 CDN 加载。它们都不会接触到你的文档，除非是在你自己的浏览器本地。',
       librariesUseSqlJs: '读写 library.sqlite（编译为 WebAssembly 的 SQLite）',
@@ -2107,6 +2129,12 @@
       reportsBreakdownCategory: '分類',
       reportsBreakdownType: '類型',
       reportsBreakdownPeople: '人員',
+      reportDrilldownRowLabel: '{field}：{value}',
+      reportDrilldownMultiValueLabel: '{field}包含：{value}',
+      reportDrilldownGrandTotalLabel: '總計（{currency}）',
+      reportDrilldownBackLink: '← 返回報表',
+      reportDrilldownCountSingular: '{count} 份文檔',
+      reportDrilldownCountPlural: '{count} 份文檔',
       librariesTitle: '開源庫',
       librariesIntro: '僅在實際使用相關功能時纔會在運行時從 CDN 加載。它們都不會接觸到你的文檔，除非是在你自己的瀏覽器本地。',
       librariesUseSqlJs: '讀寫 library.sqlite（編譯爲 WebAssembly 的 SQLite）',
@@ -2371,7 +2399,13 @@
   let allDocs = [];
   // Which of the four top-level nav views is showing -- session state only, never
   // persisted, always starts 'all' on a freshly opened library (see resetAll()).
-  let currentView = 'all';     // 'all' | 'inbox' | 'trash' | 'reports'
+  let currentView = 'all';     // 'all' | 'inbox' | 'trash' | 'reports' | 'report-drilldown' | 'collection-<id>'
+  // A frozen, ad-hoc snapshot captured the moment a Reports row is clicked -- see
+  // drillIntoReportRow() and matchesView()'s own 'report-drilldown' branch below.
+  // Not a live filter: editing a document afterward doesn't remove it from a
+  // still-open drill-down, only a future click on a freshly-rendered report can.
+  let reportDrilldownIds = new Set();
+  let reportDrilldownLabel = '';
   let navStyle = 'sidebar';    // 'tabs' | 'sidebar' -- persisted per-library, see loadNavStyle()
   let detailPanelExpanded = false; // persisted per-library, see loadDetailPanelExpanded()
   let navCounts = { all: 0, inbox: 0, trash: 0 }; // last-computed badge counts, refreshed every render()
@@ -3220,6 +3254,7 @@
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null;
     collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     reminderSnoozes = {};
+    reportDrilldownIds = new Set(); reportDrilldownLabel = '';
     selectedDocId = null;
     // Collapse the panel and clear its content -- otherwise switching libraries (or
     // cancelling/failing a folder picker) leaves a previous library's document
@@ -3237,6 +3272,7 @@
     if(amountFilterMax){ amountFilterMax.value = ''; amountFilterMax.disabled = false; }
     if(amountFilterUnset) amountFilterUnset.checked = false;
     el('inbox-banner').style.display = 'none';
+    el('report-drilldown-banner').style.display = 'none';
     subLabel.textContent = t('emptyTitle'); statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
   }
@@ -4735,8 +4771,9 @@
         const amount = numericAmount(d);
         for(const rawValue of info.getValues(d)){
           const label = (rawValue == null || rawValue === '') ? t('reportsNone') : rawValue;
-          const row = (rows[label] = rows[label] || { label, count: 0, total: 0 });
+          const row = (rows[label] = rows[label] || { label, count: 0, total: 0, docIds: [] });
           row.count += 1;
+          row.docIds.push(d.id);
           if(amount != null) row.total += amount;
         }
       }
@@ -4745,6 +4782,10 @@
       return {
         currency: group.currency, rows: rowList, grandTotal,
         documentCount: group.docs.length, multiValued: info.multiValued, breakdownLabel: info.label,
+        // The Grand Total row's own docIds -- every document in this currency group,
+        // independent of the breakdown field (same "computed independently, not by
+        // summing the rows" property grandTotal itself already has).
+        grandTotalDocIds: group.docs.map(d => d.id),
       };
     });
   }
@@ -4755,21 +4796,66 @@
     const breakdownSelect = el('report-breakdown-field');
     const fieldId = breakdownSelect ? breakdownSelect.value : 'category';
     const groups = computeReportGroups(docs, fieldId);
-    const groupsHtml = groups.length ? groups.map(g => `
+    const groupsHtml = groups.length ? groups.map((g, gi) => `
       <div class="report-currency-group">
         <h3>${g.currency ? escapeHtml(g.currency) : t('reportsNoCurrencySet')}</h3>
         ${g.multiValued ? `<p class="report-caption">${t('reportsMultiValueCaption', {label: escapeHtml(g.breakdownLabel)})}</p>` : ''}
         <table class="report-table">
           <thead><tr><th>${escapeHtml(g.breakdownLabel)}</th><th>${t('reportsColCount')}</th><th>${t('reportsColTotal')}</th></tr></thead>
           <tbody>
-            ${g.rows.map(r => `<tr><td>${escapeHtml(r.label)}</td><td>${r.count}</td><td>${r.total.toFixed(2)}</td></tr>`).join('')}
+            ${g.rows.map((r, ri) => `<tr class="report-row" data-group-idx="${gi}" data-row-idx="${ri}"><td>${escapeHtml(r.label)}</td><td>${r.count}</td><td>${r.total.toFixed(2)}</td></tr>`).join('')}
           </tbody>
-          <tfoot><tr><td>${t('reportsGrandTotal')}</td><td>${g.documentCount}</td><td>${g.grandTotal.toFixed(2)}</td></tr></tfoot>
+          <tfoot><tr class="report-row" data-group-idx="${gi}" data-row-idx="grand"><td>${t('reportsGrandTotal')}</td><td>${g.documentCount}</td><td>${g.grandTotal.toFixed(2)}</td></tr></tfoot>
         </table>
       </div>
     `).join('') : `<p id="reports-empty">${t('reportsNoDocuments')}</p>`;
     reportsView.innerHTML = `<button type="button" id="reports-print-btn" class="report-print-btn">${t('reportsPrintButton')}</button>` + groupsHtml;
     el('reports-print-btn').addEventListener('click', () => window.print());
+    // Every row -- breakdown rows, the "(none)" row (just another row from
+    // computeReportGroups()'s own perspective), and each group's Grand Total row --
+    // is clickable, jumping to a filtered document list of exactly the documents
+    // that contributed to it. `groups` stays in closure scope for these listeners,
+    // so data-group-idx/data-row-idx are enough to look the right row back up.
+    reportsView.querySelectorAll('.report-row').forEach(tr => {
+      tr.addEventListener('click', () => {
+        const group = groups[Number(tr.dataset.groupIdx)];
+        const currencyLabel = group.currency || t('reportsNoCurrencySet');
+        if(tr.dataset.rowIdx === 'grand'){
+          drillIntoReportRow(group.grandTotalDocIds, t('reportDrilldownGrandTotalLabel', {currency: currencyLabel}));
+        } else {
+          const row = group.rows[Number(tr.dataset.rowIdx)];
+          const labelKey = group.multiValued ? 'reportDrilldownMultiValueLabel' : 'reportDrilldownRowLabel';
+          drillIntoReportRow(row.docIds, t(labelKey, {field: group.breakdownLabel, value: row.label}));
+        }
+      });
+    });
+  }
+
+  // Stores a frozen snapshot of document IDs from a clicked Reports row (or its
+  // Grand Total row) and switches to the report-drilldown view -- an ordinary
+  // view of the real document table, filtered to exactly those IDs via
+  // matchesView()'s own 'report-drilldown' branch below.
+  function drillIntoReportRow(docIds, label){
+    reportDrilldownIds = new Set(docIds);
+    reportDrilldownLabel = label;
+    setView('report-drilldown');
+  }
+
+  // Shows/hides the banner above the document table whenever currentView is
+  // 'report-drilldown' -- the same conditional-banner pattern updateInboxBanner()
+  // already uses for the Inbox view's own staged-files notice. Called from
+  // render()'s normal document-table path (Reports view itself returns earlier
+  // and never reaches this call).
+  function updateReportDrilldownBanner(){
+    const banner = el('report-drilldown-banner');
+    if(currentView === 'report-drilldown'){
+      banner.style.display = 'flex';
+      const count = reportDrilldownIds.size;
+      const countText = count === 1 ? t('reportDrilldownCountSingular', {count}) : t('reportDrilldownCountPlural', {count});
+      el('report-drilldown-banner-text').textContent = `${reportDrilldownLabel} — ${countText}`;
+    } else {
+      banner.style.display = 'none';
+    }
   }
 
   // Formats a raw document_field_values string for display, based on the field's
@@ -4879,6 +4965,15 @@
     // `if(d.deleted) return false;` check above -- this branch runs only once
     // that's already ruled out.
     if(view === 'reports') return true;
+    // Report drill-down: a frozen, ad-hoc snapshot of document IDs captured at
+    // the moment a Reports row was clicked (see drillIntoReportRow()) -- not a
+    // live-updating filter, so editing a document afterward doesn't remove it
+    // from a still-open drill-down; only a future click on a freshly-rendered
+    // report can produce a different snapshot. Same archived/needs-review-
+    // inclusive semantics as Reports and Collections above, since this is
+    // conceptually the same kind of saved/curated view, not a day-to-day browse
+    // view. Only `deleted` is excluded, via the shared check above.
+    if(view === 'report-drilldown') return reportDrilldownIds.has(d.id);
     // A collection view -- 'collection-<id>'. Manual membership comes from
     // collectionDocIds (built once per library open by loadCollections()); smart
     // membership is computed live against the collection's saved criteria, via the
@@ -5033,7 +5128,7 @@
   // behaving exactly as it does today, so returning to All Documents restores
   // whatever "Show archived" was previously set to.
   function setView(view){
-    if(view !== 'all' && view !== 'inbox' && view !== 'trash' && view !== 'reports' && !view.startsWith('collection-')) return;
+    if(view !== 'all' && view !== 'inbox' && view !== 'trash' && view !== 'reports' && view !== 'report-drilldown' && !view.startsWith('collection-')) return;
     if(currentView === view) return;
     currentView = view;
     selectedDocIds = new Set();
@@ -5077,10 +5172,15 @@
     reportsView.style.display = 'none';
     tableWrap.style.display = 'block';
     countLine.style.display = 'block';
-    // For collections, compute the denominator directly since navCounts only has keys for all/inbox/trash
+    updateReportDrilldownBanner();
+    // For collections, compute the denominator directly since navCounts only has keys for all/inbox/trash.
+    // report-drilldown has no navCounts entry either (it's not one of the four
+    // persistent nav views) -- its own denominator is just the snapshot's own size.
     let denominator;
     if(currentView.startsWith('collection-')){
       denominator = allDocs.filter(d => matchesView(d, currentView, showArchivedToggle.checked)).length;
+    } else if(currentView === 'report-drilldown'){
+      denominator = reportDrilldownIds.size;
     } else {
       denominator = navCounts[currentView];
     }
@@ -8217,6 +8317,9 @@
   }
 
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
+  // "← Back to Reports" in the drill-down banner -- setView() itself handles the
+  // "already on this view" no-op case, so this needs no guard of its own.
+  el('report-drilldown-back-btn').addEventListener('click', () => setView('reports'));
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
   // reflects whatever checkInbox() found the one time it runs automatically
   // (right after a library opens, see afterDbReady()). Without this, there was
