@@ -2533,6 +2533,7 @@
   let openDocCollectionMenu = null;
   let openReminderFlyout = null; // same "lives outside modalRoot, tracked separately" reasoning as openDocCollectionMenu just above
   let openRowContextMenu = null;
+  let findDuplicatesBackfillRunning = false; // tracks whether a "Find duplicates" backfill is in progress, shared with onModalKeydown()
 
   let sortKey = 'import_date'; // overwritten by loadSortState() on every library open -- this is just the pre-library-open starting value
   let sortDir = 'desc';
@@ -5476,7 +5477,7 @@
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
     if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
-  function onModalKeydown(e){ if(e.key === 'Escape') closeModal(); }
+  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning) closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', useKey: 'librariesUseSqlJs' },
@@ -5573,10 +5574,10 @@
       </div>
     `;
 
-    let backfillRunning = unhashed.length > 0;
+    findDuplicatesBackfillRunning = unhashed.length > 0;
     const wireClose = () => {
-      el('modal-close-btn').addEventListener('click', () => { if(!backfillRunning) closeModal(); });
-      el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop' && !backfillRunning) closeModal(); });
+      el('modal-close-btn').addEventListener('click', () => { if(!findDuplicatesBackfillRunning) closeModal(); });
+      el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop' && !findDuplicatesBackfillRunning) closeModal(); });
       document.addEventListener('keydown', onModalKeydown);
     };
     wireClose();
@@ -5597,10 +5598,13 @@
       }
       progressEl.innerHTML = '<span class="spinner"></span> ' + t('duplicatesBackfillProgress', {done, total: unhashed.length});
       await persistDb();
-      backfillRunning = false;
-      el('modal-close-btn').disabled = false;
-      el('duplicates-progress').style.display = 'none';
-      el('duplicates-list').style.display = 'block';
+      findDuplicatesBackfillRunning = false;
+      const closeBtnEl = el('modal-close-btn');
+      if(closeBtnEl) closeBtnEl.disabled = false;
+      const progressDisplayEl = el('duplicates-progress');
+      if(progressDisplayEl) progressDisplayEl.style.display = 'none';
+      const listDisplayEl = el('duplicates-list');
+      if(listDisplayEl) listDisplayEl.style.display = 'block';
     }
 
     const activeDocs = allDocs.filter(d => !d.deleted);
