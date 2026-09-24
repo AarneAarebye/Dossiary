@@ -158,6 +158,108 @@ async def main():
         print("The genuinely new file became document #5 with its own file_hash:", doc5_hash is not None and len(doc5_hash) == 64)
         print("The duplicate file did NOT become a second new document (no document #6 exists):", doc6_hash is None)
 
+        # === Scenario 6: "Find duplicates" groups exact-hash matches and
+        # Title+Date metadata matches correctly, excludes a blank-title/date
+        # document, and clicking a document in a group opens its detail panel ===
+        # By this point the library has: docs 1/2/4 sharing DOC_A_BYTES' hash
+        # (Scenarios 2 and 3), doc 3 with a different hash, and doc 5 from
+        # Scenario 4's no-warning pick (also a unique hash). None of these five
+        # share a Title+Date pair yet, so add two more documents that do.
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.set_input_files('#file-input', {
+            'name': 'meta1.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 metadata-match doc one',
+        })
+        await page.wait_for_timeout(150)
+        await page.fill('#f-title', 'Electric Bill')
+        await page.fill('#f-date', '2026-03-01')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(200)
+
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.set_input_files('#file-input', {
+            'name': 'meta2.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 metadata-match doc two, different bytes',
+        })
+        await page.wait_for_timeout(150)
+        await page.fill('#f-title', 'Electric Bill')
+        await page.fill('#f-date', '2026-03-01')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(200)
+
+        # A same-title, different-date document -- must NOT be grouped with the pair above.
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.set_input_files('#file-input', {
+            'name': 'meta3.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 same title different date',
+        })
+        await page.wait_for_timeout(150)
+        await page.fill('#f-title', 'Electric Bill')
+        await page.fill('#f-date', '2026-04-01')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(200)
+
+        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.wait_for_timeout(300)
+        # .duplicate-group-label has text-transform:uppercase in CSS, so
+        # inner_text() (which reflects rendered text, not raw textContent)
+        # returns the label in all-caps -- compare case-insensitively.
+        exact_group_labels = await page.locator('.duplicate-group-label').all_inner_texts()
+        print("Modal shows at least one 'Exact file match' group:", any('exact' in l.lower() for l in exact_group_labels))
+        print("Modal shows at least one 'Likely duplicate' (title+date) group:", any('likely duplicate' in l.lower() for l in exact_group_labels))
+
+        # Exactly 2 documents share the Electric Bill / 2026-03-01 pairing -- find
+        # the specific metadata-match group by its label and confirm it holds
+        # exactly the two same-date rows, not the third (different-date) one.
+        metadata_group = page.locator('.duplicate-group').filter(has_text='Likely duplicate (title + date)')
+        metadata_group_row_titles = await metadata_group.locator('.duplicate-row .doc-title').all_inner_texts()
+        electric_bill_rows_in_group = [t for t in metadata_group_row_titles if t == 'Electric Bill']
+        print("Both same-date Electric Bill documents appear together, and only those two:", len(electric_bill_rows_in_group) == 2 and len(metadata_group_row_titles) == 2)
+
+        first_row = page.locator('.duplicate-row').first
+        first_row_doc_id = await first_row.get_attribute('data-document-id')
+        await first_row.click()
+        await page.wait_for_timeout(200)
+        modal_closed = await page.locator('#modal-backdrop').count() == 0
+        detail_panel_text = await page.locator('#detail-panel-body').inner_text()
+        print("Clicking a duplicate-group document closes the modal:", modal_closed)
+        print("...and opens that exact document's detail panel:", f'#{first_row_doc_id}' in detail_panel_text)
+
+        # === Scenario 7: a second "Find duplicates" open does not re-hash
+        # already-hashed documents (no progress shown, since nothing is unhashed) ===
+        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.wait_for_timeout(300)
+        progress_hidden = not await page.locator('#duplicates-progress').is_visible()
+        print("No backfill progress shown on a second open (everything already hashed):", progress_hidden)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
+
+        # === Scenario 8: a deleted document is excluded from every grouping pass ===
+        # Doc A1/A2/A3 (ids 1, 2, 4) share DOC_A_BYTES' hash -- a 3-member exact-hash
+        # group. Delete doc 4 (Doc A3) and confirm the group shrinks to 2 members,
+        # and that doc 4's own title no longer appears anywhere in the modal.
+        # We're still on the Inbox nav view (from Scenario 5's jump there) -- doc 4
+        # is an ordinary captured document, never flagged for review, so it isn't
+        # rendered in that view's table at all. Switch to All Documents first so
+        # the row is actually clickable.
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        await page.click('tr[data-id="4"]')
+        await page.wait_for_timeout(150)
+        await page.click('#delete-toggle-btn')
+        await page.wait_for_timeout(150)
+        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.wait_for_timeout(300)
+        list_text_after_delete = await page.locator('#duplicates-list').inner_text()
+        print("Deleted document's title no longer appears in any duplicate group:", 'Doc A3' not in list_text_after_delete)
+        # The exact-hash group containing Doc A1 now has exactly 2 rows (A1 and A2),
+        # not the original 3.
+        exact_group_locator = page.locator('.duplicate-group').filter(has_text='Doc A1')
+        exact_group_row_count = await exact_group_locator.locator('.duplicate-row').count()
+        print("Exact-hash group shrinks from 3 to 2 members after the deletion:", exact_group_row_count == 2)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
