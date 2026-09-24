@@ -73,6 +73,38 @@ async def main():
         print("Doc A1 and Doc B (different bytes) have different file_hash values:", hash_a1 != hash_b)
         print("Doc A1's file_hash matches hashlib.sha256() of its own bytes:", hash_a1 == hashlib.sha256(DOC_A_BYTES).hexdigest())
 
+        # === Scenario 3: picking a file byte-identical to an already-saved document
+        # shows a non-blocking warning immediately, naming that document ===
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.set_input_files('#file-input', {
+            'name': 'a3.pdf', 'mimeType': 'application/pdf', 'buffer': DOC_A_BYTES,
+        })
+        await page.wait_for_timeout(150)
+        warning_visible = await page.locator('#f-duplicate-warning').is_visible()
+        warning_text = await page.locator('#f-duplicate-warning').inner_text()
+        print("Duplicate warning visible for a byte-identical pick:", warning_visible)
+        print("Duplicate warning names the matched document:", 'Doc A1' in warning_text and '#1' in warning_text)
+        save_disabled = await page.locator('#save-doc-btn').is_disabled()
+        print("Save button NOT disabled by the warning (non-blocking):", not save_disabled)
+        await page.fill('#f-title', 'Doc A3 (also identical to A1)')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(200)
+        save_succeeded = await page.evaluate("window.__DEBUG_getFileHash(4) !== undefined")
+        print("Save succeeded despite the warning:", save_succeeded)
+
+        # === Scenario 4: picking a file with no existing match shows no warning ===
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.set_input_files('#file-input', {
+            'name': 'c.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 yet another genuinely different file',
+        })
+        await page.wait_for_timeout(150)
+        no_warning = not await page.locator('#f-duplicate-warning').is_visible()
+        print("No warning shown for a file with no existing match:", no_warning)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

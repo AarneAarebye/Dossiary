@@ -449,6 +449,8 @@
   .field textarea{ font-family:var(--font-mono); font-size:12px; resize:vertical; }
   .field input.field-guess{ border-color:var(--amber-dim); background:rgba(217,154,63,0.06); }
   .field-guess-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--amber); margin-top:5px; }
+  .field-guess-hint .link-btn{ background:transparent; border:none; padding:0; margin-left:6px; color:var(--amber); text-decoration:underline; cursor:pointer; font-family:var(--font-mono); font-size:10.5px; }
+  .field-guess-hint .link-btn:hover{ color:var(--phosphor); }
   .field-orphaned{ border-top:1px dashed var(--line); padding-top:14px; margin-top:2px; }
   .field-orphaned input, .field-orphaned .checkbox-label{ border-color:var(--line) !important; opacity:0.9; }
   .field-orphaned-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); margin-top:5px; font-style:italic; }
@@ -948,7 +950,7 @@
       captureDocTypePlaceholder: 'Pick this first — it determines which fields show below',
       captureDocTypeHint: "Not in the list? Type a new one — it'll be created.",
       captureTitleLabel: 'Title', captureDateLabel: 'Date',
-      captureDateGuessHint: "Defaulted to today — check this is the document's actual date",
+      captureDateGuessHint: "Defaulted to today — check this is the document's actual date", captureDuplicateWarning: 'This file looks identical to "{title}" (#{id}).', captureDuplicateWarningOpenBtn: 'Open it', captureDuplicateWarningDismissBtn: 'Dismiss',
       captureCategoryLabel: 'Category', captureSubcategoryLabel: 'Subcategory',
       captureSubcategoryPlaceholder: 'Independent of category, not a child of it',
       captureAddFieldToggleCollapsed: '+ Add a custom field', captureAddFieldToggleExpanded: '− Add a custom field',
@@ -1147,7 +1149,7 @@
       captureDocTypePlaceholder: 'Elige esto primero — determina qué campos se muestran abajo',
       captureDocTypeHint: '¿No está en la lista? Escribe uno nuevo — se creará.',
       captureTitleLabel: 'Título', captureDateLabel: 'Fecha',
-      captureDateGuessHint: 'Preestablecido a hoy — comprueba que esta sea la fecha real del documento',
+      captureDateGuessHint: 'Preestablecido a hoy — comprueba que esta sea la fecha real del documento', captureDuplicateWarning: 'Este archivo parece idéntico a "{title}" (#{id}).', captureDuplicateWarningOpenBtn: 'Abrirlo', captureDuplicateWarningDismissBtn: 'Descartar',
       captureCategoryLabel: 'Categoría', captureSubcategoryLabel: 'Subcategoría',
       captureSubcategoryPlaceholder: 'Independiente de la categoría, no es una subordinada de ella',
       captureAddFieldToggleCollapsed: '+ Añadir un campo personalizado', captureAddFieldToggleExpanded: '− Añadir un campo personalizado',
@@ -1346,7 +1348,7 @@
       captureDocTypePlaceholder: 'Choisissez ceci en premier — cela détermine les champs affichés ci-dessous',
       captureDocTypeHint: "Absent de la liste ? Saisissez-en un nouveau — il sera créé.",
       captureTitleLabel: 'Titre', captureDateLabel: 'Date',
-      captureDateGuessHint: "Défini par défaut sur aujourd'hui — vérifiez qu'il s'agit bien de la date réelle du document",
+      captureDateGuessHint: "Défini par défaut sur aujourd'hui — vérifiez qu'il s'agit bien de la date réelle du document", captureDuplicateWarning: 'Ce fichier semble identique à « {title} » (#{id}).', captureDuplicateWarningOpenBtn: 'L\'ouvrir', captureDuplicateWarningDismissBtn: 'Ignorer',
       captureCategoryLabel: 'Catégorie', captureSubcategoryLabel: 'Sous-catégorie',
       captureSubcategoryPlaceholder: "Indépendante de la catégorie, ce n'est pas une subdivision de celle-ci",
       captureAddFieldToggleCollapsed: '+ Ajouter un champ personnalisé', captureAddFieldToggleExpanded: '− Ajouter un champ personnalisé',
@@ -1545,7 +1547,7 @@
       captureDocTypePlaceholder: 'Zuerst auswählen — bestimmt, welche Felder unten angezeigt werden',
       captureDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.',
       captureTitleLabel: 'Titel', captureDateLabel: 'Datum',
-      captureDateGuessHint: 'Auf heute voreingestellt — prüfe, ob dies das tatsächliche Datum des Dokuments ist',
+      captureDateGuessHint: 'Auf heute voreingestellt — prüfe, ob dies das tatsächliche Datum des Dokuments ist', captureDuplicateWarning: 'Diese Datei scheint identisch mit "{title}" (#{id}) zu sein.', captureDuplicateWarningOpenBtn: 'Öffnen', captureDuplicateWarningDismissBtn: 'Verwerfen',
       captureCategoryLabel: 'Kategorie', captureSubcategoryLabel: 'Unterkategorie',
       captureSubcategoryPlaceholder: 'Unabhängig von der Kategorie, keine Unterordnung',
       captureAddFieldToggleCollapsed: '+ Benutzerdefiniertes Feld hinzufügen', captureAddFieldToggleExpanded: '− Benutzerdefiniertes Feld hinzufügen',
@@ -1744,7 +1746,7 @@
       captureDocTypePlaceholder: '请先选择——它决定下方显示哪些字段',
       captureDocTypeHint: '不在列表中？输入一个新类型即可自动创建。',
       captureTitleLabel: '标题', captureDateLabel: '日期',
-      captureDateGuessHint: '默认填入今天的日期——请确认这是文档的实际日期',
+      captureDateGuessHint: '默认填入今天的日期——请确认这是文档的实际日期', captureDuplicateWarning: '此文件似乎与 "{title}"（#{id}）相同。', captureDuplicateWarningOpenBtn: '打开', captureDuplicateWarningDismissBtn: '忽略',
       captureCategoryLabel: '分类', captureSubcategoryLabel: '子分类',
       captureSubcategoryPlaceholder: '独立于分类，并非其下级',
       captureAddFieldToggleCollapsed: '+ 添加自定义字段', captureAddFieldToggleExpanded: '− 添加自定义字段',
@@ -2022,7 +2024,7 @@
       captureDocTypeHint: '不在列表中？輸入一個新類型即可自動創建。',
       captureTitleLabel: '標題',
       captureDateLabel: '日期',
-      captureDateGuessHint: '默認填入今天的日期——請確認這是文檔的實際日期',
+      captureDateGuessHint: '默認填入今天的日期——請確認這是文檔的實際日期', captureDuplicateWarning: '此文件似乎與 "{title}"（#{id}）相同。', captureDuplicateWarningOpenBtn: '打開', captureDuplicateWarningDismissBtn: '忽略',
       captureCategoryLabel: '分類',
       captureSubcategoryLabel: '子分類',
       captureSubcategoryPlaceholder: '獨立於分類，並非其下級',
@@ -7246,6 +7248,7 @@
             ${scanHintHtml()}
           </div>
           <div id="file-preview-area"></div>
+          <div class="field-guess-hint" id="f-duplicate-warning" style="display:none;"></div>
 
           <div class="ocr-row">
             <select id="ocr-lang" disabled>
@@ -7395,6 +7398,37 @@
     const isPdf = file.type === 'application/pdf';
     el('run-ocr-btn').disabled = !isImage && !isPdf;
     el('ocr-lang').disabled = !isImage && !isPdf;
+    pendingFileHash = null;
+    pendingFileHashFile = null;
+    el('f-duplicate-warning').style.display = 'none';
+
+    // Fire-and-forget, same pattern as getPdfPageCount()'s own .then() below --
+    // hashing is fast and purely informational (Save stays enabled either way),
+    // so this never blocks the rest of handlePickedFile() from running. Guarded
+    // by pendingFile === file so a fast pick-another-file doesn't let a stale
+    // hash/warning land on the new file's preview after this one resolves late.
+    computeFileHash(file).then(hash => {
+      if(pendingFile !== file) return;
+      pendingFileHash = hash;
+      pendingFileHashFile = file;
+      const match = allDocs.find(d => !d.deleted && d.file_hash === hash);
+      const warningEl = el('f-duplicate-warning');
+      if(match){
+        warningEl.innerHTML = `${t('captureDuplicateWarning', {title: escapeHtml(displayName(match)), id: match.id})} <button type="button" class="link-btn" id="f-duplicate-warning-open-btn">${t('captureDuplicateWarningOpenBtn')}</button> <button type="button" class="link-btn" id="f-duplicate-warning-dismiss-btn">${t('captureDuplicateWarningDismissBtn')}</button>`;
+        warningEl.style.display = 'block';
+        el('f-duplicate-warning-open-btn').addEventListener('click', () => {
+          closeModal();
+          selectedDocId = match.id;
+          render();
+          openDetail(match.id);
+        });
+        el('f-duplicate-warning-dismiss-btn').addEventListener('click', () => {
+          warningEl.style.display = 'none';
+        });
+      }else{
+        warningEl.style.display = 'none';
+      }
+    });
 
     const previewArea = el('file-preview-area');
     if(isImage){
