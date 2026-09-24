@@ -2319,7 +2319,7 @@
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
       archived INTEGER DEFAULT 0, needs_review INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0,
-      searchable_pdf_built INTEGER DEFAULT 0
+      searchable_pdf_built INTEGER DEFAULT 0, file_hash TEXT
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -2378,6 +2378,7 @@
     'ALTER TABLE documents ADD COLUMN deleted INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN searchable_pdf_built INTEGER DEFAULT 0',
     'ALTER TABLE reminder_snoozes ADD COLUMN dismissed INTEGER DEFAULT 0',
+    'ALTER TABLE documents ADD COLUMN file_hash TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -2521,6 +2522,8 @@
   let pendingOcrWords = null;      // flat array of {text, bbox:{x0,y0,x1,y1}} from Tesseract, or null if no OCR run
   let pendingImageDims = null;     // {width, height} in pixels of the picked image, or null for non-images
   let pendingPdfOcrPages = null;   // array of {dataUrl, imageFormat, dims, words} per page (one entry per PDF page), or null if no PDF OCR run
+  let pendingFileHash = null;      // SHA-256 hex of pendingFile's bytes, computed once at pick time -- see handlePickedFile()
+  let pendingFileHashFile = null;  // the exact File object pendingFileHash was computed for, so a later pick can tell whether the cached hash is still valid
 
   const el = (id) => document.getElementById(id);
   const statusEl = el('status');
@@ -2724,6 +2727,19 @@
     let cleaned = name.replace(/[^a-zA-Z0-9\-_. ()]/g, '_').trim();
     cleaned = cleaned.replace(/^\.+/, '');
     return cleaned || fallback;
+  }
+
+  // Lowercase hex SHA-256 of `file`'s own bytes, via the Web Crypto API --
+  // used for exact-duplicate detection (see the "Duplicate detection" note
+  // in CLAUDE.md). Always hash the ORIGINAL uploaded bytes, never a
+  // possibly-rebuilt active file (buildSearchablePdf() can embed a fresh
+  // timestamp on otherwise-identical source images), so two truly
+  // identical uploads always produce the same hash regardless of what
+  // OCR/processing happens to either of them afterward.
+  async function computeFileHash(file){
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest('SHA-256', buffer);
+    return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   async function ensureSqlJs(){
@@ -3291,7 +3307,7 @@
     // live in customFields (via document_field_values) like any other custom field.
     const { columns, rows } = queryAll(`
       SELECT id, title, category, subcategory, document_type, date, import_date, notes,
-             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived, needs_review, deleted
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived, needs_review, deleted, file_hash
       FROM documents
     `);
     const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -3369,6 +3385,7 @@
         archived: !!row[idx.archived],
         needs_review: !!row[idx.needs_review],
         deleted: !!row[idx.deleted],
+        file_hash: row[idx.file_hash] || null,
         customFields: fieldValuesByDocId[id] || {}, // { "Organization": "Dr. Schröter", "Paid": "1", ... }
         personFieldValues: personFieldValuesByDocId[id] || {}, // { "People": [...], "Author": [...], ... }
         tags: tagsByDocId[id] || [],
@@ -3688,6 +3705,14 @@
     const d = allDocs.find(x => x.id === documentId);
     return d && d.customFields ? d.customFields[fieldName] : undefined;
   };
+  // Test-only: read a document's own persisted file_hash directly, and expose
+  // computeFileHash() itself so a test can independently verify its output
+  // against a hand-computed SHA-256 for known byte content.
+  window.__DEBUG_getFileHash = (documentId) => {
+    const d = allDocs.find(x => x.id === documentId);
+    return d ? d.file_hash : undefined;
+  };
+  window.__DEBUG_computeFileHash = computeFileHash;
 
   function loadCollections(){
     const { rows } = queryAll('SELECT id, name, kind, criteria FROM collections');
@@ -7630,6 +7655,14 @@
       // Preserve the untouched original from the moment the document is added,
       // regardless of file type or whether a searchable PDF gets built below.
       const originalFilePathForDb = await writeOriginalToSubfolder(id, baseName, pendingFile);
+      // Reuse the hash already computed when this file was picked (see
+      // handlePickedFile()) rather than re-hashing the same bytes -- fall back to
+      // computing it fresh if, for whatever reason, no pick-time hash was cached
+      // for this exact file (e.g. a future call site that sets pendingFile without
+      // going through handlePickedFile()).
+      const fileHashForDb = (pendingFileHash && pendingFileHashFile === pendingFile)
+        ? pendingFileHash
+        : await computeFileHash(pendingFile);
       let searchablePdfBuilt = 0;
 
       if(canBuildSearchablePdf){
@@ -7696,9 +7729,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?)
-      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt]);
+                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built, file_hash)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?)
+      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt, fileHashForDb]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -7758,7 +7791,7 @@
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, customFields: customFieldsForDoc,
+        thumbnail_path: thumbnailPathForDb, file_hash: fileHashForDb, customFields: customFieldsForDoc,
         personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
@@ -7939,6 +7972,7 @@
       // document is always unprocessed at this point (searchable_pdf_built
       // stays 0 below).
       const originalFilePathForDb = await writeOriginalToSubfolder(id, baseName, file);
+      const fileHashForDb = await computeFileHash(file);
 
       // Best-effort, same as saveNewDocument() -- a missing preview isn't fatal.
       let thumbnailPathForDb = null;
@@ -7956,9 +7990,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built)
-        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0)
-      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb]);
+                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash)
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0, ?)
+      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb, fileHashForDb]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
       await persistDb();
@@ -7967,7 +8001,7 @@
         id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source, source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, archived: false, needs_review: true, deleted: false,
+        thumbnail_path: thumbnailPathForDb, file_hash: fileHashForDb, archived: false, needs_review: true, deleted: false,
         customFields: {}, personFieldValues: {}, tags: [], people: [],
       });
 
