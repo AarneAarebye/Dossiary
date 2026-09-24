@@ -8,9 +8,15 @@ import asyncio
 from playwright.async_api import async_playwright
 
 async def dispatch_drag(page, event_type, filenames=None):
+    # Each dropped file's content is derived from its own filename (not one
+    # shared literal buffer) so that two differently-named files dropped in
+    # the same test -- almost always meant to be two distinct documents --
+    # get distinct file_hash values under duplicate-detection, rather than
+    # colliding as "the same file" purely because this test fixture reused
+    # identical placeholder bytes for all of them.
     files_js = ""
     if filenames is not None:
-        parts = ",".join(f"new File([new Uint8Array([1,2,3,4])], {name!r}, {{type: 'application/pdf'}})" for name in filenames)
+        parts = ",".join(f"new File([new TextEncoder().encode({('dropped-placeholder:' + name)!r})], {name!r}, {{type: 'application/pdf'}})" for name in filenames)
         files_js = f"[{parts}].forEach(f => dt.items.add(f));"
     await page.evaluate(f"""
         () => {{

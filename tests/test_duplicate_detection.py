@@ -105,6 +105,59 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(100)
 
+        # === Scenario 5: Inbox bulk-add skips an exact-duplicate staged file
+        # (removing it from inbox/, reporting the skip count) while a genuinely
+        # new staged file in the same batch is still added normally ===
+        # Doc A1 (id 1) from earlier scenarios already has file_hash for DOC_A_BYTES.
+        await page.evaluate("""
+            async () => {
+                const inboxDir = await window.__TEST_ROOT.getDirectoryHandle('inbox', { create: true });
+                const dupFile = await inboxDir.getFileHandle('staged_duplicate.pdf', { create: true });
+                const dupWritable = await dupFile.createWritable();
+                await dupWritable.write(new TextEncoder().encode('%PDF-1.4 fake pdf content A for duplicate-detection tests'));
+                await dupWritable.close();
+                const newFile = await inboxDir.getFileHandle('staged_new.pdf', { create: true });
+                const newWritable = await newFile.createWritable();
+                await newWritable.write(new TextEncoder().encode('%PDF-1.4 a genuinely new staged file, never seen before'));
+                await newWritable.close();
+            }
+        """)
+        await page.click('#inbox-check-btn')
+        await page.wait_for_timeout(300)
+        status_text = await page.locator('#status').inner_text()
+        # The exact wording is composed from up to 3 parts (added/skipped/failed),
+        # joined with a space -- see addAllInboxFilesAndShowStatus(). Rather than
+        # match the whole concatenated string, check for the real, specific content:
+        # the added count ("1"), the review-queue wording, and the word "duplicate"
+        # somewhere in the skip-count message.
+        print("Status line reports 1 added to the review queue:", '1' in status_text and 'review' in status_text.lower())
+        print("Status line reports 1 skipped as a duplicate:", '1' in status_text and 'duplicate' in status_text.lower())
+        inbox_now_empty = await page.evaluate("""
+            async () => {
+                const inboxDir = await window.__TEST_ROOT.getDirectoryHandle('inbox', { create: true });
+                const names = [];
+                for await (const [name] of inboxDir.entries()) names.push(name);
+                return names.length === 0;
+            }
+        """)
+        print("Both staged files removed from inbox/ (duplicate skipped, new one added):", inbox_now_empty)
+        # We're on the Inbox nav view now (addAllInboxFilesAndShowStatus() jumps
+        # there since something was added) -- the newly-added staged_new document
+        # is needs_review=1, so it shows up here. (Note: it would NOT show up in
+        # the All Documents view -- matchesView()'s 'all' branch excludes
+        # needs_review docs -- so this check deliberately stays on the Inbox view
+        # rather than switching, unlike a plain document-count check would need to.)
+        inbox_doc_titles = await page.locator('#doc-tbody tr .doc-title').all_inner_texts()
+        print("The genuinely new file became a real document:", any('staged_new' in title for title in inbox_doc_titles))
+        # Confirm the duplicate did NOT also become a second, separate document:
+        # documents 1-4 already exist (A1, A2, B, A3 from earlier scenarios), the
+        # genuinely-new staged file should be exactly id 5, and there should be no
+        # id 6 at all (which a wrongly-created duplicate document would have been).
+        doc5_hash = await page.evaluate("window.__DEBUG_getFileHash(5)")
+        doc6_hash = await page.evaluate("window.__DEBUG_getFileHash(6)")
+        print("The genuinely new file became document #5 with its own file_hash:", doc5_hash is not None and len(doc5_hash) == 64)
+        print("The duplicate file did NOT become a second new document (no document #6 exists):", doc6_hash is None)
+
         print("JS ERRORS:", errors)
         await browser.close()
 

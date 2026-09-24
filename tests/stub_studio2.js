@@ -446,8 +446,21 @@ window.__makeSeededRoot = function(seed) {
 // for exercising the Inbox review feature -- mirrors what a watched-folder helper
 // like scan_watch.py would leave behind. bytes defaults to a tiny non-empty
 // buffer since an empty file is a degenerate case this helper isn't testing.
+// The default is derived from `name` (not a single shared literal like
+// `[1, 2, 3]`) so that two calls with different filenames -- almost always
+// meant to represent two distinct staged files in whatever scenario is calling
+// this -- get distinct content by default too, and therefore distinct
+// file_hash values once duplicate-detection (see dossiary.html's
+// computeFileHash()/createReviewDocumentFromFile()) hashes them. Before
+// duplicate-detection existed this didn't matter -- every call produced a
+// separate document regardless of content -- but a shared literal default
+// would now make any two same-page, no-explicit-bytes calls silently collide
+// as "the same file," which is virtually never what a test staging two
+// differently-named files actually intends. A test that specifically wants
+// two staged files to be genuine duplicates already does, and still can, pass
+// identical explicit `bytes` to each call.
 window.__addInboxFile = function(root, name, bytes) {
   if (!root._children.has('inbox')) root._children.set('inbox', new FakeDirHandle('inbox'));
   const inbox = root._children.get('inbox');
-  inbox._children.set(name, new FakeFileHandle(name, bytes || new Uint8Array([1, 2, 3])));
+  inbox._children.set(name, new FakeFileHandle(name, bytes || new TextEncoder().encode('inbox-placeholder:' + name)));
 };
