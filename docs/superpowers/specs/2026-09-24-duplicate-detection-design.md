@@ -78,6 +78,12 @@ only, never the Title+Date heuristic — form fields may still be blank at
 the moment a file is picked, so a heuristic warning that early would just
 be noise.
 
+The hash computed at pick time (to check against existing documents) and
+the hash later stored on the new document at Save time are the same
+value, computed from the same in-memory `File` object — the pick-time
+result is cached and reused at Save rather than recomputed, since nothing
+about the file changes in between.
+
 ### Inbox / drag-and-drop bulk adds
 
 `createReviewDocumentFromFile(file, source)` — the one shared helper both
@@ -101,7 +107,12 @@ A new toolbar button (`🔍 Find duplicates`, alongside the existing
 `🔔 Check reminders`/`📥 Check inbox` — the same family of explicit,
 on-demand maintenance actions) opens a modal structured like the Reminders
 modal. If any document is missing a hash, the backfill pass described above
-runs first, with a progress indicator. Then the in-memory `allDocs` is
+runs first, with a progress indicator; the modal's own close control is
+disabled for the duration of that pass, the same "disable, only re-enable
+on completion" treatment the Scan/Scan Multi toolbar buttons already use
+for their own blocking requests — the backfill isn't interruptible
+mid-pass, since it's already writing persisted hashes to the database as
+it goes. Then the in-memory `allDocs` is
 grouped two ways: exact `file_hash` matches, and normalized (trimmed,
 case-insensitive) Title+Date matches — a document with a blank Title or
 blank Date is excluded from the Title+Date pass entirely, since matching
