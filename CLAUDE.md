@@ -3139,6 +3139,81 @@ this repo's git tags.
   Archive/Delete/Flag for review already have their own buttons in the
   bulk-action bar; duplicating them in the context menu wasn't judged worth
   the extra code for what's already one click away.
+- **Duplicate detection** (`documents.file_hash`, `computeFileHash()`,
+  `openFindDuplicatesModal()`) flags two kinds of likely-duplicate document:
+  an exact match on the file's own bytes, and a heuristic match on
+  Title + Date. **The hash is computed on the original uploaded bytes, not
+  the active `file_path`** -- `buildSearchablePdf()` can rasterize-and-rebuild
+  a captured file during OCR, and two byte-identical source scans processed
+  through that pipeline at different moments can produce slightly different
+  output bytes (embedded timestamps and similar); hashing the *processed*
+  file would silently defeat exact-duplicate detection for exactly the case
+  it exists to catch. Since `writeOriginalToSubfolder()` already
+  unconditionally preserves every new document's raw upload, the hash is
+  computed on that same original, at the same moment it's written --
+  falling back to hashing `file_path` only for a document with no preserved
+  original (a LibraryLifeboat-migrated document, predating this app's own
+  ingestion pipeline).
+  **New documents get their hash computed and stored at creation time**
+  (`saveNewDocument()`, `createReviewDocumentFromFile()`) -- one file,
+  already being read at that moment anyway. **Existing documents are
+  backfilled lazily**: the first time "Find duplicates" is opened, it reads
+  and hashes every not-yet-hashed document's file once, with a progress
+  indicator (the same spinner-plus-status-text treatment `runOcr()`'s own
+  PDF-page-by-page progress already uses), persisting each hash as it's
+  computed (batched into a single `persistDb()` call at the end, not one
+  per document) so every later scan and every capture-time check is
+  instant. Until that first backfill runs, the capture-time warning can
+  only catch matches against documents that already happen to have a hash.
+  The modal's own close control, backdrop-click, and Escape key are all
+  gated on an in-progress backfill flag -- the same "disable, only re-enable
+  on completion" treatment `triggerScan()` already uses for the Scan/Scan
+  Multi buttons -- since the pass is already writing persisted hashes as
+  it goes and isn't meant to be interrupted mid-pass.
+  **The capture form warns, non-blocking, the moment a file is picked**
+  (`handlePickedFile()`), checking the picked file's hash against every
+  document's `file_hash` in `allDocs` and showing a dismissible
+  `.field-guess-hint`-style line naming the matched document, with a link
+  to open its detail panel -- Save stays enabled regardless. This checks
+  the exact-hash case only, never Title+Date -- form fields may still be
+  blank at pick time, so a heuristic warning that early would just be
+  noise. The hash computed at pick time (`pendingFileHash`/
+  `pendingFileHashFile`) is cached and reused at Save rather than
+  recomputed, since nothing about the file changes in between.
+  **Inbox and drag-and-drop bulk adds silently skip (with explicit
+  reporting) a staged file whose hash exactly matches an existing
+  document**, via the shared `createReviewDocumentFromFile(file, source)`
+  helper both already call -- no document is created for it, its staged
+  copy is removed from `inbox/` exactly like a normal successful add
+  (an identical copy already lives safely in `files/`, so nothing unique
+  is lost), and it's counted toward a new "N skipped as duplicates" clause
+  on the status line, alongside the existing "Added N document(s)..."
+  report. This is a genuine behavior change -- Inbox had never silently
+  not-added a staged file before -- and the explicit status-line reporting
+  is what keeps it from being *silent*, per this app's own "no silent
+  writes" working convention: nothing here omits information from the
+  person, it just avoids creating a redundant document.
+  **"Find duplicates"** (a new toolbar button, alongside `🔔 Check
+  reminders`/`📥 Check inbox` -- the same family of explicit, on-demand
+  maintenance actions) opens a modal structured like the Reminders modal:
+  after any needed backfill, `allDocs` (deleted documents excluded from
+  every grouping pass; archived and needs-review documents included, same
+  "tells the truth about the whole non-deleted library" reasoning
+  Reports/Collections already use) is grouped two independent ways --
+  `computeExactHashDuplicateGroups()` and `computeMetadataDuplicateGroups()`
+  -- each producing its own rows, tagged "Exact file match" or "Likely
+  duplicate (title + date)"; a document that happens to satisfy both
+  passes simply appears in both groups' own rows, rather than being
+  deduplicated across the two pass types. A document with a blank Title or
+  blank Date is excluded from the Title+Date pass entirely, since matching
+  against an empty string would produce meaningless mass-groupings.
+  Clicking a document in a group closes the modal, selects that document,
+  and opens its detail panel -- the same click-through pattern the
+  Reminders modal's own rows already use -- where the existing
+  Archive/Delete/Edit actions do the actual resolving; this feature adds
+  no bespoke delete or merge action of its own. See
+  `docs/superpowers/specs/2026-09-24-duplicate-detection-design.md` for
+  the full design.
 
 ## How this was tested
 

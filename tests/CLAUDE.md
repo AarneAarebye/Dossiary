@@ -670,7 +670,23 @@ app — `bulkSetArchived()`/`bulkSetDeleted()`/`bulkSetNeedsReview()` all
 clear `selectedDocIds` on success, but a bulk-edit save does not, since
 changing field values (unlike archiving/deleting/flagging) never removes
 a document from the view its selection lives in — confirmed by checking a
-row's own checkbox stays checked immediately after a save), and the Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
+row's own checkbox stays checked immediately after a save), duplicate
+detection (`test_duplicate_detection.py` -- `computeFileHash()` matching a
+hand-computed SHA-256 for known byte content; two documents captured from
+byte-identical files sharing the same `file_hash` while a third, genuinely
+different document gets a different one; the capture-time warning
+appearing immediately (non-blocking -- Save still succeeds) when a picked
+file's bytes match an already-saved document, and staying hidden for a
+file with no match; an Inbox bulk-add batch where one staged file is an
+exact duplicate (skipped, removed from `inbox/`, counted on the status
+line) and a second staged file in the same batch is genuinely new (added
+normally); the "Find duplicates" modal grouping an exact-hash match and a
+Title+Date metadata match into separate, correctly-labeled groups, a
+same-title-different-date document correctly excluded from the Title+Date
+grouping, clicking a document in a group closing the modal and opening
+its detail panel, and a second modal open not re-triggering the backfill
+progress indicator once every document already has a hash), the
+Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the
 2026-09-16 amendment — an unconfigured `scan_bridge_url` probing the
