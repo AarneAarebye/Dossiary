@@ -699,7 +699,7 @@
         <button id="manage-collections-btn" data-i18n="toolbarManageCollections">⚙ Manage collections</button>
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
         <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
-        <button id="find-duplicates-btn" data-i18n="toolbarFindDuplicates">🔍 Find duplicates</button>
+        <button id="library-check-btn" data-i18n="toolbarLibraryCheck">🔍 Library check</button>
         <button id="scan-btn" data-i18n="toolbarScan">📷 Scan</button>
         <button id="scan-multi-btn" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
@@ -1066,7 +1066,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
       dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
       reminderDueToday: 'Due today', reminderOverdueSingular: '{days} day overdue', reminderOverduePlural: '{days} days overdue', reminderDueInSingular: 'Due in {days} day', reminderDueInPlural: 'Due in {days} days',
-      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', duplicatesModalTitle: 'Find duplicates', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNoneFound: 'No duplicates found.', toolbarFindDuplicates: '🔍 Find duplicates',
+      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check',
     },
     es: {
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
@@ -1267,7 +1267,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} archivo no se pudo añadir y sigue allí.',
       dragdropPartialFailureStillTherePlural: ' {count} archivos no se pudieron añadir y siguen allí.',
       reminderDueToday: 'Vence hoy', reminderOverdueSingular: 'Vencido hace {days} día', reminderOverduePlural: 'Vencido hace {days} días', reminderDueInSingular: 'Vence en {days} día', reminderDueInPlural: 'Vence en {days} días',
-      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', duplicatesModalTitle: 'Buscar duplicados', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNoneFound: 'No se encontraron duplicados.', toolbarFindDuplicates: '🔍 Buscar duplicados',
+      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca',
     },
     fr: {
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
@@ -1468,7 +1468,7 @@
       dragdropPartialFailureStillThereSingular: " {count} fichier n'a pas pu être ajouté et est toujours là.",
       dragdropPartialFailureStillTherePlural: " {count} fichiers n'ont pas pu être ajoutés et sont toujours là.",
       reminderDueToday: 'Échéance aujourd\'hui', reminderOverdueSingular: 'En retard de {days} jour', reminderOverduePlural: 'En retard de {days} jours', reminderDueInSingular: 'Échéance dans {days} jour', reminderDueInPlural: 'Échéance dans {days} jours',
-      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', duplicatesModalTitle: 'Rechercher les doublons', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNoneFound: 'Aucun doublon trouvé.', toolbarFindDuplicates: '🔍 Rechercher les doublons',
+      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -1669,7 +1669,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
       dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
       reminderDueToday: 'Heute fällig', reminderOverdueSingular: '{days} Tag überfällig', reminderOverduePlural: '{days} Tage überfällig', reminderDueInSingular: 'Fällig in {days} Tag', reminderDueInPlural: 'Fällig in {days} Tagen',
-      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', duplicatesModalTitle: 'Duplikate finden', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNoneFound: 'Keine Duplikate gefunden.', toolbarFindDuplicates: '🔍 Duplikate finden',
+      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen',
     },
     'zh-Hans': {
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
@@ -1870,7 +1870,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 个文件无法添加，仍留在原处。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 个文件无法添加，仍留在原处。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天后到期', reminderDueInPlural: '{days} 天后到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', duplicatesModalTitle: '查找重复项', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNoneFound: '未发现重复项。', toolbarFindDuplicates: '🔍 查找重复项',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查',
     },
     'zh-Hant': {
       commonCancel: '取消',
@@ -2197,7 +2197,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 個文件無法添加，仍留在原處。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 個文件無法添加，仍留在原處。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天後到期', reminderDueInPlural: '{days} 天後到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '刪除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新啓用', duplicatesModalTitle: '查找重複項', duplicatesBackfillProgress: '正在檢查第 {done}/{total} 個文檔是否重複……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重複（標題+日期）', duplicatesNoneFound: '未發現重複項。', toolbarFindDuplicates: '🔍 查找重複項',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '刪除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新啓用', libraryCheckModalTitle: '資料庫檢查', duplicatesBackfillProgress: '正在檢查第 {done}/{total} 個文檔是否重複……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重複（標題+日期）', libraryCheckNoneFound: '未發現問題。', toolbarLibraryCheck: '🔍 資料庫檢查',
     },
   };
 
@@ -3702,7 +3702,7 @@
   // kept in the same __DEBUG_-prefixed convention as every other hook above, rather than
   // a separate unprefixed global, so test-only exposure stays visibly test-only.
   window.__DEBUG_openRemindersModal = openRemindersModal;
-  window.__DEBUG_openFindDuplicatesModal = openFindDuplicatesModal;
+  window.__DEBUG_openLibraryCheckModal = openLibraryCheckModal;
   // Test-only: reads the module-private backfill-in-progress flag directly, so a
   // test can confirm the try/finally around openFindDuplicatesModal()'s backfill
   // loop actually clears it even when persistDb() throws mid-backfill (rather
@@ -5570,14 +5570,14 @@
     return Object.values(byKey).filter(group => group.length >= 2);
   }
 
-  async function openFindDuplicatesModal(){
+  async function openLibraryCheckModal(){
     const unhashed = allDocs.filter(d => !d.deleted && !d.file_hash);
 
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
-          <h2>${t('duplicatesModalTitle')}</h2>
+          <h2>${t('libraryCheckModalTitle')}</h2>
           <div id="duplicates-progress" style="display:${unhashed.length ? 'block' : 'none'};"></div>
           <div class="fs-list" id="duplicates-list" style="display:${unhashed.length ? 'none' : 'block'};"></div>
         </div>
@@ -5632,10 +5632,10 @@
     const activeDocs = allDocs.filter(d => !d.deleted);
     const exactGroups = computeExactHashDuplicateGroups(activeDocs);
     const metadataGroups = computeMetadataDuplicateGroups(activeDocs);
-    renderDuplicateGroups(exactGroups, metadataGroups);
+    renderLibraryCheckResults(exactGroups, metadataGroups);
   }
 
-  function renderDuplicateGroups(exactGroups, metadataGroups){
+  function renderLibraryCheckResults(exactGroups, metadataGroups){
     // Defensive: the modal could have been replaced by something else (e.g.
     // another modal opened via keyboard Tab-through while this one's close
     // button was disabled during a backfill) by the time this runs -- not a
@@ -5644,7 +5644,7 @@
     const listEl = el('duplicates-list');
     if(!listEl) return;
     if(!exactGroups.length && !metadataGroups.length){
-      listEl.innerHTML = `<p id="duplicates-empty">${t('duplicatesNoneFound')}</p>`;
+      listEl.innerHTML = `<p id="duplicates-empty">${t('libraryCheckNoneFound')}</p>`;
       return;
     }
     const groupHtml = (group, labelKey) => `
@@ -8650,7 +8650,7 @@
   // writes" principle as everything else in this app.
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
   el('check-reminders-btn').addEventListener('click', checkRemindersAndShowStatus);
-  el('find-duplicates-btn').addEventListener('click', openFindDuplicatesModal);
+  el('library-check-btn').addEventListener('click', openLibraryCheckModal);
   async function startScan(isMulti){
     if(scanRequestInFlight) return;
     scanRequestInFlight = true;

@@ -216,7 +216,7 @@ async def main():
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(200)
 
-        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
         # .duplicate-group-label has text-transform:uppercase in CSS, so
         # inner_text() (which reflects rendered text, not raw textContent)
@@ -244,7 +244,7 @@ async def main():
 
         # === Scenario 7: a second "Find duplicates" open does not re-hash
         # already-hashed documents (no progress shown, since nothing is unhashed) ===
-        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
         progress_hidden = not await page.locator('#duplicates-progress').is_visible()
         print("No backfill progress shown on a second open (everything already hashed):", progress_hidden)
@@ -265,7 +265,7 @@ async def main():
         await page.wait_for_timeout(150)
         await page.click('#delete-toggle-btn')
         await page.wait_for_timeout(150)
-        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
         list_text_after_delete = await page.locator('#duplicates-list').inner_text()
         print("Deleted document's title no longer appears in any duplicate group:", 'Doc A3' not in list_text_after_delete)
@@ -371,7 +371,7 @@ async def main_iso_date_match():
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(200)
 
-        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
 
         metadata_group = page.locator('.duplicate-group').filter(has_text='Likely duplicate (title + date)')
@@ -474,7 +474,7 @@ async def main_lazy_backfill():
         # poll, so we can observe the progress indicator while it's still running
         # (a single fully-awaited call would only ever observe the final,
         # already-hidden state).
-        await page.evaluate("() => { window.__DEBUG_openFindDuplicatesModal(); }")
+        await page.evaluate("() => { window.__DEBUG_openLibraryCheckModal(); }")
         await page.wait_for_timeout(50)
         progress_visible = await page.locator('#duplicates-progress').is_visible()
         print("Progress indicator appears while the backfill is running:", progress_visible)
@@ -566,7 +566,7 @@ async def main_backfill_failure():
 
         threw = await page.evaluate("""
             async () => {
-                try { await window.__DEBUG_openFindDuplicatesModal(); return false; }
+                try { await window.__DEBUG_openLibraryCheckModal(); return false; }
                 catch (e) { return true; }
             }
         """)
