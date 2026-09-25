@@ -685,7 +685,10 @@ Title+Date metadata match into separate, correctly-labeled groups, a
 same-title-different-date document correctly excluded from the Title+Date
 grouping, clicking a document in a group closing the modal and opening
 its detail panel, and a second modal open not re-triggering the backfill
-progress indicator once every document already has a hash), the
+progress indicator once every document already has a hash; a deleted
+document excluded from groupings (an exact-hash group correctly shrinking
+from 3 to 2 members after one is deleted, its title no longer appearing
+in the modal)), the
 Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the

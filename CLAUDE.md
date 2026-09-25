@@ -3192,7 +3192,13 @@ this repo's git tags.
   not-added a staged file before -- and the explicit status-line reporting
   is what keeps it from being *silent*, per this app's own "no silent
   writes" working convention: nothing here omits information from the
-  person, it just avoids creating a redundant document.
+  person, it just avoids creating a redundant document. The raw file copy
+  and preserved original this function already wrote to `files/` before
+  running the hash check are explicitly left behind as harmless orphans
+  when a duplicate is detected — not cleaned up, matching this app's
+  existing tolerance for orphaned artifacts elsewhere (e.g. unused
+  tags/people rows left behind after their last use), an accepted
+  tradeoff rather than an oversight.
   **"Find duplicates"** (a new toolbar button, alongside `🔔 Check
   reminders`/`📥 Check inbox` -- the same family of explicit, on-demand
   maintenance actions) opens a modal structured like the Reminders modal:
