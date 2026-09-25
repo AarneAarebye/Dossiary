@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (69 scripts) + shared
+tests/                   Playwright regression suite (70 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3300,6 +3300,49 @@ this repo's git tags.
   close control) on every Library check open until it's re-linked — cheap,
   since the pass skips a missing file immediately, but worth knowing if the
   progress spinner ever seems to appear on every open.
+- **Orphaned tags/people cleanup** (`computeOrphanedTags()`, `computeOrphanedPeople()`,
+  `deleteOrphanedTags()`, `deleteOrphanedPeople()`) adds two more sections to the
+  "Library check" modal: any `tags`/`people` row not referenced by any non-deleted
+  document. Detection is entirely in-memory — every document already carries
+  `d.tags` and `d.personFieldValues` (the latter covering *every* person-type
+  field, not just the built-in People field, since `personNameToId` is one
+  global name registry shared across all of them) — so no new database query,
+  no persisted state, and no backfill are needed; both run fresh on every
+  modal open, the same reasoning `computeBrokenFileLinks()` already uses.
+  **A document sitting in the Waste bin doesn't count as "using" its
+  tags/people** — a tag/person referenced only by a deleted document is
+  flagged as orphaned — with one accepted, documented consequence: if such a
+  tag/person is deleted while orphaned and the document is later restored, it
+  comes back silently missing that tag/person, since the join row pointing at
+  the now-gone id is harmless dead weight, not a broken reference. **Deleting
+  a name also scrubs it out of `allDocs`'s own in-memory copies**
+  (`d.tags`/`d.people`/every array inside `d.personFieldValues`, across
+  *every* document including ones in the Waste bin) — necessary because this
+  app never reloads `allDocs` from disk mid-session (see the `tagNameToId`
+  Tag deduplication note above), so without this scrub a Waste-bin document's
+  own in-memory arrays would go stale after the cascade `DELETE` and show the
+  just-deleted name again if viewed or restored before the next reload, even
+  though the database itself no longer has any row backing it.
+  **Orphaned rows deliberately don't reuse `.duplicate-row`** — unlike every
+  other row in this modal, an orphaned tag/person doesn't represent a
+  document, so there's nothing to click through to a detail panel for; they
+  get their own non-clickable `.orphaned-row` markup instead, just a name and
+  a Delete button. **Deletion cascades into the relevant join table** —
+  `DELETE FROM document_tags WHERE tag_id = ?` / `DELETE FROM
+  document_field_people WHERE person_id = ?` — before removing the row
+  itself, and refreshes every autocomplete datalist via the existing
+  `populateDatalists()` so a deleted name stops being suggested immediately.
+  **This is the first destructive action this maintenance-feature family has
+  added** (duplicate detection and broken-file-links never destroy data), and
+  correspondingly the first `confirm()` dialog anywhere in this app's own UI —
+  both the per-row Delete and the per-section "Delete all orphaned" bulk
+  action require one. The bulk action follows this app's existing
+  bulk-action convention exactly: one shared `confirm()` for the whole
+  section (not one per row), every `DELETE` queued first, and exactly one
+  `persistDb()` at the end — `deleteOrphanedTags(names)`/
+  `deleteOrphanedPeople(names)` take an array specifically so a single-row
+  delete and a many-row bulk delete are the same function call with a
+  1-element array, not two separate code paths.
 
 ## How this was tested
 

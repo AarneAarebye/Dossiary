@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **69
-scripts covering most of the app's actual functionality** (67 of them
+There's a real, runnable Playwright regression suite in `tests/` — **70
+scripts covering most of the app's actual functionality** (68 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -711,7 +711,18 @@ error and `file_hash` unchanged. Every real re-link goes through
 Playwright's `expect_file_chooser()`, not `set_input_files()` on the input
 directly -- headless Chromium auto-dismisses an unanswered picker, firing
 `cancel`, which now removes the input before `set_input_files()` could
-find it), the
+find it), the Library check modal's orphaned tags/people sections
+(`test_orphaned_lookups.py` -- a tag or person still referenced by a
+non-deleted document is never flagged; one referenced only by a Waste-bin
+document is flagged; a person referenced only via a non-People
+person-type field (Author) is still correctly recognized as in-use; a
+per-row Delete, behind its own `confirm()`, removes just that row and
+cascades into the join table; declining that `confirm()` leaves
+everything unchanged; "Delete all orphaned" clears every row in a
+section in one action behind its own single `confirm()`; a deleted
+tag/person disappears from its autocomplete datalist immediately; and
+restoring a Waste-bin document whose tag was deleted while orphaned
+brings it back without that tag), the
 Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the
