@@ -221,7 +221,8 @@ class FakeDatabase {
           updates[col] = setParams[paramIdx++];
         } else {
           // Literal value - parse it
-          if (/^\d+$/.test(val)) updates[col] = parseInt(val);
+          if (/^NULL$/i.test(val)) updates[col] = null;
+          else if (/^\d+$/.test(val)) updates[col] = parseInt(val);
           else if (/^'.*'$/.test(val)) updates[col] = val.slice(1, -1);
           else updates[col] = val;
         }
@@ -249,7 +250,8 @@ class FakeDatabase {
           updates[col] = setParams[paramIdx++];
         } else {
           // Literal value - parse it
-          if (/^\d+$/.test(val)) updates[col] = parseInt(val);
+          if (/^NULL$/i.test(val)) updates[col] = null;
+          else if (/^\d+$/.test(val)) updates[col] = parseInt(val);
           else if (/^'.*'$/.test(val)) updates[col] = val.slice(1, -1);
           else updates[col] = val;
         }
