@@ -1031,7 +1031,7 @@
       dragdropInboxBannerWaitingSingular: '{count} document waiting in the inbox folder.',
       dragdropInboxBannerWaitingPlural: '{count} documents waiting in the inbox folder.',
       dragdropAddedFromInboxStatus: 'Added "{title}" as #{id} from the inbox.',
-      dragdropSkippedDuplicateFromInboxStatus: 'Skipped "{name}" -- an identical file is already in the library.',
+      dragdropSkippedDuplicateFromInboxStatus: 'Skipped "{name}" — an identical file is already in the library.',
       dragdropAddFailedStatus: 'Failed to add "{name}": {error}',
       dragdropDropFailedSingle: 'Could not add the dropped file.',
       dragdropDropFailedMulti: 'Could not add any of the {count} dropped files.',
@@ -1634,7 +1634,7 @@
       dragdropInboxBannerWaitingSingular: '{count} Dokument wartet im Posteingangsordner.',
       dragdropInboxBannerWaitingPlural: '{count} Dokumente warten im Posteingangsordner.',
       dragdropAddedFromInboxStatus: '"{title}" als #{id} aus dem Posteingang hinzugefügt.',
-      dragdropSkippedDuplicateFromInboxStatus: '"{name}" übersprungen -- eine identische Datei ist bereits in der Bibliothek vorhanden.',
+      dragdropSkippedDuplicateFromInboxStatus: '"{name}" übersprungen — eine identische Datei ist bereits in der Bibliothek vorhanden.',
       dragdropAddFailedStatus: '"{name}" konnte nicht hinzugefügt werden: {error}',
       dragdropDropFailedSingle: 'Die abgelegte Datei konnte nicht hinzugefügt werden.',
       dragdropDropFailedMulti: 'Keine der {count} abgelegten Dateien konnte hinzugefügt werden.',
@@ -3703,6 +3703,11 @@
   // a separate unprefixed global, so test-only exposure stays visibly test-only.
   window.__DEBUG_openRemindersModal = openRemindersModal;
   window.__DEBUG_openFindDuplicatesModal = openFindDuplicatesModal;
+  // Test-only: reads the module-private backfill-in-progress flag directly, so a
+  // test can confirm the try/finally around openFindDuplicatesModal()'s backfill
+  // loop actually clears it even when persistDb() throws mid-backfill (rather
+  // than only inferring this indirectly from the close button/Escape key).
+  window.__DEBUG_findDuplicatesBackfillRunning = () => findDuplicatesBackfillRunning;
   // Test-only: looks up a fields row by name, for asserting migrateDefaultReminderField()'s
   // own behavior without a dedicated production API for it (nothing else in the app
   // needs to look up an arbitrary field by name from outside its own closure).
@@ -5551,7 +5556,13 @@
     const byKey = {};
     for(const d of docs){
       const title = (d.title || '').trim();
-      const date = d.date || '';
+      // Migrated documents can carry a full ISO timestamp (e.g.
+      // '2019-05-15T00:00:00+00:00') while captured/edited documents always
+      // store a plain 10-character date -- slice to the first 10 characters
+      // so the two representations of the same real-world date actually
+      // match, same as every other date comparison in this app already does
+      // (e.g. the Reports date-range filter's own .slice(0, 10)).
+      const date = (d.date || '').slice(0, 10);
       if(!title || !date) continue;
       const key = title.toLowerCase() + '|' + date;
       (byKey[key] = byKey[key] || []).push(d);
@@ -5560,7 +5571,6 @@
   }
 
   async function openFindDuplicatesModal(){
-    const closeBtn = () => el('modal-close-btn');
     const unhashed = allDocs.filter(d => !d.deleted && !d.file_hash);
 
     modalRoot.innerHTML = `
@@ -5589,22 +5599,34 @@
       // hashes to the database as it goes and isn't meant to be interrupted
       // mid-pass.
       el('modal-close-btn').disabled = true;
-      const progressEl = el('duplicates-progress');
-      let done = 0;
-      for(const d of unhashed){
-        progressEl.innerHTML = '<span class="spinner"></span> ' + t('duplicatesBackfillProgress', {done, total: unhashed.length});
-        await backfillFileHash(d);
-        done++;
+      // findDuplicatesBackfillRunning also gates onModalKeydown()'s Escape
+      // handling for the WHOLE app, not just this modal's own close button --
+      // if persistDb() (or anything else in this loop) throws (a revoked
+      // filesystem permission, a full disk, ...), the flag must still be
+      // cleared and the modal left in a usable state, or Escape silently
+      // stops working for every other modal for the rest of the session.
+      // try/finally guarantees that regardless of success or failure, the
+      // same "disable, only re-enable in finally" treatment triggerScan()
+      // already uses for the Scan/Scan Multi buttons.
+      try{
+        const progressEl = el('duplicates-progress');
+        let done = 0;
+        for(const d of unhashed){
+          if(progressEl) progressEl.innerHTML = '<span class="spinner"></span> ' + t('duplicatesBackfillProgress', {done, total: unhashed.length});
+          await backfillFileHash(d);
+          done++;
+        }
+        if(progressEl) progressEl.innerHTML = '<span class="spinner"></span> ' + t('duplicatesBackfillProgress', {done, total: unhashed.length});
+        await persistDb();
+      }finally{
+        findDuplicatesBackfillRunning = false;
+        const closeBtnEl = el('modal-close-btn');
+        if(closeBtnEl) closeBtnEl.disabled = false;
+        const progressDisplayEl = el('duplicates-progress');
+        if(progressDisplayEl) progressDisplayEl.style.display = 'none';
+        const listDisplayEl = el('duplicates-list');
+        if(listDisplayEl) listDisplayEl.style.display = 'block';
       }
-      progressEl.innerHTML = '<span class="spinner"></span> ' + t('duplicatesBackfillProgress', {done, total: unhashed.length});
-      await persistDb();
-      findDuplicatesBackfillRunning = false;
-      const closeBtnEl = el('modal-close-btn');
-      if(closeBtnEl) closeBtnEl.disabled = false;
-      const progressDisplayEl = el('duplicates-progress');
-      if(progressDisplayEl) progressDisplayEl.style.display = 'none';
-      const listDisplayEl = el('duplicates-list');
-      if(listDisplayEl) listDisplayEl.style.display = 'block';
     }
 
     const activeDocs = allDocs.filter(d => !d.deleted);
@@ -5614,7 +5636,13 @@
   }
 
   function renderDuplicateGroups(exactGroups, metadataGroups){
+    // Defensive: the modal could have been replaced by something else (e.g.
+    // another modal opened via keyboard Tab-through while this one's close
+    // button was disabled during a backfill) by the time this runs -- not a
+    // full focus-trap, just a guard against writing into a container that's
+    // no longer there.
     const listEl = el('duplicates-list');
+    if(!listEl) return;
     if(!exactGroups.length && !metadataGroups.length){
       listEl.innerHTML = `<p id="duplicates-empty">${t('duplicatesNoneFound')}</p>`;
       return;
@@ -7563,8 +7591,12 @@
       if(pendingFile !== file) return;
       pendingFileHash = hash;
       pendingFileHashFile = file;
-      const match = allDocs.find(d => !d.deleted && d.file_hash === hash);
+      // Defensive: the capture modal could already be closed (and #f-duplicate-warning
+      // gone with it) by the time this async hash resolves -- pendingFile !== file
+      // catches most of that, but doesn't guarantee the DOM element itself still exists.
       const warningEl = el('f-duplicate-warning');
+      if(!warningEl) return;
+      const match = allDocs.find(d => !d.deleted && d.file_hash === hash);
       if(match){
         warningEl.innerHTML = `${t('captureDuplicateWarning', {title: escapeHtml(displayName(match)), id: match.id})} <button type="button" class="link-btn" id="f-duplicate-warning-open-btn">${t('captureDuplicateWarningOpenBtn')}</button> <button type="button" class="link-btn" id="f-duplicate-warning-dismiss-btn">${t('captureDuplicateWarningDismissBtn')}</button>`;
         warningEl.style.display = 'block';
@@ -7580,7 +7612,7 @@
       }else{
         warningEl.style.display = 'none';
       }
-    });
+    }).catch(() => {}); // a hashing failure here is non-fatal -- Save doesn't depend on it
 
     const previewArea = el('file-preview-area');
     if(isImage){
@@ -8145,6 +8177,25 @@
   async function createReviewDocumentFromFile(file, source){
     const id = nextDocId++;
     try{
+      // Hash first and check for an exact-duplicate match against an
+      // already-in-the-library document (deleted ones excluded, same as
+      // every other duplicate-detection pass) BEFORE writing anything to
+      // disk -- an identical copy is already safely stored, so no second
+      // document is created for it, and (critically) no file ever gets
+      // written under this reserved id in the first place. Checking this
+      // first, rather than after the file copy/original-preservation
+      // writes below, avoids leaving orphaned files behind under an id that
+      // then gets rolled back and reused by the next genuinely-new
+      // document -- see CLAUDE.md's duplicate-detection note for the
+      // "files/6_scan.pdf next to files/6_letter.pdf" confusion this
+      // ordering exists to prevent.
+      const fileHashForDb = await computeFileHash(file);
+      const duplicateMatch = allDocs.find(d => !d.deleted && d.file_hash === fileHashForDb);
+      if(duplicateMatch){
+        nextDocId--; // roll back the reservation -- no document was actually created, no file was ever written
+        return { id: null, title: null, skippedDuplicate: true };
+      }
+
       const baseName = safeFilename(file.name.replace(/\.[^.]+$/, ''), 'document');
       const ext = (file.name.match(/\.[^.]+$/) || [''])[0];
       const destName = ext ? `${id}_${baseName}${ext}` : `${id}_${baseName}_file`;
@@ -8158,22 +8209,6 @@
       // document is always unprocessed at this point (searchable_pdf_built
       // stays 0 below).
       const originalFilePathForDb = await writeOriginalToSubfolder(id, baseName, file);
-      const fileHashForDb = await computeFileHash(file);
-
-      // An exact-hash match against an already-in-the-library document (deleted
-      // ones excluded, same as every other duplicate-detection pass) means this
-      // staged/dropped file is redundant -- an identical copy is already safely
-      // stored, so no second document is created for it. The raw file this
-      // function already wrote to `destHandle`/`filesDirHandle` above, and the
-      // original it just preserved via writeOriginalToSubfolder(), are both
-      // harmless orphaned copies at this point; they're not cleaned up here
-      // (out of scope for this change -- this app already tolerates orphaned
-      // files elsewhere, e.g. tags/people rows left behind after their last use).
-      const duplicateMatch = allDocs.find(d => !d.deleted && d.file_hash === fileHashForDb);
-      if(duplicateMatch){
-        nextDocId--; // roll back the reservation -- no document was actually created
-        return { id: null, title: null, skippedDuplicate: true };
-      }
 
       // Best-effort, same as saveNewDocument() -- a missing preview isn't fatal.
       let thumbnailPathForDb = null;

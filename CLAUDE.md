@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (67 scripts) + shared
+tests/                   Playwright regression suite (68 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2291,7 +2291,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 351 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 363 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2523,7 +2523,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (351 keys apiece now, not ~260), and
+  grew from two top-level keys to six (363 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -3172,7 +3172,9 @@ this repo's git tags.
   it goes and isn't meant to be interrupted mid-pass.
   **The capture form warns, non-blocking, the moment a file is picked**
   (`handlePickedFile()`), checking the picked file's hash against every
-  document's `file_hash` in `allDocs` and showing a dismissible
+  non-deleted document's `file_hash` in `allDocs` (the same `!d.deleted`
+  exclusion every other duplicate-detection pass in this feature uses) and
+  showing a dismissible
   `.field-guess-hint`-style line naming the matched document, with a link
   to open its detail panel -- Save stays enabled regardless. This checks
   the exact-hash case only, never Title+Date -- form fields may still be
@@ -3192,13 +3194,17 @@ this repo's git tags.
   not-added a staged file before -- and the explicit status-line reporting
   is what keeps it from being *silent*, per this app's own "no silent
   writes" working convention: nothing here omits information from the
-  person, it just avoids creating a redundant document. The raw file copy
-  and preserved original this function already wrote to `files/` before
-  running the hash check are explicitly left behind as harmless orphans
-  when a duplicate is detected — not cleaned up, matching this app's
-  existing tolerance for orphaned artifacts elsewhere (e.g. unused
-  tags/people rows left behind after their last use), an accepted
-  tradeoff rather than an oversight.
+  person, it just avoids creating a redundant document.
+  `createReviewDocumentFromFile()` computes the hash and checks for a
+  duplicate match **before** writing the file copy or preserving the
+  original — not after — specifically so a skipped duplicate never
+  writes anything to `files/` at all: an earlier version of this function
+  hashed after both writes, which left an orphaned file copy and preserved
+  original behind under the reserved id every time a duplicate was
+  skipped, and — because the id counter was also rolled back — the *next*
+  genuinely-new document then reused that same id, landing its own real
+  files right next to those orphans. Checking first avoids that scenario
+  outright rather than tolerating it.
   **"Find duplicates"** (a new toolbar button, alongside `🔔 Check
   reminders`/`📥 Check inbox` -- the same family of explicit, on-demand
   maintenance actions) opens a modal structured like the Reminders modal:

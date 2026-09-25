@@ -158,6 +158,23 @@ async def main():
         print("The genuinely new file became document #5 with its own file_hash:", doc5_hash is not None and len(doc5_hash) == 64)
         print("The duplicate file did NOT become a second new document (no document #6 exists):", doc6_hash is None)
 
+        # Fix 4: the skipped duplicate (which was assigned and then rolled back
+        # from id 5, the same id the genuinely-new file went on to reuse) must
+        # not have left any orphaned file behind under that id -- the hash check
+        # now runs BEFORE either file-write in createReviewDocumentFromFile(), so
+        # a skipped duplicate should never touch files/ at all. The only files
+        # under id 5 should belong to the genuinely-new "staged_new" document.
+        files_dir_entries = await page.evaluate("""
+            async () => {
+                const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files', { create: true });
+                const names = [];
+                for await (const [name] of filesDir.entries()) names.push(name);
+                return names;
+            }
+        """)
+        print("No orphaned file was written under the rolled-back id for the skipped duplicate:", not any('staged_duplicate' in n for n in files_dir_entries))
+        print("The genuinely-new document's own file IS present under id 5:", any('staged_new' in n for n in files_dir_entries))
+
         # === Scenario 6: "Find duplicates" groups exact-hash matches and
         # Title+Date metadata matches correctly, excludes a blank-title/date
         # document, and clicking a document in a group opens its detail panel ===
@@ -260,7 +277,319 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(100)
 
+        # === Scenario 9 (Minor item): a drag-and-drop batch that's entirely
+        # duplicates is skipped end to end -- no navigation to the Inbox view,
+        # and the status line reports the skip without ever mentioning an
+        # addition. Doc A1 (id 1) is still active (non-deleted) with
+        # DOC_A_BYTES' hash, so a dropped file with the same bytes matches it. ===
+        async def dispatch_drag_with_content(page, event_type, files=None):
+            parts_js = ""
+            if files is not None:
+                parts = ",".join(
+                    f"new File([new TextEncoder().encode({content!r})], {name!r}, {{type: 'application/pdf'}})"
+                    for name, content in files
+                )
+                parts_js = f"[{parts}].forEach(f => dt.items.add(f));"
+            await page.evaluate(f"""
+                () => {{
+                    const dt = new DataTransfer();
+                    {parts_js}
+                    const ev = new DragEvent({event_type!r}, {{ bubbles: true, cancelable: true, dataTransfer: dt }});
+                    document.dispatchEvent(ev);
+                }}
+            """)
+
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        await dispatch_drag_with_content(page, 'dragenter')
+        await page.wait_for_timeout(100)
+        await dispatch_drag_with_content(page, 'drop', [('dup_drop.pdf', '%PDF-1.4 fake pdf content A for duplicate-detection tests')])
+        await page.wait_for_timeout(300)
+        drop_status_text = await page.locator('#status').inner_text()
+        print("All-duplicates drop status line mentions a skipped duplicate:", 'duplicate' in drop_status_text.lower())
+        print("All-duplicates drop status line does NOT mention an addition:", 'added' not in drop_status_text.lower())
+        stayed_off_inbox = await page.locator('#nav-item-all.active').count() == 1
+        print("An all-duplicates drop does not navigate to the Inbox view:", stayed_off_inbox)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
 asyncio.run(main())
+
+# === Fix 1: Title+Date grouping must slice both dates to their first 10
+# characters before comparing, so a migrated document's full ISO timestamp
+# ('2019-05-15T00:00:00+00:00') matches a captured document's plain
+# 10-character date ('2019-05-15') for the exact same real-world date. ===
+SEED_ISO_DATE = {
+    "documents": [
+        {
+            "id": 1, "title": "Electric Bill", "category": None, "document_type": None,
+            "date": "2019-05-15T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/1_migrated.pdf", "original_file_path": None,
+            "created_at": "2019-05-15T00:00:00+00:00", "source": "migrated", "source_legacy_id": 42,
+        },
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_iso_date_match():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        stub_js = open('stub_studio2.js').read()
+        await page.add_init_script(stub_js)
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+
+        import json
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_ISO_DATE)});")
+        await page.click("#open-btn")
+        await page.wait_for_timeout(300)
+
+        # Capture a second document with the same Title and a plain 10-character
+        # Date representing the exact same real-world date as doc 1's full ISO
+        # timestamp.
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        await page.set_input_files('#file-input', {
+            'name': 'recaptured.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 a freshly recaptured copy of the same real-world document',
+        })
+        await page.wait_for_timeout(150)
+        await page.fill('#f-title', 'Electric Bill')
+        await page.fill('#f-date', '2019-05-15')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(200)
+
+        await page.evaluate("window.__DEBUG_openFindDuplicatesModal()")
+        await page.wait_for_timeout(300)
+
+        metadata_group = page.locator('.duplicate-group').filter(has_text='Likely duplicate (title + date)')
+        row_titles = await metadata_group.locator('.duplicate-row .doc-title').all_inner_texts()
+        print("Migrated doc (full ISO timestamp) and recaptured doc (plain date) are grouped together as a Title+Date match:", len(row_titles) == 2 and all(t == 'Electric Bill' for t in row_titles))
+
+        print("JS ERRORS:", errors)
+        await browser.close()
+
+asyncio.run(main_iso_date_match())
+
+
+# === Fix 2: the lazy backfill (openFindDuplicatesModal()/backfillFileHash())
+# is exercised end to end against a pre-existing library seeded with documents
+# that have NO file_hash set yet -- simulating a library from before this
+# feature shipped, the exact scenario every real Dossiary library hits the
+# first time "Find duplicates" is opened after upgrading. ===
+SEED_UNHASHED = {
+    "documents": [
+        {
+            "id": 1, "title": "Backfill Doc A", "category": None, "document_type": None,
+            "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/1_a.pdf", "original_file_path": None,
+            "created_at": "2026-01-01T00:00:00Z", "source": "captured", "source_legacy_id": None,
+        },
+        {
+            "id": 2, "title": "Backfill Doc B", "category": None, "document_type": None,
+            "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/2_b.pdf", "original_file_path": None,
+            "created_at": "2026-01-01T00:00:00Z", "source": "captured", "source_legacy_id": None,
+        },
+        {
+            "id": 3, "title": "Missing File Doc", "category": None, "document_type": None,
+            "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+            # This file is never actually created in the fake filesystem below --
+            # exercises the missing-file skip.
+            "file_path": "files/3_missing.pdf", "original_file_path": None,
+            "created_at": "2026-01-01T00:00:00Z", "source": "captured", "source_legacy_id": None,
+        },
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_lazy_backfill():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        stub_js = open('stub_studio2.js').read()
+        await page.add_init_script(stub_js)
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+
+        import json
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_UNHASHED)});")
+        # Stage real, matching bytes for docs 1 and 2 under files/ -- doc 3's
+        # file_path is deliberately left unwritten, to exercise the
+        # missing-file skip.
+        await page.evaluate("""
+            async () => {
+                const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files', { create: true });
+                const bytes = new TextEncoder().encode('%PDF-1.4 identical content for the lazy-backfill pair');
+                const aHandle = await filesDir.getFileHandle('1_a.pdf', { create: true });
+                const aWritable = await aHandle.createWritable(); await aWritable.write(bytes); await aWritable.close();
+                const bHandle = await filesDir.getFileHandle('2_b.pdf', { create: true });
+                const bWritable = await bHandle.createWritable(); await bWritable.write(bytes); await bWritable.close();
+            }
+        """)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(300)
+
+        # The fake filesystem + a real (but tiny) crypto.subtle.digest() call are
+        # fast enough that a 3-document backfill can complete well within a single
+        # Playwright round-trip, making "is the progress indicator visible mid-run"
+        # a real race rather than a reliable check. Slow down crypto.subtle.digest()
+        # artificially, for this test only, so the backfill loop stays observably
+        # in-progress long enough to check -- this doesn't touch dossiary.html
+        # itself, just the underlying Web Crypto API this one test call goes through.
+        await page.evaluate("""
+            () => {
+                const originalDigest = window.crypto.subtle.digest.bind(window.crypto.subtle);
+                window.crypto.subtle.digest = async (...args) => {
+                    await new Promise(r => setTimeout(r, 150));
+                    return originalDigest(...args);
+                };
+            }
+        """)
+
+        # Don't await this call's own completion -- kick off the backfill and
+        # poll, so we can observe the progress indicator while it's still running
+        # (a single fully-awaited call would only ever observe the final,
+        # already-hidden state).
+        await page.evaluate("() => { window.__DEBUG_openFindDuplicatesModal(); }")
+        await page.wait_for_timeout(50)
+        progress_visible = await page.locator('#duplicates-progress').is_visible()
+        print("Progress indicator appears while the backfill is running:", progress_visible)
+
+        await page.wait_for_timeout(1200)
+        progress_hidden = not await page.locator('#duplicates-progress').is_visible()
+        print("Progress indicator disappears once the backfill completes:", progress_hidden)
+
+        hash1 = await page.evaluate("window.__DEBUG_getFileHash(1)")
+        hash2 = await page.evaluate("window.__DEBUG_getFileHash(2)")
+        hash3 = await page.evaluate("window.__DEBUG_getFileHash(3)")
+        print("Doc A and Doc B (matching staged bytes, no original_file_path) got the same real, non-null hash -- backfill fell back to hashing file_path:", hash1 is not None and len(hash1) == 64 and hash1 == hash2)
+        print("Missing-file doc's hash stays null/undefined (backfill skipped it without throwing):", hash3 is None)
+
+        exact_group = page.locator('.duplicate-group').filter(has_text='Backfill Doc A')
+        exact_group_titles = await exact_group.locator('.duplicate-row .doc-title').all_inner_texts()
+        print("Backfill Doc A and Doc B appear together in an Exact file match group:", sorted(exact_group_titles) == ['Backfill Doc A', 'Backfill Doc B'])
+        exact_group_label = await exact_group.locator('.duplicate-group-label').inner_text()
+        print("...and that group is labeled as an exact match:", 'exact' in exact_group_label.lower())
+
+        print("JS ERRORS:", errors)
+        await browser.close()
+
+asyncio.run(main_lazy_backfill())
+
+
+# === Fix 3: if persistDb() throws partway through the backfill (a revoked
+# filesystem permission, a full disk, ...), findDuplicatesBackfillRunning must
+# still end up false and the app must still be left in a usable state --
+# specifically, Escape must still work for a SEPARATE, later-opened modal,
+# since findDuplicatesBackfillRunning also gates the shared onModalKeydown()
+# handler used by every modal in the app, not just this one. ===
+SEED_BACKFILL_FAILURE = {
+    "documents": [
+        {
+            "id": 1, "title": "Doc Needing Backfill", "category": None, "document_type": None,
+            "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": "files/1_a.pdf", "original_file_path": None,
+            "created_at": "2026-01-01T00:00:00Z", "source": "captured", "source_legacy_id": None,
+        },
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_backfill_failure():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        stub_js = open('stub_studio2.js').read()
+        await page.add_init_script(stub_js)
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+
+        import json
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_BACKFILL_FAILURE)});")
+        await page.evaluate("""
+            async () => {
+                const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files', { create: true });
+                const bytes = new TextEncoder().encode('%PDF-1.4 needs a hash');
+                const aHandle = await filesDir.getFileHandle('1_a.pdf', { create: true });
+                const aWritable = await aHandle.createWritable(); await aWritable.write(bytes); await aWritable.close();
+            }
+        """)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(300)
+
+        # Force persistDb() to throw -- dbFileHandle is the exact same
+        # FakeFileHandle instance the app already holds a reference to (FakeDirHandle.
+        # getFileHandle() returns the existing entry from its _children map, not a
+        # copy), so patching createWritable() on the handle we get here affects the
+        # app's own in-flight persistDb() call too.
+        await page.evaluate("""
+            async () => {
+                const handle = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                handle.createWritable = async () => { throw new Error('Simulated disk failure'); };
+            }
+        """)
+
+        threw = await page.evaluate("""
+            async () => {
+                try { await window.__DEBUG_openFindDuplicatesModal(); return false; }
+                catch (e) { return true; }
+            }
+        """)
+        print("openFindDuplicatesModal() propagates the persistDb() failure rather than swallowing it:", threw)
+
+        backfill_flag_cleared = not await page.evaluate("window.__DEBUG_findDuplicatesBackfillRunning()")
+        print("findDuplicatesBackfillRunning is cleared back to false even though persistDb() threw:", backfill_flag_cleared)
+
+        close_btn_reenabled = not await page.locator('#modal-close-btn').is_disabled()
+        print("The (still-open) duplicates modal's close button is re-enabled, not stuck disabled:", close_btn_reenabled)
+
+        # The real proof this doesn't leak app-wide: open a completely separate,
+        # unrelated modal afterward and confirm Escape still closes it -- this
+        # would fail (Escape silently doing nothing) if findDuplicatesBackfillRunning
+        # were left stuck true, since onModalKeydown() is shared across every modal.
+        await page.evaluate("window.__DEBUG_openRemindersModal([]);")
+        await page.wait_for_timeout(100)
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(150)
+        reminders_modal_closed = await page.locator('#modal-backdrop').count() == 0
+        print("Escape still closes a subsequently-opened, unrelated modal (Reminders):", reminders_modal_closed)
+
+        print("JS ERRORS:", errors)
+        await browser.close()
+
+asyncio.run(main_backfill_failure())
