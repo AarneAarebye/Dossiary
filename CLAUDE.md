@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (68 scripts) + shared
+tests/                   Playwright regression suite (69 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2291,7 +2291,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 363 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 368 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2523,7 +2523,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (363 keys apiece now, not ~260), and
+  grew from two top-level keys to six (368 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -3157,7 +3157,8 @@ this repo's git tags.
   **New documents get their hash computed and stored at creation time**
   (`saveNewDocument()`, `createReviewDocumentFromFile()`) -- one file,
   already being read at that moment anyway. **Existing documents are
-  backfilled lazily**: the first time "Find duplicates" is opened, it reads
+  backfilled lazily**: the first time "Library check" (originally "Find
+  duplicates" — see the rename note below) is opened, it reads
   and hashes every not-yet-hashed document's file once, with a progress
   indicator (the same spinner-plus-status-text treatment `runOcr()`'s own
   PDF-page-by-page progress already uses), persisting each hash as it's
@@ -3205,7 +3206,8 @@ this repo's git tags.
   genuinely-new document then reused that same id, landing its own real
   files right next to those orphans. Checking first avoids that scenario
   outright rather than tolerating it.
-  **"Find duplicates"** (a new toolbar button, alongside `🔔 Check
+  **"Find duplicates"** (a new toolbar button, since renamed "Library
+  check" — see the next note — alongside `🔔 Check
   reminders`/`📥 Check inbox` -- the same family of explicit, on-demand
   maintenance actions) opens a modal structured like the Reminders modal:
   after any needed backfill, `allDocs` (deleted documents excluded from
@@ -3279,7 +3281,25 @@ this repo's git tags.
   duplicate grouping changed. A failed write (permission revoked mid-session,
   disk full) is caught and shown as an inline `.relink-error` next to the
   still-present Re-link button, clearing any earlier error on retry, so
-  nothing silently looks fixed when it isn't.
+  nothing silently looks fixed when it isn't. **Cancelling the picker
+  doesn't fire `change`** in most browsers, so the dynamically-created input
+  used to be orphaned in the DOM on every cancelled attempt (caught in this
+  feature's own final review) — `triggerRelink()` now removes it on the
+  `cancel` event current Chromium fires for a dismissed picker, and also
+  sweeps up any leftover `input.relink-file-input` at the start of each new
+  attempt for browsers that fire neither event (only one native picker can
+  be open at a time, so nothing live is ever swept). Headless Chromium
+  auto-dismisses an unanswered picker the same way, firing `cancel` — which
+  is why `tests/test_broken_links.py` answers every real re-link through
+  Playwright's `expect_file_chooser()` rather than `set_input_files()` on
+  the input directly (the input is already gone by the time the latter
+  would run). **Known, accepted limitation**: a document that was never
+  hashed (one predating duplicate detection) and whose hash-deriving path is
+  broken can never be backfilled, so it stays in the lazy backfill's
+  "unhashed" set and re-triggers that pass (briefly disabling the modal's
+  close control) on every Library check open until it's re-linked — cheap,
+  since the pass skips a missing file immediately, but worth knowing if the
+  progress spinner ever seems to appear on every open.
 
 ## How this was tested
 

@@ -2536,7 +2536,7 @@
   let openDocCollectionMenu = null;
   let openReminderFlyout = null; // same "lives outside modalRoot, tracked separately" reasoning as openDocCollectionMenu just above
   let openRowContextMenu = null;
-  let findDuplicatesBackfillRunning = false; // tracks whether a "Find duplicates" backfill is in progress, shared with onModalKeydown()
+  let findDuplicatesBackfillRunning = false; // tracks whether the Library check modal's file_hash backfill is in progress, shared with onModalKeydown()
 
   let sortKey = 'import_date'; // overwritten by loadSortState() on every library open -- this is just the pre-library-open starting value
   let sortDir = 'desc';
@@ -3707,12 +3707,13 @@
   window.__DEBUG_openRemindersModal = openRemindersModal;
   window.__DEBUG_openLibraryCheckModal = openLibraryCheckModal;
   // Test-only: reads the module-private backfill-in-progress flag directly, so a
-  // test can confirm the try/finally around openFindDuplicatesModal()'s backfill
+  // test can confirm the try/finally around openLibraryCheckModal()'s backfill
   // loop actually clears it even when persistDb() throws mid-backfill (rather
   // than only inferring this indirectly from the close button/Escape key).
   window.__DEBUG_findDuplicatesBackfillRunning = () => findDuplicatesBackfillRunning;
-  // computeBrokenFileLinks() itself so a test can independently verify its
-  // output without going through the full modal-open flow
+  // Test-only: exposes computeBrokenFileLinks() itself so a test can
+  // independently verify its output without going through the full
+  // modal-open flow.
   window.__DEBUG_computeBrokenFileLinks = computeBrokenFileLinks;
   // Test-only: reads a document's own file_path/original_file_path directly
   // from in-memory state, so a test can locate the exact stub-filesystem path
@@ -5700,8 +5701,8 @@
     `;
     // Each broken-link row reuses .duplicate-row (for its existing click-to-
     // detail-panel wiring below) plus its own .broken-link-row marker class.
-    // The indicators span stops propagation so clicking "Re-link..." (wired in
-    // Task 3) doesn't also trigger the row's own click-through.
+    // The indicators span stops propagation so clicking "Re-link..." (wired
+    // just below) doesn't also trigger the row's own click-through.
     const brokenLinkRowHtml = (entry) => `
       <div class="duplicate-row broken-link-row" data-document-id="${entry.doc.id}">
         <span class="doc-title">${escapeHtml(displayName(entry.doc))}</span>
@@ -5746,16 +5747,27 @@
   // click needs to carry which document + which path field it's repairing.
   // Cancelling the picker with no file chosen is a silent no-op, matching how
   // the capture form's own file input already behaves.
+  //
+  // Cancelling doesn't fire `change` in most browsers, so the hidden input
+  // would otherwise be orphaned in the DOM forever -- one per cancelled
+  // attempt over a long session. It's removed on `cancel` (fired by current
+  // Chromium on a dismissed picker), and any leftover from an older browser
+  // that doesn't fire `cancel` is swept up at the start of the next attempt
+  // (only one native picker can ever be open at a time, so nothing live is
+  // lost). input.remove() rather than removeChild(), since either path may
+  // already have detached it.
   function triggerRelink(documentId, pathField, indicatorEl){
+    document.querySelectorAll('input.relink-file-input').forEach(n => n.remove());
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/pdf,image/*';
     input.className = 'relink-file-input'; // stable selector for tests to target, since this element has no persistent id
     input.style.display = 'none';
     document.body.appendChild(input);
+    input.addEventListener('cancel', () => input.remove());
     input.addEventListener('change', async () => {
       const file = input.files[0];
-      document.body.removeChild(input);
+      input.remove();
       if(!file) return;
       await performRelink(documentId, pathField, file, indicatorEl);
     });

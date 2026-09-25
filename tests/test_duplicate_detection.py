@@ -175,7 +175,7 @@ async def main():
         print("No orphaned file was written under the rolled-back id for the skipped duplicate:", not any('staged_duplicate' in n for n in files_dir_entries))
         print("The genuinely-new document's own file IS present under id 5:", any('staged_new' in n for n in files_dir_entries))
 
-        # === Scenario 6: "Find duplicates" groups exact-hash matches and
+        # === Scenario 6: "Library check" groups exact-hash matches and
         # Title+Date metadata matches correctly, excludes a blank-title/date
         # document, and clicking a document in a group opens its detail panel ===
         # By this point the library has: docs 1/2/4 sharing DOC_A_BYTES' hash
@@ -242,7 +242,7 @@ async def main():
         print("Clicking a duplicate-group document closes the modal:", modal_closed)
         print("...and opens that exact document's detail panel:", f'#{first_row_doc_id}' in detail_panel_text)
 
-        # === Scenario 7: a second "Find duplicates" open does not re-hash
+        # === Scenario 7: a second "Library check" open does not re-hash
         # already-hashed documents (no progress shown, since nothing is unhashed) ===
         await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
@@ -384,11 +384,11 @@ async def main_iso_date_match():
 asyncio.run(main_iso_date_match())
 
 
-# === Fix 2: the lazy backfill (openFindDuplicatesModal()/backfillFileHash())
+# === Fix 2: the lazy backfill (openLibraryCheckModal()/backfillFileHash())
 # is exercised end to end against a pre-existing library seeded with documents
 # that have NO file_hash set yet -- simulating a library from before this
 # feature shipped, the exact scenario every real Dossiary library hits the
-# first time "Find duplicates" is opened after upgrading. ===
+# first time "Library check" is opened after upgrading. ===
 SEED_UNHASHED = {
     "documents": [
         {
@@ -570,7 +570,7 @@ async def main_backfill_failure():
                 catch (e) { return true; }
             }
         """)
-        print("openFindDuplicatesModal() propagates the persistDb() failure rather than swallowing it:", threw)
+        print("openLibraryCheckModal() propagates the persistDb() failure rather than swallowing it:", threw)
 
         backfill_flag_cleared = not await page.evaluate("window.__DEBUG_findDuplicatesBackfillRunning()")
         print("findDuplicatesBackfillRunning is cleared back to false even though persistDb() threw:", backfill_flag_cleared)

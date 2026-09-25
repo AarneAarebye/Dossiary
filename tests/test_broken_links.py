@@ -61,6 +61,15 @@ async def main():
             await page.click('#save-doc-btn')
             await page.wait_for_timeout(200)
 
+        async def relink(button_selector, file_payload):
+            # Clicks a Re-link... button and answers its native picker through
+            # Playwright's own file-chooser interception (without it, headless
+            # Chromium auto-dismisses the picker, firing `cancel`).
+            async with page.expect_file_chooser() as fc_info:
+                await page.click(button_selector)
+            chooser = await fc_info.value
+            await chooser.set_files(file_payload)
+
         # Doc 1: fine, both paths resolve -- must not be flagged at all.
         await capture_document('Fine Doc', b'%PDF-1.4 fine doc', 'fine.pdf')
 
@@ -156,11 +165,45 @@ async def main():
 
         await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
+
+        # Clicking "Re-link..." must NOT also fire the row's own click-to-
+        # detail-panel handler (which would close the modal and select doc 1)
+        # -- guarded by .broken-link-indicators' stopPropagation.
+        selected_before = await page.evaluate("document.querySelector('tr.row-selected') ? document.querySelector('tr.row-selected').dataset.id : null")
         await page.click('.broken-link-row[data-document-id="1"] .relink-btn[data-path-field="file_path"]')
-        await page.set_input_files('input.relink-file-input', {
+        await page.wait_for_timeout(100)
+        selected_after = await page.evaluate("document.querySelector('tr.row-selected') ? document.querySelector('tr.row-selected').dataset.id : null")
+        print("Clicking Re-link... leaves the Library check modal open (row click-through not triggered):",
+              await page.locator('#modal-backdrop').count() == 1)
+        print("...and doesn't change the table's selected row:", selected_before == selected_after)
+
+        # With no file-chooser handler attached, headless Chromium dismisses the
+        # native picker on its own, firing `cancel` (not `change`) exactly as a
+        # real person cancelling the dialog does -- so the click just above is
+        # itself a real cancelled attempt. It must be a no-op that also removes
+        # the hidden input, rather than orphaning it in the DOM.
+        await page.wait_for_timeout(200)
+        print("A cancelled picker leaves no orphaned hidden input behind:",
+              await page.locator('input.relink-file-input').count() == 0)
+        print("...and doc 1's broken indicator is still there (cancel is a no-op):",
+              await page.locator('.broken-link-row[data-document-id="1"] .relink-btn[data-path-field="file_path"]').count() == 1)
+        # An older browser that fires neither `change` nor `cancel` on
+        # dismissal would leave its input behind -- simulate such a leftover
+        # directly, and confirm the next attempt sweeps it up rather than
+        # letting them accumulate.
+        await page.evaluate("""
+            () => {
+                const stale = document.createElement('input');
+                stale.type = 'file'; stale.className = 'relink-file-input'; stale.style.display = 'none';
+                document.body.appendChild(stale);
+            }
+        """)
+        await relink('.broken-link-row[data-document-id="1"] .relink-btn[data-path-field="file_path"]', {
             'name': 'replacement1.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 replacement bytes for doc 1 file_path',
         })
         await page.wait_for_timeout(300)
+        print("A stale leftover hidden input is swept up by the next Re-link attempt:",
+              await page.locator('input.relink-file-input').count() == 0)
 
         print("Doc 1's row is gone after its only broken indicator is fixed:",
               await page.locator('.broken-link-row[data-document-id="1"]').count() == 0)
@@ -189,8 +232,7 @@ async def main():
         await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
         await page.wait_for_timeout(300)
 
-        await page.click('.broken-link-row[data-document-id="2"] .relink-btn[data-path-field="file_path"]')
-        await page.set_input_files('input.relink-file-input', {
+        await relink('.broken-link-row[data-document-id="2"] .relink-btn[data-path-field="file_path"]', {
             'name': 'replacement2.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 replacement bytes for doc 2',
         })
         await page.wait_for_timeout(300)
@@ -219,8 +261,7 @@ async def main():
         # at all -- it's the hash-deriving path, so re-linking it recomputes
         # file_hash.
         doc3_hash_before = await page.evaluate("window.__DEBUG_getFileHash(3)")
-        await page.click('.broken-link-row[data-document-id="3"] .relink-btn[data-path-field="original_file_path"]')
-        await page.set_input_files('input.relink-file-input', {
+        await relink('.broken-link-row[data-document-id="3"] .relink-btn[data-path-field="original_file_path"]', {
             'name': 'replacement3.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 replacement bytes for doc 3 original',
         })
         await page.wait_for_timeout(300)
@@ -234,8 +275,7 @@ async def main():
         # original. Then re-link file_path too, and confirm THAT does NOT
         # change file_hash again, since file_path is not the hash-deriving path
         # for a document that has an original.
-        await page.click('.broken-link-row[data-document-id="4"] .relink-btn[data-path-field="original_file_path"]')
-        await page.set_input_files('input.relink-file-input', {
+        await relink('.broken-link-row[data-document-id="4"] .relink-btn[data-path-field="original_file_path"]', {
             'name': 'replacement4-original.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 replacement bytes for doc 4 original',
         })
         await page.wait_for_timeout(300)
@@ -263,8 +303,7 @@ async def main():
             }
         """, doc4_paths['file_path'])
 
-        await page.click('.broken-link-row[data-document-id="4"] .relink-btn[data-path-field="file_path"]')
-        await page.set_input_files('input.relink-file-input', {
+        await relink('.broken-link-row[data-document-id="4"] .relink-btn[data-path-field="file_path"]', {
             'name': 'replacement4-file.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 this write will fail',
         })
         await page.wait_for_timeout(300)

@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **68
-scripts covering most of the app's actual functionality** (66 of them
+There's a real, runnable Playwright regression suite in `tests/` — **69
+scripts covering most of the app's actual functionality** (67 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -680,7 +680,8 @@ file's bytes match an already-saved document, and staying hidden for a
 file with no match; an Inbox bulk-add batch where one staged file is an
 exact duplicate (skipped, removed from `inbox/`, counted on the status
 line) and a second staged file in the same batch is genuinely new (added
-normally); the "Find duplicates" modal grouping an exact-hash match and a
+normally); the "Library check" modal (originally "Find duplicates")
+grouping an exact-hash match and a
 Title+Date metadata match into separate, correctly-labeled groups, a
 same-title-different-date document correctly excluded from the Title+Date
 grouping, clicking a document in a group closing the modal and opening
@@ -688,7 +689,29 @@ its detail panel, and a second modal open not re-triggering the backfill
 progress indicator once every document already has a hash; a deleted
 document excluded from groupings (an exact-hash group correctly shrinking
 from 3 to 2 members after one is deleted, its title no longer appearing
-in the modal)), the
+in the modal)), the Library check modal's broken-file-links section
+(`test_broken_links.py` -- documents whose `file_path`, `original_file_path`,
+or both were deleted from the stub filesystem behind the app's back each
+get their own row with exactly the right File/Original indicators; a
+document with a `NULL` `original_file_path` and a deleted document with
+broken paths are both correctly never flagged; clicking "Re-link…" leaves
+the modal open and the table selection unchanged (the
+`.broken-link-indicators` wrapper's `stopPropagation` really does keep the
+row's own click-to-detail-panel handler from firing -- confirmed
+non-vacuous by temporarily removing it); a cancelled picker being a no-op
+that also removes its hidden input, and a stale leftover input from an
+older browser being swept up by the next attempt (both confirmed
+non-vacuous by temporarily reverting the cleanup); re-linking writing the
+picked bytes to the exact stored path and removing just that indicator
+(or the whole row); `file_hash` recomputed only when the repaired path is
+the hash-deriving one (`original_file_path`, or `file_path` for a document
+with no original) and left untouched otherwise; and a simulated write
+failure leaving the indicator and Re-link button in place with an inline
+error and `file_hash` unchanged. Every real re-link goes through
+Playwright's `expect_file_chooser()`, not `set_input_files()` on the input
+directly -- headless Chromium auto-dismisses an unanswered picker, firing
+`cancel`, which now removes the input before `set_input_files()` could
+find it), the
 Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the
