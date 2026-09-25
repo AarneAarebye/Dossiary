@@ -1028,7 +1028,11 @@ this repo's git tags.
   sidecar to the wrong name. Orphaned `tags`/`people` rows (a tag or person
   removed from every document that used it) are left in place rather than
   pruned — they're harmless unused lookup entries and still useful for
-  datalist autocomplete; don't add cleanup logic for this without a reason.
+  datalist autocomplete; don't add *automatic* cleanup logic for this
+  without a reason. The one sanctioned way to remove them is the explicit,
+  `confirm()`-gated "Orphaned tags"/"Orphaned people" sections of the
+  Library check modal (see that note further below) — a person-triggered
+  action, never something saving an edit does on its own.
   **Every table row has a hover-revealed `.row-edit-btn` (✎)** next to its
   checkbox (`.row-edit-col`, a narrow column added specifically for it — see
   `applyColumnVisibility()`'s sibling `data-field` columns, this one has no
@@ -2291,7 +2295,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 368 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 377 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2523,7 +2527,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (368 keys apiece now, not ~260), and
+  grew from two top-level keys to six (377 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -3313,13 +3317,19 @@ this repo's git tags.
   tags/people** — a tag/person referenced only by a deleted document is
   flagged as orphaned — with one accepted, documented consequence: if such a
   tag/person is deleted while orphaned and the document is later restored, it
-  comes back silently missing that tag/person, since the join row pointing at
-  the now-gone id is harmless dead weight, not a broken reference. **Deleting
+  comes back silently missing that tag/person, since its join row
+  (`document_tags`/`document_field_people`) was cascade-deleted along with
+  the tag/person row itself (see below) — no dangling reference is left
+  behind. (The design spec described the join row as surviving as harmless
+  dead weight; the shipped code deletes it instead, which is strictly
+  cleaner and has the same user-visible result.) **Deleting
   a name also scrubs it out of `allDocs`'s own in-memory copies**
   (`d.tags`/`d.people`/every array inside `d.personFieldValues`, across
   *every* document including ones in the Waste bin) — necessary because this
-  app never reloads `allDocs` from disk mid-session (see the `tagNameToId`
-  Tag deduplication note above), so without this scrub a Waste-bin document's
+  app never reloads `allDocs` from disk mid-session (every mutation path
+  updates the in-memory document objects in place and persists, the same
+  update-in-memory → persist → `render()` pattern the Archiving note above
+  describes for `toggleArchived()`), so without this scrub a Waste-bin document's
   own in-memory arrays would go stale after the cascade `DELETE` and show the
   just-deleted name again if viewed or restored before the next reload, even
   though the database itself no longer has any row backing it.

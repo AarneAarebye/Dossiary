@@ -5948,7 +5948,7 @@
       // this feature's own documented "silently no longer shows that tag"
       // consequence (see docs/superpowers/specs/2026-09-25-orphaned-lookups-design.md).
       allDocs.forEach(d => {
-        if(d.tags && d.tags.includes(name)) d.tags = d.tags.filter(t => t !== name);
+        if(d.tags && d.tags.includes(name)) d.tags = d.tags.filter(tag => tag !== name);
       });
     });
     populateDatalists();

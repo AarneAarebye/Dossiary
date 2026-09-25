@@ -719,7 +719,9 @@ person-type field (Author) is still correctly recognized as in-use; a
 per-row Delete, behind its own `confirm()`, removes just that row and
 cascades into the join table; declining that `confirm()` leaves
 everything unchanged; "Delete all orphaned" clears every row in a
-section in one action behind its own single `confirm()`; a deleted
+section in one action behind its own single `confirm()` (plural wording
+for 2+ rows; for exactly one row, the singular wording, and declining that
+bulk `confirm()` leaves the row and its persisted `tags` row intact); a deleted
 tag/person disappears from its autocomplete datalist immediately; and
 restoring a Waste-bin document whose tag was deleted while orphaned
 brings it back without that tag), the

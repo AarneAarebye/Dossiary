@@ -216,6 +216,46 @@ async def main():
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(100)
 
+        # === Bulk "Delete all orphaned" with exactly ONE orphaned row: declining
+        # its confirm() is a no-op, and accepting uses the SINGULAR wording ===
+        await capture_document('Doc Six', b'%PDF-1.4 doc six', 'doc6.pdf', tags='SoloTag')
+        await page.click('tr:has-text("Doc Six")')
+        await page.wait_for_timeout(150)
+        await page.click('#delete-toggle-btn')
+        await page.wait_for_timeout(150)
+        await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
+        await page.wait_for_timeout(300)
+
+        page.once("dialog", lambda dialog: asyncio.ensure_future(dialog.dismiss()))
+        await page.click('.orphaned-delete-all-btn[data-kind="tag"]')
+        await page.wait_for_timeout(200)
+        print("Declining the bulk confirm() leaves the SoloTag row in place:",
+              await page.locator('.orphaned-row:has-text("SoloTag")').count() == 1)
+        persisted_after_bulk_decline = await page.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const f = await fh.getFile();
+                return JSON.parse(await f.text());
+            })()
+        """)
+        print("Declining the bulk confirm() leaves SoloTag in the persisted tags table:",
+              any(t['name'] == 'SoloTag' for t in persisted_after_bulk_decline['tags']))
+
+        solo_dialog_messages = []
+        def capture_and_accept_solo(dialog):
+            solo_dialog_messages.append(dialog.message)
+            asyncio.ensure_future(dialog.accept())
+        page.once("dialog", capture_and_accept_solo)
+        await page.click('.orphaned-delete-all-btn[data-kind="tag"]')
+        await page.wait_for_timeout(300)
+        print("A one-row bulk delete uses the singular confirm() wording:",
+              solo_dialog_messages[0] == "Delete this unused tag? This can't be undone.")
+        print("SoloTag is gone after confirming the one-row bulk delete:",
+              await page.locator('.orphaned-row:has-text("SoloTag")').count() == 0)
+
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
+
         # === Restoring a Waste-bin document whose only tag was deleted while
         # orphaned comes back without that tag, per this feature's own
         # documented, accepted consequence -- rather than crashing or showing a
