@@ -3140,7 +3140,7 @@ this repo's git tags.
   bulk-action bar; duplicating them in the context menu wasn't judged worth
   the extra code for what's already one click away.
 - **Duplicate detection** (`documents.file_hash`, `computeFileHash()`,
-  `openFindDuplicatesModal()`) flags two kinds of likely-duplicate document:
+  `openLibraryCheckModal()`) flags two kinds of likely-duplicate document:
   an exact match on the file's own bytes, and a heuristic match on
   Title + Date. **The hash is computed on the original uploaded bytes, not
   the active `file_path`** -- `buildSearchablePdf()` can rasterize-and-rebuild
@@ -3226,6 +3226,60 @@ this repo's git tags.
   no bespoke delete or merge action of its own. See
   `docs/superpowers/specs/2026-09-24-duplicate-detection-design.md` for
   the full design.
+- **The "Find duplicates" modal was renamed to "Library check"
+  (`#library-check-btn`, `openLibraryCheckModal()`)** and gained a third,
+  persistence-free section: broken file links. `computeBrokenFileLinks(docs)`
+  checks every non-deleted document's set `file_path`/`original_file_path`
+  via `resolveFileHandle(path, false)`, catching any error (not narrowly
+  `NotFoundError`) — unlike the exact-hash duplicate check's `file_hash`,
+  this needs no persisted state and no lazy backfill, since an existence
+  check never reads a file's bytes; it runs fresh on every modal open. A
+  `NULL` path was simply never given one and is never flagged — only a path
+  that's actually *set* but fails to resolve counts as broken. Archived and
+  needs-review documents are included (same "tells the truth about the
+  whole non-deleted library" reasoning duplicate detection's own checks
+  already use); only `deleted` documents are excluded.
+  **Only the button/modal-open-function/three directly-associated i18n keys
+  were renamed** (`toolbarFindDuplicates`→`toolbarLibraryCheck`,
+  `duplicatesModalTitle`→`libraryCheckModalTitle`,
+  `duplicatesNoneFound`→`libraryCheckNoneFound`, now covering all three
+  sections' combined empty state) — the internal DOM ids/classes/i18n keys
+  specific to the duplicate-checking sections (`#duplicates-list`,
+  `#duplicates-progress`, `.duplicate-group`, `duplicatesBackfillProgress`,
+  `duplicatesExactMatchLabel`, `duplicatesMetadataMatchLabel`, and the
+  `findDuplicatesBackfillRunning` variable/its own debug hook) are
+  deliberately unchanged, since they still describe exactly what they did
+  before.
+  **Each broken document renders its own row** (`.broken-link-row`, reusing
+  `.duplicate-row`'s own click-to-detail-panel wiring for free — its
+  `.broken-link-indicators` span stops click propagation, the same
+  `onclick="event.stopPropagation()"` pattern the Reminders modal's own
+  `.reminder-snooze` wrapper already uses, so clicking "Re-link…" doesn't
+  also open the detail panel), showing independent "File"/"Original"
+  indicators only for whichever path(s) actually failed to resolve.
+  **Re-linking** (`triggerRelink()`/`performRelink()`) opens a plain,
+  dynamically-created `<input type="file" accept="application/pdf,image/*">`
+  per click — the same accept restriction the capture form's own
+  `#file-input` uses, but a fresh element each time rather than a shared
+  static one, since each click needs to carry which document and which path
+  field it's repairing. The picked file's bytes are written directly into
+  the document's **exact existing stored path** via
+  `resolveFileHandle(path, true)` (creating whatever directories/file are
+  missing) — no database path or row changes at all, since the path itself
+  was already correct; only the missing file at it is restored. **Hash
+  correctness**: if the just-repaired path is the one `file_hash` was
+  derived from — `original_file_path` when the document has one, otherwise
+  `file_path`, the same fallback rule `backfillFileHash()` already uses —
+  the hash is recomputed via the existing `computeFileHash()` helper and
+  persisted (`UPDATE documents SET file_hash = ? WHERE id = ?`); re-linking
+  the *other* path leaves `file_hash` untouched, since it was never derived
+  from that path. A successful re-link removes just that one indicator from
+  the DOM in place (or the whole row, if it was the document's only broken
+  one) — no full re-scan of the other two sections, since nothing about
+  duplicate grouping changed. A failed write (permission revoked mid-session,
+  disk full) is caught and shown as an inline `.relink-error` next to the
+  still-present Re-link button, clearing any earlier error on retry, so
+  nothing silently looks fixed when it isn't.
 
 ## How this was tested
 
