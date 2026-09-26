@@ -107,7 +107,7 @@ async def main():
         seed_with_collapsed = dict(SEED)
         seed_with_collapsed['settings'] = [{'key': 'detail_panel_expanded', 'value': '0'}]
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_collapsed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         print("explicit '0' still collapses the panel:", not await page.locator('#main-layout.detail-panel-expanded').count())
 
@@ -124,7 +124,7 @@ async def main():
         seed_with_expanded = dict(SEED)
         seed_with_expanded['settings'] = [{'key': 'detail_panel_expanded', 'value': '1'}]
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_expanded)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         print("explicit '1' persists as expanded across reopen:", bool(await page.locator('#main-layout.detail-panel-expanded').count()))
 
@@ -525,7 +525,7 @@ async def main():
         }
         await page.set_viewport_size({"width": 1280, "height": 800})
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(many_docs_seed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         last_row = page.locator('#doc-tbody tr').last

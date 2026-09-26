@@ -67,7 +67,7 @@ async def main():
         # reading the same on-disk library.sqlite back)
         seed_with_url = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
@@ -82,7 +82,7 @@ async def main():
         # dialog ever shown ===
         seed_no_url = {}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         scan_btn_present = await page.locator('#scan-btn').count()
         scan_multi_btn_present = await page.locator('#scan-multi-btn').count()
@@ -120,7 +120,7 @@ async def main():
         # Connection dialog opens; entering a different port that IS
         # reachable saves it and proceeds with the original scan ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -163,7 +163,7 @@ async def main():
         # port keeps the dialog open with an inline error; Cancel dismisses
         # it with no scan ever attempted ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -198,7 +198,7 @@ async def main():
         # flight prevents that probe from silently saving a URL or starting
         # a scan once it resolves ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -250,7 +250,7 @@ async def main():
         # here and that scenario to have it in scope.
         seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         await page.evaluate("""
@@ -281,7 +281,7 @@ async def main():
         # === Scenario 4 (updated): Scan Multi POSTs with split_on_blank=true,
         # a distinct query string from plain Scan ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -301,7 +301,7 @@ async def main():
         # includes a `files` entry for the usable file it did produce --
         # still runs the Inbox pipeline AND shows the bridge's own message ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -325,7 +325,7 @@ async def main():
         # === Scenario 6: hard failure (ok:false, partial:false) shows the
         # bridge's own message and does NOT run the Inbox pipeline ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         # Stage a real file in inbox/ first (same as Scenario 3/5) -- without
         # this, both the before and after row counts are 0 regardless of
@@ -400,7 +400,7 @@ async def main():
         # status with no recovery path ===
         seed_with_url_and_inbox_file = {'settings': [{'key': 'scan_bridge_url', 'value': 'http://127.0.0.1:8765'}]}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -453,7 +453,7 @@ async def main():
         # yet) is treated as a hard failure -- scanBridgeUnreachable-style
         # status, not a silent no-op, and no document is added ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         rows_before_missing_files = await page.locator('#doc-tbody tr').count()
         await page.evaluate("""
@@ -475,7 +475,7 @@ async def main():
         # newly-written file gets a disambiguated name, and both end up as
         # separate documents ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("window.__addInboxFile(window.__TEST_ROOT, 'scan_1.pdf', new Uint8Array([9, 9, 9]));")
         await page.evaluate("""
@@ -497,7 +497,7 @@ async def main():
         # producing several PDFs) writes and ingests every file in `files`,
         # not just the first ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_url_and_inbox_file)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -523,7 +523,7 @@ async def main():
         # answering on the same port) is NOT adopted -- the configure
         # dialog opens instead of silently trusting it ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -553,7 +553,7 @@ async def main():
         # === Scenario 16: clicking Scan again while a scan flow is already
         # probing does not start a second, concurrent probe ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -598,7 +598,7 @@ async def main():
         # always shows a persistent download link alongside the Port field,
         # regardless of why the probe failed -- not conditionally shown ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_no_url)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {

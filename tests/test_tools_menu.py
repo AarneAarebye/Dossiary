@@ -8,8 +8,9 @@ import asyncio, json
 from playwright.async_api import async_playwright
 
 # The "🛠 Tools" toolbar dropdown: occasional-use actions (Manage fields,
-# Manage collections, Library check, Storage stats, Switch library) live in it
-# instead of directly on the toolbar; daily actions stay on the toolbar.
+# Manage collections, Library check, Storage stats) live in it instead of
+# directly on the toolbar; daily actions stay on the toolbar. "Switch library"
+# sits next to the library's name in the header instead.
 SEED = {
     "documents": [
         {
@@ -23,7 +24,7 @@ SEED = {
     "tags": [], "document_tags": [],
 }
 
-MENU_IDS = ['manage-fields-btn', 'manage-collections-btn', 'library-check-btn', 'storage-stats-btn', 'reload-btn']
+MENU_IDS = ['manage-fields-btn', 'manage-collections-btn', 'library-check-btn', 'storage-stats-btn']
 TOOLBAR_IDS = ['inbox-check-btn', 'check-reminders-btn', 'scan-btn', 'scan-multi-btn', 'add-btn', 'detail-panel-toggle-btn', 'columns-btn', 'tools-btn']
 
 async def main():
@@ -51,17 +52,24 @@ async def main():
         async def visible(i): return await page.locator(f'#{i}').is_visible()
         async def menu_open(): return await page.locator('#tools-menu').is_visible()
 
+        # === Scenario 0: "Switch library" sits next to the library name in the header ===
+        in_header = await page.evaluate("() => { const b = document.getElementById('reload-btn'); return !!b.closest('header') && b.previousElementSibling && b.previousElementSibling.id === 'sub-label'; }")
+        print("Switch library sits in the header, right after the library name:", in_header and await visible('reload-btn'))
+        name_top = await page.evaluate("document.getElementById('sub-label').getBoundingClientRect().top")
+        btn_top = await page.evaluate("document.getElementById('reload-btn').getBoundingClientRect().top")
+        print("...on the same line as the name (header doesn't grow):", abs(name_top - btn_top) < 4, name_top, btn_top)
+
         # === Scenario 1: daily actions on the toolbar, occasional ones hidden in Tools ===
         print("Daily actions stay visible on the toolbar:", all([await visible(i) for i in TOOLBAR_IDS]))
         print("Occasional actions are not shown until Tools is opened:", not any([await visible(i) for i in MENU_IDS]))
         print("Tools menu starts closed, aria-expanded=false:", not await menu_open() and await page.get_attribute('#tools-btn', 'aria-expanded') == 'false')
 
-        # === Scenario 2: opening shows every item, in order, with a divider before Switch library ===
+        # === Scenario 2: opening shows every item, in order ===
         await page.click('#tools-btn')
         await page.wait_for_timeout(100)
         print("Clicking Tools opens the menu, aria-expanded=true:", await menu_open() and await page.get_attribute('#tools-btn', 'aria-expanded') == 'true')
         order = await page.locator('#tools-menu > *').evaluate_all("els => els.map(e => e.id || e.className)")
-        print("Items in order, divider before Switch library:", order == MENU_IDS[:4] + ['tools-menu-divider', 'reload-btn'], order)
+        print("Items in order, Switch library no longer among them:", order == MENU_IDS, order)
         print("Every item is visible while open:", all([await visible(i) for i in MENU_IDS]))
 
         # === Scenario 3: choosing an item runs it and closes the menu ===
@@ -112,6 +120,16 @@ async def main():
         await page.click('#tools-btn')
         await page.wait_for_timeout(100)
         print("Menu items translate too:", 'Speichernutzung' in await page.inner_text('#storage-stats-btn'))
+
+        # === Scenario 7: Switch library works from the header, and hides on the start screen ===
+        await page.click('#search')
+        picker_calls_before = await page.evaluate("window.__STUB_LOG.filter(l => l.startsWith('showDirectoryPicker')).length")
+        await page.click('#reload-btn')
+        await page.wait_for_timeout(300)
+        print("Clicking it returns to the start screen, where it's hidden:", await page.locator('#open-btn').is_visible() and not await visible('reload-btn'))
+        picker_calls_after = await page.evaluate("window.__STUB_LOG.filter(l => l.startsWith('showDirectoryPicker')).length")
+        print("...without opening the folder picker by itself:", picker_calls_after == picker_calls_before, picker_calls_before, picker_calls_after)
+        print("...showing the recent-libraries list to pick from:", await page.locator('#recent-libraries-list .doc-title').count() >= 1)
 
         print("JS ERRORS:", errors)
         await browser.close()

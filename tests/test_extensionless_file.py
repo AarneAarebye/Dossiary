@@ -86,7 +86,7 @@ async def main():
                 window.__addInboxFile(window.__TEST_ROOT, 'scanned_document');
             }
         """)
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(300)

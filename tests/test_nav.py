@@ -184,7 +184,7 @@ async def main():
         seed_with_style = dict(SEED)
         seed_with_style['settings'] = [{'key': 'nav_style', 'value': 'tabs'}]
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_style)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         main_layout_class_after_reopen = await page.get_attribute('#main-layout', 'class')
         print("nav-style-sidebar class absent after reopening with 'tabs' persisted:", main_layout_class_after_reopen)
@@ -208,7 +208,7 @@ async def main():
         many_collections_seed['collection_documents'] = []
         await page.set_viewport_size({'width': 1280, 'height': 900})
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(many_collections_seed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         nav_overflow_info = await page.evaluate("""

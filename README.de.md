@@ -252,8 +252,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
   täglich brauchen (Check inbox, Check reminders, Scan, Add document,
   Details, Columns); Gelegentliches — Manage fields, Manage collections,
-  Library check, Storage stats und Switch library — steckt im Dropdown
-  „🛠 Tools“ daneben.
+  Library check und Storage stats — steckt im Dropdown „🛠 Tools“
+  daneben. „⇄ Switch library“ steht direkt neben dem Namen der geöffneten
+  Bibliothek in der Kopfzeile; es führt zurück zum Startbildschirm, wo Sie
+  eine zuletzt geöffnete Bibliothek wählen oder einen anderen Ordner
+  öffnen.
 - **Konfigurierbare Spalten & Filter** — über den Schalter „⚙ Columns“ in
   der Symbolleiste lassen sich Tabellenspalten ein-/ausblenden (Kategorie,
   Typ, Zahlungsmethode, Personen, Datum, Importiert, Betrag, Tags); jede

@@ -102,7 +102,7 @@ async def main():
         turned_off_field = next(f for f in persisted3['fields'] if f['name'] == 'Existing Text')
         print("manually turning autocomplete off persists (should be 0):", turned_off_field['autocomplete'])
 
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(400)
 
         persisted4 = await read_db()

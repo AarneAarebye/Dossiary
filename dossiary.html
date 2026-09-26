@@ -27,6 +27,14 @@
   h1{ font-family:var(--font-display); font-weight:600; font-size:26px; letter-spacing:-0.01em; margin:0; }
   .tagline{ font-family:var(--font-mono); font-size:12.5px; color:var(--text-dim); letter-spacing:0.02em; }
   .sub{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); margin-top:4px; }
+  /* Name + Switch link stay on one line (a wrap would make the header taller,
+     eating into .table-wrap's max-height budget); a long name truncates. */
+  header > div:first-child{ min-width:0; max-width:100%; }
+  header .sub:has(#reload-btn){ display:flex; align-items:baseline; min-width:0; white-space:nowrap; }
+  header .sub #sub-label{ overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .sub-switch-btn{ flex-shrink:0; background:transparent; border:none; padding:0 0 0 10px; font-family:var(--font-mono); font-size:11.5px; line-height:inherit; color:var(--text-dim); text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--line); cursor:pointer; }
+  .sub-switch-btn::before{ content:'⇄'; text-decoration:none; display:inline-block; margin-right:6px; }
+  .sub-switch-btn:hover:not(:disabled){ color:var(--phosphor); text-decoration-color:var(--phosphor-dim); border-color:transparent; }
   .stats{ display:flex; gap:22px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
   .stat b{ color:var(--phosphor); font-size:15px; display:block; font-weight:600; }
 
@@ -173,7 +181,6 @@
   .tools-menu{ padding:6px; min-width:210px; }
   .tools-menu-item{ display:block; width:100%; text-align:left; border:none; padding:8px 10px; white-space:nowrap; }
   .tools-menu-item:hover:not(:disabled){ background:var(--ink-2); }
-  .tools-menu-divider{ height:1px; background:var(--line); margin:4px 6px; }
   .fs-columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
   .fs-col h3, .fs-descriptions h3, .fs-scanner-integration h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
   .fs-list{ border:1px solid var(--line); border-radius:var(--radius); max-height:280px; overflow-y:auto; background:var(--ink-2); }
@@ -622,7 +629,7 @@
         <h1>Dossiary</h1>
         <span class="tagline">Your documents. Your disk. Nothing else.</span>
       </div>
-      <div class="sub" id="sub-label">No library open</div>
+      <div class="sub"><span id="sub-label">No library open</span><button type="button" id="reload-btn" class="sub-switch-btn" data-i18n="toolbarSwitchLibrary" style="display:none;">Switch library</button></div>
     </div>
     <div class="stats" id="stats"></div>
   </header>
@@ -732,8 +739,6 @@
             <button type="button" class="tools-menu-item" role="menuitem" id="manage-collections-btn" data-i18n="toolbarManageCollections">⚙ Manage collections</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="library-check-btn" data-i18n="toolbarLibraryCheck">🔍 Library check</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="storage-stats-btn" data-i18n="toolbarStorageStats">💾 Storage stats</button>
-            <div class="tools-menu-divider" role="separator"></div>
-            <button type="button" class="tools-menu-item" role="menuitem" id="reload-btn" data-i18n="toolbarSwitchLibrary">Switch library</button>
           </div>
         </div>
       </div>
@@ -3350,7 +3355,11 @@
   // --- library open / init ---
 
   el('open-btn').addEventListener('click', openLibrary);
-  el('reload-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
+  // Switch library returns to the start screen -- its recent-libraries list
+  // plus "Open library folder" -- and deliberately does NOT open the folder
+  // picker itself: picking a recent library is usually what's wanted, and a
+  // picker popping up on top of that list forces an extra cancel.
+  el('reload-btn').addEventListener('click', () => { resetAll(); });
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
   el('init-btn').addEventListener('click', initNewLibrary);
   el('libraries-link').addEventListener('click', (e) => { e.preventDefault(); openLibrariesModal(); });
@@ -3497,6 +3506,7 @@
     emptyState.style.display = 'block'; initState.style.display = 'none';
     appNav.style.display = 'none';
     toolbar.style.display = 'none'; tableWrap.style.display = 'none'; countLine.style.display = 'none';
+    el('reload-btn').style.display = 'none';
     reportsView.style.display = 'none';
     if(reportDateFrom) reportDateFrom.value = '';
     if(reportDateTo) reportDateTo.value = '';
@@ -3614,6 +3624,11 @@
     toolbar.style.display = 'flex';
     tableWrap.style.display = 'block';
     subLabel.textContent = rootDirHandle.name;
+    // "Switch library" sits right next to the library's name in the header --
+    // only once a library is open, since #sub-label shows the empty-state
+    // prompt otherwise. Inline on the name's own line, so the header's height
+    // (part of .table-wrap's max-height budget) doesn't change.
+    el('reload-btn').style.display = '';
     loadColumnSettings();
     loadDefaultDocumentType();
     loadDefaultCurrency();

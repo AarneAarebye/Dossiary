@@ -156,7 +156,7 @@ async def main():
         await page5.click("#open-btn")
         await page5.wait_for_timeout(300)
         await page5.evaluate("window.__TEST_ROOT = null;")  # simulate cancelling the picker on "Switch library"
-        await page5.click('#tools-btn'); await page5.click("#reload-btn")
+        await page5.click("#reload-btn"); await page5.click('#open-btn')
         await page5.wait_for_timeout(200)
         # #recent-libraries h3 is CSS text-transform:uppercase, so inner_text()
         # reports "RECENT LIBRARIES" even though the actual DOM/source text is

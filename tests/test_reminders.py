@@ -120,7 +120,7 @@ async def main():
         # reading the same on-disk library.sqlite back)
         seed_with_lookahead = {'document_type_fields': TYPE_FIELD_ROWS, 'settings': [{'key': 'reminder_lookahead_days', 'value': '14'}]}
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_lookahead)}, []); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
@@ -139,7 +139,7 @@ async def main():
             ],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed_with_snooze)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         # window.__DEBUG_reminderSnoozes is a small test-only hook loadReminderSnoozes()
@@ -252,7 +252,7 @@ async def main():
         }
 
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(multi_field_seed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         # Compute every date relative to the app's own todayIsoDate() and write
@@ -430,7 +430,7 @@ async def main():
         # reminder already present in the seed data -- not a mid-session mutation --
         # should surface the modal automatically, with no manual action.
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(due_seed)}); window.__TEST_ROOT.name = 'DueLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         modal_shown_automatically = await page.locator('.reminder-row').count()
         print("library open with a due reminder shows the reminders modal automatically:", modal_shown_automatically > 0)
@@ -449,7 +449,7 @@ async def main():
 
         # Manual button, nothing due (fresh library with no reminder field)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(empty_seed)}); window.__TEST_ROOT.name = 'EmptyLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         no_modal_on_open = await page.locator('.reminder-row').count()
         print("library open with nothing due shows no modal:", no_modal_on_open == 0)
@@ -501,7 +501,7 @@ async def main():
             "reminder_snoozes": [],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(dismiss_seed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         result7 = await page.evaluate("""
@@ -572,7 +572,7 @@ async def main():
             "reminder_snoozes": [],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed8)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         async def read_db():
@@ -658,7 +658,7 @@ async def main():
         await page.keyboard.press('Escape')
         await page.wait_for_timeout(100)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed9)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         await page.evaluate("""
             () => {
@@ -751,7 +751,7 @@ async def main():
             "reminder_snoozes": [],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed10)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         renewal_value = await page.evaluate("""
             () => {
@@ -863,7 +863,7 @@ async def main():
             "reminder_snoozes": [],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed11)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         result11 = await page.evaluate("""
@@ -929,7 +929,7 @@ async def main():
             "reminder_snoozes": [],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed12)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
 
         # -- Half A: clearReminderFieldValue() (custom field, Reminders modal's Delete) --

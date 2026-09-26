@@ -760,9 +760,11 @@ Collection, then removing the rest -- per-type setup, a Waste-bin
 document's value and people, and only the deleted field's filter from
 that Smart Collection's criteria -- while the used field's value stays;
 and reopening the check listing nothing), the "🛠 Tools" toolbar
-dropdown (`test_tools_menu.py` -- daily actions visible on the toolbar and
-the five occasional ones hidden until Tools opens; items in order with the
-divider before Switch library; choosing Library check or Manage fields
+dropdown (`test_tools_menu.py` -- "Switch library" sitting in the header
+on the same line as the library's name, returning to the start screen's
+recent-libraries list without opening the folder picker by itself, and
+hidden on the start screen; daily actions visible on the toolbar and the four
+occasional ones hidden until Tools opens; items in order; choosing Library check or Manage fields
 running it and closing the menu; Escape closing it and returning focus to
 `#tools-btn`; an outside click and a second click on Tools closing it;
 `aria-expanded` tracking open/closed; opening Tools closing Columns and

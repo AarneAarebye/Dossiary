@@ -107,7 +107,7 @@ async def main():
 
         # === Idempotency: reopening the same (now-migrated) library doesn't create
         # duplicate fields or duplicate document_field_values rows ===
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(400)
 
         persisted2 = await page.evaluate("""

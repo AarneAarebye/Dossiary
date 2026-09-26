@@ -61,7 +61,7 @@ async def main():
         # === Scenario 2: the recent-libraries list is visible on the startup
         # screen after switching away from LibraryA (simulated "cancel") ===
         await page.evaluate("window.__TEST_ROOT = null;")
-        await page.click('#tools-btn'); await page.click("#reload-btn")  # "Switch library"
+        await page.click("#reload-btn")  # "Switch library"
         await page.wait_for_timeout(200)
         row_names = await page.locator('#recent-libraries-list .doc-title').all_inner_texts()
         print("recent-libraries list shows LibraryA:", row_names)
@@ -92,7 +92,7 @@ async def main():
         # below (Scenario 5) to check eviction by id, not name, since this scenario is about to
         # deliberately create a second, differently-identified entry that also happens to be named 'LibraryA'.
         await page.evaluate("window.__TEST_ROOT = null;")
-        await page.click('#tools-btn'); await page.click("#reload-btn")
+        await page.click("#reload-btn")
         await page.wait_for_timeout(200)
         await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot(%s); window.__TEST_ROOT.name = 'LibraryA';" % json.dumps(SEED))
         # NOTE: this is a *different* FakeDirHandle instance with the same name,
@@ -113,7 +113,7 @@ async def main():
         # (6 total now) and confirm the oldest is evicted, exactly 5 remain ===
         for letter in ['C', 'D', 'E', 'F']:
             await page.evaluate("window.__TEST_ROOT = null;")
-            await page.click('#tools-btn'); await page.click("#reload-btn")
+            await page.click("#reload-btn")
             await page.wait_for_timeout(150)
             await page.evaluate(
                 "window.__TEST_ROOT = window.__makeSeededRoot(%s); window.__TEST_ROOT.name = 'Library%s';" % (json.dumps(SEED), letter)
@@ -132,7 +132,7 @@ async def main():
 
         # === Scenario 6: manual removal via the row's own ✕ button ===
         await page.evaluate("window.__TEST_ROOT = null;")
-        await page.click('#tools-btn'); await page.click("#reload-btn")
+        await page.click("#reload-btn")
         await page.wait_for_timeout(200)
         before_remove = await page.locator('#recent-libraries-list .review-queue-row').count()
         await page.click('.recent-lib-remove-btn >> nth=0')

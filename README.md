@@ -210,8 +210,11 @@ working" problem that motivated this project in the first place.
   previews, inbox, and the database itself. Read-only; nothing is changed.
 - **A tidy toolbar** — the toolbar keeps what you use every day (Check
   inbox, Check reminders, Scan, Add document, Details, Columns); occasional
-  actions — Manage fields, Manage collections, Library check, Storage
-  stats, and Switch library — live in the "🛠 Tools" dropdown next to it.
+  actions — Manage fields, Manage collections, Library check, and Storage
+  stats — live in the "🛠 Tools" dropdown next to it. "⇄ Switch library"
+  sits right next to the open library's name in the header; it returns to
+  the start screen, where you pick a recent library or open another
+  folder.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
   People, Date, Imported, Amount, Tags); each one that supports filtering

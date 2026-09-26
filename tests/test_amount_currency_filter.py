@@ -369,7 +369,7 @@ async def main():
         assert ids_before_switch == ['4'], f"sanity check before switching libraries: expected only doc 4, got {ids_before_switch}"
 
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(LIBRARY_B_SEED)});")
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(400)
 
         min_value = await page.locator('#amount-filter-min').input_value()

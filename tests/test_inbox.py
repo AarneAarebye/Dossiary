@@ -142,7 +142,7 @@ async def main():
                 window.__addInboxFile(window.__TEST_ROOT, 'partial2.jpg');
             }
         """)
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(200)
         await page.click("#init-btn")
         await page.wait_for_timeout(300)
@@ -201,7 +201,7 @@ async def main():
         # #reload-btn's own click handler calls resetAll() then openLibrary() -- the stub's
         # showDirectoryPicker keeps returning the same __TEST_ROOT, and library.sqlite
         # already exists on it now, so this re-loads straight in without #init-btn.
-        await page.click('#tools-btn'); await page.click('#reload-btn')
+        await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         banner_on_reopen = await page.locator('#inbox-banner').is_visible()
         print("banner visible on reopening an already-emptied library:", banner_on_reopen)

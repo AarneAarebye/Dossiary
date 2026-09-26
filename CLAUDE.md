@@ -293,8 +293,9 @@ this repo's git tags.
   from 1160px (tabs) / 1380px (sidebar) — so `tabs_tight` moved
   `1050`→`1190`, `sidebar_tight` `1280`→`1410`, Scenario 30 now runs at
   1440x720 instead of 1280x720, and the four CSS constants stayed
-  untouched. The "🛠 Tools" dropdown (see its own note below) moved five
-  occasional-use buttons off the toolbar, which shortened it by a row at
+  untouched. The "🛠 Tools" dropdown (see its own note below) and the
+  header's "⇄ Switch library" link moved five occasional-use buttons off
+  the toolbar, which shortened it by a row at
   most desktop widths -- new occasional actions belong in that menu, not
   on the toolbar. Expect this to recur with every new toolbar button; re-run
   that sweep rather than bumping the constants. **Since the
@@ -1725,14 +1726,14 @@ this repo's git tags.
   keep it that way so the preference travels with the library folder.
 - **The "🛠 Tools" toolbar dropdown** (`#tools-btn`, `#tools-menu`,
   `.tools-menu-item`, `toggleToolbarMenu()`) holds the occasional-use
-  actions -- Manage fields, Manage collections, Library check, Storage
-  stats, and (below a divider) Switch library -- so the toolbar itself
+  actions -- Manage fields, Manage collections, Library check, and Storage
+  stats -- so the toolbar itself
   keeps only daily ones (Check inbox, Check reminders, Scan, Scan Multi,
   Add document, Details, Columns). Moved there on request, and it also
   eases the recurring toolbar-wrap/`.table-wrap` calibration problem (see
   that note near the top): the toolbar got a row shorter at most desktop
   widths. **Each menu item keeps its original button id**
-  (`#manage-fields-btn`, `#reload-btn`, ...), so every existing click
+  (`#manage-fields-btn`, `#storage-stats-btn`, ...), so every existing click
   listener is untouched -- the menu only changes where the button lives;
   tests click `#tools-btn` first to reveal it. It reuses the Columns
   dropdown's markup/CSS (`.columns-menu-wrap`/`.columns-menu`), and
@@ -1746,7 +1747,28 @@ this repo's git tags.
   listener that doesn't stop propagation, so the item's own listener
   still runs); Escape closes it and returns focus to `#tools-btn`; an
   outside click closes it like Columns. **Put new occasional actions in
-  this menu rather than on the toolbar.**
+  this menu rather than on the toolbar.** **"Switch library"
+  (`#reload-btn`) is not in this menu -- it's a small `.sub-switch-btn`
+  text link right after the library's name (`#sub-label`) in the
+  header**, where "which library am I in" and "change it" read together;
+  shown only while a library is open (toggled alongside `toolbar` in
+  `resetAll()` and `loadDocumentsFromDb()`, since `#sub-label` shows the
+  empty-state prompt otherwise), and its "⇄" comes from CSS `::before` so
+  it reuses the existing `toolbarSwitchLibrary` string. **Clicking it only
+  calls `resetAll()`** -- back to the start screen's recent-libraries list
+  and "Open library folder" button -- and deliberately does not also call
+  `openLibrary()` the way it used to: the folder picker popping up on top
+  of the recent-libraries list forced an extra cancel whenever the person
+  just wanted a recent library (reported directly). Tests that used Switch
+  library as a "reopen the re-seeded library" shortcut now click
+  `#open-btn` right after it. **The header's
+  height must not change** -- it's part of `.table-wrap`'s max-height
+  budget -- so the name and link share one non-wrapping line
+  (`header .sub:has(#reload-btn)` is a no-wrap flex row, and
+  `header > div:first-child{ max-width:100% }` lets a long library name
+  truncate with an ellipsis instead of pushing the link onto a second
+  line). Verified at 320/640/1440px widths with a long name: header height
+  identical to before the move.
 - **Every filter dropdown built by `populateFilters()`** (Category, Type,
   People, and any dynamic custom-field filter) also carries a "— Not set —"
   option, right after "All X," so a document missing that field entirely
