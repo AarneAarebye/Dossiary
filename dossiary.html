@@ -482,6 +482,8 @@
   /* File/Original paths are long, space-free strings -- let them break anywhere
      rather than run off the (narrow) detail panel's right edge. */
   .modal-meta code{ overflow-wrap:anywhere; word-break:break-all; }
+  .path-size{ color:var(--text); white-space:nowrap; }
+  .path-size.path-missing{ color:var(--red); }
   .modal-actions{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
   .ocr-box{ max-height:200px; overflow-y:auto; font-family:var(--font-mono); font-size:11.5px; line-height:1.7; color:var(--text-dim); background:var(--ink-2); padding:12px; border-radius:var(--radius); white-space:pre-wrap; }
 
@@ -989,7 +991,7 @@
       detailCloseAriaLabel: 'Close', detailLabelCategory: 'Category', detailLabelType: 'Type', detailLabelDate: 'Date',
       detailLabelAmount: 'Amount', detailLabelPayment: 'Payment', detailLabelPages: 'Pages',
       detailLabelImported: 'Imported', detailLabelId: 'ID', detailLabelSource: 'Source',
-      detailLabelFile: 'File', detailLabelOriginal: 'Original', detailCopyButton: 'Copy', detailCopiedButton: 'Copied!',
+      detailLabelFile: 'File', detailLabelOriginal: 'Original', detailCopyButton: 'Copy', detailFileMissing: 'missing', detailCopiedButton: 'Copied!',
       detailNoFileRecorded: 'No file recorded for this document', detailSectionFields: 'Fields', detailPanelTitle: 'Details',
       detailPanelEmpty: 'Select a document to see its details.',
       contextMenuShowDetails: 'Show Details', contextMenuHideDetails: 'Hide Details',
@@ -1190,7 +1192,7 @@
       detailCloseAriaLabel: 'Cerrar', detailLabelCategory: 'Categoría', detailLabelType: 'Tipo', detailLabelDate: 'Fecha',
       detailLabelAmount: 'Importe', detailLabelPayment: 'Pago', detailLabelPages: 'Páginas',
       detailLabelImported: 'Importado', detailLabelId: 'ID', detailLabelSource: 'Origen',
-      detailLabelFile: 'Archivo', detailLabelOriginal: 'Original', detailCopyButton: 'Copiar', detailCopiedButton: '¡Copiado!',
+      detailLabelFile: 'Archivo', detailLabelOriginal: 'Original', detailCopyButton: 'Copiar', detailFileMissing: 'no encontrado', detailCopiedButton: '¡Copiado!',
       detailNoFileRecorded: 'No hay ningún archivo registrado para este documento', detailSectionFields: 'Campos', detailPanelTitle: 'Detalles',
       detailPanelEmpty: 'Selecciona un documento para ver sus detalles.',
       contextMenuShowDetails: 'Mostrar detalles', contextMenuHideDetails: 'Ocultar detalles',
@@ -1391,7 +1393,7 @@
       detailCloseAriaLabel: 'Fermer', detailLabelCategory: 'Catégorie', detailLabelType: 'Type', detailLabelDate: 'Date',
       detailLabelAmount: 'Montant', detailLabelPayment: 'Paiement', detailLabelPages: 'Pages',
       detailLabelImported: 'Importé', detailLabelId: 'ID', detailLabelSource: 'Source',
-      detailLabelFile: 'Fichier', detailLabelOriginal: 'Original', detailCopyButton: 'Copier', detailCopiedButton: 'Copié !',
+      detailLabelFile: 'Fichier', detailLabelOriginal: 'Original', detailCopyButton: 'Copier', detailFileMissing: 'introuvable', detailCopiedButton: 'Copié !',
       detailNoFileRecorded: 'Aucun fichier enregistré pour ce document', detailSectionFields: 'Champs', detailPanelTitle: 'Détails',
       detailPanelEmpty: 'Sélectionnez un document pour voir ses détails.',
       contextMenuShowDetails: 'Afficher les détails', contextMenuHideDetails: 'Masquer les détails',
@@ -1592,7 +1594,7 @@
       detailCloseAriaLabel: 'Schließen', detailLabelCategory: 'Kategorie', detailLabelType: 'Typ', detailLabelDate: 'Datum',
       detailLabelAmount: 'Betrag', detailLabelPayment: 'Zahlung', detailLabelPages: 'Seiten',
       detailLabelImported: 'Importiert', detailLabelId: 'ID', detailLabelSource: 'Quelle',
-      detailLabelFile: 'Datei', detailLabelOriginal: 'Original', detailCopyButton: 'Kopieren', detailCopiedButton: 'Kopiert!',
+      detailLabelFile: 'Datei', detailLabelOriginal: 'Original', detailCopyButton: 'Kopieren', detailFileMissing: 'fehlt', detailCopiedButton: 'Kopiert!',
       detailNoFileRecorded: 'Für dieses Dokument ist keine Datei hinterlegt', detailSectionFields: 'Felder', detailPanelTitle: 'Details',
       detailPanelEmpty: 'Wähle ein Dokument aus, um seine Details zu sehen.',
       contextMenuShowDetails: 'Details anzeigen', contextMenuHideDetails: 'Details ausblenden',
@@ -1793,7 +1795,7 @@
       detailCloseAriaLabel: '关闭', detailLabelCategory: '分类', detailLabelType: '类型', detailLabelDate: '日期',
       detailLabelAmount: '金额', detailLabelPayment: '付款方式', detailLabelPages: '页数',
       detailLabelImported: '导入日期', detailLabelId: 'ID', detailLabelSource: '来源',
-      detailLabelFile: '文件', detailLabelOriginal: '原始文件', detailCopyButton: '复制', detailCopiedButton: '已复制！',
+      detailLabelFile: '文件', detailLabelOriginal: '原始文件', detailCopyButton: '复制', detailFileMissing: '缺失', detailCopiedButton: '已复制！',
       detailNoFileRecorded: '此文档没有记录的文件', detailSectionFields: '字段', detailPanelTitle: '详情',
       detailPanelEmpty: '选择一个文档以查看其详情。',
       contextMenuShowDetails: '显示详情', contextMenuHideDetails: '隐藏详情',
@@ -2060,7 +2062,7 @@
       detailLabelSource: '來源',
       detailLabelFile: '文件',
       detailLabelOriginal: '原始文件',
-      detailCopyButton: '複製',
+      detailCopyButton: '複製', detailFileMissing: '缺失',
       detailCopiedButton: '已複製！',
       detailNoFileRecorded: '此文檔沒有記錄的文件',
       detailSectionFields: '字段', detailPanelTitle: '詳情',
@@ -7219,14 +7221,30 @@
     // Page count only applies to PDFs, and is computed on demand rather than stored --
     // see getPdfPageCount()'s own comment for why. A missing/unreadable file just means
     // no count shows, same tolerance as the thumbnail lookup right above.
+    // The same lookups also give each file's size, shown after its path --
+    // File.size is metadata, not a read of the content. A path that's set but
+    // can't be resolved shows as "missing" instead (the same condition Library
+    // check lists under Broken file links).
     let pageCount = null;
+    let fileSize = null, fileMissing = false;
     if(d.file_path){
       try{
         const fh = await resolveFileHandle(d.file_path, false);
         const file = await fh.getFile();
+        fileSize = file.size;
         if(file.type === 'application/pdf') pageCount = await getPdfPageCount(file);
-      }catch(e){ /* leave pageCount null */ }
+      }catch(e){ if(fileSize === null) fileMissing = true; /* else: page count failed, size still shown */ }
     }
+    let originalSize = null, originalMissing = false;
+    if(d.original_file_path){
+      try{
+        const fh = await resolveFileHandle(d.original_file_path, false);
+        originalSize = (await fh.getFile()).size;
+      }catch(e){ originalMissing = true; }
+    }
+    const sizeHtml = (size, missing) => size !== null
+      ? ` <span class="path-size">· ${formatBytes(size)}</span>`
+      : (missing ? ` <span class="path-size path-missing">· ${t('detailFileMissing')}</span>` : '');
 
     // Amount/Payment method are plain custom fields now (see
     // migrateSentinelFieldsToGeneric()); document_field_values.value is always
@@ -7254,8 +7272,8 @@
                 ${pageCount != null ? `<div><b>${t('detailLabelPages')}</b> ${pageCount}</div>` : ''}
                 <div><b>${t('detailLabelImported')}</b> ${formatDate(d.import_date)}</div>
                 <div><b>${t('detailLabelId')}</b> #${d.id} · <b>${t('detailLabelSource')}</b> ${escapeHtml(d.source || t('tableNoValue'))}</div>
-                ${fileFullPath ? `<div><b>${t('detailLabelFile')}</b> <code>${escapeHtml(fileFullPath)}</code><button type="button" class="copy-path-btn" id="copy-file-path-btn">${t('detailCopyButton')}</button></div>` : ''}
-                ${originalFullPath ? `<div><b>${t('detailLabelOriginal')}</b> <code>${escapeHtml(originalFullPath)}</code><button type="button" class="copy-path-btn" id="copy-original-path-btn">${t('detailCopyButton')}</button></div>` : ''}
+                ${fileFullPath ? `<div><b>${t('detailLabelFile')}</b> <code>${escapeHtml(fileFullPath)}</code>${sizeHtml(fileSize, fileMissing)}<button type="button" class="copy-path-btn" id="copy-file-path-btn">${t('detailCopyButton')}</button></div>` : ''}
+                ${originalFullPath ? `<div><b>${t('detailLabelOriginal')}</b> <code>${escapeHtml(originalFullPath)}</code>${sizeHtml(originalSize, originalMissing)}<button type="button" class="copy-path-btn" id="copy-original-path-btn">${t('detailCopyButton')}</button></div>` : ''}
               </div>
             </div>
           </div>

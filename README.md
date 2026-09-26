@@ -169,6 +169,9 @@ working" problem that motivated this project in the first place.
   Finder (macOS), File Explorer (Windows), or your file manager (Linux).
   Browsers have no API to reveal a file in the OS's file manager directly
   or expose its absolute path, so this is as close as the app can get.
+  Each line also shows that file's size (e.g. `· 2.4 MB`), so you can
+  compare a searchable PDF with the original it was built from, or
+  "missing" if the file can't be found.
 - **Detail panel and context menu** — clicking a row shows its details
   and actions (Open file, Edit, Archive, Flag for review, Add to
   collection, Delete, ...) in a side panel next to the table; the toolbar

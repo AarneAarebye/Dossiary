@@ -421,7 +421,11 @@ the same input correctly excluded from later suggestions; ArrowDown/Enter
 keyboard selection; an empty segment showing no dropdown at all; the same
 behavior confirmed for Tags; and the whole mechanism working identically
 in the edit form, not just capture),
-and the persistent detail panel (`test_detail_panel.py` — run against a
+and the persistent detail panel (`test_detail_panel.py` — its last
+scenario checks file sizes after the File/Original paths: 2.0 KB and
+1.5 MB for known byte counts, 500 B, and "missing" (translated, "fehlt"
+in German) for an original whose path is set but whose file was never
+written; the rest of the file is run against a
 patched copy of the app with `SHOW_DOCUMENT_PREVIEW` forced back to `true`
 (the same patched-copy technique described near the end of this file),
 specifically so this file's own "every panel action still works" coverage

@@ -575,3 +575,80 @@ async def main():
         _os2.remove(patched_app_path)
 
 asyncio.run(main())
+
+
+# === File sizes after the File/Original paths: each line shows its file's size
+# (formatBytes), or "missing" when the path is set but the file can't be found. ===
+SEED_SIZES = {
+    "documents": [
+        {"id": 1, "title": "Sized Doc", "category": None, "document_type": None, "date": "2026-03-01T00:00:00+00:00",
+         "notes": None, "ocr_text": None, "ocr_language": None,
+         "file_path": "files/1_sized.pdf", "original_file_path": "files/1_sized/sized.pdf",
+         "created_at": "2026-03-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None},
+        {"id": 2, "title": "Missing Original", "category": None, "document_type": None, "date": "2026-03-02T00:00:00+00:00",
+         "notes": None, "ocr_text": None, "ocr_language": None,
+         "file_path": "files/2_present.pdf", "original_file_path": "files/2_gone/gone.pdf",
+         "created_at": "2026-03-02T00:00:00+00:00", "source": "captured", "source_legacy_id": None},
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_file_sizes():
+    import json
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_SIZES)});")
+        # Active copy 2048 bytes, original 1.5 MB; doc 2's original is never written.
+        await page.evaluate("""
+            async () => {
+                const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files', { create: true });
+                const write = async (dir, name, n) => { const h = await dir.getFileHandle(name, { create: true }); const w = await h.createWritable(); await w.write(new Uint8Array(n)); await w.close(); };
+                await write(filesDir, '1_sized.pdf', 2048);
+                await write(await filesDir.getDirectoryHandle('1_sized', { create: true }), 'sized.pdf', 1572864);
+                await write(filesDir, '2_present.pdf', 500);
+            }
+        """)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(400)
+
+        async def meta_lines(doc_id):
+            await page.click(f'#doc-tbody tr[data-id="{doc_id}"]')
+            await page.wait_for_timeout(400)
+            return await page.locator('#detail-panel-body .modal-meta > div').all_inner_texts()
+
+        lines = await meta_lines(1)
+        file_line = next((l for l in lines if l.startswith('File')), '')
+        orig_line = next((l for l in lines if l.startswith('Original')), '')
+        print("File line shows the active copy's size:", '· 2.0 KB' in file_line, repr(file_line))
+        print("Original line shows the original's size:", '· 1.5 MB' in orig_line, repr(orig_line))
+        print("Copy buttons are still there:", 'Copy' in file_line and 'Copy' in orig_line)
+
+        lines = await meta_lines(2)
+        file_line = next((l for l in lines if l.startswith('File')), '')
+        orig_line = next((l for l in lines if l.startswith('Original')), '')
+        print("A present file shows its size:", '· 500 B' in file_line, repr(file_line))
+        print("A set-but-missing original shows 'missing':", '· missing' in orig_line, repr(orig_line))
+        print("...styled as missing:", await page.locator('#detail-panel-body .path-missing').count() == 1)
+
+        await page.select_option('#lang-select', 'de')
+        await page.wait_for_timeout(300)
+        lines = await page.locator('#detail-panel-body .modal-meta > div').all_inner_texts()
+        print("'missing' is translated (German 'fehlt'):", any('· fehlt' in l for l in lines), lines[-1:])
+
+        print("JS ERRORS:", errors)
+        await browser.close()
+
+asyncio.run(main_file_sizes())

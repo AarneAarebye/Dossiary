@@ -202,7 +202,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Dateimanager (Linux) finden können. Browser haben keine Möglichkeit,
   eine Datei direkt im Dateimanager des Betriebssystems anzuzeigen oder
   ihren absoluten Pfad offenzulegen — das ist so nah, wie die App
-  herankommt.
+  herankommt. Jede Zeile zeigt außerdem die Größe der Datei (z. B.
+  `· 2,4 MB`), sodass Sie ein durchsuchbares PDF mit seinem Original
+  vergleichen können, oder „fehlt", wenn die Datei nicht gefunden wird.
 - **Detailbereich und Kontextmenü** — ein Klick auf eine Zeile zeigt deren
   Details und Aktionen (Datei öffnen, Edit, Archive, Flag for review, Add
   to collection, Delete, ...) in einem Seitenbereich neben der Tabelle;

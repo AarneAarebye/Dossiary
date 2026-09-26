@@ -969,6 +969,17 @@ this repo's git tags.
   the displayed text and the copied value, so they can't drift apart. The
   button shows "Copied!" for 1.5s (`.copy-path-btn.copied`, phosphor-green)
   before reverting to "Copy" — purely a UI nicety, not persisted anywhere.
+  **Each line also shows its file's size** (`formatBytes()`, the same
+  formatter Storage stats uses, in a `.path-size` span between the path
+  and the Copy button) -- `File.size` from the same `getFile()` lookup
+  `openDetail()` already makes for the PDF page count, plus one more for
+  the original; a metadata read, not a content read. A path that's set
+  but doesn't resolve shows `detailFileMissing` ("missing", `.path-missing`,
+  red) instead -- the same condition Library check's broken-links section
+  flags. Shown for both lines, not just the original, because the
+  interesting comparison is usually active copy vs. original (a
+  searchable PDF can be much larger or smaller than the scan it came
+  from). Panel only -- a table column would mean a file lookup per row.
 - **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
   "orphaned" fields render** — a field with a real value in
   `d.customFields`/`d.personFieldValues` that isn't in the current type's
