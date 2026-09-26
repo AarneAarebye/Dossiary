@@ -68,7 +68,8 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Spanisch, Chinesisch (Vereinfacht) und Chinesisch (Traditionell /
   Kantonesisch — Tesseract hat kein eigenes Modell für Kantonesisch, da
   kantonesischer Text mit derselben traditionellen Schrift geschrieben
-  wird). Bei JPEG/PNG-Bildern wird zusätzlich ein **durchsuchbares PDF**
+  wird). Bei JPEG/PNG-Bildern sowie bei gescannten PDFs ohne eigene
+  echte Textebene wird zusätzlich ein **durchsuchbares PDF**
   erzeugt — das Bild mit einer unsichtbaren, markierbaren Textebene über
   jedem erkannten Wort (dieselbe „Sandwich“-Technik, die auch Tools wie
   `ocrmypdf` verwenden) — während das Originalbild unverändert in einem
@@ -104,6 +105,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   beobachtet niemals das Dateisystem und legt nie von selbst ein Dokument
   an; Dateien aus der Inbox hinzuzufügen erfordert immer diesen
   ausdrücklichen Klick.
+- **Drag & Drop** — ziehen Sie eine oder mehrere Dateien bei geöffneter
+  Bibliothek irgendwo auf die Seite; jede wird zu einem eigenen Dokument
+  und landet mit denselben Standardwerten wie bei der Inbox in der
+  Prüfliste.
 - **Prüfliste („Review queue“)** — eine zweite Stufe nach der Inbox: jedes
   aus der Inbox hinzugefügte Dokument (zu diesem Zeitpunkt sind Kategorie,
   Typ und Datum noch leer) wird automatisch als „zu prüfen“ markiert und im
@@ -136,7 +141,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   People oder benutzerdefinierten Feldern summiert, gruppiert nach Währung,
   damit Beträge in verschiedenen Währungen nie zusammengezählt werden, mit
   einem Datumsbereichsfilter und einem druckfreundlichen Layout für
-  Steuererklärung oder Spesenerstattung.
+  Steuererklärung oder Spesenerstattung. Ein Klick auf eine Zeile —
+  auch auf die Gesamtsumme einer Währung — zeigt die dahinterstehenden
+  Dokumente in der normalen Tabelle, mit einem Link „← Back to Reports"
+  zurück.
 - **Collections** — organisieren Sie Dokumente in Ihren eigenen benannten Gruppierungen, erreichbar über einen erweiterbaren Collections-Bereich in der Navigation. Manuelle Collections sind handgewählte Listen (wählen Sie Dokumente in der Tabelle aus, um sie stapelweise einer Collection hinzuzufügen, zu archivieren, zu löschen oder zur Überprüfung zu kennzeichnen, oder fügen Sie sie einzeln aus der Detailansicht eines Dokuments hinzu); Smart Collections speichern Ihren aktuellen Such-/Kategorie-/Typ-/Personen-/Feldfilter als Live-View, die automatisch neu hinzugekommene Dokumente weiterhin berücksichtigt.
 - **Spotlight-/Finder-Suche** — jedes erfasste Dokument bekommt zusätzlich
   eine einfache `.txt`-Begleitdatei (Sidecar-Datei) daneben (Titel,
@@ -169,8 +177,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Monate oder ein frei wählbares Datum — für alles, worum Sie sich noch
   nicht kümmern möchten; eine zurückgestellte Erinnerung taucht von selbst
   wieder auf, sobald die Frist verstrichen ist, ohne dass Sie sie manuell
-  reaktivieren müssten. Dies wird nur auf Anfrage geprüft — siehe
-  Einschränkungen unten.
+  reaktivieren müssten. „Dismiss" beendet die Erinnerungen für dieses
+  Feld an diesem Dokument dauerhaft (reaktivierbar im Bearbeiten-Formular),
+  „Delete" löscht das Erinnerungsdatum selbst. Dies wird nur auf Anfrage
+  geprüft — siehe Einschränkungen unten.
 - **Schnelle „Add reminder"** — per Rechtsklick auf ein Dokument (oder über
   dessen Detailansicht) eine Erinnerung mit einem Klick setzen, ganz ohne
   vorher ein Feld einzurichten: Heute, Morgen, Nächste Woche oder ein
@@ -185,19 +195,47 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Originale öffnen** — ein Klick öffnet die eigentliche Datei direkt von
   der Festplatte
 - **Dateipfade in der Detailansicht** — eine Zeile „File" (und „Original"
-  bei einem erfassten Bild, das in ein durchsuchbares PDF umgewandelt
-  wurde) zeigt den Pfad relativ zu Ihrem Bibliotheksordner, damit Sie die
+  für die unveränderte Kopie der Datei, wie sie hinzugefügt wurde — bei
+  fast jedem erfassten oder über die Inbox hinzugefügten Dokument
+  vorhanden) zeigt den Pfad relativ zu Ihrem Bibliotheksordner, damit Sie die
   Datei selbst im Finder (macOS), im Explorer (Windows) oder Ihrem
   Dateimanager (Linux) finden können. Browser haben keine Möglichkeit,
   eine Datei direkt im Dateimanager des Betriebssystems anzuzeigen oder
   ihren absoluten Pfad offenzulegen — das ist so nah, wie die App
   herankommt.
-- **Bearbeiten** — auf ein Dokument klicken, dann „Edit“, um dessen
+- **Detailbereich und Kontextmenü** — ein Klick auf eine Zeile zeigt deren
+  Details und Aktionen (Datei öffnen, Edit, Archive, Flag for review, Add
+  to collection, Delete, ...) in einem Seitenbereich neben der Tabelle;
+  über die Symbolleiste lässt er sich einklappen, um der Tabelle mehr
+  Breite zu geben. Ein Rechtsklick auf eine Zeile bietet dieselben
+  Aktionen als Kontextmenü, ein Doppelklick öffnet die Datei.
+- **Bearbeiten** — ein Dokument auswählen, dann „Edit“, um dessen
   Metadaten nachträglich zu ändern (Titel, Kategorie, Unterkategorie, Typ,
   Zahlungsmethode, Betrag, Datum, Personen, Tags, Werte benutzerdefinierter
   Felder, Notizen, OCR-Text). Dabei wird ausschließlich `library.sqlite`
   verändert — die zugrunde liegende Datei auf der Festplatte wird nie
   angefasst oder ersetzt.
+- **Stapelbearbeitung** — mehrere Zeilen ankreuzen und in der
+  Stapelaktionsleiste auf „Edit" klicken (oder Rechtsklick auf eine
+  angekreuzte Zeile), um Felder für alle auf einmal zu setzen. Geschrieben
+  werden nur Felder, bei denen „Apply to all" angehakt ist; Tags und
+  Personenfelder können wahlweise ergänzt oder ersetzt werden. Ein Hinweis
+  warnt, wenn die ausgewählten Dokumente bei einem Feld, das Sie
+  überschreiben wollen, derzeit unterschiedliche Werte haben.
+- **Library check** — der Button „🔍 Library check" in der Symbolleiste
+  sucht Probleme in der ganzen Bibliothek: exakt doppelte Dateien (per
+  Inhalts-Hash) und wahrscheinliche Duplikate (gleicher Titel und gleiches
+  Datum), Dokumente, deren Datei oder Original auf der Festplatte fehlt
+  (mit einem Button „Re-link…", um die Datei neu auszuwählen), sowie Tags
+  oder Personen, die kein Dokument mehr verwendet (löschbar nach
+  Bestätigung). Beim Erfassen warnt Dossiary außerdem, wenn die gewählte
+  Datei schon in der Bibliothek ist, und Inbox/Drag & Drop überspringen
+  exakte Duplikate mit einem Hinweis in der Statuszeile.
+- **Storage stats** — der Button „💾 Storage stats" in der Symbolleiste
+  zeigt, wie viel Speicherplatz der Bibliotheksordner belegt: Dokumente
+  (aufgeteilt in aktive Dateien, aufbewahrte Originale und nicht
+  zugeordnete Dateien, auf die kein Dokument verweist), Vorschaubilder,
+  Inbox und die Datenbank selbst. Nur zur Ansicht; nichts wird verändert.
 - **Konfigurierbare Spalten & Filter** — über den Schalter „⚙ Columns“ in
   der Symbolleiste lassen sich Tabellenspalten ein-/ausblenden (Kategorie,
   Typ, Zahlungsmethode, Personen, Datum, Importiert, Betrag, Tags); jede
@@ -249,9 +287,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **OCR für ein bestehendes Dokument erneut ausführen** — der
   Bearbeiten-Dialog hat einen eigenen „Run OCR“-Button, der nur das
   OCR-Textfeld anhand der tatsächlich gespeicherten Datei des Dokuments
-  aktualisiert. Anders als das Erfassungsformular (nur Bilder)
-  funktioniert das auch bei PDFs — der Großteil der gespeicherten
-  Dokumente —, indem zunächst die erste Seite in ein Bild gerendert wird.
+  aktualisiert. Das funktioniert bei Bildern wie bei PDFs, wobei jede
+  PDF-Seite zunächst in ein Bild gerendert wird; anders als beim Erfassen
+  wird nur der Text aktualisiert, die Datei selbst nie neu aufgebaut.
 - **Der Dokumenttyp ist auffällig platziert, nahe am Anfang beider
   Formulare** — da er das eine Feld ist, das bestimmt, ob Organisation,
   Personen oder überhaupt benutzerdefinierte Felder erscheinen (siehe
@@ -392,9 +430,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   prüfen, zu korrigieren oder zu löschen. Er erscheint nur dann nicht
   mehr, wenn er einmal gelöscht wurde, oder wenn Sie den Dokumenttyp auf
   etwas ändern, das ihn nicht enthält, und ihn dabei nicht anfassen.
-- **Deutsche/englische Oberfläche** — die gesamte Benutzeroberfläche
-  (nicht nur OCR — siehe „Erfassen" oben) lässt sich über den Schalter in
-  der Fußzeile zwischen Englisch und Deutsch umschalten; sie startet
+- **Sechs Oberflächensprachen** — die gesamte Benutzeroberfläche
+  (nicht nur OCR — siehe „Erfassen" oben) gibt es auf Englisch, Deutsch,
+  Spanisch, Französisch, Chinesisch (vereinfacht) und Chinesisch
+  (traditionell), auswählbar über das Sprachmenü in der Fußzeile; sie startet
   passend zur Sprache Ihres Browsers und merkt sich danach Ihre Wahl.
 
 ## Erste Schritte
@@ -767,19 +806,15 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   Funktionen oben) braucht das erneute Öffnen einen expliziten Klick zur
   Bestätigung der Berechtigung. Das ist eine Sicherheitsanforderung des
   Browsers, kein Punkt, den Dossiary umgehen könnte.
-- **Die Erzeugung durchsuchbarer PDFs funktioniert bei direkt erfassten
-  JPEG-/PNG-Bildern, nicht bei hochgeladenen PDFs.** Der Aufbau der
-  unsichtbaren, markierbaren Textebene erfordert, dass die *Quelle* ein
-  Bild ist, das jsPDF einbetten kann; ein während der Erfassung
-  hochgeladenes PDF wird unverändert gespeichert, ohne dass zum
-  Erfassungszeitpunkt eine Textebene hinzugefügt wird. Das ist etwas
-  anderes als die OCR-*Textextraktion*, die bei PDFs sehr wohl
-  funktioniert — siehe „OCR erneut ausführen“ oben —, sie macht nur nicht
-  das PDF selbst zu einem neuen, durchsuchbaren; der extrahierte Text
-  füllt nur das OCR-Textfeld. Andere Bildformate (WEBP, GIF, TIFF) werden
-  ebenso für die Textextraktion per OCR erkannt, aber nicht in ein
-  durchsuchbares PDF umgewandelt, da jsPDFs Bild-Einbettung hier nur mit
-  JPEG/PNG verwendet wird.
+- **Durchsuchbare PDFs aus einem PDF-Upload werden gerastert.** Ein
+  gescanntes PDF ohne echten Text wird als Seitenbilder plus unsichtbare
+  Textebene neu aufgebaut, die neue Kopie besteht also nur aus Bildern;
+  das unveränderte Original bleibt daneben erhalten. Ein PDF, das bereits
+  echten Text enthält, bleibt unverändert und wird beim Erfassen nicht per
+  OCR erkannt. Andere Bildformate (WEBP, GIF, TIFF) werden für die
+  Textextraktion per OCR erkannt, aber nicht in ein durchsuchbares PDF
+  umgewandelt, da jsPDFs Bild-Einbettung hier nur mit JPEG/PNG verwendet
+  wird.
 - **Die Textpositionierung im durchsuchbaren PDF ist Best-Effort.**
   Die Begrenzungsrahmen der Wörter stammen direkt von Tesseract; eine
   horizontale Streckung, um exakt die Breite jedes Worts zu treffen, wird
@@ -831,7 +866,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (66
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (71
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

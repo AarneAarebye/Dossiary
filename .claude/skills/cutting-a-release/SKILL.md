@@ -5,9 +5,8 @@ description: Use when bumping dossiary.html/scan_watch.py's version number and c
 
 ## Versioning
 
-`dossiary.html` and `scan_watch.py` share one version number (`1.8.3` as of
-this writing), kept manually in sync with this repo's git tag on each
-release — no build step or shared version file to do this automatically.
+`dossiary.html` and `scan_watch.py` share one version number, kept manually in
+sync with this repo's git tag on each release — no build step or shared version file to do this automatically.
 `dossiary.html` has its own `APP_VERSION` constant (the very first line
 inside the top-level IIFE), shown in the footer next to the copyright line
 via `#app-version-label`, set once during the same static-wiring pass as

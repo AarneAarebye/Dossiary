@@ -57,7 +57,8 @@ working" problem that motivated this project in the first place.
   together, plus single-language French, Spanish, Chinese (Simplified), and
   Chinese (Traditional / Cantonese — Tesseract has no separate Cantonese
   model, since Cantonese text is written with the same traditional-character
-  script). For JPEG/PNG images, this also builds a **searchable PDF** — the
+  script). For JPEG/PNG images, and for scanned PDFs with no real text
+  layer of their own, this also builds a **searchable PDF** — the
   image with an invisible, selectable text layer positioned over each
   recognized word (the same "sandwich" technique tools like `ocrmypdf`
   use) — while the original image is preserved untouched in a subfolder
@@ -88,6 +89,9 @@ working" problem that motivated this project in the first place.
   `inbox/` folder — Dossiary itself never watches the filesystem or
   writes a document automatically; adding files from the inbox always
   requires this explicit click.
+- **Drag and drop** — drop one or more files anywhere on the page while a
+  library is open, and each becomes its own document, added to the review
+  queue below with the same defaults the Inbox uses.
 - **Review queue** — a second stage after the Inbox: every document added
   from the inbox (category, type, and date all still blank at that point)
   is automatically flagged "needs review" and shown in the "🚩 Inbox" nav
@@ -114,7 +118,10 @@ working" problem that motivated this project in the first place.
 - **Reports** — a 4th nav view totals your documents by Category, Type,
   People, or any custom field, grouped by currency so amounts in different
   currencies are never added together, with a date-range filter and a
-  print-friendly layout for tax season or expense reimbursement.
+  print-friendly layout for tax season or expense reimbursement. Click any
+  row, including a currency's Grand total, to jump to the documents
+  behind that number in the regular table, with a "← Back to Reports"
+  link to return.
 - **Collections** — organize documents into your own named groupings, reachable from an expandable Collections section in the nav. Manual collections are hand-picked lists (select documents in the table to bulk-add them to a collection, bulk-archive, bulk-delete, or bulk-flag for review, or add one at a time from a document's own detail view); Smart Collections save your current search/category/type/person/field filters as a live view that keeps matching new documents automatically.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
@@ -141,6 +148,9 @@ working" problem that motivated this project in the first place.
   with a per-row snooze — 1 week, 1 month, 3 months, or a custom date —
   for anything you're not ready to handle yet; a snoozed reminder
   resurfaces on its own once the snooze passes, no un-snooze step needed.
+  "Dismiss" stops reminding you about that field on that document for
+  good (re-enable it from the Edit form), and "Delete" clears the
+  reminder date itself.
   This is checked on demand only — see Limitations below.
 - **Quick "Add reminder"** — right-click any document (or use its detail
   view) for a one-click reminder that needs no field configured first:
@@ -153,16 +163,40 @@ working" problem that motivated this project in the first place.
   the same way tags are
 - **Open originals** — one click to open the actual file from disk
 - **File paths shown in the detail view** — a `File` line (and `Original`,
-  for a captured image that got turned into a searchable PDF) showing the
+  for the untouched copy of the file as you added it, kept for nearly
+  every document captured or added via the Inbox) showing the
   path relative to your library folder, so you can find it yourself in
   Finder (macOS), File Explorer (Windows), or your file manager (Linux).
   Browsers have no API to reveal a file in the OS's file manager directly
   or expose its absolute path, so this is as close as the app can get.
-- **Edit** — click any document, then "Edit" to update its metadata (title,
+- **Detail panel and context menu** — clicking a row shows its details
+  and actions (Open file, Edit, Archive, Flag for review, Add to
+  collection, Delete, ...) in a side panel next to the table; the toolbar
+  can collapse it to give the table more width. Right-click a row for the
+  same actions in a context menu, and double-click a row to open its file.
+- **Edit** — select any document, then "Edit" to update its metadata (title,
   category, subcategory, type, payment method, amount, date, people, tags,
   custom field values, notes, OCR text) after the fact. This only ever
   changes `library.sqlite` — the underlying file on disk is never touched
   or replaced.
+- **Bulk edit** — check several rows and click "Edit" in the bulk-action
+  bar (or right-click a checked row) to set fields across all of them at
+  once. Only fields you tick "Apply to all" for are written; Tags and
+  person-type fields can either add to what each document already has or
+  replace it. A hint warns when the selected documents currently disagree
+  on a field you're about to overwrite.
+- **Library check** — the "🔍 Library check" toolbar button looks for
+  problems across the whole library: exact duplicate files (by content
+  hash) and likely duplicates (same title and date), documents whose file
+  or original is missing on disk (with a "Re-link…" button to pick the
+  file again), and tags or people no longer used by any document (with
+  Delete, after confirmation). Capture also warns when you pick a file
+  that's already in the library, and the Inbox/drag-and-drop skip exact
+  duplicates and say so on the status line.
+- **Storage stats** — the "💾 Storage stats" toolbar button shows how much
+  disk space the library folder uses: documents (split into active files,
+  preserved originals, and untracked files no document points to),
+  previews, inbox, and the database itself. Read-only; nothing is changed.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
   People, Date, Imported, Amount, Tags); each one that supports filtering
@@ -206,9 +240,9 @@ working" problem that motivated this project in the first place.
   different value from the list rather than retype one.
 - **Re-run OCR on an existing document** — the Edit dialog has its own
   "Run OCR" button, refreshing just the OCR text field against the
-  document's actual saved file. Unlike the capture form (images only),
-  this works on PDFs too — the majority of saved documents — by rendering
-  the first page to an image first.
+  document's actual saved file. It works on images and PDFs alike,
+  rendering every page of a PDF to an image first; unlike capture, it only
+  refreshes the text and never rebuilds the file.
 - **Document Type is placed prominently, near the top of both forms** —
   since it's the one field that determines whether Organization, People,
   or any custom fields show up at all (see "Dynamic fields per document
@@ -326,9 +360,10 @@ working" problem that motivated this project in the first place.
   have the chance to review, fix, or clear it. It just won't appear again
   once cleared, or once you change the document's type to something that
   doesn't include it and don't touch it.
-- **English/German interface** — the whole UI (not just OCR — see
-  "Capture" above) can be switched between English and German with the
-  toggle in the footer; it starts by matching your browser's own
+- **Six interface languages** — the whole UI (not just OCR — see
+  "Capture" above) is available in English, German, Spanish, French,
+  Chinese (Simplified), and Chinese (Traditional), picked from the
+  language menu in the footer; it starts by matching your browser's own
   language and remembers whichever you pick from then on.
 
 ## Getting started
@@ -667,15 +702,12 @@ separate genuinely distinct values.
   a library remembered in the Recent libraries list (see Features above),
   reopening it takes one explicit click to re-confirm permission. This is
   a browser security requirement, not something Dossiary can skip.
-- **Searchable PDF generation works on JPEG/PNG images captured directly,
-  not PDF uploads.** Building the invisible, selectable text layer
-  requires the *source* to be an image jsPDF can embed; a PDF you upload
-  during capture is saved as-is, with no text layer added at capture
-  time. This is distinct from OCR *text extraction*, which does work on
-  PDFs — see "Re-run OCR" above — it just doesn't turn the PDF itself
-  into a new, searchable one; the extracted text only fills the OCR text
-  field. Other image formats (WEBP, GIF, TIFF) are similarly OCR'd for
-  extracted text but not turned into a searchable PDF, since jsPDF's
+- **Searchable PDFs from a PDF upload are rasterized.** A scanned PDF
+  with no real text gets rebuilt as page images plus an invisible text
+  layer, so the rebuilt copy is image-only; the untouched original is kept
+  alongside it. A PDF that already contains real text is left as-is and
+  not OCR'd at capture. Other image formats (WEBP, GIF, TIFF) are OCR'd
+  for extracted text but not turned into a searchable PDF, since jsPDF's
   image embedding is only used here with JPEG/PNG.
 - **Searchable PDF text positioning is best-effort.** Word bounding boxes
   come directly from Tesseract; horizontal stretching to exactly match each
@@ -719,7 +751,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (66
+There's a real, runnable Playwright regression suite in `tests/` (71
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
