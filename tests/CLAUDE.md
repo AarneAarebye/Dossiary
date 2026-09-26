@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **75
-scripts covering most of the app's actual functionality** (73 of them
+There's a real, runnable Playwright regression suite in `tests/` — **77
+scripts covering most of the app's actual functionality** (75 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -815,7 +815,25 @@ moved to the Waste bin still has its files counted; the modal shows a
 busy state before resolving to final numbers; each folder's split renders
 as sub-rows directly under that folder's own row, with thumbnails/'s
 Untracked row correctly absent when zero; and `formatBytes()`'s unit
-boundaries, including the just-below-a-boundary rounding edge), the
+boundaries, including the just-below-a-boundary rounding edge), "Make
+searchable" (`test_make_searchable.py` -- offered only for a not-yet-built
+PDF/JPEG/PNG and only in the panel, not the context menu; an image with a
+preserved original gets a new `.pdf` active file, OCR text/language
+stored, the hash-identical PNG copy removed and the sidecar refreshed; a
+legacy PDF with no original keeps its file as the new original, gets a
+`_searchable.pdf` next to it and keeps hand-corrected OCR text; a PDF with
+real text is reported and left untouched; a copy that doesn't match the
+original's hash stays on disk; a missing original is never overwritten in
+place; and the dialog can't be closed mid-run via Escape, backdrop,
+close or cancel -- the seed marks the `searchable_pdf_built` backfill done,
+since that one-time migration would otherwise flag every seeded captured
+document with an original as already built), person-type fields as
+columns and filters (`test_person_field_columns.py` -- Author gets a
+Column checkbox but no Autocomplete, People gets neither; the column shows
+every name as a pill; the filter lists each name once and matches "includes
+this name", with "— Not set —" matching no names; a Smart Collection saved
+from that filter matches the same documents; sorting by the joined names;
+and Reports offering the field as a breakdown), the
 Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the

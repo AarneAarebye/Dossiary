@@ -2556,12 +2556,18 @@
   // Amount already have no filter dropdown among the built-ins. Deliberately no
   // labelKey here -- f.name is a real user-typed field name (e.g. "Organization"),
   // not app chrome, and must never be run through t().
+  // Person-type fields (Author, Collaborator, ...) take part too, rendered as
+  // pills and filtered by "includes this name" -- except People itself, which
+  // keeps its own fixed column and filter (see FIELD_DEFS).
   function dynamicColumnDefs(){
-    return fieldDefs.filter(f => f.showAsColumn).map(f => ({
-      id: `field-${f.id}`, label: f.name,
-      hasFilter: f.type === 'text' || f.type === 'checkbox', defaultVisible: false,
+    return fieldDefs.filter(f => f.showAsColumn && f.name !== 'People').map(f => ({
+      id: `field-${f.id}`, label: f.name, type: f.type,
+      hasFilter: f.type === 'text' || f.type === 'checkbox' || f.type === 'person', defaultVisible: false,
     }));
   }
+
+  // A person-type field's names on a document (always an array), by field name.
+  function personNamesFor(d, fieldName){ return (d.personFieldValues || {})[fieldName] || []; }
   // Shared by every display site that renders a FIELD_DEFS/dynamicColumnDefs() entry's
   // label (Columns menu, Reports breakdown dropdown) -- built-in fields translate via
   // their labelKey, dynamicColumnDefs() fields fall back to their own (untranslated,
@@ -5025,7 +5031,9 @@
 
     const dynamicFiltersEl = el('dynamic-filters');
     dynamicFiltersEl.innerHTML = dynamicColumnDefs().filter(f => f.hasFilter).map(f => {
-      const values = [...new Set(allDocs.map(d => (d.customFields || {})[f.label]).filter(Boolean))].sort();
+      const values = f.type === 'person'
+        ? [...new Set(allDocs.flatMap(d => personNamesFor(d, f.label)))].sort()
+        : [...new Set(allDocs.map(d => (d.customFields || {})[f.label]).filter(Boolean))].sort();
       return `<span class="filter-wrap" data-field="${f.id}"><select id="dyn-filter-${f.id}" data-field-label="${escapeHtml(f.label)}">
         <option value="">${t('toolbarAllDynamic', {label: escapeHtml(f.label.toLowerCase())})}</option>
         ${notSetOption}
@@ -5375,6 +5383,14 @@
       if(amtMax !== '' && amt > parseFloat(amtMax)) return false;
     }
     for(const f of dynamic){
+      // A person-type field is multi-valued: it matches when the chosen name is
+      // among its names (like the People filter), and is "not set" when empty.
+      // Resolved by name, since saved Smart Collection criteria store only the label.
+      if(fieldDefs.find(x => x.name === f.label)?.type === 'person'){
+        const names = personNamesFor(d, f.label);
+        if(f.value === FILTER_UNSET ? names.length > 0 : !names.includes(f.value)) return false;
+        continue;
+      }
       const actual = (d.customFields || {})[f.label];
       // A checkbox field explicitly saved as unchecked is stored as the
       // string '0' -- real, meaningful data, not "unset" (see
@@ -5493,8 +5509,10 @@
       if(sortKey.startsWith('field-')){
         const fieldId = Number(sortKey.slice('field-'.length));
         const fieldDef = fieldDefs.find(f => f.id === fieldId);
-        const aRaw = fieldDef ? (a.customFields || {})[fieldDef.name] : undefined;
-        const bRaw = fieldDef ? (b.customFields || {})[fieldDef.name] : undefined;
+        const valueOf = (doc) => !fieldDef ? undefined
+          : fieldDef.type === 'person' ? personNamesFor(doc, fieldDef.name).join(', ')
+          : (doc.customFields || {})[fieldDef.name];
+        const aRaw = valueOf(a), bRaw = valueOf(b);
         if(fieldDef && fieldDef.type === 'number'){
           return ((parseFloat(aRaw) || 0) - (parseFloat(bRaw) || 0)) * dir;
         }
@@ -5659,6 +5677,10 @@
         <td class="amount" data-field="amount">${formatAmount(d)}</td>
         <td data-field="tags">${(d.tags||[]).map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('') || `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>
         ${dynDefs.map(f => {
+          if(f.type === 'person'){
+            const names = personNamesFor(d, f.label);
+            return `<td data-field="${f.id}">${names.map(p => `<span class="pill">${escapeHtml(p)}</span>`).join('') || `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>`;
+          }
           const raw = (d.customFields || {})[f.label];
           return `<td data-field="${f.id}">${raw != null && raw !== '' ? escapeHtml(formatCustomFieldValue(f.label, raw)) : `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>`;
         }).join('')}
@@ -8254,11 +8276,9 @@
     const shownNames = new Set(currentEntries.map(e => e.field));
     const availableNames = allFieldNames.filter(n => !shownNames.has(n));
 
-    // Column/Autocomplete toggles are offered for real single-valued generic fields
-    // only -- not person-type fields (People, Author, Collaborator, ...: multi-
-    // valued, no table-column/filter support yet -- out of scope for the pass that
-    // generalized People into a real field, could follow later the same way this
-    // itself followed Amount/Currency/Payment method's own generalization), and not
+    // Column/Autocomplete toggles are offered for every field except People (it
+    // keeps its own fixed table column and filter; other person-type fields like
+    // Author get a Column toggle and show as pills, see dynamicColumnDefs()), and
     // Amount specifically: its show_as_column/autocomplete flags are deliberately
     // inert (see formatAmount()'s note on why its display stays paired with
     // Currency and hardcoded), so a checkbox that visibly did nothing would just be
@@ -8270,7 +8290,8 @@
     // type would otherwise have no way to ever reach its own checkboxes).
     function capabilitiesHtml(fieldName){
       const fieldDef = fieldDefs.find(f => f.name === fieldName);
-      if(!fieldDef || fieldDef.type === 'person' || fieldName === 'Amount') return '';
+      // People keeps its own fixed column; Amount's display is combined with Currency.
+      if(!fieldDef || fieldName === 'People' || fieldName === 'Amount') return '';
       return `
         <div class="fs-field-capabilities">
           <label><input type="checkbox" class="fs-col-toggle" ${fieldDef.showAsColumn ? 'checked' : ''} /> ${t('fieldSettingsColumnCheckbox')}</label>

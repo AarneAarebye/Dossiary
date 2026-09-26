@@ -50,7 +50,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Durchsuchen** — sortierbare, durchsuchbare, filterbare Liste aller
   Dokumente in der Bibliothek, mit Kategorie-/Typ-/Personen-Filtern und,
   für jedes benutzerdefinierte Feld, das in das generische Spaltensystem
-  aufgenommen wurde (siehe „Jedes einwertige benutzerdefinierte Feld kann
+  aufgenommen wurde (siehe „Jedes benutzerdefinierte Feld kann
   zu einer Tabellenspalte, einem Filter und Autocomplete werden“ weiter
   unten), auch dessen eigenem Filter-Dropdown. Die Suche durchsucht Titel,
   Kategorie, Unterkategorie, Dokumenttyp, Notizen, OCR-Text, Tags, Personen
@@ -74,7 +74,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   jedem erkannten Wort (dieselbe „Sandwich“-Technik, die auch Tools wie
   `ocrmypdf` verwenden) — während das Originalbild unverändert in einem
   Unterordner daneben erhalten bleibt, ganz so, wie Mariner Paperless
-  selbst verarbeitete und Originaldateien angeordnet hat. Wenn Sie von
+  selbst verarbeitete und Originaldateien angeordnet hat. Dokumente, die
+  schon in der Bibliothek sind, lassen sich später genauso behandeln: Die
+  Schaltfläche **Durchsuchbar machen** im Detailbereich führt OCR für einen
+  gespeicherten Scan aus und baut ihn als durchsuchbares PDF neu auf; das
+  unveränderte Original bleibt erhalten (PDFs, die bereits Text enthalten,
+  bleiben unverändert). Wenn Sie von
   einem Papierdokument ausgehen, erklärt ein Schalter „Need to scan a
   paper document first?“ im Erfassungsformular, wie Sie zuerst mit
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da
@@ -359,13 +364,15 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   berücksichtigt das ebenfalls: Zahlungsmethode und Betrag erscheinen dort
   nur, wenn ein Dokument tatsächlich einen Wert dafür hat, statt immer
   einen leeren Platzhalter anzuzeigen.
-- **Jedes einwertige benutzerdefinierte Feld kann zu einer Tabellenspalte,
+- **Jedes benutzerdefinierte Feld kann zu einer Tabellenspalte,
   einem Filter und Autocomplete werden** — zwei Kontrollkästchen neben
-  jedem Feld in der Feldliste der Feldeinstellungen (nicht verfügbar für
-  Personen-Felder wie Personen, Autor oder Mitwirkende — siehe
-  Einschränkungen). **Column** fügt eine
+  jedem Feld in der Feldliste der Feldeinstellungen (Personen behält
+  stattdessen seine eigene, fest eingebaute Spalte). Ein Feld vom Typ
+  Person wie Autor zeigt seine Namen als Pills, und sein Filter findet
+  jedes Dokument, das den gewählten Namen enthält; Autocomplete gibt es
+  nur für Textfelder. **Column** fügt eine
   sortierbare Tabellenspalte hinzu (auf die Kopfzeile klicken zum
-  Sortieren, bei Zahlenfeldern numerisch) und, bei Text-/Checkbox-Feldern,
+  Sortieren, bei Zahlenfeldern numerisch) und, bei Text-/Checkbox-/Personen-Feldern,
   ein Filter-Dropdown in der Symbolleiste, gebildet aus den tatsächlichen,
   in Ihrer Bibliothek vorkommenden Werten — Zahlen-/Datumsfelder bekommen
   die Spalte ohne Filter-Dropdown, genau wie es bei den eingebauten
@@ -729,10 +736,9 @@ Datum von, Bezahlt, Zahlungsmethode, Betrag, Währung, Personen, Autor,
 Mitwirkende, was auch immer Ihre Bibliothek tatsächlich nutzt. Jedes Feld
 hat einen Typ (`text`/`number`/`date`/`checkbox`/`person`/`reminder`), der bestimmt,
 wie es dargestellt und wie sein Wert interpretiert wird, plus die oben
-beschriebenen Fähigkeits-Flags `show_as_column`/`autocomplete` (nicht
-verfügbar für Felder vom Typ `person` — ein mehrwertiges Feld passt nicht
-in eine einzelne Tabellenzelle oder ein sinnvolles Filter-Dropdown, so wie
-ein einwertiges Feld das tut). Wird von `migrate_to_new_library.py` aus
+beschriebenen Fähigkeits-Flags `show_as_column`/`autocomplete` (Personen
+selbst behält stattdessen seine eigene feste Spalte und seinen Filter;
+andere Felder vom Typ `person` bekommen Column, nie Autocomplete). Wird von `migrate_to_new_library.py` aus
 Mariners eigenen Felddefinitionen und echten Werten für migrierte
 Bibliotheken befüllt, sowie von zwei einmaligen, idempotenten Migrationen,
 die bei jedem Öffnen einer Bibliothek laufen: `migrateSentinelFieldsToGeneric()`
@@ -866,17 +872,6 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   anzulegen geschieht stattdessen über die Erfassungs-/
   Bearbeitungsformulare — siehe „Ein benutzerdefiniertes Feld direkt aus
   dem Erfassungs-/Bearbeitungsformular anlegen“ oben.
-- **Benutzerdefinierte Felder vom Typ Person (Autor, Mitwirkende usw.)
-  können nicht zu Tabellenspalten oder Filtern werden.** Personen behält
-  seine eigene, fest eingebaute Tabellenspalte und Filter-Dropdown, aber
-  das ist ein separater, älterer Mechanismus — das generische
-  `show_as_column`/`autocomplete`-System, das jedes andere
-  benutzerdefinierte Feld nutzen kann, unterstützt bisher keine
-  mehrwertigen Felder (mehrere Namen in einer Zelle darzustellen, oder
-  daraus ein sinnvolles Filter zu bauen, ist eine eigene, noch nicht
-  gebaute Funktion). Ein neues Feld vom Typ Person ist überall sonst voll
-  nutzbar — Erfassung, Bearbeitung, Detailansicht, Suche — nur eben nicht
-  als Spalte oder Filter.
 - **Keine Push-Benachrichtigungen oder Erinnerungsprüfung im Hintergrund.**
   Erinnerungen werden nur beim Öffnen einer Bibliothek geprüft, oder wenn
   Sie auf „Check reminders" klicken — eine statische Single-Page-App ohne
@@ -899,7 +894,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (75
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (77
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

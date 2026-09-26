@@ -146,7 +146,7 @@ async def main():
         for i in range(1, 8):
             await select(i)
             offered[i] = await page.locator('#make-searchable-btn').count() == 1
-        print("Offered for PNG/PDF documents not yet built:", all(offered[i] for i in (1, 2, 3, 4, 7)), offered)
+        print("Offered for PNG/PDF documents not yet built:", all(offered[i] for i in (1, 2, 3, 4, 7)), sorted(i for i, v in offered.items() if v))
         print("Not offered for an unsupported type:", not offered[5])
         print("Not offered for an already-built searchable PDF:", not offered[6])
         await page.click('#doc-tbody tr[data-id="1"]', button='right')

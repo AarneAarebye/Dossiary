@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (75 scripts) + shared
+tests/                   Playwright regression suite (77 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -502,15 +502,23 @@ this repo's git tags.
   `data-field-id`), so the generic clear-button wiring, `getShownFieldIds()`,
   and orphaned-field marking in `applyDynamicFieldsForType()` all apply to
   a person-type field automatically, with zero special-casing needed
-  anywhere else in the form-handling code. Person-type fields deliberately
-  don't participate in the `show_as_column`/`autocomplete` capability
-  system (Field Settings' checkboxes exclude `type === 'person'`, same
-  spirit as the narrow Amount/Currency exception below) — People keeps its
-  own permanently-fixed table column and filter dropdown exactly as
-  before, and giving a multi-valued field a single-string table cell or a
-  useful filter dropdown is a real, separate feature that wasn't in scope
-  when this generalization landed; a new person-type field like Author
-  simply doesn't get a column or filter yet.
+  anywhere else in the form-handling code. People keeps its own
+  permanently-fixed table column and filter dropdown exactly as before (it
+  gets no Column checkbox, and `dynamicColumnDefs()` skips it by name even
+  if its flag were set). **Every other person-type field (Author,
+  Collaborator, ...) can be a table column and filter** via the ordinary
+  `show_as_column` flag -- Field Settings offers it the Column checkbox
+  (never Autocomplete, which stays text-only). `dynamicColumnDefs()` carries
+  each field's `type`, so the table cell renders its names as pills, the
+  filter lists each distinct name once (`personNamesFor(d, name)`, the one
+  reader of `d.personFieldValues`), and `matchesCriteria()` treats a
+  person-type dynamic filter as "includes this name", with "— Not set —"
+  meaning no names at all -- the same semantics as the fixed People filter.
+  The type is resolved by field name from `fieldDefs` there, since saved
+  Smart Collection criteria store only `{label, value}`, so an author
+  filter saved as a Smart Collection keeps working. Sorting compares the
+  joined names; Reports already had a multi-valued breakdown path for
+  person-type fields, which now simply gets reached once the column is on.
 - **`subcategory` is a flat, independent field, not nested under
   `category`** — despite the name, and despite what a naive redesign might
   assume. This matches Mariner's own schema (`ZSUBCATEGORY` has no foreign
@@ -1887,9 +1895,9 @@ this repo's git tags.
   to be selected still needs a reachable way to toggle its own flags; the
   first version of this only rendered checkboxes in the Fields column and
   a field attached to every type in the library would have had no way to
-  ever reach them. Not offered for any person-type field (People, Author,
-  Collaborator, ... — `capabilitiesHtml()` excludes `type === 'person'`,
-  see the People note above for why) or for `'Amount'` by name (its flags
+  ever reach them. Not offered for People by name (it keeps its own fixed
+  column -- other person-type fields get the Column checkbox but never
+  Autocomplete, see the People note above) or for `'Amount'` by name (its flags
   are deliberately kept off — see the sentinel-fields note above — so an
   editable checkbox that visibly did nothing would just be confusing).
   Currency is no longer excluded here — it's a completely ordinary field

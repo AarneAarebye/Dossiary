@@ -63,7 +63,10 @@ working" problem that motivated this project in the first place.
   recognized word (the same "sandwich" technique tools like `ocrmypdf`
   use) — while the original image is preserved untouched in a subfolder
   next to it, mirroring how Mariner Paperless itself laid out processed
-  vs. original files. If you're starting from a paper document, a "Need to
+  vs. original files. Documents already in the library get the same
+  treatment later via the detail panel's **Make searchable** button: it
+  OCRs a saved scan and rebuilds it as a searchable PDF, keeping the
+  untouched original (PDFs that already contain text are left alone). If you're starting from a paper document, a "Need to
   scan a paper document first?" toggle in the capture form explains how to
   scan it first — Image Capture or Preview on macOS, the Windows Scan app
   on Windows, detected automatically — since a browser has no way to drive
@@ -303,17 +306,18 @@ working" problem that motivated this project in the first place.
   header reflects this too: Payment and Amount only appear there when a
   document actually has a value for them, rather than always showing an
   empty placeholder.
-- **Any single-valued custom field can become a table column, a filter, and
+- **Any custom field can become a table column, a filter, and
   offer autocomplete** — two checkboxes next to each field in Field
-  Settings' Fields list (not offered for person-type fields like People,
-  Author, or Collaborator — see Limitations). **Column** adds a sortable
-  table column (click its header
-  to sort, numerically for Number-type fields) and, for Text/Checkbox
-  fields, a toolbar filter dropdown built from the real distinct values
+  Settings' Fields list (People keeps its own built-in column instead).
+  **Column** adds a sortable table column (click its header
+  to sort, numerically for Number-type fields) and, for Text/Checkbox/
+  Person fields, a toolbar filter dropdown built from the real distinct values
   already in your library — Number/Date fields get the column without a
   filter dropdown, the same way the built-in Date and Amount columns
   already work, since a dropdown listing every distinct number or date
-  isn't useful. **Autocomplete** (Text fields only) offers previously-used
+  isn't useful. A person-type field like Author shows its names as pills,
+  and its filter finds every document that includes the chosen name.
+  **Autocomplete** (Text fields only) offers previously-used
   values while typing — the same underlying mechanism Payment method
   itself now uses. Both start off for a newly created field, so a fresh
   custom field doesn't clutter the table or toolbar until you decide it's
@@ -638,9 +642,8 @@ Currency, People, Author, Collaborator, whatever your library actually
 uses. Each field has a type (`text`/`number`/`date`/`checkbox`/`person`/
 `reminder`) that determines how it's rendered and how its value gets interpreted,
 plus the `show_as_column`/`autocomplete` capability flags described above
-(not offered for `person`-type fields — a multi-valued field doesn't fit
-a single table cell or a useful filter dropdown the way a single-valued
-one does). Populated by `migrate_to_new_library.py` from Mariner's own
+(People itself keeps its own fixed column and filter instead; other
+`person`-type fields get Column, never Autocomplete). Populated by `migrate_to_new_library.py` from Mariner's own
 field definitions and real values for migrated libraries, and by two
 one-time, idempotent migrations run on every library open:
 `migrateSentinelFieldsToGeneric()` for Payment method/Amount/Currency,
@@ -754,15 +757,6 @@ separate genuinely distinct values.
   brand-new field from scratch is done from the capture/edit forms
   instead — see "Add a custom field
   right from the capture/edit forms" above.
-- **Person-type custom fields (Author, Collaborator, etc.) can't become
-  table columns or filters.** People itself keeps its own permanently-fixed
-  table column and filter dropdown, but that's a separate, older mechanism
-  — the generic `show_as_column`/`autocomplete` system every other custom
-  field can opt into doesn't support multi-valued fields yet (rendering
-  several names in one cell, or building a useful filter from them, is a
-  distinct feature that hasn't been built). A new person-type field is
-  fully usable everywhere else — capture, edit, detail view, search — just
-  not as a column or filter.
 - **No push notifications or background reminder checking.** Reminders are
   checked only when a library opens, or when you click "Check reminders" —
   a static, single-page app with no server has no way to run code, or wake
@@ -782,7 +776,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (75
+There's a real, runnable Playwright regression suite in `tests/` (77
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
