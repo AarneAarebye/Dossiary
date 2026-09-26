@@ -146,7 +146,7 @@ async def main():
         # sets at the end of its own body -- the simplest way to assert on this
         # module-private variable from outside the page's own closure.
         loaded_snooze = await page.evaluate("window.__DEBUG_reminderSnoozes ? window.__DEBUG_reminderSnoozes['1:1'] : undefined")
-        print("seeded snooze row loads into memory:", loaded_snooze)
+        print("seeded snooze row loads into memory:", loaded_snooze == {'snoozedUntil': '2026-06-01', 'dismissed': False}, loaded_snooze)
 
         # Directly exercise the real INSERT OR REPLACE path the app itself uses,
         # confirming the stub correctly replaces (not duplicates) on the same

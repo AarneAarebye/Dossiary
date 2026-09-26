@@ -52,8 +52,8 @@ async def main():
 
         has_guess_class_after = await page.locator('#f-date').evaluate("el => el.classList.contains('field-guess')")
         hint_visible_after = await page.locator('#f-date-hint').is_visible()
-        print("has guess styling after edit:", has_guess_class_after)
-        print("hint visible after edit:", hint_visible_after)
+        print("guess styling cleared after edit:", not has_guess_class_after)
+        print("hint hidden after edit:", not hint_visible_after)
 
         # confirm the (now user-edited) date actually saves correctly
         with open('datepreset.pdf', 'wb') as f:

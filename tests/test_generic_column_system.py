@@ -46,8 +46,8 @@ async def main():
         await page.wait_for_timeout(150)
         col_checked_before = await page.locator('.fs-list-item[data-field="Status"] .fs-col-toggle').is_checked()
         ac_checked_before = await page.locator('.fs-list-item[data-field="Status"] .fs-autocomplete-toggle').is_checked()
-        print("Column checkbox present, unchecked by default:", col_checked_before)
-        print("Autocomplete checkbox present (text field), unchecked by default:", ac_checked_before)
+        print("Column checkbox present, unchecked by default:", not col_checked_before)
+        print("Autocomplete checkbox present (text field), checked by the text-autocomplete default migration:", ac_checked_before)
 
         # Amount doesn't get these checkboxes at all -- deliberately inert
         # (see formatAmount()'s note); Currency now does (same as any other show_as_column

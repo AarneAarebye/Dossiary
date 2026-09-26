@@ -154,8 +154,8 @@ async def main():
         await page.wait_for_timeout(200)
         thumb_slot_count = await page.locator('.modal-thumb, .modal-thumb-empty').count()
         regen_btn_count = await page.locator('#regen-thumb-btn').count()
-        print("preview slot present with default (should be False -- flag is off):", thumb_slot_count > 0)
-        print("regen-thumb-btn present with default (should be False -- flag is off):", regen_btn_count > 0)
+        print("no preview slot with default (flag is off):", thumb_slot_count == 0)
+        print("no regen-thumb-btn with default (flag is off):", regen_btn_count == 0)
 
         persisted3 = await page.evaluate("""
             (async () => {

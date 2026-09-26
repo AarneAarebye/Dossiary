@@ -62,8 +62,8 @@ async def main():
         payment_th_visible = await page.locator(f'th[data-field="{col_id}"]').is_visible()
         payment_filter_visible = await page.locator(f'span[data-field="{col_id}"]').count() > 0 and await page.locator(f'span[data-field="{col_id}"]').is_visible()
         category_th_visible = await page.locator('th[data-field="category"]').is_visible()
-        print("Payment method column visible by default (should be False):", payment_th_visible)
-        print("Payment method filter visible by default (should be False):", payment_filter_visible)
+        print("Payment method column hidden by default:", not payment_th_visible)
+        print("Payment method filter hidden by default:", not payment_filter_visible)
         print("category column visible by default (should be True):", category_th_visible)
 
         # Open columns menu, toggle Payment method ON, Category OFF
@@ -82,7 +82,7 @@ async def main():
         category_th_visible2 = await page.locator('th[data-field="category"]').is_visible()
         print("Payment method column visible after toggle ON:", payment_th_visible2)
         print("Payment method filter visible after toggle ON:", payment_filter_visible2)
-        print("category column visible after toggle OFF:", category_th_visible2)
+        print("category column hidden after toggle OFF:", not category_th_visible2)
 
         # check payment filter dropdown exists and works
         payment_options = await page.locator(f'#dyn-filter-{col_id} option').all_inner_texts()

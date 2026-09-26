@@ -198,13 +198,13 @@ async def main():
         """)
 
         # === Scenario 3: reopening the (now-empty) library keeps the banner hidden ===
-        # #reload-btn's own click handler calls resetAll() then openLibrary() -- the stub's
+        # #reload-btn returns to the start screen, then #open-btn reopens -- the stub's
         # showDirectoryPicker keeps returning the same __TEST_ROOT, and library.sqlite
         # already exists on it now, so this re-loads straight in without #init-btn.
         await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(300)
         banner_on_reopen = await page.locator('#inbox-banner').is_visible()
-        print("banner visible on reopening an already-emptied library:", banner_on_reopen)
+        print("banner hidden on reopening an already-emptied library:", not banner_on_reopen)
 
         # === Scenario 4: a file staged (e.g. by scan_watch.py) *after* the library was
         # already open doesn't show up on its own -- checkInbox() only runs once, right

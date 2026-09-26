@@ -61,7 +61,7 @@ async def main():
         payment_visible = await page.locator(f'th[data-field="{col_id}"]').is_visible()
         tags_visible = await page.locator('th[data-field="tags"]').is_visible()
         print("Payment method column visible after reopen (should be True):", payment_visible)
-        print("tags column visible after reopen (should be False):", tags_visible)
+        print("tags column stays hidden after reopen:", not tags_visible)
 
         # also check the columns menu checkboxes themselves reflect restored state
         await page.click('#columns-btn')
@@ -69,7 +69,7 @@ async def main():
         payment_checked = await page.locator(f'#col-toggle-{col_id}').is_checked()
         tags_checked = await page.locator('#col-toggle-tags').is_checked()
         print("Payment method checkbox checked:", payment_checked)
-        print("tags checkbox checked (should be False):", tags_checked)
+        print("tags checkbox stays unchecked after reopen:", not tags_checked)
 
         print("JS ERRORS:", errors)
         await browser.close()

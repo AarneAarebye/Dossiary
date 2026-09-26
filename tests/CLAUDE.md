@@ -4,6 +4,15 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
+**Every printed check reads `True` on pass.** A `: False` in any script's
+output is a regression, never an intended value -- a check that expects
+something absent or hidden is phrased so (`"column hidden by default:",
+not visible`), and a raw non-boolean value gets a comparison in front of
+it. Sixteen scripts used to print `False` for expected outcomes ("(should
+be False)" labels, raw `is_checked()` results), which made a full run
+unreadable; they were all rewritten, so a full run now prints no `False`
+at all. Keep it that way for new checks.
+
 There's a real, runnable Playwright regression suite in `tests/` — **75
 scripts covering most of the app's actual functionality** (73 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static

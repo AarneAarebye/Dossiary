@@ -148,7 +148,7 @@ async def main():
         await page.wait_for_timeout(150)
         visible_empty = await dropdown_visible(page, wrap)
         assert not visible_empty, "empty input should show no suggestion dropdown"
-        print("Empty input shows no suggestion dropdown:", visible_empty)
+        print("Empty input shows no suggestion dropdown:", not visible_empty)
 
         # === Scenario 7: the same comma-aware behavior works for Tags too ===
         tags_input = page.locator('#f-tags')

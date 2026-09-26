@@ -36,6 +36,13 @@ cd tests
 python3 test_<name>.py
 ```
 
+Every check line a test prints reads `True` when it passes, so a `: False`
+anywhere in the output is a regression, never an expected value (checks
+that expect something to be absent or hidden are phrased that way, e.g.
+"column hidden by default: True"). Keep new checks to that convention;
+`grep ": False"` over a full run's output is then a complete pass/fail
+signal alongside any `Traceback`.
+
 Nothing here touches a real browser dialog or real sql.js/Tesseract.js —
 see `CLAUDE.md`'s "How this was tested" section for how the stubbing
 approach works. Every Playwright/browser test file loads the same shared

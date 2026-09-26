@@ -117,9 +117,9 @@ async def main():
         print("row shows NewCategory:", 'NewCategory' in row_html)
         print("row shows NewSub:", 'NewSub' in row_html)
         print("row shows Lydia:", 'Lydia' in row_html)
-        print("row shows Jana (should be False):", 'Jana' in row_html)
+        print("row no longer shows Jana:", 'Jana' not in row_html)
         print("row shows newtag:", 'newtag' in row_html)
-        print("row shows oldtag2 (should be False):", 'oldtag2' in row_html)
+        print("row no longer shows oldtag2:", 'oldtag2' not in row_html)
 
         print("JS ERRORS:", errors)
         await browser.close()

@@ -50,7 +50,7 @@ async def main():
 
         panel_text = await page.locator('#detail-panel-body').inner_text()
         print("shows original title after cancel:", 'Keep This Title' in panel_text)
-        print("shows discarded edit (should be False):", 'Should Not Be Saved' in panel_text)
+        print("discarded edit not shown:", 'Should Not Be Saved' not in panel_text)
 
         row_html = await page.locator('tr[data-id="1"]').inner_html()
         print("row still shows original title:", 'Keep This Title' in row_html)

@@ -85,7 +85,7 @@ async def main():
         # Year (configured for Certificate) should show normally, NOT marked orphaned
         year_field = page.locator('[data-dynamic-field="Year"]')
         year_has_orphaned_class = await year_field.evaluate("el => el.classList.contains('field-orphaned')")
-        print("Year field (normally configured) has orphaned class (should be False):", year_has_orphaned_class)
+        print("Year field (normally configured) has no orphaned class:", not year_has_orphaned_class)
 
         # Edit the orphaned Organization value and save -- should persist the change
         await page.fill('#e-field-1', 'Updated Corp Name')

@@ -112,7 +112,7 @@ async def main():
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
         modal_text = await page.locator('#detail-panel-body').inner_text()
-        print("modal shows 'People' section:", 'People' in modal_text)
+        print("modal shows 'People' section:", 'people' in modal_text.lower())  # h3 is CSS-uppercased
         print("modal shows both names:", 'Arne' in modal_text and 'Jana' in modal_text)
 
         # check sidecar for doc1

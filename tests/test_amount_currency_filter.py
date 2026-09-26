@@ -304,7 +304,7 @@ async def main():
         await page.wait_for_timeout(150)
         unset_checked = await page.locator('#amount-filter-unset').is_checked()
         assert not unset_checked, "'Not set' should stay unchecked after typing into an enabled input"
-        print("Typing into an enabled min input leaves 'not set' unchecked:", unset_checked)
+        print("Typing into an enabled min input leaves 'not set' unchecked:", not unset_checked)
         await page.fill('#amount-filter-min', '')
         await page.wait_for_timeout(150)
 

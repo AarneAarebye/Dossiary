@@ -90,7 +90,7 @@ async def main():
         # flagged show_as_column=1 in Field Settings (Organization here isn't) --
         # only the detail view (checked below) shows every custom field.
         row_text = await page.locator('tr[data-id="1"]').inner_text()
-        print("row shows organization name (should be False -- not flagged as a column):", 'Dres. Ernestus & Cop, Sandhausen' in row_text)
+        print("row doesn't show organization name (not flagged as a column):", 'Dres. Ernestus & Cop, Sandhausen' not in row_text)
 
         # detail modal shows formatted values (checkbox -> Yes, date -> readable)
         await page.click('tr[data-id="1"]')

@@ -55,8 +55,8 @@ async def main():
 
         ocr_btn_disabled = await page.locator('#run-ocr-btn').is_disabled()
         preview_text = await page.locator('#file-preview-area').inner_text()
-        print("OCR button disabled for PDF:", ocr_btn_disabled)
-        print("preview mentions OCR-not-available note:", 'OCR not available for PDFs' in preview_text)
+        print("OCR button enabled for PDF (PDF OCR is supported):", not ocr_btn_disabled)
+        print("preview has no stale OCR-not-available note:", 'OCR not available for PDFs' not in preview_text)
 
         await page.fill('#f-title', 'First New Doc')
         await page.click('#save-doc-btn')

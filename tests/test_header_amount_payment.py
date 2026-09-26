@@ -54,8 +54,8 @@ async def main():
         await page.wait_for_timeout(200)
         modal_text1 = await page.locator('#detail-panel-body').inner_text()
         print("--- Doc without amount/payment ---")
-        print("shows Payment b-tag (should be False):", '<b>Payment</b>' in modal_text1 or 'Payment ' in modal_text1)
-        print("shows 'Amount' label (should be False):", 'Amount' in modal_text1)
+        print("no Payment line:", not ('<b>Payment</b>' in modal_text1 or 'Payment ' in modal_text1))
+        print("no 'Amount' label:", 'Amount' not in modal_text1)
         print("shows 'Date' label (should be True, always shown):", 'Date' in modal_text1)
 
         # === Doc 2: Invoice type, WITH amount/payment filled in ===
@@ -80,7 +80,7 @@ async def main():
         print("--- Doc with amount/payment ---")
         print("shows 'Payment' label (should be True):", 'Payment' in modal_text2)
         print("shows 'PayPal' value:", 'PayPal' in modal_text2)
-        print("shows 'Amount' label (should be True):", 'Amount' in modal_text2)
+        print("shows 'Amount' label:", 'Amount' in modal_text2)
         print("shows '75.00' value:", '75.00' in modal_text2)
 
         print("JS ERRORS:", errors)
