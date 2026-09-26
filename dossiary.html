@@ -220,6 +220,7 @@
   .fs-item-actions button:hover{ color:var(--phosphor); border:none; }
   .fs-item-actions button.fs-remove:hover{ color:var(--red); }
   .fs-field-item, .fs-description-item{ display:block; cursor:default; }
+  .fs-rename-input{ flex:1; min-width:0; background:var(--ink-2); border:1px solid var(--phosphor-dim); border-radius:var(--radius); padding:4px 8px; color:var(--text); font-family:var(--font-sans); font-size:13px; }
   .fs-description-input{ width:100%; margin-top:4px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:6px 8px; color:var(--text); font-family:var(--font-sans); font-size:13px; }
   .fs-field-row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .fs-field-capabilities{ display:flex; gap:10px; margin-top:4px; font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
@@ -1014,7 +1015,7 @@
       fieldSettingsScannerIntegrationText: 'Scanning from the toolbar needs a small companion app, scanix500-menubar, set up once and run locally on your Mac.',
       fieldSettingsScannerIntegrationLink: 'Get scanix500-menubar',
       fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
-      fieldSettingsDescriptionsHeading: 'Field Descriptions', fieldSettingsDescriptionPlaceholder: 'No description set',
+      fieldSettingsDescriptionsHeading: 'Field Descriptions', fieldSettingsDescriptionPlaceholder: 'No description set', fieldRenameTitle: 'Rename field', fieldRenameReservedName: '"{name}" is a built-in field name — pick another.', fieldRenameDuplicateName: 'A field named "{name}" already exists.',
       fieldSettingsNoDocTypes: 'No document types in use yet. Type one into the Add/Edit document form first.',
       fieldSettingsSelectDocType: 'Select a document type.', fieldSettingsColumnCheckbox: 'Column',
       fieldSettingsAutocompleteCheckbox: 'Autocomplete', fieldSettingsAddToDisplayTitle: 'Add to Display Fields',
@@ -1215,7 +1216,7 @@
       fieldSettingsScannerIntegrationText: 'Escanear desde la barra de herramientas requiere una pequeña aplicación complementaria, scanix500-menubar, configurada una vez y ejecutada localmente en su Mac.',
       fieldSettingsScannerIntegrationLink: 'Obtener scanix500-menubar',
       fieldSettingsColDocTypes: 'Tipos de documento', fieldSettingsColFields: 'Campos', fieldSettingsColDisplayFields: 'Campos mostrados',
-      fieldSettingsDescriptionsHeading: 'Descripciones de campos', fieldSettingsDescriptionPlaceholder: 'Sin descripción',
+      fieldSettingsDescriptionsHeading: 'Descripciones de campos', fieldSettingsDescriptionPlaceholder: 'Sin descripción', fieldRenameTitle: 'Renombrar campo', fieldRenameReservedName: '"{name}" es el nombre de un campo integrado; elige otro.', fieldRenameDuplicateName: 'Ya existe un campo llamado "{name}".',
       fieldSettingsNoDocTypes: 'Aún no hay tipos de documento en uso. Escribe uno primero en el formulario de Añadir/Editar documento.',
       fieldSettingsSelectDocType: 'Selecciona un tipo de documento.', fieldSettingsColumnCheckbox: 'Columna',
       fieldSettingsAutocompleteCheckbox: 'Autocompletar', fieldSettingsAddToDisplayTitle: 'Añadir a Campos mostrados',
@@ -1416,7 +1417,7 @@
       fieldSettingsScannerIntegrationText: "Numériser depuis la barre d'outils nécessite une petite application complémentaire, scanix500-menubar, configurée une fois et exécutée localement sur votre Mac.",
       fieldSettingsScannerIntegrationLink: 'Obtenir scanix500-menubar',
       fieldSettingsColDocTypes: 'Types de document', fieldSettingsColFields: 'Champs', fieldSettingsColDisplayFields: 'Champs affichés',
-      fieldSettingsDescriptionsHeading: 'Descriptions des champs', fieldSettingsDescriptionPlaceholder: 'Aucune description',
+      fieldSettingsDescriptionsHeading: 'Descriptions des champs', fieldSettingsDescriptionPlaceholder: 'Aucune description', fieldRenameTitle: 'Renommer le champ', fieldRenameReservedName: '« {name} » est le nom d\'un champ intégré ; choisissez-en un autre.', fieldRenameDuplicateName: 'Un champ nommé « {name} » existe déjà.',
       fieldSettingsNoDocTypes: "Aucun type de document n'est encore utilisé. Saisissez-en un d'abord dans le formulaire Ajouter/Modifier un document.",
       fieldSettingsSelectDocType: 'Sélectionnez un type de document.', fieldSettingsColumnCheckbox: 'Colonne',
       fieldSettingsAutocompleteCheckbox: 'Autocomplétion', fieldSettingsAddToDisplayTitle: 'Ajouter aux Champs affichés',
@@ -1617,7 +1618,7 @@
       fieldSettingsScannerIntegrationText: 'Zum Scannen über die Symbolleiste wird eine kleine Begleit-App, scanix500-menubar, benötigt — einmalig eingerichtet und danach lokal auf dem Mac laufend.',
       fieldSettingsScannerIntegrationLink: 'scanix500-menubar einrichten',
       fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
-      fieldSettingsDescriptionsHeading: 'Feldbeschreibungen', fieldSettingsDescriptionPlaceholder: 'Keine Beschreibung',
+      fieldSettingsDescriptionsHeading: 'Feldbeschreibungen', fieldSettingsDescriptionPlaceholder: 'Keine Beschreibung', fieldRenameTitle: 'Feld umbenennen', fieldRenameReservedName: '„{name}" ist der Name eines eingebauten Felds — bitte einen anderen wählen.', fieldRenameDuplicateName: 'Ein Feld namens „{name}" gibt es bereits.',
       fieldSettingsNoDocTypes: 'Noch keine Dokumenttypen in Verwendung. Gib zuerst einen im Formular "Dokument hinzufügen/bearbeiten" ein.',
       fieldSettingsSelectDocType: 'Wähle einen Dokumenttyp aus.', fieldSettingsColumnCheckbox: 'Spalte',
       fieldSettingsAutocompleteCheckbox: 'Autovervollständigung', fieldSettingsAddToDisplayTitle: 'Zu Anzeigefeldern hinzufügen',
@@ -1818,7 +1819,7 @@
       fieldSettingsScannerIntegrationText: '从工具栏扫描需要一个小型配套应用 scanix500-menubar，只需设置一次，即可在您的 Mac 上本地运行。',
       fieldSettingsScannerIntegrationLink: '设置 scanix500-menubar',
       fieldSettingsColDocTypes: '文档类型', fieldSettingsColFields: '字段', fieldSettingsColDisplayFields: '显示字段',
-      fieldSettingsDescriptionsHeading: '字段说明', fieldSettingsDescriptionPlaceholder: '未设置说明',
+      fieldSettingsDescriptionsHeading: '字段说明', fieldSettingsDescriptionPlaceholder: '未设置说明', fieldRenameTitle: '重命名字段', fieldRenameReservedName: '"{name}" 是内置字段名称，请换一个。', fieldRenameDuplicateName: '已存在名为"{name}"的字段。',
       fieldSettingsNoDocTypes: '尚未使用任何文档类型。请先在添加/编辑文档表单中输入一个。',
       fieldSettingsSelectDocType: '请选择一个文档类型。', fieldSettingsColumnCheckbox: '列',
       fieldSettingsAutocompleteCheckbox: '自动完成', fieldSettingsAddToDisplayTitle: '添加到显示字段',
@@ -2131,7 +2132,7 @@
       fieldSettingsColFields: '字段',
       fieldSettingsColDisplayFields: '顯示字段',
       fieldSettingsDescriptionsHeading: '字段說明',
-      fieldSettingsDescriptionPlaceholder: '未設置說明',
+      fieldSettingsDescriptionPlaceholder: '未設置說明', fieldRenameTitle: '重新命名欄位', fieldRenameReservedName: '"{name}" 是內建欄位名稱，請換一個。', fieldRenameDuplicateName: '已存在名為"{name}"的欄位。',
       fieldSettingsNoDocTypes: '尚未使用任何文檔類型。請先在添加/編輯文檔表單中輸入一個。',
       fieldSettingsSelectDocType: '請選擇一個文檔類型。',
       fieldSettingsColumnCheckbox: '列',
@@ -3844,6 +3845,71 @@
   function saveFieldDescription(fieldName, description){
     db.run('INSERT OR REPLACE INTO field_descriptions (field_name, description) VALUES (?, ?)', [fieldName, description]);
     fieldDescriptions[fieldName] = description;
+  }
+
+  // Fields whose name the code itself depends on (fieldNameToId['Reminder'],
+  // formatAmount()'s d.customFields['Amount']/['Currency'], the migrations'
+  // idempotency checks, ...) -- renaming one would silently break that code
+  // path, so Field Settings never offers a rename for them.
+  const NON_RENAMEABLE_FIELD_NAMES = ['People', 'Amount', 'Currency', 'Payment method', 'Reminder'];
+
+  // Renames a custom field. A field's *name* (not just its id) is used as a key
+  // in several places, all of which move together here: fields.name,
+  // document_type_fields.field_name (per-type configuration),
+  // field_descriptions.field_name, and Smart Collection criteria JSON (dynamic
+  // filters are saved by field name, see currentFilters()) -- plus the
+  // in-memory mirrors of each, and every document's customFields/
+  // personFieldValues map (both keyed by field name). Column visibility, sort
+  // order, datalists, and the Reports breakdown key off the field's id and
+  // need no change. Sidecar .txt files already on disk keep the old name
+  // until each document is next saved -- accepted, the same way they only
+  // ever refresh on an explicit save. Returns an error message, or null.
+  async function renameField(oldName, newNameRaw){
+    const newName = (newNameRaw || '').trim();
+    const fieldDef = fieldDefs.find(f => f.name === oldName);
+    if(!fieldDef || NON_RENAMEABLE_FIELD_NAMES.includes(oldName)) return null;
+    if(newName === oldName) return null;
+    if(!newName) return t('fieldValidationEnterName');
+    if([...NON_RENAMEABLE_FIELD_NAMES, ...FIELD_DESCRIPTION_BUILTIN_NAMES].includes(newName)) return t('fieldRenameReservedName', {name: newName});
+    if(fieldNameToId[newName] !== undefined) return t('fieldRenameDuplicateName', {name: newName});
+
+    db.run('UPDATE fields SET name = ? WHERE id = ?', [newName, fieldDef.id]);
+    db.run('UPDATE document_type_fields SET field_name = ? WHERE field_name = ?', [newName, oldName]);
+    if(Object.prototype.hasOwnProperty.call(fieldDescriptions, oldName)){
+      db.run('INSERT OR REPLACE INTO field_descriptions (field_name, description) VALUES (?, ?)', [newName, fieldDescriptions[oldName]]);
+      db.run('DELETE FROM field_descriptions WHERE field_name = ?', [oldName]);
+      fieldDescriptions[newName] = fieldDescriptions[oldName];
+      delete fieldDescriptions[oldName];
+    }
+    for(const c of collections){
+      if(c.kind !== 'smart' || !c.criteria) continue;
+      let criteria;
+      try{ criteria = JSON.parse(c.criteria); }catch(e){ continue; }
+      if(!(criteria.dynamic || []).some(f => f.label === oldName)) continue;
+      criteria.dynamic = criteria.dynamic.map(f => f.label === oldName ? {...f, label: newName} : f);
+      c.criteria = JSON.stringify(criteria);
+      db.run('UPDATE collections SET criteria = ? WHERE id = ?', [c.criteria, c.id]);
+    }
+
+    fieldDef.name = newName;
+    delete fieldNameToId[oldName];
+    fieldNameToId[newName] = fieldDef.id;
+    for(const typeName in typeFieldOrder){
+      for(const entry of typeFieldOrder[typeName]) if(entry.field === oldName) entry.field = newName;
+    }
+    for(const d of allDocs){
+      for(const map of [d.customFields, d.personFieldValues]){
+        if(map && Object.prototype.hasOwnProperty.call(map, oldName)){
+          map[newName] = map[oldName];
+          delete map[oldName];
+        }
+      }
+    }
+
+    await persistDb();
+    renderColumnsMenu(); applyColumnVisibility(); populateFilters(); populateDatalists(); render();
+    if(selectedDocId !== null) openDetail(selectedDocId);
+    return null;
   }
 
   function loadReminderSnoozes(){
@@ -7750,14 +7816,20 @@
     // same row. See CLAUDE.md's field-descriptions note for why.
     const customNames = fieldDefs.map(f => f.name).filter(name => !FIELD_DESCRIPTION_BUILTIN_NAMES.includes(name));
     const names = [...FIELD_DESCRIPTION_BUILTIN_NAMES, ...customNames];
+    const renameable = new Set(customNames.filter(name => !NON_RENAMEABLE_FIELD_NAMES.includes(name)));
     listEl.innerHTML = names.map(name => `
       <div class="fs-list-item fs-description-item" data-field-name="${escapeHtml(name)}">
         <div class="fs-field-row">
-          <span>${escapeHtml(name)}</span>
+          <span class="fs-field-name">${escapeHtml(name)}</span>
+          ${renameable.has(name) ? `<span class="fs-item-actions"><button type="button" class="fs-rename" title="${t('fieldRenameTitle')}" aria-label="${t('fieldRenameTitle')}">✎</button></span>` : ''}
         </div>
+        <div class="field-hint fs-rename-status" style="display:none;"></div>
         <input type="text" class="fs-description-input" value="${escapeHtml(fieldDescriptions[name] || '')}" placeholder="${t('fieldSettingsDescriptionPlaceholder')}" />
       </div>
     `).join('');
+    listEl.querySelectorAll('.fs-rename').forEach(btn => {
+      btn.addEventListener('click', () => startFieldRename(btn.closest('.fs-description-item')));
+    });
     listEl.querySelectorAll('.fs-description-item').forEach(itemEl => {
       const fieldName = itemEl.dataset.fieldName;
       const input = itemEl.querySelector('.fs-description-input');
@@ -7768,6 +7840,50 @@
       input.addEventListener('keydown', (e) => { if(e.key === 'Enter') input.blur(); });
       input.addEventListener('blur', commit);
     });
+  }
+
+  // Swaps a Field Descriptions row's name label for an inline text input.
+  // Enter or blur saves, Escape cancels -- the same inline-edit convention the
+  // Manage Collections modal's own rename input uses. A rejected name keeps
+  // the input open with the reason shown underneath.
+  function startFieldRename(itemEl){
+    const oldName = itemEl.dataset.fieldName;
+    const nameEl = itemEl.querySelector('.fs-field-name');
+    const statusEl = itemEl.querySelector('.fs-rename-status');
+    const renameBtn = itemEl.querySelector('.fs-rename');
+    if(!nameEl || itemEl.querySelector('.fs-rename-input')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'fs-rename-input';
+    input.value = oldName;
+    nameEl.replaceWith(input);
+    if(renameBtn) renameBtn.disabled = true;
+    input.focus();
+    input.select();
+    let finished = false;
+    const commit = async () => {
+      if(finished) return;
+      finished = true;
+      const error = await renameField(oldName, input.value);
+      if(error){
+        finished = false;
+        statusEl.textContent = error;
+        statusEl.style.display = 'block';
+        return;
+      }
+      renderFieldDescriptionsList();
+      renderFieldSettingsFieldColumns();
+    };
+    input.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){ e.preventDefault(); commit(); }
+      else if(e.key === 'Escape'){
+        // Keep Escape from also closing the whole Field Settings modal.
+        e.preventDefault(); e.stopPropagation();
+        finished = true;
+        renderFieldDescriptionsList();
+      }
+    });
+    input.addEventListener('blur', commit);
   }
 
   function renderFieldSettingsTypeList(){

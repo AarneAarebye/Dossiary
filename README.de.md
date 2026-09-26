@@ -319,7 +319,13 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Typ entsteht durch Eintippen im Erfassungs-/Bearbeitungsformular, nicht
   in diesem Dialog) und auf das Ein-/Ausblenden bzw. Umsortieren
   *bestehender* benutzerdefinierter Felder — neue werden hier nicht von
-  Grund auf erstellt (siehe unten, wo das stattdessen geschieht).
+  Grund auf erstellt (siehe unten, wo das stattdessen geschieht). Jedes
+  benutzerdefinierte Feld lässt sich über den ✎-Button in der
+  Feldbeschreibungsliste des Dialogs **umbenennen** — seine Werte, die
+  Einrichtung pro Typ, die Beschreibung und Smart-Collection-Filter darauf
+  folgen dem neuen Namen. People, Amount, Currency, Payment method und
+  Reminder lassen sich nicht umbenennen, da die App auf diese Namen
+  angewiesen ist.
   **Zahlungsmethode ist ein ganz gewöhnliches benutzerdefiniertes Feld**
   — obwohl es in Mariner selbst ein verpflichtendes, immer vorhandenes
   Feld war, gibt es für ein allgemeines Werkzeug keinen Grund, es als
@@ -875,7 +881,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (71
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (72
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

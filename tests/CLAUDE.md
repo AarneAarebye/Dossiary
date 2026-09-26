@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **71
-scripts covering most of the app's actual functionality** (69 of them
+There's a real, runnable Playwright regression suite in `tests/` — **72
+scripts covering most of the app's actual functionality** (70 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -395,7 +395,18 @@ description set showing no hint at all (Subcategory); Document Type's
 pre-existing autocomplete hint and its new description hint both rendering,
 stacked, in both forms, rather than one replacing the other; and description
 text containing a literal `{label}` rendering completely verbatim rather
-than being run through `t()`'s substitution), and comma-aware autocomplete
+than being run through `t()`'s substitution), renaming a custom field
+(`test_rename_field.py` — a ✎ rename button on every renameable custom
+field (text, person, number) and on none of People/Amount/Currency/Payment
+method or the built-ins; renaming to an existing field's name, to a
+built-in name, or to blank each rejected with its reason while leaving the
+database untouched; Escape cancelling without closing Field Settings; a
+valid rename updating `fields.name` (same id), `document_type_fields`, the
+field's description, a Smart Collection's saved dynamic-filter criteria,
+and every document's in-memory values; a person-type field renaming with
+its people still attached; and the table header, the Smart Collection's
+membership, and the detail panel all reflecting the new name afterward),
+and comma-aware autocomplete
 for multi-valued fields (`test_comma_autocomplete.py` — the native `list=`
 attribute genuinely removed once `wireCommaAutocomplete()` wires a field,
 for both People and Tags; typing a second name after a comma (e.g.

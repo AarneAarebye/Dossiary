@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (71 scripts) + shared
+tests/                   Playwright regression suite (72 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2723,6 +2723,33 @@ this repo's git tags.
   after the existing one, not a replacement; a configured description
   shows both, stacked, and a field with no description set continues
   showing just the original hint exactly as before.
+- **Renaming a custom field** (`renameField(oldName, newName)`,
+  `startFieldRename()`, the ✎ `.fs-rename` button on each custom-field row
+  of Field Settings' Field Descriptions list -- that list, unlike the
+  Fields/Display Fields columns, shows every field regardless of the
+  selected type, so it's the one place every field is reachable). Needed
+  because a field's *name*, not just its id, is a key in several places,
+  all of which move together in one save: `fields.name`,
+  `document_type_fields.field_name`, `field_descriptions.field_name`, and
+  Smart Collection criteria JSON (`currentFilters()` saves dynamic filters
+  by `label`, the field name) -- plus their in-memory mirrors
+  (`fieldDefs`, `fieldNameToId`, `typeFieldOrder`, `fieldDescriptions`,
+  `collections[].criteria`) and every document's `customFields`/
+  `personFieldValues` map. Column visibility, sort order, datalists, and
+  the Reports breakdown are keyed by `field-<id>` and need nothing.
+  **`NON_RENAMEABLE_FIELD_NAMES`** (`People`/`Amount`/`Currency`/
+  `Payment method`/`Reminder`) get no rename button, since code resolves
+  them by literal name (`fieldNameToId['Reminder']`, `formatAmount()`, the
+  migrations' idempotency checks); those names plus
+  `FIELD_DESCRIPTION_BUILTIN_NAMES` are also rejected as rename *targets*,
+  along with any existing field name. Inline edit follows the Collections
+  rename input's convention (Enter/blur saves, Escape cancels -- with
+  `stopPropagation()` so Escape doesn't also close Field Settings), except
+  a rejected name keeps the input open with the reason shown in
+  `.fs-rename-status`. **Known, accepted gap**: sidecar `.txt` files
+  already on disk keep the old field name until each document is next
+  saved, the same "sidecars refresh only on an explicit save" rule every
+  other metadata change already follows.
 - **Reminder-type custom fields** (`fields.type === 'reminder'`, a fifth
   value alongside `text`/`number`/`date`/`checkbox`/`person`) let a
   person turn any custom field — Renewal Date, Warranty End, Policy

@@ -267,7 +267,12 @@ working" problem that motivated this project in the first place.
   types already in use (a brand new type comes into existence by typing it
   into the Add/Edit form, not from this dialog), and to toggling/reordering
   *existing* custom fields — it doesn't create new ones from scratch (see
-  below for where that happens instead). **Payment method is a completely
+  below for where that happens instead). Any custom field can be
+  **renamed** from the ✎ button next to it in the dialog's Field
+  Descriptions list — its values, per-type setup, description, and any
+  Smart Collection filtering on it all follow the new name. People,
+  Amount, Currency, Payment method, and Reminder can't be renamed, since
+  the app relies on those names. **Payment method is a completely
   ordinary custom field** — despite being a mandatory, always-present field
   in Mariner itself, there's no reason for a general-purpose tool to keep
   it as a hardcoded special case, so it's just one more row in the Fields
@@ -758,7 +763,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (71
+There's a real, runnable Playwright regression suite in `tests/` (72
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
