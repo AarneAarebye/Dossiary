@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **72
-scripts covering most of the app's actual functionality** (70 of them
+There's a real, runnable Playwright regression suite in `tests/` — **73
+scripts covering most of the app's actual functionality** (71 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -746,7 +746,20 @@ for 2+ rows; for exactly one row, the singular wording, and declining that
 bulk `confirm()` leaves the row and its persisted `tags` row intact); a deleted
 tag/person disappears from its autocomplete datalist immediately; and
 restoring a Waste-bin document whose tag was deleted while orphaned
-brings it back without that tag), the Storage stats modal
+brings it back without that tag), the Library check modal's unused-fields
+section (`test_unused_fields.py` -- exactly the custom fields no
+non-deleted document has a value for are listed, whether set up for no
+type, set up for a type (noted "Set up for: Receipt"), or only used by
+Waste-bin documents (noted, for a text and a person-type field alike);
+a used field and every auto-created field (People/Amount/Currency/Payment
+method/Reminder) never listed; declining the `confirm()` deletes nothing;
+a single Delete removing the field row, its description, its table
+column, and resetting a sort on that column to Imported; "Delete all
+unused" confirming with the count and the name of the affected Smart
+Collection, then removing the rest -- per-type setup, a Waste-bin
+document's value and people, and only the deleted field's filter from
+that Smart Collection's criteria -- while the used field's value stays;
+and reopening the check listing nothing), the Storage stats modal
 (`test_storage_stats.py` -- the real-folder walk correctly sums
 `files/`/`thumbnails/`/`inbox/`/`library.sqlite` against an
 independently-computed expectation, not just the app's own arithmetic; a

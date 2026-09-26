@@ -226,9 +226,13 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   sucht Probleme in der ganzen Bibliothek: exakt doppelte Dateien (per
   Inhalts-Hash) und wahrscheinliche Duplikate (gleicher Titel und gleiches
   Datum), Dokumente, deren Datei oder Original auf der Festplatte fehlt
-  (mit einem Button „Re-link…", um die Datei neu auszuwählen), sowie Tags
-  oder Personen, die kein Dokument mehr verwendet (löschbar nach
-  Bestätigung). Ein Klick auf ein Dokument in einer Duplikatgruppe zeigt
+  (mit einem Button „Re-link…", um die Datei neu auszuwählen), Tags oder
+  Personen, die kein Dokument mehr verwendet, sowie benutzerdefinierte
+  Felder, für die kein Dokument einen Wert hat — mit Hinweis, wenn eines
+  noch für einen Dokumenttyp eingerichtet ist oder nur von Dokumenten im
+  Papierkorb verwendet wird (jeweils löschbar nach Bestätigung; beim
+  Löschen eines Felds verschwinden auch seine Einrichtung pro Typ, seine
+  Beschreibung und jeder Smart-Collection-Filter darauf). Ein Klick auf ein Dokument in einer Duplikatgruppe zeigt
   nur diese Gruppe in der Tabelle, sodass Sie die Kopien vergleichen und
   die überzähligen archivieren oder löschen können, mit einem Link zurück
   zur Bibliotheksprüfung. Der erste Durchlauf muss jede Datei einmal
@@ -881,7 +885,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (72
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (73
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

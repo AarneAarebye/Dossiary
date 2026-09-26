@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (72 scripts) + shared
+tests/                   Playwright regression suite (73 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3420,6 +3420,35 @@ this repo's git tags.
   `deleteOrphanedPeople(names)` take an array specifically so a single-row
   delete and a many-row bulk delete are the same function call with a
   1-element array, not two separate code paths.
+- **Unused custom fields** (`computeUnusedFields()`, `deleteFields()`,
+  `smartCollectionsFilteringOn()`, the "Unused fields" section of the
+  Library check modal, `#unused-fields-section`) are the one way to delete
+  a custom field in this app. **"Unused" means no non-deleted document has
+  a value** (`customFields[name] !== undefined`, or a non-empty
+  `personFieldValues[name]`) -- deliberately regardless of per-type setup:
+  a field that's set up for some type but never filled in is still listed,
+  with a "Set up for: <types>" note so a deliberately prepared field is
+  recognizable, and a field whose only values sit on Waste-bin documents
+  is listed with its own note (the same "a Waste-bin document doesn't count
+  as using it" rule the orphaned tags/people cleanup above uses).
+  `NON_RENAMEABLE_FIELD_NAMES` (People/Amount/Currency/Payment method/
+  Reminder) are never listed: the migrations recreate them on every
+  library open, so deleting one would be pointless. **`deleteFields(ids)`
+  removes everything that refers to the field**: `document_field_values`,
+  `document_field_people`, `reminder_snoozes` (by `field_id`),
+  `document_type_fields`, `field_descriptions` (by name), the `fields`
+  row, their in-memory mirrors, every document's `customFields`/
+  `personFieldValues` entry, and the field's own entry in any Smart
+  Collection's saved `dynamic` criteria -- left in place, a filter on a
+  field that no longer exists would silently match nothing (or
+  everything, for a "— Not set —" filter). The `confirm()` names the
+  affected Smart Collections so that side effect isn't a surprise. A sort
+  on the deleted field's column resets to the default (`import_date`,
+  descending) and is persisted; stale `field-<id>` entries in
+  `visible_columns` are harmless, since `loadColumnSettings()` already
+  drops unknown ids. Single and bulk delete are the same call with a 1-
+  or many-element id array, one `persistDb()` at the end, mirroring
+  `deleteOrphanedTags()`.
 - **Storage stats** (`computeStorageStats()`, `formatBytes()`,
   `openStorageStatsModal()`) is a brand new, independent toolbar button and
   modal — deliberately **not** part of the "Library check" family

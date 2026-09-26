@@ -195,6 +195,7 @@
   .relink-error{ color:var(--red); }
   .duplicate-group-label-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
   .duplicate-group-label-row .duplicate-group-label{ margin-bottom:0; }
+  .unused-field-notes{ display:block; margin-top:2px; }
   .orphaned-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 10px; border-radius:var(--radius); }
   .storage-stats-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 10px; }
   .storage-stats-subrow{ padding:4px 10px 4px 28px; font-size:12.5px; color:var(--text-dim); }
@@ -1077,7 +1078,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
       dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
       reminderDueToday: 'Due today', reminderOverdueSingular: '{days} day overdue', reminderOverduePlural: '{days} days overdue', reminderDueInSingular: 'Due in {days} day', reminderDueInPlural: 'Due in {days} days',
-      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
+      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
@@ -1278,7 +1279,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} archivo no se pudo añadir y sigue allí.',
       dragdropPartialFailureStillTherePlural: ' {count} archivos no se pudieron añadir y siguen allí.',
       reminderDueToday: 'Vence hoy', reminderOverdueSingular: 'Vencido hace {days} día', reminderOverduePlural: 'Vencido hace {days} días', reminderDueInSingular: 'Vence en {days} día', reminderDueInPlural: 'Vence en {days} días',
-      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
+      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
@@ -1479,7 +1480,7 @@
       dragdropPartialFailureStillThereSingular: " {count} fichier n'a pas pu être ajouté et est toujours là.",
       dragdropPartialFailureStillTherePlural: " {count} fichiers n'ont pas pu être ajoutés et sont toujours là.",
       reminderDueToday: 'Échéance aujourd\'hui', reminderOverdueSingular: 'En retard de {days} jour', reminderOverduePlural: 'En retard de {days} jours', reminderDueInSingular: 'Échéance dans {days} jour', reminderDueInPlural: 'Échéance dans {days} jours',
-      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
+      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -1680,7 +1681,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
       dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
       reminderDueToday: 'Heute fällig', reminderOverdueSingular: '{days} Tag überfällig', reminderOverduePlural: '{days} Tage überfällig', reminderDueInSingular: 'Fällig in {days} Tag', reminderDueInPlural: 'Fällig in {days} Tagen',
-      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
+      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
@@ -1881,7 +1882,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 个文件无法添加，仍留在原处。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 个文件无法添加，仍留在原处。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天后到期', reminderDueInPlural: '{days} 天后到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
       commonCancel: '取消',
@@ -2132,7 +2133,7 @@
       fieldSettingsColFields: '字段',
       fieldSettingsColDisplayFields: '顯示字段',
       fieldSettingsDescriptionsHeading: '字段說明',
-      fieldSettingsDescriptionPlaceholder: '未設置說明', fieldRenameTitle: '重新命名欄位', fieldRenameReservedName: '"{name}" 是內建欄位名稱，請換一個。', fieldRenameDuplicateName: '已存在名為"{name}"的欄位。',
+      fieldSettingsDescriptionPlaceholder: '未設置說明', fieldRenameTitle: '重新命名字段', fieldRenameReservedName: '"{name}" 是內建字段名稱，請換一個。', fieldRenameDuplicateName: '已存在名為"{name}"的字段。',
       fieldSettingsNoDocTypes: '尚未使用任何文檔類型。請先在添加/編輯文檔表單中輸入一個。',
       fieldSettingsSelectDocType: '請選擇一個文檔類型。',
       fieldSettingsColumnCheckbox: '列',
@@ -2208,7 +2209,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 個文件無法添加，仍留在原處。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 個文件無法添加，仍留在原處。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天後到期', reminderDueInPlural: '{days} 天後到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '刪除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新啓用', libraryCheckModalTitle: '資料庫檢查', duplicatesBackfillProgress: '正在檢查第 {done}/{total} 個文檔是否重複……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在檢查 {done}/{total} 個文檔後停止。完全匹配的重複結果不完整；再次執行資料庫檢查即可從中斷處繼續。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重複（標題+日期）', libraryCheckNoneFound: '未發現問題。', toolbarLibraryCheck: '🔍 資料庫檢查', libraryCheckBrokenLinksLabel: '損壞的檔案連結', libraryCheckFileLabel: '檔案', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新連結…', libraryCheckRelinkFailed: '無法重新連結：{error}', libraryCheckOrphanedTagsLabel: '未使用的標籤', libraryCheckOrphanedPeopleLabel: '未使用的人員', libraryCheckDeleteAllBtn: '刪除所有未使用項', libraryCheckConfirmDeleteTag: '刪除未使用的標籤"{name}"？此操作無法撤銷。', libraryCheckConfirmDeletePerson: '刪除未使用的人員"{name}"？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsSingular: '刪除這個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsPlural: '刪除這 {count} 個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeopleSingular: '刪除這個未使用的人員？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeoplePlural: '刪除這 {count} 個未使用的人員？此操作無法撤銷。', toolbarStorageStats: '💾 儲存統計', storageStatsModalTitle: '儲存統計', storageStatsComputing: '正在計算儲存佔用……', storageStatsGrandTotal: '總計：{size}', storageStatsFilesLabel: '文檔（files/）', storageStatsThumbnailsLabel: '預覽圖（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '資料庫（library.sqlite）', storageStatsActiveLabel: '目前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追蹤',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '刪除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新啓用', libraryCheckModalTitle: '資料庫檢查', duplicatesBackfillProgress: '正在檢查第 {done}/{total} 個文檔是否重複……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在檢查 {done}/{total} 個文檔後停止。完全匹配的重複結果不完整；再次執行資料庫檢查即可從中斷處繼續。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重複（標題+日期）', libraryCheckNoneFound: '未發現問題。', toolbarLibraryCheck: '🔍 資料庫檢查', libraryCheckBrokenLinksLabel: '損壞的檔案連結', libraryCheckFileLabel: '檔案', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新連結…', libraryCheckRelinkFailed: '無法重新連結：{error}', libraryCheckOrphanedTagsLabel: '未使用的標籤', libraryCheckOrphanedPeopleLabel: '未使用的人員', libraryCheckDeleteAllBtn: '刪除所有未使用項', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '刪除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用於：{types}', libraryCheckUnusedFieldWasteBinOnly: '僅被廢紙簍中的文檔使用', libraryCheckConfirmDeleteField: '刪除未使用的字段"{name}"及其所有相關內容？此操作無法撤銷。', libraryCheckConfirmDeleteAllFieldsSingular: '刪除這個未使用的字段？此操作無法撤銷。', libraryCheckConfirmDeleteAllFieldsPlural: '刪除這 {count} 個未使用的字段？此操作無法撤銷。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集將失去對已刪除字段的篩選：{names}', libraryCheckConfirmDeleteTag: '刪除未使用的標籤"{name}"？此操作無法撤銷。', libraryCheckConfirmDeletePerson: '刪除未使用的人員"{name}"？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsSingular: '刪除這個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsPlural: '刪除這 {count} 個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeopleSingular: '刪除這個未使用的人員？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeoplePlural: '刪除這 {count} 個未使用的人員？此操作無法撤銷。', toolbarStorageStats: '💾 儲存統計', storageStatsModalTitle: '儲存統計', storageStatsComputing: '正在計算儲存佔用……', storageStatsGrandTotal: '總計：{size}', storageStatsFilesLabel: '文檔（files/）', storageStatsThumbnailsLabel: '預覽圖（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '資料庫（library.sqlite）', storageStatsActiveLabel: '目前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追蹤',
     },
   };
 
@@ -5890,6 +5891,86 @@
     return Object.keys(personNameToId).filter(name => !used.has(name)).sort();
   }
 
+  // A custom field is "unused" when no non-deleted document has a value for it
+  // -- regardless of whether it's set up for some document type (reported as
+  // setUpFor, so the modal can say "Set up for: Invoice" and a deliberately
+  // prepared, not-yet-filled field is recognizable as such) or only still
+  // holds values on Waste-bin documents (wasteBinOnly -- the same "a Waste-bin
+  // document doesn't count as using it" rule orphaned tags/people follow).
+  // NON_RENAMEABLE_FIELD_NAMES (People, Amount, Currency, Payment method,
+  // Reminder) are never listed: the migrations recreate them on every library
+  // open, so deleting one would be pointless.
+  function computeUnusedFields(allDocuments){
+    const hasValue = (d, name) => (d.customFields && d.customFields[name] !== undefined)
+      || (d.personFieldValues && (d.personFieldValues[name] || []).length > 0);
+    return fieldDefs
+      .filter(f => !NON_RENAMEABLE_FIELD_NAMES.includes(f.name))
+      .filter(f => !allDocuments.some(d => !d.deleted && hasValue(d, f.name)))
+      .map(f => ({
+        field: f,
+        setUpFor: Object.keys(typeFieldOrder).filter(type => typeFieldOrder[type].some(e => e.field === f.name)).sort(),
+        wasteBinOnly: allDocuments.some(d => d.deleted && hasValue(d, f.name)),
+      }))
+      .sort((a, b) => a.field.name.localeCompare(b.field.name));
+  }
+
+  // Smart Collections whose saved criteria filter on any of these field names.
+  function smartCollectionsFilteringOn(fieldNames){
+    return collections.filter(c => {
+      if(c.kind !== 'smart' || !c.criteria) return false;
+      try{ return (JSON.parse(c.criteria).dynamic || []).some(f => fieldNames.includes(f.label)); }catch(e){ return false; }
+    });
+  }
+
+  // Permanently deletes custom fields and everything that refers to them:
+  // values (document_field_values/document_field_people -- only ever on
+  // Waste-bin documents by the time Library check offers this), per-type
+  // setup, description, reminder snoozes, and the field's own dynamic filter
+  // inside any Smart Collection's saved criteria (left in place, a filter on
+  // a field that no longer exists would silently match nothing). A sort on
+  // the deleted field's column falls back to the default (Imported, newest
+  // first). Every DELETE is queued first and persisted once, the same bulk
+  // convention deleteOrphanedTags() uses.
+  async function deleteFields(fieldIds){
+    const doomed = fieldDefs.filter(f => fieldIds.includes(f.id) && !NON_RENAMEABLE_FIELD_NAMES.includes(f.name));
+    const doomedNames = doomed.map(f => f.name);
+    for(const f of doomed){
+      db.run('DELETE FROM document_field_values WHERE field_id = ?', [f.id]);
+      db.run('DELETE FROM document_field_people WHERE field_id = ?', [f.id]);
+      db.run('DELETE FROM reminder_snoozes WHERE field_id = ?', [f.id]);
+      db.run('DELETE FROM document_type_fields WHERE field_name = ?', [f.name]);
+      db.run('DELETE FROM field_descriptions WHERE field_name = ?', [f.name]);
+      db.run('DELETE FROM fields WHERE id = ?', [f.id]);
+      delete fieldNameToId[f.name];
+      delete fieldDescriptions[f.name];
+      for(const typeName in typeFieldOrder){
+        typeFieldOrder[typeName] = typeFieldOrder[typeName].filter(e => e.field !== f.name);
+      }
+      for(const key of Object.keys(reminderSnoozes)){
+        if(key.endsWith(`:${f.id}`)) delete reminderSnoozes[key];
+      }
+      for(const d of allDocs){
+        if(d.customFields) delete d.customFields[f.name];
+        if(d.personFieldValues) delete d.personFieldValues[f.name];
+      }
+      if(sortKey === `field-${f.id}`){
+        sortKey = 'import_date'; sortDir = 'desc';
+        db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('sort_key', ?)", [sortKey]);
+        db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('sort_dir', ?)", [sortDir]);
+      }
+    }
+    for(const c of smartCollectionsFilteringOn(doomedNames)){
+      const criteria = JSON.parse(c.criteria);
+      criteria.dynamic = criteria.dynamic.filter(f => !doomedNames.includes(f.label));
+      c.criteria = JSON.stringify(criteria);
+      db.run('UPDATE collections SET criteria = ? WHERE id = ?', [c.criteria, c.id]);
+    }
+    fieldDefs = fieldDefs.filter(f => !doomed.includes(f));
+    await persistDb();
+    renderColumnsMenu(); applyColumnVisibility(); populateFilters(); populateDatalists(); render();
+    if(selectedDocId !== null) openDetail(selectedDocId);
+  }
+
   async function openLibraryCheckModal(){
     const unhashed = allDocs.filter(d => !d.deleted && !d.file_hash);
     let backfillStoppedNote = '';
@@ -6002,14 +6083,15 @@
     const brokenLinks = await computeBrokenFileLinks(activeDocs);
     const orphanedTags = computeOrphanedTags(activeDocs);
     const orphanedPeople = computeOrphanedPeople(activeDocs);
-    renderLibraryCheckResults(exactGroups, metadataGroups, brokenLinks, orphanedTags, orphanedPeople);
+    const unusedFields = computeUnusedFields(allDocs);
+    renderLibraryCheckResults(exactGroups, metadataGroups, brokenLinks, orphanedTags, orphanedPeople, unusedFields);
     const listForNoteEl = el('duplicates-list');
     if(backfillStoppedNote && listForNoteEl){
       listForNoteEl.insertAdjacentHTML('afterbegin', `<p class="field-hint" id="duplicates-stopped-note">${escapeHtml(backfillStoppedNote)}</p>`);
     }
   }
 
-  function renderLibraryCheckResults(exactGroups, metadataGroups, brokenLinks, orphanedTags, orphanedPeople){
+  function renderLibraryCheckResults(exactGroups, metadataGroups, brokenLinks, orphanedTags, orphanedPeople, unusedFields = []){
     // Defensive: the modal could have been replaced by something else (e.g.
     // another modal opened via keyboard Tab-through while this one's close
     // button was disabled during a backfill) by the time this runs -- not a
@@ -6017,7 +6099,7 @@
     // no longer there.
     const listEl = el('duplicates-list');
     if(!listEl) return;
-    if(!exactGroups.length && !metadataGroups.length && !brokenLinks.length && !orphanedTags.length && !orphanedPeople.length){
+    if(!exactGroups.length && !metadataGroups.length && !brokenLinks.length && !orphanedTags.length && !orphanedPeople.length && !unusedFields.length){
       listEl.innerHTML = `<p id="duplicates-empty">${t('libraryCheckNoneFound')}</p>`;
       return;
     }
@@ -6087,12 +6169,37 @@
         ${orphanedPeople.map(orphanedPersonRowHtml).join('')}
       </div>
     ` : '';
+    const unusedFieldRowHtml = ({field, setUpFor, wasteBinOnly}) => {
+      const notes = [
+        setUpFor.length ? t('libraryCheckUnusedFieldSetUpFor', {types: setUpFor.join(', ')}) : '',
+        wasteBinOnly ? t('libraryCheckUnusedFieldWasteBinOnly') : '',
+      ].filter(Boolean);
+      return `
+        <div class="orphaned-row unused-field-row">
+          <span>
+            <span class="doc-title">${escapeHtml(field.name)}</span>
+            ${notes.length ? `<span class="doc-sub unused-field-notes">${escapeHtml(notes.join(' · '))}</span>` : ''}
+          </span>
+          <button type="button" class="danger unused-field-delete-btn" data-field-id="${field.id}" data-name="${escapeHtml(field.name)}">${t('commonDelete')}</button>
+        </div>
+      `;
+    };
+    const unusedFieldsSection = unusedFields.length ? `
+      <div class="fs-list-item duplicate-group" id="unused-fields-section">
+        <div class="duplicate-group-label-row">
+          <div class="duplicate-group-label">${t('libraryCheckUnusedFieldsLabel')}</div>
+          <button type="button" class="danger unused-fields-delete-all-btn">${t('libraryCheckDeleteAllUnusedBtn')}</button>
+        </div>
+        ${unusedFields.map(unusedFieldRowHtml).join('')}
+      </div>
+    ` : '';
     listEl.innerHTML = [
       ...exactGroups.map((g, i) => groupHtml(g, 'duplicatesExactMatchLabel', `exact-${i}`)),
       ...metadataGroups.map((g, i) => groupHtml(g, 'duplicatesMetadataMatchLabel', `metadata-${i}`)),
       brokenLinksSection,
       orphanedTagsSection,
       orphanedPeopleSection,
+      unusedFieldsSection,
     ].join('');
     // A row inside a duplicate group filters the table down to that whole
     // group (reusing the Reports drill-down view, whose archived/needs-review-
@@ -6149,6 +6256,36 @@
         section.remove();
       });
     });
+    // Deleting a field is confirmed like any other destructive Library check
+    // action, and additionally names any Smart Collection that will lose its
+    // filter on that field, so the side effect isn't a surprise.
+    const confirmFieldDeletion = (baseMessage, names) => {
+      const affected = smartCollectionsFilteringOn(names).map(c => c.name);
+      return confirm(affected.length ? `${baseMessage}\n\n${t('libraryCheckConfirmFieldSmartCollections', {names: affected.join(', ')})}` : baseMessage);
+    };
+    listEl.querySelectorAll('.unused-field-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        if(!confirmFieldDeletion(t('libraryCheckConfirmDeleteField', {name}), [name])) return;
+        await deleteFields([Number(btn.dataset.fieldId)]);
+        const row = btn.closest('.unused-field-row');
+        const section = row.closest('.duplicate-group');
+        row.remove();
+        if(section && !section.querySelector('.unused-field-row')) section.remove();
+      });
+    });
+    const deleteAllFieldsBtn = listEl.querySelector('.unused-fields-delete-all-btn');
+    if(deleteAllFieldsBtn){
+      deleteAllFieldsBtn.addEventListener('click', async () => {
+        const section = deleteAllFieldsBtn.closest('.duplicate-group');
+        const rowBtns = Array.from(section.querySelectorAll('.unused-field-delete-btn'));
+        const count = rowBtns.length;
+        const base = count === 1 ? t('libraryCheckConfirmDeleteAllFieldsSingular') : t('libraryCheckConfirmDeleteAllFieldsPlural', {count});
+        if(!confirmFieldDeletion(base, rowBtns.map(b => b.dataset.name))) return;
+        await deleteFields(rowBtns.map(b => Number(b.dataset.fieldId)));
+        section.remove();
+      });
+    }
   }
 
   // Opens a plain native file picker (same accept restriction as the capture

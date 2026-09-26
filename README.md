@@ -189,8 +189,12 @@ working" problem that motivated this project in the first place.
   problems across the whole library: exact duplicate files (by content
   hash) and likely duplicates (same title and date), documents whose file
   or original is missing on disk (with a "Re-link…" button to pick the
-  file again), and tags or people no longer used by any document (with
-  Delete, after confirmation). Clicking a document in a duplicate group
+  file again), tags or people no longer used by any document, and custom
+  fields no document has a value for — noting when one is still set up
+  for a document type, or only used by documents in the Waste bin (each
+  with Delete, after confirmation; deleting a field also removes its
+  per-type setup, its description, and any Smart Collection filter on
+  it). Clicking a document in a duplicate group
   shows just that group in the table, so you can compare the copies and
   archive or delete the extras, with a link back to Library check. The
   first run has to read every file once to fingerprint it, which can take
@@ -763,7 +767,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (72
+There's a real, runnable Playwright regression suite in `tests/` (73
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
