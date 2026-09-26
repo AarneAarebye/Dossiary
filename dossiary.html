@@ -196,6 +196,8 @@
   .duplicate-group-label-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
   .duplicate-group-label-row .duplicate-group-label{ margin-bottom:0; }
   .orphaned-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 10px; border-radius:var(--radius); }
+  .storage-stats-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 10px; }
+  .storage-stats-total{ font-weight:600; font-size:15px; color:var(--phosphor); border-bottom:1px solid var(--line); margin-bottom:6px; padding:4px 10px 14px; }
   .reminder-snooze{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
   .reminder-snooze select, .reminder-snooze-custom-date{
     background:var(--ink-2); border:1px solid var(--line); color:var(--text);
@@ -706,6 +708,7 @@
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
         <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
         <button id="library-check-btn" data-i18n="toolbarLibraryCheck">🔍 Library check</button>
+        <button id="storage-stats-btn" data-i18n="toolbarStorageStats">💾 Storage stats</button>
         <button id="scan-btn" data-i18n="toolbarScan">📷 Scan</button>
         <button id="scan-multi-btn" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
@@ -1072,7 +1075,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} file could not be added and is still there.',
       dragdropPartialFailureStillTherePlural: ' {count} files could not be added and are still there.',
       reminderDueToday: 'Due today', reminderOverdueSingular: '{days} day overdue', reminderOverduePlural: '{days} days overdue', reminderDueInSingular: 'Due in {days} day', reminderDueInPlural: 'Due in {days} days',
-      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.',
+      reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
@@ -1273,7 +1276,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} archivo no se pudo añadir y sigue allí.',
       dragdropPartialFailureStillTherePlural: ' {count} archivos no se pudieron añadir y siguen allí.',
       reminderDueToday: 'Vence hoy', reminderOverdueSingular: 'Vencido hace {days} día', reminderOverduePlural: 'Vencido hace {days} días', reminderDueInSingular: 'Vence en {days} día', reminderDueInPlural: 'Vence en {days} días',
-      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.',
+      reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
@@ -1474,7 +1477,7 @@
       dragdropPartialFailureStillThereSingular: " {count} fichier n'a pas pu être ajouté et est toujours là.",
       dragdropPartialFailureStillTherePlural: " {count} fichiers n'ont pas pu être ajoutés et sont toujours là.",
       reminderDueToday: 'Échéance aujourd\'hui', reminderOverdueSingular: 'En retard de {days} jour', reminderOverduePlural: 'En retard de {days} jours', reminderDueInSingular: 'Échéance dans {days} jour', reminderDueInPlural: 'Échéance dans {days} jours',
-      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.',
+      reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
@@ -1675,7 +1678,7 @@
       dragdropPartialFailureStillThereSingular: ' {count} Datei konnte nicht hinzugefügt werden und ist noch dort.',
       dragdropPartialFailureStillTherePlural: ' {count} Dateien konnten nicht hinzugefügt werden und sind noch dort.',
       reminderDueToday: 'Heute fällig', reminderOverdueSingular: '{days} Tag überfällig', reminderOverduePlural: '{days} Tage überfällig', reminderDueInSingular: 'Fällig in {days} Tag', reminderDueInPlural: 'Fällig in {days} Tagen',
-      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.',
+      reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
@@ -1876,7 +1879,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 个文件无法添加，仍留在原处。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 个文件无法添加，仍留在原处。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天后到期', reminderDueInPlural: '{days} 天后到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
       commonCancel: '取消',
@@ -2203,7 +2206,7 @@
       dragdropPartialFailureStillThereSingular: ' 有 {count} 個文件無法添加，仍留在原處。',
       dragdropPartialFailureStillTherePlural: ' 有 {count} 個文件無法添加，仍留在原處。',
       reminderDueToday: '今天到期', reminderOverdueSingular: '逾期 {days} 天', reminderOverduePlural: '逾期 {days} 天', reminderDueInSingular: '{days} 天後到期', reminderDueInPlural: '{days} 天後到期',
-      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '刪除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新啓用', libraryCheckModalTitle: '資料庫檢查', duplicatesBackfillProgress: '正在檢查第 {done}/{total} 個文檔是否重複……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重複（標題+日期）', libraryCheckNoneFound: '未發現問題。', toolbarLibraryCheck: '🔍 資料庫檢查', libraryCheckBrokenLinksLabel: '損壞的檔案連結', libraryCheckFileLabel: '檔案', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新連結…', libraryCheckRelinkFailed: '無法重新連結：{error}', libraryCheckOrphanedTagsLabel: '未使用的標籤', libraryCheckOrphanedPeopleLabel: '未使用的人員', libraryCheckDeleteAllBtn: '刪除所有未使用項', libraryCheckConfirmDeleteTag: '刪除未使用的標籤"{name}"？此操作無法撤銷。', libraryCheckConfirmDeletePerson: '刪除未使用的人員"{name}"？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsSingular: '刪除這個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsPlural: '刪除這 {count} 個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeopleSingular: '刪除這個未使用的人員？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeoplePlural: '刪除這 {count} 個未使用的人員？此操作無法撤銷。',
+      reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推遲…', reminderSnooze1Week: '1 週', reminderSnooze1Month: '1 個月', reminderSnooze3Months: '3 個月', reminderSnoozeCustom: '自訂日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下週', defaultReminderCustomDate: '自訂日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '刪除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新啓用', libraryCheckModalTitle: '資料庫檢查', duplicatesBackfillProgress: '正在檢查第 {done}/{total} 個文檔是否重複……', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重複（標題+日期）', libraryCheckNoneFound: '未發現問題。', toolbarLibraryCheck: '🔍 資料庫檢查', libraryCheckBrokenLinksLabel: '損壞的檔案連結', libraryCheckFileLabel: '檔案', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新連結…', libraryCheckRelinkFailed: '無法重新連結：{error}', libraryCheckOrphanedTagsLabel: '未使用的標籤', libraryCheckOrphanedPeopleLabel: '未使用的人員', libraryCheckDeleteAllBtn: '刪除所有未使用項', libraryCheckConfirmDeleteTag: '刪除未使用的標籤"{name}"？此操作無法撤銷。', libraryCheckConfirmDeletePerson: '刪除未使用的人員"{name}"？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsSingular: '刪除這個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllTagsPlural: '刪除這 {count} 個未使用的標籤？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeopleSingular: '刪除這個未使用的人員？此操作無法撤銷。', libraryCheckConfirmDeleteAllPeoplePlural: '刪除這 {count} 個未使用的人員？此操作無法撤銷。', toolbarStorageStats: '💾 儲存統計', storageStatsModalTitle: '儲存統計', storageStatsComputing: '正在計算儲存佔用……', storageStatsGrandTotal: '總計：{size}', storageStatsFilesLabel: '文檔（files/）', storageStatsThumbnailsLabel: '預覽圖（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '資料庫（library.sqlite）', storageStatsActiveLabel: '目前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追蹤',
     },
   };
 
@@ -2766,6 +2769,159 @@
     const buffer = await file.arrayBuffer();
     const digest = await crypto.subtle.digest('SHA-256', buffer);
     return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Formats a byte count as a human-readable, auto-scaling string (B/KB/MB/GB/TB)
+  // -- generalizes the ad-hoc (file.size/1024).toFixed(0) KB-only formatting the
+  // capture form's own picked-file-size preview already uses (see
+  // pickedFileSizeKb), since a whole-library total can run well past what's
+  // sensible to show in KB alone.
+  function formatBytes(bytes){
+    if(bytes < 1024) return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unitIndex = -1;
+    do{
+      value /= 1024;
+      unitIndex++;
+    }while(value >= 1024 && unitIndex < units.length - 1);
+    return `${value.toFixed(1)} ${units[unitIndex]}`;
+  }
+
+  // Walks the real files/, thumbnails/, and inbox/ folders (plus library.sqlite's
+  // own size) and sums real byte sizes via getFile().size -- never trusting
+  // allDocs' own tracked paths alone, since that would silently miss anything on
+  // disk no document row points to. Every file under files/ is classified as
+  // 'active' (matches some document's file_path), 'original' (matches some
+  // document's original_file_path), or 'untracked' (matches neither) --
+  // Waste-bin documents are included in this comparison, since their files are
+  // never touched on disk and are still real, space-consuming files. thumbnails/
+  // gets the same two-way active/untracked split (matched against
+  // thumbnail_path); inbox/ isn't split further, since every file there is
+  // equally "not yet added." A per-file read failure mid-walk is skipped, not
+  // fatal, the same reasoning backfillFileHash() already uses for a
+  // missing/unreadable file.
+  async function computeStorageStats(){
+    const filePaths = new Set(allDocs.map(d => d.file_path).filter(Boolean));
+    const originalPaths = new Set(allDocs.map(d => d.original_file_path).filter(Boolean));
+    const thumbnailPaths = new Set(allDocs.map(d => d.thumbnail_path).filter(Boolean));
+
+    const files = { active: 0, original: 0, untracked: 0 };
+    for await (const [name, handle] of filesDirHandle.entries()){
+      if(handle.kind === 'file'){
+        const relPath = `files/${name}`;
+        try{
+          const size = (await handle.getFile()).size;
+          if(filePaths.has(relPath)) files.active += size;
+          else if(originalPaths.has(relPath)) files.original += size;
+          else files.untracked += size;
+        }catch(e){ /* unreadable file -- skip it, not fatal */ }
+      }else if(handle.kind === 'directory'){
+        try{
+          for await (const [subName, subHandle] of handle.entries()){
+            if(subHandle.kind !== 'file') continue;
+            const relPath = `files/${name}/${subName}`;
+            try{
+              const size = (await subHandle.getFile()).size;
+              if(filePaths.has(relPath)) files.active += size;
+              else if(originalPaths.has(relPath)) files.original += size;
+              else files.untracked += size;
+            }catch(e){ /* unreadable file -- skip it, not fatal */ }
+          }
+        }catch(e){ /* unreadable subfolder -- skip it, not fatal */ }
+      }
+    }
+
+    const thumbnails = { active: 0, untracked: 0 };
+    try{
+      const thumbsDir = await rootDirHandle.getDirectoryHandle('thumbnails', { create: false });
+      for await (const [name, handle] of thumbsDir.entries()){
+        if(handle.kind !== 'file') continue;
+        const relPath = `thumbnails/${name}`;
+        try{
+          const size = (await handle.getFile()).size;
+          if(thumbnailPaths.has(relPath)) thumbnails.active += size;
+          else thumbnails.untracked += size;
+        }catch(e){ /* unreadable file -- skip it, not fatal */ }
+      }
+    }catch(e){ /* no thumbnails/ folder yet -- leave totals at 0, not an error */ }
+
+    let inbox = 0;
+    try{
+      const inboxDir = await rootDirHandle.getDirectoryHandle('inbox', { create: false });
+      for await (const [name, handle] of inboxDir.entries()){
+        if(handle.kind !== 'file') continue;
+        try{
+          inbox += (await handle.getFile()).size;
+        }catch(e){ /* unreadable file -- skip it, not fatal */ }
+      }
+    }catch(e){ /* no inbox/ folder yet -- leave at 0, not an error, matching checkInbox()'s own precedent */ }
+
+    let librarySqlite = 0;
+    try{
+      const dbHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: false });
+      librarySqlite = (await dbHandle.getFile()).size;
+    }catch(e){ /* unreadable -- leave at 0, not fatal */ }
+
+    const filesTotal = files.active + files.original + files.untracked;
+    const thumbnailsTotal = thumbnails.active + thumbnails.untracked;
+    const grandTotal = filesTotal + thumbnailsTotal + inbox + librarySqlite;
+
+    return { files, thumbnails, inbox, librarySqlite, filesTotal, thumbnailsTotal, grandTotal };
+  }
+
+  // Opens a brand new, independent modal (not part of the "Library check"
+  // family) showing real disk usage. Runs the walk immediately on open -- the
+  // click on the toolbar button is itself the explicit trigger, matching how
+  // openLibraryCheckModal()'s own file-hash backfill already runs on open
+  // rather than needing a second confirming click inside the modal. Unlike
+  // that backfill, this computation never writes anything, so there's no
+  // "disable Escape/close while running" concern -- Escape and the close
+  // button work normally throughout.
+  async function openStorageStatsModal(){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('storageStatsModalTitle')}</h2>
+          <div id="storage-stats-progress"><span class="spinner"></span> ${t('storageStatsComputing')}</div>
+          <div id="storage-stats-results" style="display:none;"></div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    const stats = await computeStorageStats();
+
+    // Defensive: the modal could have been replaced by something else (e.g.
+    // Escape closing it, or another modal opened) by the time the walk
+    // finishes -- not a full focus-trap, just a guard against writing into a
+    // container that's no longer there.
+    const progressEl = el('storage-stats-progress');
+    if(progressEl) progressEl.style.display = 'none';
+    const resultsEl = el('storage-stats-results');
+    if(!resultsEl) return;
+    resultsEl.style.display = 'block';
+
+    const rowHtml = (labelKey, size) => `
+      <div class="storage-stats-row">
+        <span>${t(labelKey)}</span>
+        <span>${formatBytes(size)}</span>
+      </div>
+    `;
+    resultsEl.innerHTML = [
+      `<div class="storage-stats-total">${t('storageStatsGrandTotal', {size: formatBytes(stats.grandTotal)})}</div>`,
+      rowHtml('storageStatsFilesLabel', stats.filesTotal),
+      rowHtml('storageStatsThumbnailsLabel', stats.thumbnailsTotal),
+      rowHtml('storageStatsInboxLabel', stats.inbox),
+      rowHtml('storageStatsDatabaseLabel', stats.librarySqlite),
+      rowHtml('storageStatsActiveLabel', stats.files.active),
+      rowHtml('storageStatsOriginalsLabel', stats.files.original),
+      stats.files.untracked > 0 ? rowHtml('storageStatsUntrackedLabel', stats.files.untracked) : '',
+      stats.thumbnails.untracked > 0 ? rowHtml('storageStatsUntrackedLabel', stats.thumbnails.untracked) : '',
+    ].join('');
   }
 
   async function ensureSqlJs(){
@@ -3723,6 +3879,10 @@
   // detection output without going through the full modal-open flow.
   window.__DEBUG_computeOrphanedTags = computeOrphanedTags;
   window.__DEBUG_computeOrphanedPeople = computeOrphanedPeople;
+  // Test-only: exposes computeStorageStats() directly, same reasoning as the
+  // other __DEBUG_compute* hooks above -- lets a test verify its output without
+  // going through the full modal-open flow.
+  window.__DEBUG_computeStorageStats = computeStorageStats;
   // Test-only: reads a document's own file_path/original_file_path directly
   // from in-memory state, so a test can locate the exact stub-filesystem path
   // to delete (simulating a file moved/deleted outside the app) without
@@ -8962,6 +9122,7 @@
   el('inbox-check-btn').addEventListener('click', async () => { await checkInbox(); await addAllInboxFilesAndShowStatus(); });
   el('check-reminders-btn').addEventListener('click', checkRemindersAndShowStatus);
   el('library-check-btn').addEventListener('click', openLibraryCheckModal);
+  el('storage-stats-btn').addEventListener('click', openStorageStatsModal);
   async function startScan(isMulti){
     if(scanRequestInFlight) return;
     scanRequestInFlight = true;
