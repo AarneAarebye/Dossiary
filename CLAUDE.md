@@ -103,6 +103,25 @@ was scripted. These screenshots are manually refreshed if the UI changes
 meaningfully — same maintenance model as any other static doc image in
 this repo, no visual-regression tooling involved.
 
+**Practical notes from the v1.27 recapture (Claude in Chrome, all six
+languages in one session)**, worth reusing next time: serve a scratch
+folder holding a copy of `dossiary.html` *plus* the demo images on one
+localhost origin, so in-page JavaScript can `fetch()` a demo image and
+hand it to `#file-input` via `DataTransfer` (the browser tool can't drive
+a native file chooser either); inject `translate="no"`/`<meta
+name="google" content="notranslate">` after each page load, or Chrome's
+own page translator kicks in once the page language changes and mangles
+the UI (it rewrote "DOSSIERS" to "FILES" and the language menu's native
+names); hide `.scanline` so the sweeping line doesn't cross controls;
+blank `#status` for shots whose last status message doesn't retranslate;
+and switch language via `#lang-select`'s `change` event between shots,
+reopening any modal afterward, since the language switch is blocked while
+a modal is open. **The English guide has 12 images, the five translated
+guides 9, with their own numbering** (`02-table`, `03-capture-blank`, …,
+`09-reports` — no empty-folder, library-ready, or collections images),
+so a capture has to be saved under each guide's own filenames, not
+English's.
+
 **This same per-language screenshot pattern extended to four more guides**
 once Spanish, French, and both Chinese scripts joined English/German as UI
 languages — `USER_GUIDE.es.md`, `USER_GUIDE.fr.md`, `USER_GUIDE.zh-Hans.md`,
@@ -2466,10 +2485,16 @@ this repo's git tags.
   for the folder name once a library is open, and `applyI18n()`'s own
   blind textContent walk would clobber that name the next time language is
   toggled while a library happens to be open; setting it explicitly here,
-  gated on `!rootDirHandle`, avoids that collision the same way the
+  gated on "no library open", avoids that collision the same way the
   Amount/Currency header-line and conditional-field notes elsewhere in
   this file avoid overreaching a general mechanism into a case it doesn't
-  fit.
+  fit. **"A library is open" means `rootDirHandle && db`, not
+  `rootDirHandle` alone** (`setLang()`'s `libraryOpen`): while the
+  init-state ("no library.sqlite found — Initialize?") prompt is showing,
+  a folder is already picked but no database is loaded, and keying on
+  `rootDirHandle` alone rendered an empty document table and stats under
+  that prompt on a language change and left `#sub-label` untranslated
+  (found while recapturing the User Guide screenshots).
   **A mouse click on `#lang-toggle` is already blocked by a modal's own
   backdrop while a modal is open, but keyboard Tab-through can still reach
   and activate it** (Enter/Space fires a real `click` event without any of
