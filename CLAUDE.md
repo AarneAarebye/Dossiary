@@ -970,8 +970,8 @@ this repo's git tags.
   button shows "Copied!" for 1.5s (`.copy-path-btn.copied`, phosphor-green)
   before reverting to "Copy" — purely a UI nicety, not persisted anywhere.
   **Each line also shows its file's size** (`formatBytes()`, the same
-  formatter Storage stats uses, in a `.path-size` span between the path
-  and the Copy button) -- `File.size` from the same `getFile()` lookup
+  formatter Storage stats uses, in a `.path-size` span after the path's
+  own Copy button -- Copy belongs to the path, so it stays right next to it) -- `File.size` from the same `getFile()` lookup
   `openDetail()` already makes for the PDF page count, plus one more for
   the original; a metadata read, not a content read. A path that's set
   but doesn't resolve shows `detailFileMissing` ("missing", `.path-missing`,

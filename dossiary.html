@@ -7272,8 +7272,8 @@
                 ${pageCount != null ? `<div><b>${t('detailLabelPages')}</b> ${pageCount}</div>` : ''}
                 <div><b>${t('detailLabelImported')}</b> ${formatDate(d.import_date)}</div>
                 <div><b>${t('detailLabelId')}</b> #${d.id} · <b>${t('detailLabelSource')}</b> ${escapeHtml(d.source || t('tableNoValue'))}</div>
-                ${fileFullPath ? `<div><b>${t('detailLabelFile')}</b> <code>${escapeHtml(fileFullPath)}</code>${sizeHtml(fileSize, fileMissing)}<button type="button" class="copy-path-btn" id="copy-file-path-btn">${t('detailCopyButton')}</button></div>` : ''}
-                ${originalFullPath ? `<div><b>${t('detailLabelOriginal')}</b> <code>${escapeHtml(originalFullPath)}</code>${sizeHtml(originalSize, originalMissing)}<button type="button" class="copy-path-btn" id="copy-original-path-btn">${t('detailCopyButton')}</button></div>` : ''}
+                ${fileFullPath ? `<div><b>${t('detailLabelFile')}</b> <code>${escapeHtml(fileFullPath)}</code><button type="button" class="copy-path-btn" id="copy-file-path-btn">${t('detailCopyButton')}</button>${sizeHtml(fileSize, fileMissing)}</div>` : ''}
+                ${originalFullPath ? `<div><b>${t('detailLabelOriginal')}</b> <code>${escapeHtml(originalFullPath)}</code><button type="button" class="copy-path-btn" id="copy-original-path-btn">${t('detailCopyButton')}</button>${sizeHtml(originalSize, originalMissing)}</div>` : ''}
               </div>
             </div>
           </div>
