@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **73
-scripts covering most of the app's actual functionality** (71 of them
+There's a real, runnable Playwright regression suite in `tests/` — **74
+scripts covering most of the app's actual functionality** (72 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -759,7 +759,18 @@ unused" confirming with the count and the name of the affected Smart
 Collection, then removing the rest -- per-type setup, a Waste-bin
 document's value and people, and only the deleted field's filter from
 that Smart Collection's criteria -- while the used field's value stays;
-and reopening the check listing nothing), the Storage stats modal
+and reopening the check listing nothing), the "🛠 Tools" toolbar
+dropdown (`test_tools_menu.py` -- daily actions visible on the toolbar and
+the five occasional ones hidden until Tools opens; items in order with the
+divider before Switch library; choosing Library check or Manage fields
+running it and closing the menu; Escape closing it and returning focus to
+`#tools-btn`; an outside click and a second click on Tools closing it;
+`aria-expanded` tracking open/closed; opening Tools closing Columns and
+vice versa; and the button and items translating with the UI language --
+every other test that used one of the moved buttons now clicks
+`#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
+confirms the Tools menu opens fully visible, not clipped by the
+scrollable mobile toolbar), the Storage stats modal
 (`test_storage_stats.py` -- the real-folder walk correctly sums
 `files/`/`thumbnails/`/`inbox/`/`library.sqlite` against an
 independently-computed expectation, not just the app's own arithmetic; a

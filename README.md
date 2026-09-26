@@ -185,7 +185,7 @@ working" problem that motivated this project in the first place.
   person-type fields can either add to what each document already has or
   replace it. A hint warns when the selected documents currently disagree
   on a field you're about to overwrite.
-- **Library check** — the "🔍 Library check" toolbar button looks for
+- **Library check** — "🛠 Tools → 🔍 Library check" looks for
   problems across the whole library: exact duplicate files (by content
   hash) and likely duplicates (same title and date), documents whose file
   or original is missing on disk (with a "Re-link…" button to pick the
@@ -204,10 +204,14 @@ working" problem that motivated this project in the first place.
   up where it left off. Capture also warns when you pick a file
   that's already in the library, and the Inbox/drag-and-drop skip exact
   duplicates and say so on the status line.
-- **Storage stats** — the "💾 Storage stats" toolbar button shows how much
+- **Storage stats** — "🛠 Tools → 💾 Storage stats" shows how much
   disk space the library folder uses: documents (split into active files,
   preserved originals, and untracked files no document points to),
   previews, inbox, and the database itself. Read-only; nothing is changed.
+- **A tidy toolbar** — the toolbar keeps what you use every day (Check
+  inbox, Check reminders, Scan, Add document, Details, Columns); occasional
+  actions — Manage fields, Manage collections, Library check, Storage
+  stats, and Switch library — live in the "🛠 Tools" dropdown next to it.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
   People, Date, Imported, Amount, Tags); each one that supports filtering
@@ -259,7 +263,7 @@ working" problem that motivated this project in the first place.
   or any custom fields show up at all (see "Dynamic fields per document
   type"), it's deliberately not just another field in the middle of the
   form. Pick it first, then everything below reflects that choice.
-- **Field settings** — the "⚙ Manage fields" button opens a dialog for
+- **Field settings** — "🛠 Tools → ⚙ Manage fields" opens a dialog for
   managing which fields show per document type (and in what order), plus
   a default document type and a default currency that pre-fill the Add
   Document form (see "Amount has a linked Currency field" below), plus two
@@ -735,9 +739,10 @@ separate genuinely distinct values.
   (if you ever capture something else) won't get a preview — "Generate
   preview" will just report it can't handle that format.
 - **Field Settings itself still doesn't create new custom fields.** The
-  "⚙ Manage fields" dialog only lets you toggle/reorder which *existing*
-  fields show per document type. Creating a brand-new field from scratch
-  is done from the capture/edit forms instead — see "Add a custom field
+  "⚙ Manage fields" dialog only lets you toggle, reorder, and rename
+  *existing* fields (and Library check deletes unused ones). Creating a
+  brand-new field from scratch is done from the capture/edit forms
+  instead — see "Add a custom field
   right from the capture/edit forms" above.
 - **Person-type custom fields (Author, Collaborator, etc.) can't become
   table columns or filters.** People itself keeps its own permanently-fixed
@@ -767,7 +772,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (73
+There's a real, runnable Playwright regression suite in `tests/` (74
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

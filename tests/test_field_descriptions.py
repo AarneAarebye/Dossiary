@@ -78,7 +78,7 @@ async def main():
         # === Scenario 2: Field Settings lists the five built-ins first, in order,
         # then every custom field (Organization, Organization To, Paid, Year, Date From, Author)
         # and the auto-created fields (Payment method, Amount, Currency, People) ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         names = await page.evaluate(
             "() => Array.from(document.querySelectorAll('#fs-descriptions-list .fs-description-item')).map(el => el.dataset.fieldName)"
@@ -106,7 +106,7 @@ async def main():
         # === Scenario 4: reopening Field Settings shows the saved value ===
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         reopened_value = await page.locator('.fs-description-item[data-field-name="Organization"] .fs-description-input').input_value()
         assert reopened_value == 'Sender or origin of this document -- can be a person or organization', \
@@ -118,7 +118,7 @@ async def main():
         # capture form; a field with no description shows no hint at all ===
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         await page.locator('.fs-description-item[data-field-name="Category"] .fs-description-input').fill('Where this document belongs, e.g. Travel or Medical')
         await page.locator('.fs-description-item[data-field-name="Tags"] .fs-description-input').click()
@@ -158,7 +158,7 @@ async def main():
         # generic field type in the capture form.)
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         await page.locator('.fs-description-item[data-field-name="Document Type"] .fs-description-input').fill('What kind of document this is')
         await page.locator('.fs-description-item[data-field-name="Paid"] .fs-description-input').fill('Whether this was already paid')
@@ -210,7 +210,7 @@ async def main():
         # its description hint correctly, proving renderGenericFieldHtml()'s
         # checkbox branch, its text/number/date branch, and renderPersonFieldHtml()
         # all got the same treatment ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         await page.locator('.fs-description-item[data-field-name="Paid"] .fs-description-input').fill('Whether this was already paid')
         await page.locator('.fs-description-item[data-field-name="Year"] .fs-description-input').fill('The tax year this applies to')
@@ -243,7 +243,7 @@ async def main():
         # the way translated strings are) renders completely verbatim ===
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(150)
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         literal_text = 'Not a real placeholder: {label} stays exactly as typed'
         await page.locator('.fs-description-item[data-field-name="Organization To"] .fs-description-input').fill(literal_text)

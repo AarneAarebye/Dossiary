@@ -80,7 +80,7 @@ async def main():
 
         # === Idempotency: reopening the same (now-migrated) library doesn't
         # re-run the backfill or change any value ===
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(400)
         docs2 = await read_docs(page)
         by_id2 = {d['id']: d for d in docs2}

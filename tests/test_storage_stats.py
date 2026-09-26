@@ -195,7 +195,7 @@ async def main():
                 };
             }
         """)
-        await page.click('#storage-stats-btn')
+        await page.click('#tools-btn'); await page.click('#storage-stats-btn')
         await page.wait_for_timeout(50)
         busy_visible = await page.locator('#storage-stats-progress').is_visible()
         print("Busy/spinner state is visible right after opening:", busy_visible)

@@ -73,7 +73,7 @@ async def main():
 
         # === Configure a default_currency via Field Settings, mirroring
         # default_document_type's own settings-backed pattern ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(150)
         await page.fill('#fs-default-currency', 'USD')
         await page.locator('#fs-default-currency').blur()

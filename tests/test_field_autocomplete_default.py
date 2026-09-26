@@ -91,7 +91,7 @@ async def main():
         # === Manually turning Autocomplete back off for a field in Field Settings
         # is respected -- reopening the (already-migrated) library must not silently
         # flip it back on ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         await page.uncheck('.fs-list-item[data-field="Existing Text"] .fs-autocomplete-toggle')
         await page.wait_for_timeout(150)
@@ -102,7 +102,7 @@ async def main():
         turned_off_field = next(f for f in persisted3['fields'] if f['name'] == 'Existing Text')
         print("manually turning autocomplete off persists (should be 0):", turned_off_field['autocomplete'])
 
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(400)
 
         persisted4 = await read_db()

@@ -86,7 +86,7 @@ async def main():
         print("doc3 saved amount (should be '0'):", get_field_value(persisted0, 3, 'Amount'))
 
         # === Now configure a default_currency, same as test_currency.py's pattern ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(150)
         await page.fill('#fs-default-currency', 'EUR')
         await page.locator('#fs-default-currency').blur()

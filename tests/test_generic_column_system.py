@@ -42,7 +42,7 @@ async def main():
 
         # === Column/Autocomplete checkboxes offered for a real generic field, unchecked
         # by default (Status wasn't flagged in the seed) ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(150)
         col_checked_before = await page.locator('.fs-list-item[data-field="Status"] .fs-col-toggle').is_checked()
         ac_checked_before = await page.locator('.fs-list-item[data-field="Status"] .fs-autocomplete-toggle').is_checked()
@@ -134,7 +134,7 @@ async def main():
         print("Status column values after ascending sort (Approved, Pending):", sorted_values)
 
         # === Turning Column back off removes it from the table/filters again ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(150)
         await page.uncheck('.fs-list-item[data-field="Status"] .fs-col-toggle')
         await page.wait_for_timeout(150)

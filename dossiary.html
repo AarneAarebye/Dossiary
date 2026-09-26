@@ -170,6 +170,10 @@
   .columns-menu-item{ display:flex; align-items:center; gap:8px; padding:5px 0; font-family:var(--font-mono); font-size:12px; }
   .columns-menu-item input{ accent-color:var(--phosphor); }
   .columns-menu-item label{ cursor:pointer; user-select:none; }
+  .tools-menu{ padding:6px; min-width:210px; }
+  .tools-menu-item{ display:block; width:100%; text-align:left; border:none; padding:8px 10px; white-space:nowrap; }
+  .tools-menu-item:hover:not(:disabled){ background:var(--ink-2); }
+  .tools-menu-divider{ height:1px; background:var(--line); margin:4px 6px; }
   .fs-columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
   .fs-col h3, .fs-descriptions h3, .fs-scanner-integration h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
   .fs-list{ border:1px solid var(--line); border-radius:var(--radius); max-height:280px; overflow-y:auto; background:var(--ink-2); }
@@ -706,20 +710,31 @@
           <span>–</span>
           <input type="date" id="report-date-to" data-i18n-title="toolbarToDateTitle" title="To date" />
         </span>
-        <button id="manage-fields-btn" data-i18n="toolbarManageFields">⚙ Manage fields</button>
-        <button id="manage-collections-btn" data-i18n="toolbarManageCollections">⚙ Manage collections</button>
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
         <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
-        <button id="library-check-btn" data-i18n="toolbarLibraryCheck">🔍 Library check</button>
-        <button id="storage-stats-btn" data-i18n="toolbarStorageStats">💾 Storage stats</button>
         <button id="scan-btn" data-i18n="toolbarScan">📷 Scan</button>
         <button id="scan-multi-btn" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
-        <button id="reload-btn" data-i18n="toolbarSwitchLibrary">Switch library</button>
         <button id="detail-panel-toggle-btn" data-i18n="toolbarDetailsToggle">☰ Details</button>
         <div class="columns-menu-wrap">
           <button id="columns-btn" data-i18n="toolbarColumns">⚙ Columns</button>
           <div class="columns-menu" id="columns-menu" style="display:none;"></div>
+        </div>
+        <!-- Occasional-use actions live behind one dropdown rather than on the
+             toolbar itself: fewer toolbar buttons means fewer widths where
+             .toolbar wraps onto an extra row (see CLAUDE.md's .table-wrap
+             calibration note). Each item keeps its original id, so its
+             existing click listener is untouched. -->
+        <div class="columns-menu-wrap tools-menu-wrap">
+          <button id="tools-btn" data-i18n="toolbarTools" aria-haspopup="true" aria-expanded="false">🛠 Tools ▾</button>
+          <div class="columns-menu tools-menu" id="tools-menu" style="display:none;" role="menu">
+            <button type="button" class="tools-menu-item" role="menuitem" id="manage-fields-btn" data-i18n="toolbarManageFields">⚙ Manage fields</button>
+            <button type="button" class="tools-menu-item" role="menuitem" id="manage-collections-btn" data-i18n="toolbarManageCollections">⚙ Manage collections</button>
+            <button type="button" class="tools-menu-item" role="menuitem" id="library-check-btn" data-i18n="toolbarLibraryCheck">🔍 Library check</button>
+            <button type="button" class="tools-menu-item" role="menuitem" id="storage-stats-btn" data-i18n="toolbarStorageStats">💾 Storage stats</button>
+            <div class="tools-menu-divider" role="separator"></div>
+            <button type="button" class="tools-menu-item" role="menuitem" id="reload-btn" data-i18n="toolbarSwitchLibrary">Switch library</button>
+          </div>
         </div>
       </div>
 
@@ -899,7 +914,7 @@
       toolbarAmountMinClearAriaLabel: 'Clear min amount', toolbarAmountMaxClearAriaLabel: 'Clear max amount',
       toolbarManageFields: '⚙ Manage fields', toolbarManageCollections: '⚙ Manage collections',
       toolbarCheckInbox: '📥 Check inbox', toolbarCheckReminders: '🔔 Check reminders', toolbarScan: '📷 Scan', toolbarScanMulti: '📸 Scan Multi', toolbarAddDocument: '＋ Add document',
-      toolbarSwitchLibrary: 'Switch library', toolbarColumns: '⚙ Columns', toolbarDetailsToggle: '☰ Details',
+      toolbarSwitchLibrary: 'Switch library', toolbarColumns: '⚙ Columns', toolbarTools: '🛠 Tools ▾', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Add all',
       bulkAddToCollection: 'Add to collection ▾', bulkNewCollectionPlaceholder: 'New collection name',
       bulkCreateAndAdd: 'Create & add', bulkArchive: 'Archive', bulkFlagForReview: 'Flag for review',
@@ -1100,7 +1115,7 @@
       toolbarAmountMinClearAriaLabel: 'Borrar importe mínimo', toolbarAmountMaxClearAriaLabel: 'Borrar importe máximo',
       toolbarManageFields: '⚙ Administrar campos', toolbarManageCollections: '⚙ Administrar colecciones',
       toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarCheckReminders: '🔔 Ver recordatorios', toolbarScan: '📷 Escanear', toolbarScanMulti: '📸 Escaneo múltiple', toolbarAddDocument: '＋ Añadir documento',
-      toolbarSwitchLibrary: 'Cambiar de biblioteca', toolbarColumns: '⚙ Columnas', toolbarDetailsToggle: '☰ Detalles',
+      toolbarSwitchLibrary: 'Cambiar de biblioteca', toolbarColumns: '⚙ Columnas', toolbarTools: '🛠 Herramientas ▾', toolbarDetailsToggle: '☰ Detalles',
       inboxBannerAddAll: 'Añadir todo',
       bulkAddToCollection: 'Añadir a colección ▾', bulkNewCollectionPlaceholder: 'Nombre de la nueva colección',
       bulkCreateAndAdd: 'Crear y añadir', bulkArchive: 'Archivar', bulkFlagForReview: 'Marcar para revisión',
@@ -1301,7 +1316,7 @@
       toolbarAmountMinClearAriaLabel: 'Effacer le montant min.', toolbarAmountMaxClearAriaLabel: 'Effacer le montant max.',
       toolbarManageFields: '⚙ Gérer les champs', toolbarManageCollections: '⚙ Gérer les collections',
       toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarCheckReminders: '🔔 Vérifier les rappels', toolbarScan: '📷 Numériser', toolbarScanMulti: '📸 Numérisation multiple', toolbarAddDocument: '＋ Ajouter un document',
-      toolbarSwitchLibrary: 'Changer de bibliothèque', toolbarColumns: '⚙ Colonnes', toolbarDetailsToggle: '☰ Détails',
+      toolbarSwitchLibrary: 'Changer de bibliothèque', toolbarColumns: '⚙ Colonnes', toolbarTools: '🛠 Outils ▾', toolbarDetailsToggle: '☰ Détails',
       inboxBannerAddAll: 'Tout ajouter',
       bulkAddToCollection: 'Ajouter à une collection ▾', bulkNewCollectionPlaceholder: 'Nom de la nouvelle collection',
       bulkCreateAndAdd: 'Créer et ajouter', bulkArchive: 'Archiver', bulkFlagForReview: 'Marquer pour révision',
@@ -1502,7 +1517,7 @@
       toolbarAmountMinClearAriaLabel: 'Mindestbetrag löschen', toolbarAmountMaxClearAriaLabel: 'Höchstbetrag löschen',
       toolbarManageFields: '⚙ Felder verwalten', toolbarManageCollections: '⚙ Sammlungen verwalten',
       toolbarCheckInbox: '📥 Posteingang prüfen', toolbarCheckReminders: '🔔 Erinnerungen prüfen', toolbarScan: '📷 Scannen', toolbarScanMulti: '📸 Mehrfach scannen', toolbarAddDocument: '＋ Dokument hinzufügen',
-      toolbarSwitchLibrary: 'Bibliothek wechseln', toolbarColumns: '⚙ Spalten', toolbarDetailsToggle: '☰ Details',
+      toolbarSwitchLibrary: 'Bibliothek wechseln', toolbarColumns: '⚙ Spalten', toolbarTools: '🛠 Werkzeuge ▾', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Alle hinzufügen',
       bulkAddToCollection: 'Zu Sammlung hinzufügen ▾', bulkNewCollectionPlaceholder: 'Neuer Sammlungsname',
       bulkCreateAndAdd: 'Erstellen & hinzufügen', bulkArchive: 'Archivieren', bulkFlagForReview: 'Zur Prüfung markieren',
@@ -1703,7 +1718,7 @@
       toolbarAmountMinClearAriaLabel: '清除最小金额', toolbarAmountMaxClearAriaLabel: '清除最大金额',
       toolbarManageFields: '⚙ 管理字段', toolbarManageCollections: '⚙ 管理收藏集',
       toolbarCheckInbox: '📥 检查收件箱', toolbarCheckReminders: '🔔 检查提醒', toolbarScan: '📷 扫描', toolbarScanMulti: '📸 多页扫描', toolbarAddDocument: '＋ 添加文档',
-      toolbarSwitchLibrary: '切换资料库', toolbarColumns: '⚙ 列', toolbarDetailsToggle: '☰ 详情',
+      toolbarSwitchLibrary: '切换资料库', toolbarColumns: '⚙ 列', toolbarTools: '🛠 工具 ▾', toolbarDetailsToggle: '☰ 详情',
       inboxBannerAddAll: '全部添加',
       bulkAddToCollection: '添加到收藏集 ▾', bulkNewCollectionPlaceholder: '新收藏集名称',
       bulkCreateAndAdd: '创建并添加', bulkArchive: '归档', bulkFlagForReview: '标记待审核',
@@ -1929,7 +1944,7 @@
       toolbarManageCollections: '⚙ 管理收藏集',
       toolbarCheckInbox: '📥 檢查收件箱', toolbarCheckReminders: '🔔 檢查提醒', toolbarScan: '📷 掃描', toolbarScanMulti: '📸 多頁掃描', toolbarAddDocument: '＋ 添加文檔',
       toolbarSwitchLibrary: '切換資料庫',
-      toolbarColumns: '⚙ 列', toolbarDetailsToggle: '☰ 詳情',
+      toolbarColumns: '⚙ 列', toolbarTools: '🛠 工具 ▾', toolbarDetailsToggle: '☰ 詳情',
       inboxBannerAddAll: '全部添加',
       bulkAddToCollection: '添加到收藏集 ▾',
       bulkNewCollectionPlaceholder: '新收藏集名稱',
@@ -5696,10 +5711,13 @@
     render();
   });
 
-  el('columns-btn').addEventListener('click', (e) => {
+  // Shared by the Columns and Tools dropdowns: toggles `menu` open/closed from
+  // its toolbar button, closing any other toolbar dropdown first so only one
+  // is ever open.
+  function toggleToolbarMenu(e, menu){
     e.stopPropagation();
-    const menu = el('columns-menu');
     const opening = menu.style.display === 'none' || menu.style.display === '';
+    document.querySelectorAll('.toolbar .columns-menu').forEach(other => { if(other !== menu) other.style.display = 'none'; });
     if(opening){
       // .toolbar becomes an overflow:auto container on BOTH axes at narrow widths
       // (max-width:640px) -- per the CSS Overflow spec quirk this file's own
@@ -5725,10 +5743,36 @@
       }
     }
     menu.style.display = opening ? 'block' : 'none';
+    // A right-aligned menu opened from a button that sits at the start of a
+    // wrapped toolbar row would spill left past the toolbar (over the nav
+    // sidebar) -- open it rightward instead when that happens.
+    if(opening && menu.style.position !== 'fixed'){
+      menu.style.left = ''; menu.style.right = '';
+      const toolbarLeft = document.querySelector('.toolbar').getBoundingClientRect().left;
+      if(menu.getBoundingClientRect().left < toolbarLeft){ menu.style.left = '0'; menu.style.right = 'auto'; }
+    }
+    e.currentTarget.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  }
+  el('columns-btn').addEventListener('click', (e) => toggleToolbarMenu(e, el('columns-menu')));
+  el('tools-btn').addEventListener('click', (e) => toggleToolbarMenu(e, el('tools-menu')));
+  const closeToolsMenu = () => {
+    el('tools-menu').style.display = 'none';
+    el('tools-btn').setAttribute('aria-expanded', 'false');
+  };
+  // Choosing any Tools item closes the menu -- its own listener (wired where
+  // each feature lives) still runs, since this one doesn't stop propagation.
+  el('tools-menu').addEventListener('click', (e) => { if(e.target.closest('.tools-menu-item')) closeToolsMenu(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && el('tools-menu').style.display === 'block'){ closeToolsMenu(); el('tools-btn').focus(); }
   });
   document.addEventListener('click', (e) => {
-    const wrap = document.querySelector('.columns-menu-wrap');
-    if(wrap && !wrap.contains(e.target)) el('columns-menu').style.display = 'none';
+    document.querySelectorAll('.toolbar .columns-menu-wrap').forEach(wrap => {
+      if(!wrap.contains(e.target)){
+        const menu = wrap.querySelector('.columns-menu');
+        if(menu) menu.style.display = 'none';
+      }
+    });
+    if(!el('tools-menu').contains(e.target) && e.target !== el('tools-btn')) el('tools-btn').setAttribute('aria-expanded', 'false');
   });
 
   // Delegated (not per-<th>) so dynamically-appended headers for show_as_column

@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (73 scripts) + shared
+tests/                   Playwright regression suite (74 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -293,7 +293,10 @@ this repo's git tags.
   from 1160px (tabs) / 1380px (sidebar) — so `tabs_tight` moved
   `1050`→`1190`, `sidebar_tight` `1280`→`1410`, Scenario 30 now runs at
   1440x720 instead of 1280x720, and the four CSS constants stayed
-  untouched. Expect this to recur with every new toolbar button; re-run
+  untouched. The "🛠 Tools" dropdown (see its own note below) moved five
+  occasional-use buttons off the toolbar, which shortened it by a row at
+  most desktop widths -- new occasional actions belong in that menu, not
+  on the toolbar. Expect this to recur with every new toolbar button; re-run
   that sweep rather than bumping the constants. **Since the
   footer became fixed, permanently-visible chrome (`position: fixed; bottom:
   0;`, see the footer's own note elsewhere in this file), all four numbers
@@ -1441,7 +1444,8 @@ this repo's git tags.
   from 2 rows to 3, landing `#reload-btn` directly under the open Columns
   dropdown); "⚙ Manage collections" stayed in the toolbar, since removing
   just the one button was already enough to restore the original 2-row
-  layout. Multi-select
+  layout (it has since moved into the "🛠 Tools" dropdown with the other
+  occasional-use actions -- see that note). Multi-select
   checkboxes (`#select-all-checkbox`, per-row checkboxes with class
   `row-select-checkbox` and `data-id="${d.id}"`) reset whenever you switch views
   (`setView()` clears `selectedDocIds` and re-renders the table) or close the
@@ -1719,6 +1723,30 @@ this repo's git tags.
   support depends on the SQLite version sql.js happens to bundle, and
   `INSERT OR REPLACE` has been supported forever), not browser storage —
   keep it that way so the preference travels with the library folder.
+- **The "🛠 Tools" toolbar dropdown** (`#tools-btn`, `#tools-menu`,
+  `.tools-menu-item`, `toggleToolbarMenu()`) holds the occasional-use
+  actions -- Manage fields, Manage collections, Library check, Storage
+  stats, and (below a divider) Switch library -- so the toolbar itself
+  keeps only daily ones (Check inbox, Check reminders, Scan, Scan Multi,
+  Add document, Details, Columns). Moved there on request, and it also
+  eases the recurring toolbar-wrap/`.table-wrap` calibration problem (see
+  that note near the top): the toolbar got a row shorter at most desktop
+  widths. **Each menu item keeps its original button id**
+  (`#manage-fields-btn`, `#reload-btn`, ...), so every existing click
+  listener is untouched -- the menu only changes where the button lives;
+  tests click `#tools-btn` first to reveal it. It reuses the Columns
+  dropdown's markup/CSS (`.columns-menu-wrap`/`.columns-menu`), and
+  `toggleToolbarMenu(e, menu)` is now shared by both: it closes any other
+  open toolbar dropdown first (only one open at a time), keeps the
+  existing mobile `position:fixed` promotion for when `.toolbar` becomes a
+  scroll container, sets `aria-expanded`, and -- desktop only -- flips a
+  right-aligned menu to open rightward (`left:0`) when its button sits at
+  the start of a wrapped toolbar row, where it would otherwise spill over
+  the nav sidebar. Choosing an item closes the menu (a delegated click
+  listener that doesn't stop propagation, so the item's own listener
+  still runs); Escape closes it and returns focus to `#tools-btn`; an
+  outside click closes it like Columns. **Put new occasional actions in
+  this menu rather than on the toolbar.**
 - **Every filter dropdown built by `populateFilters()`** (Category, Type,
   People, and any dynamic custom-field filter) also carries a "— Not set —"
   option, right after "All X," so a document missing that field entirely
@@ -3450,7 +3478,8 @@ this repo's git tags.
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
 - **Storage stats** (`computeStorageStats()`, `formatBytes()`,
-  `openStorageStatsModal()`) is a brand new, independent toolbar button and
+  `openStorageStatsModal()`) is a brand new, independent toolbar button (now
+  an item in the "🛠 Tools" dropdown) and
   modal — deliberately **not** part of the "Library check" family
   (`openLibraryCheckModal()`) the three prior maintenance features share,
   since this is a read-only overview, not a detect-a-problem-and-fix-it

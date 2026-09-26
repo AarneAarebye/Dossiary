@@ -53,7 +53,7 @@ async def main():
         await page.wait_for_timeout(300)
 
         # === Open Field Settings ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         type_list_text = await page.locator('#fs-type-list').inner_text()
         print("Document Types list shows Invoice:", 'Invoice' in type_list_text)

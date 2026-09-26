@@ -146,7 +146,7 @@ async def main():
         # from Scenario 3 -- this is a real round-trip test: the same root (still in
         # memory) now has 'import_date'/'asc' persisted, a non-default state, so
         # reloading it should read that persisted state back and re-sort the table ===
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(300)
         import_date_th_active_after_reopen = await page.locator('th[data-key="import_date"]').get_attribute('class')
         print("Imported column header is active after reopening (preserving Scenario 3's sort):", 'active' in (import_date_th_active_after_reopen or ''))

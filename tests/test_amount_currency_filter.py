@@ -139,7 +139,7 @@ async def main():
         # === Scenario 1: Currency's own capability checkboxes render in Field
         # Settings (unlike Amount's, which stay hidden), confirming the
         # capabilitiesHtml() exclusion was removed for Currency only ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         currency_col_checkbox = page.locator('.fs-list-item[data-field="Currency"] .fs-col-toggle')
         amount_col_checkbox = page.locator('.fs-list-item[data-field="Amount"] .fs-col-toggle')
@@ -369,7 +369,7 @@ async def main():
         assert ids_before_switch == ['4'], f"sanity check before switching libraries: expected only doc 4, got {ids_before_switch}"
 
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(LIBRARY_B_SEED)});")
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(400)
 
         min_value = await page.locator('#amount-filter-min').input_value()

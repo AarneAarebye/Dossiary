@@ -222,9 +222,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Personenfelder können wahlweise ergänzt oder ersetzt werden. Ein Hinweis
   warnt, wenn die ausgewählten Dokumente bei einem Feld, das Sie
   überschreiben wollen, derzeit unterschiedliche Werte haben.
-- **Library check** — der Button „🔍 Library check" in der Symbolleiste
-  sucht Probleme in der ganzen Bibliothek: exakt doppelte Dateien (per
-  Inhalts-Hash) und wahrscheinliche Duplikate (gleicher Titel und gleiches
+- **Library check** — „🛠 Tools → 🔍 Library check" sucht Probleme in
+  der ganzen Bibliothek: exakt doppelte Dateien (per Inhalts-Hash) und
+  wahrscheinliche Duplikate (gleicher Titel und gleiches
   Datum), Dokumente, deren Datei oder Original auf der Festplatte fehlt
   (mit einem Button „Re-link…", um die Datei neu auszuwählen), Tags oder
   Personen, die kein Dokument mehr verwendet, sowie benutzerdefinierte
@@ -244,11 +244,16 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   weitermacht. Beim Erfassen warnt Dossiary außerdem, wenn die gewählte
   Datei schon in der Bibliothek ist, und Inbox/Drag & Drop überspringen
   exakte Duplikate mit einem Hinweis in der Statuszeile.
-- **Storage stats** — der Button „💾 Storage stats" in der Symbolleiste
+- **Storage stats** — „🛠 Tools → 💾 Storage stats"
   zeigt, wie viel Speicherplatz der Bibliotheksordner belegt: Dokumente
   (aufgeteilt in aktive Dateien, aufbewahrte Originale und nicht
   zugeordnete Dateien, auf die kein Dokument verweist), Vorschaubilder,
   Inbox und die Datenbank selbst. Nur zur Ansicht; nichts wird verändert.
+- **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
+  täglich brauchen (Check inbox, Check reminders, Scan, Add document,
+  Details, Columns); Gelegentliches — Manage fields, Manage collections,
+  Library check, Storage stats und Switch library — steckt im Dropdown
+  „🛠 Tools“ daneben.
 - **Konfigurierbare Spalten & Filter** — über den Schalter „⚙ Columns“ in
   der Symbolleiste lassen sich Tabellenspalten ein-/ausblenden (Kategorie,
   Typ, Zahlungsmethode, Personen, Datum, Importiert, Betrag, Tags); jede
@@ -309,7 +314,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   „Dynamische Felder pro Dokumenttyp“), ist er bewusst nicht einfach nur
   irgendein Feld in der Mitte des Formulars. Erst diesen wählen, dann
   spiegelt alles darunter diese Wahl wider.
-- **Feldeinstellungen** — der Schalter „⚙ Manage fields“ öffnet einen
+- **Feldeinstellungen** — „🛠 Tools → ⚙ Manage fields“ öffnet einen
   Dialog zur Verwaltung, welche Felder pro Dokumenttyp angezeigt werden
   (und in welcher Reihenfolge), dazu ein Standard-Dokumenttyp und eine
   Standardwährung, die das Erfassungsformular vorausfüllen (siehe „Betrag
@@ -847,8 +852,8 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   unterstützt wird.
 - **Die Feldeinstellungen selbst legen weiterhin keine neuen
   benutzerdefinierten Felder an.** Der Dialog „⚙ Manage fields“ erlaubt
-  nur, welche *bestehenden* Felder pro Dokumenttyp angezeigt werden,
-  ein-/auszublenden oder umzusortieren. Ein brandneues Feld von Grund auf
+  nur, *bestehende* Felder pro Dokumenttyp ein-/auszublenden,
+  umzusortieren und umzubenennen (unbenutzte löscht der Library check). Ein brandneues Feld von Grund auf
   anzulegen geschieht stattdessen über die Erfassungs-/
   Bearbeitungsformulare — siehe „Ein benutzerdefiniertes Feld direkt aus
   dem Erfassungs-/Bearbeitungsformular anlegen“ oben.
@@ -885,7 +890,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (73
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (74
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

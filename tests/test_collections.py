@@ -368,7 +368,7 @@ async def main():
 
         # === Scenario 19: Manage Collections modal lists every collection with the
         # right kind and document count ===
-        await page.click('#manage-collections-btn')
+        await page.click('#tools-btn'); await page.click('#manage-collections-btn')
         await page.wait_for_timeout(150)
         collection_rows = await page.locator('.manage-collection-row').count()
         print("Manage Collections modal lists all collections:", collection_rows)
@@ -432,7 +432,7 @@ async def main():
         # to All Documents instead of leaving a phantom view with nothing selected ===
         await page.click('#nav-item-collection-2')  # "Travel Category" smart collection
         await page.wait_for_timeout(150)
-        await page.click('#manage-collections-btn')
+        await page.click('#tools-btn'); await page.click('#manage-collections-btn')
         await page.wait_for_timeout(150)
         await page.locator('.manage-collection-row', has_text='Travel Category').locator('.manage-collection-delete-btn').click()
         await page.wait_for_timeout(200)

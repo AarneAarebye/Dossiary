@@ -55,7 +55,7 @@ async def main():
 
         # Simulate closing and reopening the SAME library folder (same __TEST_ROOT handle,
         # since it's a real in-memory fake filesystem the "settings" are actually persisted to)
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(400)
 
         payment_visible = await page.locator(f'th[data-field="{col_id}"]').is_visible()

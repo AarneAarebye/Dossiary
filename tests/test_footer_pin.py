@@ -237,7 +237,7 @@ async def main():
                 const ids = ['search', 'category-filter', 'type-filter', 'person-filter',
                              'show-archived-toggle', 'manage-fields-btn', 'manage-collections-btn',
                              'inbox-check-btn', 'check-reminders-btn', 'scan-btn', 'scan-multi-btn',
-                             'add-btn', 'reload-btn', 'columns-btn'];
+                             'add-btn', 'reload-btn', 'columns-btn', 'tools-btn'];
                 const missing = ids.filter(id => !document.getElementById(id));
                 return {
                     scrollWidth: tb.scrollWidth,
@@ -273,6 +273,25 @@ async def main():
         print(f"[columns menu, 320px width] opens and is fully visible in the viewport (not clipped by .toolbar's own overflow): {columns_menu_info['fullyVisible']}")
         assert columns_menu_info['display'] == 'block', "Columns menu should be open after clicking the button"
         assert columns_menu_info['fullyVisible'], f"Columns menu clipped: top={columns_menu_info['top']:.1f} bottom={columns_menu_info['bottom']:.1f} viewportHeight={columns_menu_info['viewportHeight']}"
+
+        # Same clipping hazard for the Tools dropdown (same .columns-menu
+        # positioning, shared toggleToolbarMenu() helper).
+        tools_menu_info = await page2.evaluate("""
+            () => {
+                document.getElementById('tools-btn').click();
+                const menu = document.getElementById('tools-menu');
+                const rect = menu.getBoundingClientRect();
+                return {
+                    display: menu.style.display,
+                    top: rect.top, bottom: rect.bottom,
+                    viewportHeight: window.innerHeight,
+                    fullyVisible: rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 100,
+                };
+            }
+        """)
+        print(f"[tools menu, 320px width] opens and is fully visible in the viewport: {tools_menu_info['fullyVisible']}")
+        assert tools_menu_info['display'] == 'block', "Tools menu should be open after clicking the button"
+        assert tools_menu_info['fullyVisible'], f"Tools menu clipped: top={tools_menu_info['top']:.1f} bottom={tools_menu_info['bottom']:.1f}"
 
         print("JS ERRORS (320px mobile viewport):", errors2)
         await browser2.close()

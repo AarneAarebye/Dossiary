@@ -90,7 +90,7 @@ async def main():
         await page.wait_for_timeout(400)
 
         # === Scenario 1: rename buttons only on renameable custom fields ===
-        await page.click('#manage-fields-btn')
+        await page.click('#tools-btn'); await page.click('#manage-fields-btn')
         await page.wait_for_timeout(200)
         has_btn = lambda name: page.locator(f'{row_for(name)} .fs-rename').count()
         print("Organization/Author/Year each get a rename button:",

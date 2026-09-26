@@ -48,7 +48,7 @@ async def main():
         field_row = await page.evaluate("window.__DEBUG_findFieldByName('Reminder')")
         print("'Reminder' field auto-created with type 'reminder':", field_row is not None and field_row['type'] == 'reminder')
 
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(300)
         field_row_after_reopen = await page.evaluate("window.__DEBUG_findFieldByName('Reminder')")
         print("re-opening the same library doesn't duplicate the field (same id):", field_row_after_reopen is not None and field_row_after_reopen['id'] == field_row['id'])
@@ -279,7 +279,7 @@ async def main():
             "document_field_values": [{"document_id": 1, "field_id": 1, "value": "call the broker"}],
         }
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(wrong_typed_reminder_seed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(300)
 
         wrong_typed_field = await page.evaluate("window.__DEBUG_findFieldByName('Reminder')")
@@ -357,7 +357,7 @@ async def main():
         }
         await page.set_viewport_size({"width": 1280, "height": 800})
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(many_docs_seed)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(300)
 
         last_row = page.locator('#doc-tbody tr').last
@@ -393,7 +393,7 @@ async def main():
         # once -- the guard mirrors showRowContextMenu()'s own openRowContextMenu
         # guard. ===
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)}); window.__TEST_ROOT.name = 'TestLib';")
-        await page.click('#reload-btn')
+        await page.click('#tools-btn'); await page.click('#reload-btn')
         await page.wait_for_timeout(300)
 
         await page.click('tr[data-id="1"]', button='right')  # also selects/highlights the row and refreshes the detail panel, same as a plain click

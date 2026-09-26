@@ -156,7 +156,7 @@ async def main():
         await page5.click("#open-btn")
         await page5.wait_for_timeout(300)
         await page5.evaluate("window.__TEST_ROOT = null;")  # simulate cancelling the picker on "Switch library"
-        await page5.click("#reload-btn")
+        await page5.click('#tools-btn'); await page5.click("#reload-btn")
         await page5.wait_for_timeout(200)
         # #recent-libraries h3 is CSS text-transform:uppercase, so inner_text()
         # reports "RECENT LIBRARIES" even though the actual DOM/source text is
@@ -296,7 +296,7 @@ async def main():
         # still German; no modal open at this point since Scenario 12 closed
         # the edit form via Cancel -- the detail panel itself isn't a modal
         # and needs no closing) ===
-        await page3.click('#manage-fields-btn')
+        await page3.click('#tools-btn'); await page3.click('#manage-fields-btn')
         await page3.wait_for_timeout(200)
         fs_heading = await page3.locator('.modal h2').inner_text()
         print("Scenario 13 -- Field Settings heading translated:", fs_heading == "Feldeinstellungen")
@@ -312,7 +312,7 @@ async def main():
         # === Scenario 14: Manage Collections modal translates (reuses page3,
         # still German; no modal open at this point since Scenario 13 closed
         # the Field Settings modal) ===
-        await page3.click('#manage-collections-btn')
+        await page3.click('#tools-btn'); await page3.click('#manage-collections-btn')
         await page3.wait_for_timeout(200)
         mc_heading = await page3.locator('.modal h2').inner_text()
         print("Scenario 14 -- Manage Collections heading translated:", mc_heading == "Sammlungen verwalten")
@@ -497,14 +497,14 @@ async def main():
         await page3.click('#modal-close-btn')
         await page3.wait_for_timeout(150)
 
-        await page3.click('#manage-fields-btn')
+        await page3.click('#tools-btn'); await page3.click('#manage-fields-btn')
         await page3.wait_for_timeout(200)
         fs_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
         print("Scenario 22 -- Field Settings modal close button aria-label translated:", fs_close_aria == "Schließen")
         await page3.click('#fs-done-btn')
         await page3.wait_for_timeout(150)
 
-        await page3.click('#manage-collections-btn')
+        await page3.click('#tools-btn'); await page3.click('#manage-collections-btn')
         await page3.wait_for_timeout(200)
         mc_close_aria = await page3.locator('#modal-close-btn').get_attribute('aria-label')
         print("Scenario 22 -- Manage Collections modal close button aria-label translated:", mc_close_aria == "Schließen")
