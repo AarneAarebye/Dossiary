@@ -1758,7 +1758,8 @@ this repo's git tags.
   individually wired at creation time. `populateFilters()` similarly
   rebuilds an entire `<span id="dynamic-filters">` container every call
   (dynamic filters only for `show_as_column` fields where `hasFilter` is
-  true — i.e. `type === 'text' || type === 'checkbox'`; Number/Date fields
+  true — i.e. `type === 'text' || type === 'checkbox' || type === 'person'`, the
+  last shown as name pills (see the People note); Number/Date fields
   get a column but no filter dropdown, same reasoning as Date/Amount never
   having had one: a dropdown listing every distinct number/date isn't
   useful) -- and ends by calling `applyColumnVisibility()` itself, since a
@@ -2920,7 +2921,7 @@ this repo's git tags.
   type === 'text' ? 1 : 0`, unchanged), and in Field Settings'
   per-field capability checkboxes it's offered the **Column** checkbox
   like almost any field (`capabilitiesHtml()`'s guard excludes only
-  `type === 'person'` and the field literally named `'Amount'` — a
+  People and the field literally named `'Amount'` — a
   reminder field isn't either) but never the **Autocomplete** checkbox
   (that one's gated on `field.type === 'text'` specifically, same as
   Date/Number/Checkbox always were) — a dropdown of distinct dates isn't
