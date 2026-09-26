@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (70 scripts) + shared
+tests/                   Playwright regression suite (71 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3353,6 +3353,73 @@ this repo's git tags.
   `deleteOrphanedPeople(names)` take an array specifically so a single-row
   delete and a many-row bulk delete are the same function call with a
   1-element array, not two separate code paths.
+- **Storage stats** (`computeStorageStats()`, `formatBytes()`,
+  `openStorageStatsModal()`) is a brand new, independent toolbar button and
+  modal — deliberately **not** part of the "Library check" family
+  (`openLibraryCheckModal()`) the three prior maintenance features share,
+  since this is a read-only overview, not a detect-a-problem-and-fix-it
+  check. Answers the question CLAUDE.md's own "Preserving an original file
+  on ingestion" note raises but never lets anyone actually see: how much
+  of the library's real disk usage is the doubled original-preservation
+  overhead versus genuinely distinct content.
+  **The walk reads real files on disk, never trusts `allDocs`' own tracked
+  paths as the source of truth** — `computeStorageStats()` iterates
+  `filesDirHandle.entries()` (the same `for await (const [name, handle] of
+  dirHandle.entries())` pattern `checkInbox()` already uses), recursing one
+  level into each per-document subfolder, and reads every file's real size
+  via `getFile().size` (a metadata read — no file content is ever loaded
+  into memory). This is deliberate: summing only `allDocs`' own tracked
+  `file_path`/`original_file_path` values would silently miss anything on
+  disk that no document row points to at all.
+  **Every file under `files/` is classified into exactly one of three
+  buckets** by comparing its own relative path against every document's
+  `file_path`/`original_file_path` — **including documents in the Waste
+  bin**, since a soft-deleted document's files are never touched on disk
+  (per the Waste bin's own "nothing on disk is ever touched" design) and
+  are still real, space-consuming files:
+  - **Active** — matches some document's `file_path`.
+  - **Original** — matches some document's `original_file_path`.
+  - **Untracked** — matches neither. A genuine, useful side effect of
+    walking the real folder rather than the database: nothing else in
+    this app can currently show a file under `files/` that no document
+    points to at all. This feature only makes it visible — there is no
+    delete/cleanup action for it, deliberately out of scope. Every
+    captured document's sidecar `.txt` (see the "Sidecar `.txt` files"
+    note above — `writeSidecarFile()` writes it straight into `files/`,
+    alongside the primary file, not into a path any document's
+    `file_path`/`original_file_path` ever references) falls into this
+    bucket for exactly this reason — it's real, genuine content that just
+    isn't classified as active or original, not a bug in the walk.
+  `thumbnails/` gets the same two-way active/untracked split (matched
+  against `thumbnail_path`); `inbox/` isn't split further at all, since
+  every file staged there is equally "not yet added." `library.sqlite`'s
+  own size is added into the grand total but doesn't participate in the
+  files/thumbnails/inbox breakdown, since it's a different kind of thing
+  entirely. A missing `inbox/` or `thumbnails/` folder (a library that's
+  never staged an inbox file, or never generated a thumbnail) is treated
+  as zero, not an error — the same "a missing folder just means nothing
+  to add" reasoning `checkInbox()` already established; a per-file read
+  failure mid-walk is skipped rather than aborting the whole computation,
+  the same reasoning `backfillFileHash()` already uses.
+  **The walk runs immediately when the modal opens** — the click on the
+  toolbar button is itself the explicit trigger, matching how
+  `openLibraryCheckModal()`'s own file-hash backfill already runs on open
+  rather than needing a second confirming click inside the modal. Unlike
+  that backfill, this computation never writes anything, so there's no
+  "disable Escape/close while running" concern — Escape and the close
+  button work normally throughout, even mid-walk.
+  **`formatBytes()`** generalizes the ad-hoc `(file.size/1024).toFixed(0)`
+  KB-only formatting the capture form's own picked-file-size preview
+  (`pickedFileSizeKb`) already uses, since a whole-library total can run
+  well past what's sensible to show in KB alone — it auto-scales through
+  B/KB/MB/GB/TB rather than being fixed to one unit.
+  **The "Untracked" row is only rendered when non-zero**, in both `files/`
+  and `thumbnails/` independently — omitted entirely otherwise, matching
+  this app's existing "omit sections/rows with nothing to show" convention
+  (e.g. how the "Library check" modal's own sections each disappear when
+  empty). No per-document breakdown, no sorting, no "biggest documents"
+  list — deliberately just the aggregate picture, to keep this a simple
+  overview rather than growing into a second browsing UI.
 
 ## How this was tested
 

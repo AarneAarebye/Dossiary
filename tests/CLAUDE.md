@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **70
-scripts covering most of the app's actual functionality** (68 of them
+There's a real, runnable Playwright regression suite in `tests/` — **71
+scripts covering most of the app's actual functionality** (69 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -724,7 +724,15 @@ for 2+ rows; for exactly one row, the singular wording, and declining that
 bulk `confirm()` leaves the row and its persisted `tags` row intact); a deleted
 tag/person disappears from its autocomplete datalist immediately; and
 restoring a Waste-bin document whose tag was deleted while orphaned
-brings it back without that tag), the
+brings it back without that tag), the Storage stats modal
+(`test_storage_stats.py` -- the real-folder walk correctly sums
+`files/`/`thumbnails/`/`inbox/`/`library.sqlite` against an
+independently-computed expectation, not just the app's own arithmetic; a
+document whose searchable PDF was built has genuinely different-sized
+active and original files, both correctly attributed; a deliberately
+untracked file lands in the Untracked bucket and nowhere else; a document
+moved to the Waste bin still has its files counted; and the modal shows a
+busy state before resolving to final numbers), the
 Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the
