@@ -2344,10 +2344,41 @@ this repo's git tags.
   is unrelated to this app's own OCR pipeline. Every new document now
   permanently uses roughly double the disk space (an original plus an
   active copy, even when nothing is ever processed) — an accepted
-  tradeoff, not an oversight. `searchable_pdf_built` is not yet loaded
-  into the in-memory `allDocs` model or read by any UI — nothing consumes
-  it yet; it exists for a planned future "build a searchable PDF after the
-  fact" action to gate on.
+  tradeoff, not an oversight. `searchable_pdf_built` is loaded into
+  `allDocs` (as a boolean) and gates the "Make searchable" action below.
+- **"Make searchable"** (`makeDocumentSearchable()`,
+  `openMakeSearchableModal()`, the panel-only `'make-searchable'` action in
+  `buildDetailActions()`) builds a searchable PDF for an already-saved
+  document -- the same OCR-plus-invisible-text-layer rebuild capture does
+  when OCR runs before Save, after the fact. Offered only for a non-deleted
+  document whose active file ends in `.pdf`/`.jpg`/`.jpeg`/`.png` and whose
+  `searchable_pdf_built` is still `0`; panel-only (like "Regenerate
+  preview"), since it's a long, progress-reporting run rather than a
+  one-shot context-menu action. A small dialog picks the OCR language
+  (defaulting to the document's own `ocr_language`, else Auto) and blocks
+  Escape/backdrop/close while running (`makeSearchableRunning`, checked by
+  `onModalKeydown()` alongside the Library check backfill flag). It shares
+  its OCR steps with capture: `pdfHasRealText()` (a PDF with real text is
+  left completely untouched and reported as such -- same reason capture
+  skips it) and `ocrPdfPagesWithWords()` were pulled out of `runOcr()`, and
+  `ocrLanguageOptionsHtml()` now builds all three OCR language dropdowns.
+  **The untouched original is always kept**, by one of two rules:
+  - The document has its own preserved original (everything this app
+    captured or added via Inbox): the active *copy* is replaced -- a PDF is
+    overwritten in place, an image gets a new `<stem>.pdf` next to it. The
+    superseded image copy is removed only when its bytes hash-match
+    `file_hash` (which is computed on the original), so a copy that
+    somehow differs from the original is never deleted.
+  - No original, or the original's file is missing on disk: the current
+    file *becomes* `original_file_path` and the searchable PDF is written
+    next to it as `<stem>.pdf` (image) or `<stem>_searchable.pdf` (PDF) --
+    never overwriting what might be the only copy.
+  `file_hash` needs no update under either rule: it's derived from the
+  original, which never changes. Existing non-empty `ocr_text` is kept
+  (it may have been corrected by hand), otherwise the fresh OCR text and
+  language are stored. The sidecar is rewritten under the new file stem
+  (best-effort) and the old one removed when the stem changed -- it's
+  derived output, not user data.
 - **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
   written next to every captured document's primary file, containing the
   fields that only live in `library.sqlite` (category, tags, notes, OCR
