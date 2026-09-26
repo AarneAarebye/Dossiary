@@ -714,7 +714,13 @@ slowed `crypto.subtle.digest()`, the backfill hashing up to 4 files at
 once, persisting to `library.sqlite` mid-pass, the Stop button halting
 it early with a "Stopped after checking N of 60" note and the close
 button re-enabled, and a second Library check resuming with only the
-remaining documents)), the Library check modal's broken-file-links section
+remaining documents; and "Not a duplicate" marks -- a ticked group
+staying listed, dimmed, without the modal closing, the mark saved to
+`not_duplicate_groups`, the group sorting after the unmarked group of its
+kind on reopen and staying ticked after reopening the library, unticking
+removing the saved mark, and a document joining a marked title + date
+group (via the capture form) making it a new, unmarked group)), the
+Library check modal's broken-file-links section
 (`test_broken_links.py` -- documents whose `file_path`, `original_file_path`,
 or both were deleted from the stub filesystem behind the app's back each
 get their own row with exactly the right File/Original indicators; a

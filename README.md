@@ -196,7 +196,11 @@ working" problem that motivated this project in the first place.
   per-type setup, its description, and any Smart Collection filter on
   it). Clicking a document in a duplicate group
   shows just that group in the table, so you can compare the copies and
-  archive or delete the extras, with a link back to Library check. The
+  archive or delete the extras, with a link back to Library check. If a
+  group turns out not to be a real duplicate, tick its "Not a duplicate"
+  box: it stays in the list, marked and dimmed, below the groups still
+  waiting for a decision (and reappears unmarked if another document
+  later joins it). The
   first run has to read every file once to fingerprint it, which can take
   a while on a large or cloud-synced library (iCloud Drive files may need
   to download first); it reads several files at once, saves progress as

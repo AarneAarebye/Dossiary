@@ -729,3 +729,126 @@ async def main_backfill_stop_resume():
         await browser.close()
 
 asyncio.run(main_backfill_stop_resume())
+
+
+# === "Not a duplicate" marks: a duplicate group can be marked as reviewed and
+# not really a duplicate. It stays listed (ticked, dimmed), sorts after the
+# unmarked groups of its kind, survives reopening the library, can be unmarked,
+# and shows up unmarked again once another document joins that group. ===
+def _nd_doc(i, title, file_hash, date=None):
+    return {
+        "id": i, "title": title, "category": None, "document_type": None,
+        "date": date, "notes": None, "ocr_text": None, "ocr_language": None,
+        "file_path": f"files/{i}_doc.pdf", "original_file_path": None,
+        "created_at": "2026-01-01T00:00:00Z", "source": "captured", "source_legacy_id": None,
+        "file_hash": file_hash,
+    }
+
+SEED_NOT_DUP = {
+    "documents": [
+        _nd_doc(1, "Alpha copy one", "a" * 64), _nd_doc(2, "Alpha copy two", "a" * 64),
+        _nd_doc(3, "Beta copy one", "b" * 64), _nd_doc(4, "Beta copy two", "b" * 64),
+        _nd_doc(5, "Gamma statement", "c" * 64, "2026-03-01"), _nd_doc(6, "Gamma statement", "d" * 64, "2026-03-01"),
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_not_duplicate():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        import json
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_NOT_DUP)});")
+        await page.click("#open-btn")
+        await page.wait_for_timeout(400)
+
+        async def open_check():
+            await page.evaluate("window.__DEBUG_openLibraryCheckModal()")
+            await page.wait_for_timeout(300)
+        async def group_order():
+            return await page.locator('.duplicate-group[data-dup-key]').evaluate_all("els => els.map(e => e.dataset.dupKey)")
+        async def read_keys():
+            return await page.evaluate("""
+                async () => {
+                    const f = await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile();
+                    return (JSON.parse(await f.text()).not_duplicate_groups || []).map(r => r.group_key);
+                }
+            """)
+
+        await open_check()
+        print("Two exact-match groups and a title+date group, all unmarked at first:",
+              await group_order() == ['exact:1,2', 'exact:3,4', 'metadata:5,6'] and await page.locator('.not-duplicate-checkbox:checked').count() == 0, await group_order())
+
+        # Mark the Alpha group.
+        alpha = page.locator('.duplicate-group[data-dup-key="exact:1,2"]')
+        await alpha.locator('.not-duplicate-checkbox').check()
+        await page.wait_for_timeout(300)
+        print("Marking ticks the group and dims it in place:", 'not-duplicate' in (await alpha.get_attribute('class')))
+        print("...without closing the modal or leaving the list:", await page.locator('#duplicates-list').count() == 1)
+        print("...and saves the mark:", await read_keys() == ['exact:1,2'], await read_keys())
+
+        # Reopen: still listed, still ticked, now sorted after the unmarked group.
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        await open_check()
+        print("Reopened: marked group stays listed, after the unmarked one:", await group_order() == ['exact:3,4', 'exact:1,2', 'metadata:5,6'], await group_order())
+        print("...and is still ticked:", await page.locator('.duplicate-group[data-dup-key="exact:1,2"] .not-duplicate-checkbox').is_checked())
+
+        # Survives reopening the library.
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        await page.click('#reload-btn'); await page.click('#open-btn')
+        await page.wait_for_timeout(400)
+        await open_check()
+        print("Mark survives reopening the library:", await page.locator('.duplicate-group[data-dup-key="exact:1,2"] .not-duplicate-checkbox').is_checked())
+
+        # Unmark.
+        await page.locator('.duplicate-group[data-dup-key="exact:1,2"] .not-duplicate-checkbox').uncheck()
+        await page.wait_for_timeout(300)
+        print("Unmarking removes the saved mark:", await read_keys() == [], await read_keys())
+        await page.locator('.duplicate-group[data-dup-key="exact:1,2"] .not-duplicate-checkbox').check()
+        await page.wait_for_timeout(300)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        # A new document joining a group makes it a new, unmarked candidate. (Exact-match
+        # groups can't gain members through Inbox -- it skips exact duplicates -- so this
+        # uses the title + date group, adding a third "Gamma" through the capture form.)
+        await open_check()
+        gamma = page.locator('.duplicate-group[data-dup-key="metadata:5,6"]')
+        await gamma.locator('.not-duplicate-checkbox').check()
+        await page.wait_for_timeout(300)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+        await page.click('#add-btn')
+        await page.wait_for_timeout(150)
+        await page.set_input_files('#file-input', {'name': 'gamma3.pdf', 'mimeType': 'application/pdf', 'buffer': b'%PDF-1.4 gamma three'})
+        await page.wait_for_timeout(200)
+        await page.fill('#f-title', 'Gamma statement')
+        await page.fill('#f-date', '2026-03-01')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(400)
+        await open_check()
+        order = await group_order()
+        new_key = [k for k in order if k.startswith('metadata:5,6,')]
+        print("A document joining a marked group makes it a new, unmarked group:",
+              len(new_key) == 1 and not await page.locator(f'.duplicate-group[data-dup-key="{new_key[0]}"] .not-duplicate-checkbox').is_checked(), order)
+
+        print("JS ERRORS:", errors)
+        await browser.close()
+
+asyncio.run(main_not_duplicate())

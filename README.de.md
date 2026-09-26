@@ -235,7 +235,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Beschreibung und jeder Smart-Collection-Filter darauf). Ein Klick auf ein Dokument in einer Duplikatgruppe zeigt
   nur diese Gruppe in der Tabelle, sodass Sie die Kopien vergleichen und
   die überzähligen archivieren oder löschen können, mit einem Link zurück
-  zur Bibliotheksprüfung. Der erste Durchlauf muss jede Datei einmal
+  zur Bibliotheksprüfung. Ist eine Gruppe doch kein echtes Duplikat,
+  setzen Sie das Häkchen „Not a duplicate": Sie bleibt in der Liste,
+  markiert und abgeblendet, unterhalb der noch offenen Gruppen (und
+  erscheint wieder unmarkiert, falls später ein weiteres Dokument
+  hinzukommt). Der erste Durchlauf muss jede Datei einmal
   lesen, um ihren Fingerabdruck zu berechnen — bei einer großen oder per
   Cloud synchronisierten Bibliothek (iCloud-Drive-Dateien müssen evtl.
   erst geladen werden) kann das dauern; er liest mehrere Dateien

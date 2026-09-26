@@ -3393,7 +3393,26 @@ this repo's git tags.
   gone, and instant since every document is hashed by then. A
   broken-link row has no group, so clicking it only selects the document,
   as before. Like a Reports drill-down, the group is a snapshot taken at
-  click time. See
+  click time. **"Not a duplicate" marks** (`not_duplicate_groups
+  (group_key TEXT PRIMARY KEY)`, `notDuplicateKeys`, `duplicateGroupKey()`,
+  `setNotDuplicate()`, the `.not-duplicate-checkbox` in each group's
+  heading) let a person record that a group isn't really a duplicate
+  without resolving anything: the group stays listed -- ticked, dimmed,
+  `.not-duplicate` -- and sorts after the still-undecided groups of its
+  kind the next time the check opens (not immediately, so the list
+  doesn't jump under the pointer). The key is the group's kind plus its
+  sorted document ids (`exact:1,2`, `metadata:5,6`), stored rather than a
+  per-document flag, so a mark means "these exact documents, judged
+  together": if another document joins the group (or one leaves), the key
+  changes and the group comes back unmarked, a new candidate. A stale key
+  left behind that way is a harmless unused row. The table is created by
+  `SCHEMA`'s `CREATE TABLE IF NOT EXISTS`, which runs on every library
+  open, so existing libraries need no migration entry. **Each group is
+  `display:block`** even though it also carries `.fs-list-item` (a
+  horizontal flex row) -- without that override every group, and the
+  broken-links section, laid its heading and document rows out side by
+  side, squeezing titles and overlapping the Re-link buttons (a
+  pre-existing bug found while building this). See
   `docs/superpowers/specs/2026-09-24-duplicate-detection-design.md` for
   the full design.
 - **The "Find duplicates" modal was renamed to "Library check"
