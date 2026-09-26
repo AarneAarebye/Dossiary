@@ -148,14 +148,23 @@ async def main():
         # 1100px is safely past the transition and can trust the proxy).
         # Sidebar's own transition point (1240px, measured the same sweep)
         # didn't move past its existing 1280px threshold, so sidebar_tight
-        # is unchanged. So: 800px is included specifically to keep
+        # is unchanged. **Both thresholds were recalibrated again when the
+        # "💾 Storage stats" toolbar button widened the wrap band a second
+        # time**: a fresh 700-1600px sweep (20px steps, both bulk-bar states)
+        # found the proxy only turns reliably non-negative from 1160px for
+        # tabs and 1380px for sidebar, while the real last-row clip stayed
+        # <= -4px (never clipped) at every width for both nav styles -- the
+        # same padding-absorption artifact, not a real overlap, so the same
+        # fix: tabs_tight 1050 -> 1190px and sidebar_tight 1280 -> 1410px
+        # (~30px margin above each transition), no CSS change. So: 800px is included specifically to keep
         # sidebar's *actual* tightest point covered by a real, sensitive
         # check, and both nav styles fall back to the real
         # last-row-visibility check below their own reliability threshold
-        # (1050px for tabs, 1280px for sidebar) rather than the proxy. ===
+        # (now 1190px for tabs, 1410px for sidebar, per the recalibration
+        # above) rather than the proxy. ===
         for width in [800, 1000, 1100, 1280, 1440]:
             await open_seeded_library(page, width, 720, 'tabs')
-            tabs_tight = width >= 1050
+            tabs_tight = width >= 1190
             if tabs_tight:
                 await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden", min_gap=-2)
             else:
@@ -172,7 +181,7 @@ async def main():
 
             await page.click('#nav-style-toggle')
             await page.wait_for_timeout(200)
-            sidebar_tight = width >= 1280
+            sidebar_tight = width >= 1410
             if sidebar_tight:
                 await measure(page, f"desktop {width}x720, nav=sidebar, bulkbar=hidden", min_gap=-2)
             else:

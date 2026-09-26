@@ -197,6 +197,7 @@
   .duplicate-group-label-row .duplicate-group-label{ margin-bottom:0; }
   .orphaned-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 10px; border-radius:var(--radius); }
   .storage-stats-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 10px; }
+  .storage-stats-subrow{ padding:4px 10px 4px 28px; font-size:12.5px; color:var(--text-dim); }
   .storage-stats-total{ font-weight:600; font-size:15px; color:var(--phosphor); border-bottom:1px solid var(--line); margin-bottom:6px; padding:4px 10px 14px; }
   .reminder-snooze{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
   .reminder-snooze select, .reminder-snooze-custom-date{
@@ -2784,7 +2785,10 @@
     do{
       value /= 1024;
       unitIndex++;
-    }while(value >= 1024 && unitIndex < units.length - 1);
+      // Compare the value as it will actually be displayed (rounded to one
+      // decimal), not the raw quotient -- otherwise e.g. 1048575 bytes
+      // (1023.999 KB) would render as "1024.0 KB" instead of "1.0 MB".
+    }while(Number(value.toFixed(1)) >= 1024 && unitIndex < units.length - 1);
     return `${value.toFixed(1)} ${units[unitIndex]}`;
   }
 
@@ -2807,30 +2811,35 @@
     const thumbnailPaths = new Set(allDocs.map(d => d.thumbnail_path).filter(Boolean));
 
     const files = { active: 0, original: 0, untracked: 0 };
-    for await (const [name, handle] of filesDirHandle.entries()){
-      if(handle.kind === 'file'){
-        const relPath = `files/${name}`;
-        try{
-          const size = (await handle.getFile()).size;
-          if(filePaths.has(relPath)) files.active += size;
-          else if(originalPaths.has(relPath)) files.original += size;
-          else files.untracked += size;
-        }catch(e){ /* unreadable file -- skip it, not fatal */ }
-      }else if(handle.kind === 'directory'){
-        try{
-          for await (const [subName, subHandle] of handle.entries()){
-            if(subHandle.kind !== 'file') continue;
-            const relPath = `files/${name}/${subName}`;
-            try{
-              const size = (await subHandle.getFile()).size;
-              if(filePaths.has(relPath)) files.active += size;
-              else if(originalPaths.has(relPath)) files.original += size;
-              else files.untracked += size;
-            }catch(e){ /* unreadable file -- skip it, not fatal */ }
-          }
-        }catch(e){ /* unreadable subfolder -- skip it, not fatal */ }
+    // The top-level iteration itself is guarded too, not just each file read --
+    // an uncaught throw here (e.g. permission revoked mid-session) would reject
+    // openStorageStatsModal()'s own await and leave its spinner up forever.
+    try{
+      for await (const [name, handle] of filesDirHandle.entries()){
+        if(handle.kind === 'file'){
+          const relPath = `files/${name}`;
+          try{
+            const size = (await handle.getFile()).size;
+            if(filePaths.has(relPath)) files.active += size;
+            else if(originalPaths.has(relPath)) files.original += size;
+            else files.untracked += size;
+          }catch(e){ /* unreadable file -- skip it, not fatal */ }
+        }else if(handle.kind === 'directory'){
+          try{
+            for await (const [subName, subHandle] of handle.entries()){
+              if(subHandle.kind !== 'file') continue;
+              const relPath = `files/${name}/${subName}`;
+              try{
+                const size = (await subHandle.getFile()).size;
+                if(filePaths.has(relPath)) files.active += size;
+                else if(originalPaths.has(relPath)) files.original += size;
+                else files.untracked += size;
+              }catch(e){ /* unreadable file -- skip it, not fatal */ }
+            }
+          }catch(e){ /* unreadable subfolder -- skip it, not fatal */ }
+        }
       }
-    }
+    }catch(e){ /* unreadable files/ folder -- keep whatever was summed so far, not fatal */ }
 
     const thumbnails = { active: 0, untracked: 0 };
     try{
@@ -2905,8 +2914,12 @@
     if(!resultsEl) return;
     resultsEl.style.display = 'block';
 
-    const rowHtml = (labelKey, size) => `
-      <div class="storage-stats-row">
+    // Each folder's own split is rendered as indented sub-rows directly under
+    // that folder's row (not as a flat list after every folder), so a
+    // thumbnails/ "Untracked" row can't be mistaken for files/'s own -- both
+    // share the same label key.
+    const rowHtml = (labelKey, size, sub, id) => `
+      <div class="storage-stats-row${sub ? ' storage-stats-subrow' : ''}"${id ? ` id="${id}"` : ''}>
         <span>${t(labelKey)}</span>
         <span>${formatBytes(size)}</span>
       </div>
@@ -2914,13 +2927,13 @@
     resultsEl.innerHTML = [
       `<div class="storage-stats-total">${t('storageStatsGrandTotal', {size: formatBytes(stats.grandTotal)})}</div>`,
       rowHtml('storageStatsFilesLabel', stats.filesTotal),
+      rowHtml('storageStatsActiveLabel', stats.files.active, true),
+      rowHtml('storageStatsOriginalsLabel', stats.files.original, true),
+      stats.files.untracked > 0 ? rowHtml('storageStatsUntrackedLabel', stats.files.untracked, true, 'storage-stats-files-untracked') : '',
       rowHtml('storageStatsThumbnailsLabel', stats.thumbnailsTotal),
+      stats.thumbnails.untracked > 0 ? rowHtml('storageStatsUntrackedLabel', stats.thumbnails.untracked, true, 'storage-stats-thumbnails-untracked') : '',
       rowHtml('storageStatsInboxLabel', stats.inbox),
       rowHtml('storageStatsDatabaseLabel', stats.librarySqlite),
-      rowHtml('storageStatsActiveLabel', stats.files.active),
-      rowHtml('storageStatsOriginalsLabel', stats.files.original),
-      stats.files.untracked > 0 ? rowHtml('storageStatsUntrackedLabel', stats.files.untracked) : '',
-      stats.thumbnails.untracked > 0 ? rowHtml('storageStatsUntrackedLabel', stats.thumbnails.untracked) : '',
     ].join('');
   }
 
@@ -3883,6 +3896,7 @@
   // other __DEBUG_compute* hooks above -- lets a test verify its output without
   // going through the full modal-open flow.
   window.__DEBUG_computeStorageStats = computeStorageStats;
+  window.__DEBUG_formatBytes = formatBytes;
   // Test-only: reads a document's own file_path/original_file_path directly
   // from in-memory state, so a test can locate the exact stub-filesystem path
   // to delete (simulating a file moved/deleted outside the app) without

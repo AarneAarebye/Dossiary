@@ -283,7 +283,18 @@ this repo's git tags.
   check and `test_detail_panel.py`'s full suite (the panel reuses these
   same four constants — see its own paragraph further below) were
   re-verified passing against the final, reverted-and-corrected state,
-  not just `test_footer_pin.py` alone. **Since the
+  not just `test_footer_pin.py` alone. **The same thing happened again
+  with the "💾 Storage stats" toolbar button, and got the same fix**: it
+  widened the wrap band once more, so `test_footer_pin.py` failed at
+  1100px (tabs) and `test_collections.py`'s Scenario 30 at 1280px
+  (sidebar), both at the proxy's `-48px`. A fresh 700-1600px sweep (20px
+  steps, both nav styles, both bulk-bar states) found the real last row
+  never clipped anywhere (`<= -4px`), while the proxy only turns reliable
+  from 1160px (tabs) / 1380px (sidebar) — so `tabs_tight` moved
+  `1050`→`1190`, `sidebar_tight` `1280`→`1410`, Scenario 30 now runs at
+  1440x720 instead of 1280x720, and the four CSS constants stayed
+  untouched. Expect this to recur with every new toolbar button; re-run
+  that sweep rather than bumping the constants. **Since the
   footer became fixed, permanently-visible chrome (`position: fixed; bottom:
   0;`, see the footer's own note elsewhere in this file), all four numbers
   above also include its rendered height (62px at normal widths)** — the
@@ -2295,7 +2306,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 377 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 388 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2527,7 +2538,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (377 keys apiece now, not ~260), and
+  grew from two top-level keys to six (388 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -3400,7 +3411,11 @@ this repo's git tags.
   as zero, not an error — the same "a missing folder just means nothing
   to add" reasoning `checkInbox()` already established; a per-file read
   failure mid-walk is skipped rather than aborting the whole computation,
-  the same reasoning `backfillFileHash()` already uses.
+  the same reasoning `backfillFileHash()` already uses. The top-level
+  `files/` iteration itself is wrapped too, not just each per-file read —
+  an uncaught throw there (e.g. permission revoked mid-session) would
+  otherwise reject `openStorageStatsModal()`'s own `await` and leave its
+  spinner up forever.
   **The walk runs immediately when the modal opens** — the click on the
   toolbar button is itself the explicit trigger, matching how
   `openLibraryCheckModal()`'s own file-hash backfill already runs on open
@@ -3413,6 +3428,15 @@ this repo's git tags.
   (`pickedFileSizeKb`) already uses, since a whole-library total can run
   well past what's sensible to show in KB alone — it auto-scales through
   B/KB/MB/GB/TB rather than being fixed to one unit.
+  **Each folder's own split renders as indented sub-rows
+  (`.storage-stats-subrow`) directly under that folder's row** — Active/
+  Originals/Untracked under Documents (`files/`), Untracked under Previews
+  (`thumbnails/`) — not as a flat list after every folder, since both
+  "Untracked" rows share one label key and would otherwise be
+  indistinguishable. `formatBytes()` promotes to the next unit based on the
+  value as it will actually be displayed (rounded to one decimal), so a
+  value just under a boundary (1048575 bytes) shows "1.0 MB", not
+  "1024.0 KB".
   **The "Untracked" row is only rendered when non-zero**, in both `files/`
   and `thumbnails/` independently — omitted entirely otherwise, matching
   this app's existing "omit sections/rows with nothing to show" convention

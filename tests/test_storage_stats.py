@@ -170,9 +170,9 @@ async def main():
         print("Doc 1's files (now in the Waste bin) are still counted in files.active/original:",
               stats['files']['active'] >= doc1_active_size and stats['files']['original'] >= doc1_original_size)
 
-        # === Modal rendering: busy state, then final numbers, with Untracked
-        # shown since it's non-zero and Thumbnails' own Untracked row absent
-        # since no thumbnails/ folder exists in this test at all ===
+        # === Modal rendering: busy state, then final numbers, with files/'s own
+        # Untracked row shown since it's non-zero, and thumbnails/'s own Untracked
+        # row absent since both thumbnails here are genuinely tracked ===
         # The fake filesystem's getFile() resolves so fast that computeStorageStats()'s
         # whole walk can complete within a single Playwright round-trip, making "is the
         # busy/spinner state visible right after the click" a real race rather than a
@@ -205,6 +205,19 @@ async def main():
         print("Results show the formatted grand total:", 'Total:' in results_text)
         print("Results show the Documents (files/) row:", 'Documents' in results_text)
         print("Results show the Untracked row (non-zero):", 'Untracked' in results_text)
+        print("files/ Untracked row present:", await page.locator('#storage-stats-files-untracked').count() == 1)
+        print("thumbnails/ Untracked row absent (zero):", await page.locator('#storage-stats-thumbnails-untracked').count() == 0)
+        # The files/ split rows render directly under the Documents row (not after
+        # Database), so neither can be misread as another folder's breakdown.
+        row_labels = await page.locator('#storage-stats-results .storage-stats-row span:first-child').all_inner_texts()
+        print("Active/Originals/Untracked sub-rows follow the Documents row directly:",
+              row_labels[:4] == ['Documents (files/)', 'Active', 'Originals', 'Untracked'])
+
+        # formatBytes() auto-scaling boundaries, including the rounding edge just
+        # below a unit boundary (must promote to the next unit, not show "1024.0 KB").
+        fmt = await page.evaluate("""() => [0, 1023, 1024, 1536, 1048575, 1048576, 1073741824].map(b => window.__DEBUG_formatBytes(b))""")
+        print("formatBytes boundaries correct:",
+              fmt == ['0 B', '1023 B', '1.0 KB', '1.5 KB', '1.0 MB', '1.0 MB', '1.0 GB'], fmt)
 
         await page.click('#modal-close-btn')
         await page.wait_for_timeout(100)

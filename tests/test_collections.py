@@ -671,12 +671,17 @@ async def main():
     # content is shorter than the max-height, so its rendered bottom edge floats far
     # above the viewport bottom regardless of whether the CSS constant is right or
     # wrong -- exactly the "non-diagnostic" gap a prior review of this feature
-    # flagged). 60 documents is comfortably enough to overflow at 1280x720; each
+    # flagged). 60 documents is comfortably enough to overflow at 1440x720; each
     # state's own scrollHeight > clientHeight check below proves the constraint is
-    # actually binding before trusting the bottom-edge measurement that follows it. ===
+    # actually binding before trusting the bottom-edge measurement that follows it.
+    # Run at 1440px (was 1280px): the Storage stats toolbar button pushed sidebar
+    # mode's toolbar-wrap band -- where this box-edge proxy reports a false,
+    # padding-absorbed "overlap" even though the real last row is never clipped --
+    # out past 1280px (sidebar's proxy only turns reliable from ~1380px now; see
+    # test_footer_pin.py's own sidebar_tight/tabs_tight thresholds for the sweep). ===
     async with async_playwright() as p:
         browser2 = await p.chromium.launch()
-        page2 = await browser2.new_page(viewport={'width': 1280, 'height': 720})
+        page2 = await browser2.new_page(viewport={'width': 1440, 'height': 720})
         errors2 = []
         page2.on("pageerror", lambda exc: errors2.append(str(exc)))
 

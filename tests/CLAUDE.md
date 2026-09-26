@@ -211,7 +211,7 @@ calibration across all four combinations of nav style × bulk-action-bar
 visibility (Scenarios 29a-29c — no checkboxes in Reports view; nav badge
 counts updating after bulk actions; bulk delete from Collection view
 preserving collection membership on restore; Scenario 30 measures calibration
-constants), replacing an earlier version of this same check that used only
+constants, at 1440x720 since the Storage stats button's recalibration), replacing an earlier version of this same check that used only
 3-4 seeded documents — too few to ever make the `max-height` constraint
 actually binding, so it could report success regardless of whether the CSS
 constants were actually correct; the current version explicitly asserts
@@ -307,7 +307,10 @@ itself (`test_footer_pin.py` — a 60-document seed, the same
 non-diagnostic-gap-avoiding size `test_collections.py`'s own Scenario 30
 uses, confirming `#table-wrap`'s bottom edge lands with no overlap against
 the fixed footer's top edge across all four nav-style x bulk-bar-visible
-combinations at a 1280x720 desktop viewport, plus the app's one mobile
+combinations across a 800-1440px desktop width sweep at 720px height
+(the box-edge proxy used only above each nav style's own reliability
+threshold -- 1190px tabs, 1410px sidebar since the Storage stats button's
+recalibration -- and a real last-row-not-clipped check below it), plus the app's one mobile
 breakpoint at 320x800 (both nav styles, bulk bar hidden and visible),
 375x800 (tabs, bulk bar hidden and visible), and 640x800 (sidebar, bulk
 bar hidden and visible) — and that the footer itself is always fully
@@ -731,8 +734,11 @@ independently-computed expectation, not just the app's own arithmetic; a
 document whose searchable PDF was built has genuinely different-sized
 active and original files, both correctly attributed; a deliberately
 untracked file lands in the Untracked bucket and nowhere else; a document
-moved to the Waste bin still has its files counted; and the modal shows a
-busy state before resolving to final numbers), the
+moved to the Waste bin still has its files counted; the modal shows a
+busy state before resolving to final numbers; each folder's split renders
+as sub-rows directly under that folder's own row, with thumbnails/'s
+Untracked row correctly absent when zero; and `formatBytes()`'s unit
+boundaries, including the just-below-a-boundary rounding edge), the
 Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
 `scan_bridge_url` defaulting empty on a fresh library and persisting
 across a reopen once configured; the auto-connect flow from the
