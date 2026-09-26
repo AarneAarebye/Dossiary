@@ -235,12 +235,35 @@ async def main():
 
         first_row = page.locator('.duplicate-row').first
         first_row_doc_id = await first_row.get_attribute('data-document-id')
+        # Capture the clicked row's whole group before the click closes the modal.
+        first_group_ids = sorted(int(x) for x in await page.evaluate(
+            "() => [...document.querySelector('.duplicate-group').querySelectorAll('.duplicate-row')].map(r => r.dataset.documentId)"
+        ))
         await first_row.click()
         await page.wait_for_timeout(200)
         modal_closed = await page.locator('#modal-backdrop').count() == 0
         detail_panel_text = await page.locator('#detail-panel-body').inner_text()
         print("Clicking a duplicate-group document closes the modal:", modal_closed)
         print("...and opens that exact document's detail panel:", f'#{first_row_doc_id}' in detail_panel_text)
+
+        # Clicking a document in a group also filters the table down to exactly
+        # that group's documents (the Reports drill-down view, reused), with a
+        # banner whose back link returns to Library check.
+        table_ids = sorted(int(x) for x in await page.locator('#doc-tbody tr[data-id]').evaluate_all("rows => rows.map(r => r.dataset.id)"))
+        print("...and filters the table to exactly that duplicate group:", table_ids == first_group_ids, table_ids, first_group_ids)
+        clicked_row_selected = await page.locator(f'#doc-tbody tr[data-id="{first_row_doc_id}"].row-selected').count() == 1
+        print("...with the clicked document's row selected:", clicked_row_selected)
+        banner_visible = await page.locator('#report-drilldown-banner').is_visible()
+        banner_text = await page.locator('#report-drilldown-banner-text').inner_text()
+        back_text = await page.locator('#report-drilldown-back-btn').inner_text()
+        print("Drill-down banner names the group and its size:", banner_visible and 'Exact file match' in banner_text and str(len(first_group_ids)) in banner_text, repr(banner_text))
+        print("Banner's back link points to Library check, not Reports:", back_text == '← Back to Library check', repr(back_text))
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(300)
+        print("Back link reopens the Library check modal:", await page.locator('#duplicates-list').count() == 1)
+        print("...over the unfiltered All Documents view (banner hidden):", not await page.locator('#report-drilldown-banner').is_visible())
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
 
         # === Scenario 7: a second "Library check" open does not re-hash
         # already-hashed documents (no progress shown, since nothing is unhashed) ===

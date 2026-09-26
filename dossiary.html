@@ -1029,7 +1029,7 @@
       reportsNoDocuments: 'No documents match the current filters.', reportsPrintButton: '🖨 Print',
       reportsBreakdownCategory: 'Category', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'People',
       reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} includes: {value}',
-      reportDrilldownGrandTotalLabel: 'Grand total ({currency})', reportDrilldownBackLink: '← Back to Reports',
+      reportDrilldownGrandTotalLabel: 'Grand total ({currency})', reportDrilldownBackLink: '← Back to Reports', libraryCheckBackLink: '← Back to Library check',
       reportDrilldownCountSingular: '{count} document', reportDrilldownCountPlural: '{count} documents',
       librariesTitle: 'Open source libraries',
       librariesIntro: 'Loaded from a CDN at runtime, only when a feature that needs it is actually used. None of it ever sees your documents except locally, in your own browser.',
@@ -1230,7 +1230,7 @@
       reportsNoDocuments: 'Ningún documento coincide con los filtros actuales.', reportsPrintButton: '🖨 Imprimir',
       reportsBreakdownCategory: 'Categoría', reportsBreakdownType: 'Tipo', reportsBreakdownPeople: 'Personas',
       reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} incluye: {value}',
-      reportDrilldownGrandTotalLabel: 'Total general ({currency})', reportDrilldownBackLink: '← Volver a Informes',
+      reportDrilldownGrandTotalLabel: 'Total general ({currency})', reportDrilldownBackLink: '← Volver a Informes', libraryCheckBackLink: '← Volver a la revisión de la biblioteca',
       reportDrilldownCountSingular: '{count} documento', reportDrilldownCountPlural: '{count} documentos',
       librariesTitle: 'Bibliotecas de código abierto',
       librariesIntro: 'Se cargan desde una CDN en tiempo de ejecución, solo cuando realmente se usa una función que las necesita. Ninguna de ellas ve tus documentos, salvo localmente, en tu propio navegador.',
@@ -1431,7 +1431,7 @@
       reportsNoDocuments: 'Aucun document ne correspond aux filtres actuels.', reportsPrintButton: '🖨 Imprimer',
       reportsBreakdownCategory: 'Catégorie', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'Personnes',
       reportDrilldownRowLabel: '{field} : {value}', reportDrilldownMultiValueLabel: '{field} inclut : {value}',
-      reportDrilldownGrandTotalLabel: 'Total général ({currency})', reportDrilldownBackLink: '← Retour aux rapports',
+      reportDrilldownGrandTotalLabel: 'Total général ({currency})', reportDrilldownBackLink: '← Retour aux rapports', libraryCheckBackLink: '← Retour à la vérification de la bibliothèque',
       reportDrilldownCountSingular: '{count} document', reportDrilldownCountPlural: '{count} documents',
       librariesTitle: 'Bibliothèques open source',
       librariesIntro: "Chargées depuis un CDN au moment de l'exécution, uniquement lorsqu'une fonctionnalité qui en a besoin est réellement utilisée. Aucune d'elles ne voit jamais vos documents, sauf localement, dans votre propre navigateur.",
@@ -1632,7 +1632,7 @@
       reportsNoDocuments: 'Keine Dokumente entsprechen den aktuellen Filtern.', reportsPrintButton: '🖨 Drucken',
       reportsBreakdownCategory: 'Kategorie', reportsBreakdownType: 'Typ', reportsBreakdownPeople: 'Personen',
       reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} enthält: {value}',
-      reportDrilldownGrandTotalLabel: 'Gesamtsumme ({currency})', reportDrilldownBackLink: '← Zurück zu Berichten',
+      reportDrilldownGrandTotalLabel: 'Gesamtsumme ({currency})', reportDrilldownBackLink: '← Zurück zu Berichten', libraryCheckBackLink: '← Zurück zur Bibliotheksprüfung',
       reportDrilldownCountSingular: '{count} Dokument', reportDrilldownCountPlural: '{count} Dokumente',
       librariesTitle: 'Open-Source-Bibliotheken',
       librariesIntro: 'Wird zur Laufzeit von einem CDN geladen, nur wenn eine Funktion sie tatsächlich benötigt. Keine davon bekommt deine Dokumente jemals zu sehen — außer lokal, in deinem eigenen Browser.',
@@ -1833,7 +1833,7 @@
       reportsNoDocuments: '没有符合当前筛选条件的文档。', reportsPrintButton: '🖨 打印',
       reportsBreakdownCategory: '分类', reportsBreakdownType: '类型', reportsBreakdownPeople: '人员',
       reportDrilldownRowLabel: '{field}：{value}', reportDrilldownMultiValueLabel: '{field}包含：{value}',
-      reportDrilldownGrandTotalLabel: '总计（{currency}）', reportDrilldownBackLink: '← 返回报表',
+      reportDrilldownGrandTotalLabel: '总计（{currency}）', reportDrilldownBackLink: '← 返回报表', libraryCheckBackLink: '← 返回资料库检查',
       reportDrilldownCountSingular: '{count} 份文档', reportDrilldownCountPlural: '{count} 份文档',
       librariesTitle: '开源库',
       librariesIntro: '仅在实际使用相关功能时才会在运行时从 CDN 加载。它们都不会接触到你的文档，除非是在你自己的浏览器本地。',
@@ -2159,7 +2159,7 @@
       reportDrilldownRowLabel: '{field}：{value}',
       reportDrilldownMultiValueLabel: '{field}包含：{value}',
       reportDrilldownGrandTotalLabel: '總計（{currency}）',
-      reportDrilldownBackLink: '← 返回報表',
+      reportDrilldownBackLink: '← 返回報表', libraryCheckBackLink: '← 返回資料庫檢查',
       reportDrilldownCountSingular: '{count} 份文檔',
       reportDrilldownCountPlural: '{count} 份文檔',
       librariesTitle: '開源庫',
@@ -2436,6 +2436,10 @@
   // still-open drill-down, only a future click on a freshly-rendered report can.
   let reportDrilldownIds = new Set();
   let reportDrilldownLabel = '';
+  // Where the drill-down banner's back link returns to: 'reports' (a Reports
+  // row was clicked) or 'library-check' (a document in a Library check
+  // duplicate group was clicked -- see renderLibraryCheckResults()).
+  let reportDrilldownReturnTo = 'reports';
   let navStyle = 'sidebar';    // 'tabs' | 'sidebar' -- persisted per-library, see loadNavStyle()
   let detailPanelExpanded = false; // persisted per-library, see loadDetailPanelExpanded()
   let navCounts = { all: 0, inbox: 0, trash: 0 }; // last-computed badge counts, refreshed every render()
@@ -3465,7 +3469,7 @@
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null;
     collections = []; collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     reminderSnoozes = {};
-    reportDrilldownIds = new Set(); reportDrilldownLabel = '';
+    reportDrilldownIds = new Set(); reportDrilldownLabel = ''; reportDrilldownReturnTo = 'reports';
     selectedDocId = null;
     // Collapse the panel and clear its content -- otherwise switching libraries (or
     // cancelling/failing a folder picker) leaves a previous library's document
@@ -5084,9 +5088,10 @@
   // Grand Total row) and switches to the report-drilldown view -- an ordinary
   // view of the real document table, filtered to exactly those IDs via
   // matchesView()'s own 'report-drilldown' branch below.
-  function drillIntoReportRow(docIds, label){
+  function drillIntoReportRow(docIds, label, returnTo = 'reports'){
     reportDrilldownIds = new Set(docIds);
     reportDrilldownLabel = label;
+    reportDrilldownReturnTo = returnTo;
     setView('report-drilldown');
   }
 
@@ -5102,6 +5107,10 @@
       const count = allDocs.filter(d => matchesView(d, 'report-drilldown', showArchivedToggle.checked)).length;
       const countText = count === 1 ? t('reportDrilldownCountSingular', {count}) : t('reportDrilldownCountPlural', {count});
       el('report-drilldown-banner-text').textContent = `${reportDrilldownLabel} — ${countText}`;
+      // Set on every render, not just via data-i18n -- the label depends on
+      // reportDrilldownReturnTo, and render() runs after applyI18n() on a
+      // language change anyway.
+      el('report-drilldown-back-btn').textContent = t(reportDrilldownReturnTo === 'library-check' ? 'libraryCheckBackLink' : 'reportDrilldownBackLink');
     } else {
       banner.style.display = 'none';
     }
@@ -5946,11 +5955,11 @@
       listEl.innerHTML = `<p id="duplicates-empty">${t('libraryCheckNoneFound')}</p>`;
       return;
     }
-    const groupHtml = (group, labelKey) => `
+    const groupHtml = (group, labelKey, groupKey) => `
       <div class="fs-list-item duplicate-group">
         <div class="duplicate-group-label">${t(labelKey)}</div>
         ${group.map(d => `
-          <div class="duplicate-row" data-document-id="${d.id}">
+          <div class="duplicate-row" data-document-id="${d.id}" data-group-key="${groupKey}">
             <span class="doc-title">${escapeHtml(displayName(d))}</span>
             <span class="doc-sub">#${d.id}${d.date ? ' · ' + formatDate(d.date) : ''}</span>
           </div>
@@ -6013,16 +6022,26 @@
       </div>
     ` : '';
     listEl.innerHTML = [
-      ...exactGroups.map(g => groupHtml(g, 'duplicatesExactMatchLabel')),
-      ...metadataGroups.map(g => groupHtml(g, 'duplicatesMetadataMatchLabel')),
+      ...exactGroups.map((g, i) => groupHtml(g, 'duplicatesExactMatchLabel', `exact-${i}`)),
+      ...metadataGroups.map((g, i) => groupHtml(g, 'duplicatesMetadataMatchLabel', `metadata-${i}`)),
       brokenLinksSection,
       orphanedTagsSection,
       orphanedPeopleSection,
     ].join('');
+    // A row inside a duplicate group filters the table down to that whole
+    // group (reusing the Reports drill-down view, whose archived/needs-review-
+    // inclusive, deleted-exclusive membership matches exactly what duplicate
+    // detection counts), so the copies can be compared and resolved side by
+    // side. A broken-link row has no group -- it just selects its document.
+    const groupsByKey = {};
+    exactGroups.forEach((g, i) => { groupsByKey[`exact-${i}`] = {docs: g, labelKey: 'duplicatesExactMatchLabel'}; });
+    metadataGroups.forEach((g, i) => { groupsByKey[`metadata-${i}`] = {docs: g, labelKey: 'duplicatesMetadataMatchLabel'}; });
     listEl.querySelectorAll('.duplicate-row').forEach(row => {
       row.addEventListener('click', () => {
         const documentId = Number(row.dataset.documentId);
+        const group = groupsByKey[row.dataset.groupKey];
         closeModal();
+        if(group) drillIntoReportRow(group.docs.map(d => d.id), t(group.labelKey), 'library-check');
         selectedDocId = documentId;
         render();
         openDetail(documentId);
@@ -9177,7 +9196,17 @@
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
   // "← Back to Reports" in the drill-down banner -- setView() itself handles the
   // "already on this view" no-op case, so this needs no guard of its own.
-  el('report-drilldown-back-btn').addEventListener('click', () => setView('reports'));
+  el('report-drilldown-back-btn').addEventListener('click', () => {
+    if(reportDrilldownReturnTo === 'library-check'){
+      // Back to the full table, with the modal reopened on top -- recomputed
+      // fresh, so any duplicate just archived/deleted is reflected, and
+      // instant, since every document already has its file_hash by now.
+      setView('all');
+      openLibraryCheckModal();
+    } else {
+      setView('reports');
+    }
+  });
   // Always-visible toolbar entry point to checkInbox() -- the banner above only
   // reflects whatever checkInbox() found the one time it runs automatically
   // (right after a library opens, see afterDbReady()). Without this, there was

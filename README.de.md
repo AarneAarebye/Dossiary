@@ -228,7 +228,16 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Datum), Dokumente, deren Datei oder Original auf der Festplatte fehlt
   (mit einem Button „Re-link…", um die Datei neu auszuwählen), sowie Tags
   oder Personen, die kein Dokument mehr verwendet (löschbar nach
-  Bestätigung). Beim Erfassen warnt Dossiary außerdem, wenn die gewählte
+  Bestätigung). Ein Klick auf ein Dokument in einer Duplikatgruppe zeigt
+  nur diese Gruppe in der Tabelle, sodass Sie die Kopien vergleichen und
+  die überzähligen archivieren oder löschen können, mit einem Link zurück
+  zur Bibliotheksprüfung. Der erste Durchlauf muss jede Datei einmal
+  lesen, um ihren Fingerabdruck zu berechnen — bei einer großen oder per
+  Cloud synchronisierten Bibliothek (iCloud-Drive-Dateien müssen evtl.
+  erst geladen werden) kann das dauern; er liest mehrere Dateien
+  gleichzeitig, speichert den Fortschritt laufend und hat einen
+  Stopp-Button, sodass die nächste Bibliotheksprüfung einfach dort
+  weitermacht. Beim Erfassen warnt Dossiary außerdem, wenn die gewählte
   Datei schon in der Bibliothek ist, und Inbox/Drag & Drop überspringen
   exakte Duplikate mit einem Hinweis in der Statuszeile.
 - **Storage stats** — der Button „💾 Storage stats" in der Symbolleiste

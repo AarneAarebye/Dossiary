@@ -190,7 +190,14 @@ working" problem that motivated this project in the first place.
   hash) and likely duplicates (same title and date), documents whose file
   or original is missing on disk (with a "Re-link…" button to pick the
   file again), and tags or people no longer used by any document (with
-  Delete, after confirmation). Capture also warns when you pick a file
+  Delete, after confirmation). Clicking a document in a duplicate group
+  shows just that group in the table, so you can compare the copies and
+  archive or delete the extras, with a link back to Library check. The
+  first run has to read every file once to fingerprint it, which can take
+  a while on a large or cloud-synced library (iCloud Drive files may need
+  to download first); it reads several files at once, saves progress as
+  it goes, and has a Stop button, so the next Library check simply picks
+  up where it left off. Capture also warns when you pick a file
   that's already in the library, and the Inbox/drag-and-drop skip exact
   duplicates and say so on the status line.
 - **Storage stats** — the "💾 Storage stats" toolbar button shows how much

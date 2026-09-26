@@ -3253,7 +3253,23 @@ this repo's git tags.
   and opens its detail panel -- the same click-through pattern the
   Reminders modal's own rows already use -- where the existing
   Archive/Delete/Edit actions do the actual resolving; this feature adds
-  no bespoke delete or merge action of its own. See
+  no bespoke delete or merge action of its own. **The click also filters
+  the table down to that whole group**, so the copies sit side by side
+  instead of being scattered through (or hidden from) the current view:
+  it reuses the Reports drill-down (`drillIntoReportRow(docIds, label,
+  'library-check')`, `currentView = 'report-drilldown'`), whose
+  archived/needs-review-inclusive, deleted-exclusive membership is exactly
+  what duplicate detection counts, so the banner's count always matches
+  the group. A new `reportDrilldownReturnTo` state (`'reports'` |
+  `'library-check'`, reset in `resetAll()`) picks the banner's back-link
+  label (`reportDrilldownBackLink` vs `libraryCheckBackLink`, set in
+  `updateReportDrilldownBanner()` on every render rather than only via
+  `data-i18n`) and target: for Library check it returns to All Documents
+  and reopens the modal, recomputed fresh so a just-deleted duplicate is
+  gone, and instant since every document is hashed by then. A
+  broken-link row has no group, so clicking it only selects the document,
+  as before. Like a Reports drill-down, the group is a snapshot taken at
+  click time. See
   `docs/superpowers/specs/2026-09-24-duplicate-detection-design.md` for
   the full design.
 - **The "Find duplicates" modal was renamed to "Library check"

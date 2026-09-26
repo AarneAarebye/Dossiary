@@ -688,7 +688,10 @@ grouping an exact-hash match and a
 Title+Date metadata match into separate, correctly-labeled groups, a
 same-title-different-date document correctly excluded from the Title+Date
 grouping, clicking a document in a group closing the modal and opening
-its detail panel, and a second modal open not re-triggering the backfill
+its detail panel while filtering the table to exactly that group's
+documents (clicked row selected, a banner naming the group and its size,
+and a "← Back to Library check" link that reopens the modal over the
+unfiltered All Documents view), and a second modal open not re-triggering the backfill
 progress indicator once every document already has a hash; a deleted
 document excluded from groupings (an exact-hash group correctly shrinking
 from 3 to 2 members after one is deleted, its title no longer appearing
