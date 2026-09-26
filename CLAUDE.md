@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (74 scripts) + shared
+tests/                   Playwright regression suite (75 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -174,6 +174,20 @@ this repo's git tags.
   `＋`/`✕` used elsewhere in the UI) rely on browser encoding-sniffing
   instead of a guarantee. Both bugs are the kind that "work fine" in quick
   testing and then fail unpredictably for someone else — keep both lines.
+  **`<html translate="no">` and `<meta name="google" content="notranslate">`
+  right after them are load-bearing too**: the app translates itself, and
+  without them Chrome's own page translator kicks in as soon as the UI
+  language changes and machine-translates the page on top of it
+  ("DOSSIERS" became "FILES", the language menu's native names became
+  "German"/"Spanish").
+- **The status line retranslates on a language change via a remembered
+  *builder*, not a key** (`setStatusLive(build, kind)`, `lastStatusBuild`;
+  `setStatusT(key, params, kind)` is the one-key shorthand). Composite
+  messages -- several `t()` results joined, like the Inbox/drag-and-drop
+  "Added N documents… N skipped as duplicates…" reports -- pass their own
+  builder closure so they retranslate too; they used to go through plain
+  `setStatus()` and stayed in the old language. Plain `setStatus()` is now
+  only for clearing the line.
 - **`.table-wrap` is a deliberate, bounded scroll container** (`overflow:auto`
   + `max-height:calc(100vh - Xpx)`, `X` now nav-style- and footer-dependent —
   see below), not just "the table with horizontal scroll" it looks like at a
@@ -1548,7 +1562,12 @@ this repo's git tags.
   the panel showing its content even if the row doesn't (e.g. it just got
   archived out of the currently-visible view). This is intentional —
   quick "undo" reachability right after an action, not a bug — not an
-  invalidation loophole to close. **Clicking a row never auto-expands a collapsed
+  invalidation loophole to close. **`openDetail()` is async and can be
+  superseded mid-flight** -- it awaits file reads (thumbnail, PDF page count)
+  before writing the panel, and on a slow filesystem (a library in iCloud
+  Drive) a newer call such as `render()`'s `openDetail(null)` can finish
+  first. `detailRenderSeq` makes an older call drop its late write instead
+  of putting a no-longer-selected document back into the panel. **Clicking a row never auto-expands a collapsed
   panel** — selection, highlighting, and content-refresh all happen
   unconditionally on every row click, but panel *visibility* is
   controlled only by the toolbar's own `#detail-panel-toggle-btn`,
@@ -1723,7 +1742,10 @@ this repo's git tags.
   true — i.e. `type === 'text' || type === 'checkbox'`; Number/Date fields
   get a column but no filter dropdown, same reasoning as Date/Amount never
   having had one: a dropdown listing every distinct number/date isn't
-  useful), and `currentFilters()`/`applyFilters()` read whatever dynamic
+  useful) -- and ends by calling `applyColumnVisibility()` itself, since a
+  filter's visibility follows its column's and the Reports view's
+  `render()` returns before applying it (a language switch on Reports
+  used to expose hidden-column filters) -- and `currentFilters()`/`applyFilters()` read whatever dynamic
   `<select>`s currently exist via `document.querySelectorAll('#dynamic-filters select')`
   rather than named consts, so no code changes are needed as fields are
   flagged/unflagged. `sortDocs()` has a `sortKey.startsWith('field-')`

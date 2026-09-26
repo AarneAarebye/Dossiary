@@ -1,5 +1,11 @@
 <!DOCTYPE html>
+<html translate="no">
 <meta charset="UTF-8">
+<!-- Dossiary translates itself (six UI languages). Without these, Chrome's own
+     page translator offers to -- and then does -- machine-translate the page as
+     soon as the UI language changes, mangling labels, brand names, and the
+     language menu's native names. -->
+<meta name="google" content="notranslate">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='6' width='52' height='52' rx='11' fill='%231b2426' stroke='rgba(79,224,166,0.55)' stroke-width='2.4'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-family='ui-monospace,Menlo,Consolas,monospace' font-size='32' font-weight='700' fill='%234fe0a6'%3ED%3C/text%3E%3Ccircle cx='47' cy='47' r='2.6' fill='%234fe0a6'/%3E%3C/svg%3E">
 <style>
   :root{
@@ -108,7 +114,11 @@
     margin-bottom:0; justify-content:flex-start;
   }
   #main-layout.nav-style-sidebar .nav-item.active{ border-radius:0; }
-  #main-layout.nav-style-sidebar .nav-item-label{ flex:1; }
+  /* Longer translations ("Todos los documentos", "Boîte de réception") don't fit
+     the 220px sidebar on one line: let the label wrap instead of pushing the
+     count badge out of the sidebar, and never let the badge itself shrink. */
+  #main-layout.nav-style-sidebar .nav-item-label{ flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; }
+  .nav-item-count{ flex-shrink:0; }
   #main-layout.nav-style-sidebar .nav-style-toggle{ margin:auto 20px 0; align-self:stretch; }
 
   .nav-collections-section{
@@ -151,7 +161,7 @@
   }
   .nav-save-smart-btn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
   #main-layout.nav-style-sidebar .nav-collections-header-row{ flex-wrap:wrap; row-gap:6px; }
-  #main-layout.nav-style-sidebar .nav-save-smart-btn{ margin:0 0 0 20px; }
+  #main-layout.nav-style-sidebar .nav-save-smart-btn{ margin:0 20px; white-space:normal; text-align:left; max-width:calc(100% - 40px); }
   /* Tabs mode: the inline name-entry form floats like the collections list itself
      (same anchor -- .nav-collections-section is position:relative). Sidebar mode:
      normal in-flow, indented to match the rest of this section's sidebar content. */
@@ -461,6 +471,9 @@
   .modal-section h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
   .modal-meta{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim); line-height:1.9; }
   .modal-meta b{ color:var(--text); font-weight:500; }
+  /* File/Original paths are long, space-free strings -- let them break anywhere
+     rather than run off the (narrow) detail panel's right edge. */
+  .modal-meta code{ overflow-wrap:anywhere; word-break:break-all; }
   .modal-actions{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
   .ocr-box{ max-height:200px; overflow-y:auto; font-family:var(--font-mono); font-size:11.5px; line-height:1.7; color:var(--text-dim); background:var(--ink-2); padding:12px; border-radius:var(--radius); white-space:pre-wrap; }
 
@@ -597,6 +610,11 @@
       max-height:none; overflow-y:visible;
     }
     #main-layout.nav-style-sidebar .nav-item-label{ display:none; }
+    /* The desktop sidebar lets "Save as Smart Collection" wrap to fit its 220px
+       width; here the nav is a single horizontally-scrollable row, where
+       wrapping only makes the row taller (and eats into .table-wrap's
+       max-height budget), so keep it on one line. */
+    #main-layout.nav-style-sidebar .nav-save-smart-btn{ white-space:nowrap; max-width:none; }
     /* #reports-view is page-flow-scrolled, not a bounded .table-wrap-style
        container, so it needs its own footer allowance -- the fixed footer's
        mobile height (plus its own padding/border) clips the Grand total row
@@ -2348,10 +2366,11 @@
     // someone goes to change the language) stayed baked in that language even
     // after switching, regardless of what was picked. Re-render it here from its
     // remembered key/params, if any (see setStatusT()'s own note); a status
-    // message set with the plain setStatus() (composite messages built by
-    // concatenating more than one t() result, and the explicit "clear the status
-    // line" calls) leaves no remembered key, so this is correctly a no-op then.
-    if(lastStatusKey){ setStatusT(lastStatusKey, lastStatusParams, lastStatusKind); }
+    // message set with the plain setStatus() (the explicit "clear the status line"
+    // calls, or a raw non-translated message) leaves no remembered builder, so this
+    // is correctly a no-op then. Composite messages (several t() results joined)
+    // re-render too, via setStatusLive()'s remembered builder function.
+    if(lastStatusBuild){ setStatusLive(lastStatusBuild, lastStatusKind); }
   }
 
   // The footer's User Guide link is a real external link (GitHub's rendered
@@ -2614,19 +2633,20 @@
   const appNav = el('app-nav');
   const modalRoot = el('modal-root');
 
-  // setStatusT() remembers which t() key/params produced the current status text (in
-  // lastStatusKey/lastStatusParams/lastStatusKind) so setLang() can re-render it in the
+  // setStatusLive() remembers a function that rebuilds the current status text from
+  // t() calls (in lastStatusBuild/lastStatusKind) so setLang() can re-render it in the
   // newly selected language -- without this, a status message set while one language was
   // active (e.g. "Opened N documents from X", the very first thing shown after opening a
   // library) stays baked in that language forever, even after switching languages, since
-  // nothing else ever re-invokes it. A plain setStatus() call (used for the handful of
-  // composite messages built by concatenating more than one t() result, and for the
-  // explicit "clear the status line" calls) intentionally clears the remembered key, so a
-  // later language switch doesn't wrongly resurrect a stale single-key translation onto a
-  // message it didn't actually produce.
-  let lastStatusKey = null, lastStatusParams = null, lastStatusKind = null;
+  // nothing else ever re-invokes it. It takes a builder rather than one key so that
+  // composite messages (several t() results joined, e.g. "Added 2 documents… 1 skipped
+  // as a duplicate.") retranslate too -- remembering only a single key used to leave
+  // those stuck in the old language. setStatusT() is the one-key shorthand. A plain
+  // setStatus() call (the explicit "clear the status line" calls) clears the
+  // remembered builder, so a later language switch doesn't resurrect a stale message.
+  let lastStatusBuild = null, lastStatusKind = null;
   function setStatus(msg, kind){
-    lastStatusKey = null; lastStatusParams = null;
+    lastStatusBuild = null;
     statusEl.className = 'status' + (kind ? ' ' + kind : '');
     // 'busy' is the one kind rendered as HTML (spinner + escaped text) rather than
     // plain textContent -- msg isn't guaranteed free of HTML-special characters
@@ -2636,7 +2656,8 @@
     if(kind === 'busy'){ statusEl.innerHTML = msg ? '<span class="spinner"></span> ' + escapeHtml(msg) : ''; }
     else{ statusEl.textContent = msg || ''; }
   }
-  function setStatusT(key, params, kind){ setStatus(t(key, params), kind); lastStatusKey = key; lastStatusParams = params || null; lastStatusKind = kind; }
+  function setStatusLive(build, kind){ setStatus(build(), kind); lastStatusBuild = build; lastStatusKind = kind; }
+  function setStatusT(key, params, kind){ setStatusLive(() => t(key, params), kind); }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function nowIso(){ return new Date().toISOString(); }
   function todayIsoDate(){ return nowIso().slice(0, 10); } // YYYY-MM-DD, matches <input type="date">
@@ -4983,6 +5004,12 @@
       // ...) doesn't stack up duplicate listeners.
       breakdownSelect.addEventListener('change', render);
     }
+    // The dynamic filter <span>s above are freshly created (visible), and their
+    // visibility follows their column's (see applyColumnVisibility()). Apply it
+    // here rather than relying on the next render(): render() returns early for
+    // the Reports view, so rebuilding filters there (e.g. a language switch) used
+    // to leave hidden-column filters like "payment method"/"currency" showing.
+    applyColumnVisibility();
   }
 
   // Category/Subcategory/Document Type/Currency/People/Tags stay fixed, hardcoded
@@ -7065,7 +7092,15 @@
     return actions;
   }
 
+  // Incremented on every openDetail() call. openDetail() awaits file reads
+  // (thumbnail, PDF page count) before it writes the panel, and on a slow
+  // filesystem (e.g. a library in iCloud Drive) a newer call can finish first --
+  // typically openDetail(null) from render() clearing a selection that fell out of
+  // the view. Without this token the older call's late write put the stale
+  // document back into the panel, even though nothing was selected anymore.
+  let detailRenderSeq = 0;
   async function openDetail(id){
+    const renderSeq = ++detailRenderSeq;
     const panelBody = el('detail-panel-body');
     const d = allDocs.find(x => x.id === id);
     // openDetail() is the authoritative setter of selectedDocId -- whatever
@@ -7143,6 +7178,7 @@
     const fileFullPath = d.file_path ? `${rootDirHandle.name}/${d.file_path}` : null;
     const originalFullPath = d.original_file_path ? `${rootDirHandle.name}/${d.original_file_path}` : null;
 
+    if(renderSeq !== detailRenderSeq) return; // superseded while awaiting file reads -- see detailRenderSeq
     panelBody.innerHTML = `
           <div class="modal-head">
             ${thumbHtml}
@@ -9191,23 +9227,25 @@
     }
     renderStats(); populateFilters(); populateDatalists(); render();
     if(added) setView('inbox');
-    const parts = [];
-    if(added){
-      parts.push(added === 1
-        ? t('dragdropAddedSingleForReview', {title: lastTitle || t('commonDocumentFallback', {id: lastId}), id: lastId})
-        : t('dragdropAddedMultiForReview', {count: added}));
-    }
-    if(skipped){
-      parts.push(skipped === 1
-        ? t('dragdropSkippedDuplicatesSingular', {count: skipped})
-        : t('dragdropSkippedDuplicatesPlural', {count: skipped}));
-    }
-    if(failed){
-      parts.push(failed === 1
-        ? t('dragdropPartialFailureSingular', {count: failed})
-        : t('dragdropPartialFailurePlural', {count: failed}));
-    }
-    setStatus(parts.join(' '), failed ? 'err' : 'ok');
+    setStatusLive(() => {
+      const parts = [];
+      if(added){
+        parts.push(added === 1
+          ? t('dragdropAddedSingleForReview', {title: lastTitle || t('commonDocumentFallback', {id: lastId}), id: lastId})
+          : t('dragdropAddedMultiForReview', {count: added}));
+      }
+      if(skipped){
+        parts.push(skipped === 1
+          ? t('dragdropSkippedDuplicatesSingular', {count: skipped})
+          : t('dragdropSkippedDuplicatesPlural', {count: skipped}));
+      }
+      if(failed){
+        parts.push(failed === 1
+          ? t('dragdropPartialFailureSingular', {count: failed})
+          : t('dragdropPartialFailurePlural', {count: failed}));
+      }
+      return parts.join(' ');
+    }, failed ? 'err' : 'ok');
   }
 
   // Waste bin, Inbox (needs_review), All Documents, and Reports are now the four
@@ -9233,34 +9271,34 @@
     }
     const { added, skipped, failed } = await addAllInboxFiles();
     if(!added && !skipped){
-      setStatus(
-        count === 1
+      setStatusLive(() => count === 1
           ? t('dragdropCouldNotAddAnyOfCountSingular', {count, folder: folderLabel})
           : t('dragdropCouldNotAddAnyOfCountPlural', {count, folder: folderLabel}),
-        'err'
-      );
+        'err');
       return;
     }
     // Only jump to the Inbox view when something new actually needs reviewing --
     // a batch that was entirely duplicates has nothing new to look at there.
     if(added) setView('inbox');
-    const parts = [];
-    if(added){
-      parts.push(added === 1
-        ? t('dragdropAddedToReviewQueueSingular', {count: added, folder: folderLabel})
-        : t('dragdropAddedToReviewQueuePlural', {count: added, folder: folderLabel}));
-    }
-    if(skipped){
-      parts.push(skipped === 1
-        ? t('dragdropSkippedDuplicatesSingular', {count: skipped})
-        : t('dragdropSkippedDuplicatesPlural', {count: skipped}));
-    }
-    if(failed){
-      parts.push(failed === 1
-        ? t('dragdropPartialFailureStillThereSingular', {count: failed})
-        : t('dragdropPartialFailureStillTherePlural', {count: failed}));
-    }
-    setStatus(parts.join(' '), failed ? 'err' : 'ok');
+    setStatusLive(() => {
+      const parts = [];
+      if(added){
+        parts.push(added === 1
+          ? t('dragdropAddedToReviewQueueSingular', {count: added, folder: folderLabel})
+          : t('dragdropAddedToReviewQueuePlural', {count: added, folder: folderLabel}));
+      }
+      if(skipped){
+        parts.push(skipped === 1
+          ? t('dragdropSkippedDuplicatesSingular', {count: skipped})
+          : t('dragdropSkippedDuplicatesPlural', {count: skipped}));
+      }
+      if(failed){
+        parts.push(failed === 1
+          ? t('dragdropPartialFailureStillThereSingular', {count: failed})
+          : t('dragdropPartialFailureStillTherePlural', {count: failed}));
+      }
+      return parts.join(' ');
+    }, failed ? 'err' : 'ok');
   }
 
   function checkRemindersAndShowStatus(){

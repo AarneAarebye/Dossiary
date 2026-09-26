@@ -4,8 +4,8 @@ Guidance for Claude when working under this repo's `tests/` directory. Loads onl
 
 ## How this was tested (useful context for future changes)
 
-There's a real, runnable Playwright regression suite in `tests/` — **74
-scripts covering most of the app's actual functionality** (72 of them
+There's a real, runnable Playwright regression suite in `tests/` — **75
+scripts covering most of the app's actual functionality** (73 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -762,7 +762,17 @@ unused" confirming with the count and the name of the affected Smart
 Collection, then removing the rest -- per-type setup, a Waste-bin
 document's value and people, and only the deleted field's filter from
 that Smart Collection's criteria -- while the used field's value stays;
-and reopening the check listing nothing), the "🛠 Tools" toolbar
+and reopening the check listing nothing), fixes found while recapturing
+the User Guide screenshots (`test_ui_polish.py` -- `<html translate="no">`
+and the notranslate meta present; the composite Inbox-add status message
+retranslating on a language switch; a deliberately slowed `getFile()`
+proving a superseded `openDetail()` can't write a no-longer-selected
+document back into the panel after a switch to a view that doesn't show
+it; a hidden-column dynamic filter staying hidden after filters are
+rebuilt on the Reports view; nav count badges and "Save as Smart
+Collection" staying inside the 220px sidebar in Spanish; and a long,
+space-free file path wrapping inside the detail panel -- every check
+confirmed to fail against the pre-fix code), the "🛠 Tools" toolbar
 dropdown (`test_tools_menu.py` -- "Switch library" sitting in the header
 on the same line as the library's name, returning to the start screen's
 recent-libraries list without opening the folder picker by itself, and
