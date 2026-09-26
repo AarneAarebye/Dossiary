@@ -2318,7 +2318,14 @@
     // note) -- that guard exists specifically because re-rendering an open *modal*
     // (capture/edit) mid-session would discard whatever's already typed into the form;
     // the panel is read-only display content, so there's nothing in-progress to lose.
-    if(rootDirHandle){ renderStats(); populateFilters(); renderColumnsMenu(); render(); if(selectedDocId !== null) openDetail(selectedDocId); }
+    // "A library is open" means a database is actually loaded, not merely that
+    // a folder was picked: while the init-state ("no library.sqlite found")
+    // prompt is showing, rootDirHandle is already set but db is still null --
+    // keying on rootDirHandle alone rendered an empty document table and stats
+    // underneath that prompt on a language change, and left #sub-label's
+    // "No library open" untranslated.
+    const libraryOpen = !!(rootDirHandle && db);
+    if(libraryOpen){ renderStats(); populateFilters(); renderColumnsMenu(); render(); if(selectedDocId !== null) openDetail(selectedDocId); }
     // renderRecentLibraries() likewise builds its whole markup (heading,
     // "Last opened" dates, the remove button's title/aria-label) via t() calls
     // baked into a template string at render time, not data-i18n attributes --
@@ -2330,7 +2337,7 @@
     // open (the folder name, set directly via `subLabel.textContent = rootDirHandle.name`
     // at each of its other call sites), so the empty-state text is set explicitly here
     // instead, only in the branch where there's genuinely no library open.
-    if(!rootDirHandle){ subLabel.textContent = t('emptyTitle'); renderRecentLibraries(); }
+    if(!libraryOpen){ subLabel.textContent = t('emptyTitle'); renderRecentLibraries(); }
     updateUserGuideLink();
     // The status line (#status) is set via setStatusT() at every point something
     // just happened (library opened, document saved, inbox file added, ...) and,

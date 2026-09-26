@@ -135,6 +135,20 @@ async def main():
         # bold tags visually; only inspecting the actual innerHTML catches it).
         init_message_html = await page4.locator('#init-message').inner_html()
         print("Scenario 6 -- init-message has no nested <b><b> tags:", '<b><b>' not in init_message_html and '<b></b>' not in init_message_html)
+        # Switching language WHILE the init-state prompt is showing: a folder is
+        # picked (rootDirHandle set) but no database is loaded yet, so setLang()
+        # must treat this as "no library open" -- it used to render an empty
+        # document table and stats underneath the prompt and leave #sub-label's
+        # "No library open" untranslated.
+        await page4.select_option('#lang-select', 'es')
+        await page4.wait_for_timeout(200)
+        print("Scenario 6 -- language switch on the init-state screen translates the prompt:", await page4.locator('#init-state h2').inner_text() == "Carpeta vacía")
+        print("Scenario 6 -- ...and #sub-label:", await page4.locator('#sub-label').inner_text() == "Ninguna biblioteca abierta")
+        print("Scenario 6 -- ...without rendering the document table or stats underneath:",
+              not await page4.locator('#table-wrap').is_visible() and not await page4.locator('#count-line').is_visible()
+              and (await page4.locator('#stats').inner_text()).strip() == '')
+        await page4.select_option('#lang-select', 'de')
+        await page4.wait_for_timeout(150)
 
         # === Scenario 7: recent-libraries list (on the empty-state screen) is
         # rebuilt via t() calls baked into a template string, not data-i18n

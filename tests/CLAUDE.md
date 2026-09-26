@@ -261,7 +261,10 @@ to `display:none` except below the 640px mobile breakpoint — several
 other scenarios across this same file, and across the suite generally,
 now need a narrowed viewport to reach the button at all, where they
 previously didn't), UI language support
-(`test_i18n.py` — default English with no locale signal; auto-detecting
+(`test_i18n.py` — switching language while the init-state ("no
+library.sqlite found") prompt is showing translating the prompt and
+`#sub-label` without rendering the document table or stats underneath;
+default English with no locale signal; auto-detecting
 German from `navigator.language`/`navigator.languages` on first load with
 no stored preference yet; selecting a language from the `<select
 id="lang-select">` dropdown overriding that and persisting across a
