@@ -3176,16 +3176,29 @@ this repo's git tags.
   duplicates" — see the rename note below) is opened, it reads
   and hashes every not-yet-hashed document's file once, with a progress
   indicator (the same spinner-plus-status-text treatment `runOcr()`'s own
-  PDF-page-by-page progress already uses), persisting each hash as it's
-  computed (batched into a single `persistDb()` call at the end, not one
-  per document) so every later scan and every capture-time check is
-  instant. Until that first backfill runs, the capture-time warning can
-  only catch matches against documents that already happen to have a hash.
-  The modal's own close control, backdrop-click, and Escape key are all
-  gated on an in-progress backfill flag -- the same "disable, only re-enable
-  on completion" treatment `triggerScan()` already uses for the Scan/Scan
-  Multi buttons -- since the pass is already writing persisted hashes as
-  it goes and isn't meant to be interrupted mid-pass.
+  PDF-page-by-page progress already uses), so every later scan and every
+  capture-time check is instant. Until that first backfill runs, the
+  capture-time warning can only catch matches against documents that
+  already happen to have a hash. **The first backfill can be very slow on a
+  cloud-synced library folder** (reported on a 1,345-document library on
+  iCloud Drive: an evicted file has to be downloaded before it can be
+  read, so hashing means downloading), which shaped three properties of
+  the loop: it reads **4 files concurrently** (`BACKFILL_CONCURRENCY`),
+  mostly to overlap those downloads; it **persists every 25 hashes**
+  (`BACKFILL_PERSIST_EVERY`, plus once at the end) rather than only at the
+  end -- `persistDb()` calls are chained through one promise so two
+  workers never race on `library.sqlite`'s `createWritable()` -- so a
+  closed tab or reload keeps what's done; and it shows a **Stop** button
+  (`#duplicates-stop-btn`) that lets in-flight reads finish, persists,
+  and shows the results with a note (`#duplicates-stopped-note`) that the
+  exact-duplicate section is incomplete. The next Library check resumes
+  naturally, since it only ever backfills documents whose `file_hash` is
+  still unset. The modal's own close control, backdrop-click, and Escape
+  key stay gated on the in-progress backfill flag -- the same "disable,
+  only re-enable on completion" treatment `triggerScan()` already uses for
+  the Scan/Scan Multi buttons -- so Stop is the one sanctioned way out
+  mid-pass. A failed mid-pass save sets the same stop flag, so the other
+  workers don't keep hashing after the error has already propagated.
   **The capture form warns, non-blocking, the moment a file is picked**
   (`handlePickedFile()`), checking the picked file's hash against every
   non-deleted document's `file_hash` in `allDocs` (the same `!d.deleted`

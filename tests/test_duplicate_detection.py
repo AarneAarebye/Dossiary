@@ -593,3 +593,116 @@ async def main_backfill_failure():
         await browser.close()
 
 asyncio.run(main_backfill_failure())
+
+
+# === Backfill Stop/resume, batched persistence, and concurrency: a large first
+# backfill (e.g. a library on an iCloud-synced folder, where every evicted file
+# has to be downloaded before it can be hashed) must (a) read several files at
+# once, (b) persist progress in batches rather than only at the very end, and
+# (c) offer a Stop button that keeps what's been hashed so far, shows results,
+# and lets the next Library check resume with only the remaining documents. ===
+BACKFILL_STOP_DOC_COUNT = 60
+SEED_BACKFILL_STOP = {
+    "documents": [
+        {
+            "id": i, "title": f"Stop Doc {i}", "category": None, "document_type": None,
+            "date": None, "notes": None, "ocr_text": None, "ocr_language": None,
+            "file_path": f"files/{i}_doc.pdf", "original_file_path": None,
+            "created_at": "2026-01-01T00:00:00Z", "source": "captured", "source_legacy_id": None,
+        }
+        for i in range(1, BACKFILL_STOP_DOC_COUNT + 1)
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_backfill_stop_resume():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        stub_js = open('stub_studio2.js').read()
+        await page.add_init_script(stub_js)
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+
+        import json
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED_BACKFILL_STOP)});")
+        await page.evaluate(f"""
+            async () => {{
+                const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files', {{ create: true }});
+                for(let i = 1; i <= {BACKFILL_STOP_DOC_COUNT}; i++){{
+                    const h = await filesDir.getFileHandle(i + '_doc.pdf', {{ create: true }});
+                    const w = await h.createWritable(); await w.write(new TextEncoder().encode('%PDF-1.4 unique ' + i)); await w.close();
+                }}
+            }}
+        """)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(300)
+
+        # Slow every digest down (standing in for a slow cloud download) and
+        # record the peak number of hashes in flight at once; also count every
+        # write to library.sqlite, to observe batched persistence.
+        await page.evaluate("""
+            async () => {
+                const originalDigest = window.crypto.subtle.digest.bind(window.crypto.subtle);
+                window.__inFlight = 0; window.__peakInFlight = 0;
+                window.crypto.subtle.digest = async (...args) => {
+                    window.__inFlight++; window.__peakInFlight = Math.max(window.__peakInFlight, window.__inFlight);
+                    await new Promise(r => setTimeout(r, 60));
+                    window.__inFlight--;
+                    return originalDigest(...args);
+                };
+                const dbHandle = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                const originalCreateWritable = dbHandle.createWritable.bind(dbHandle);
+                window.__dbWrites = 0;
+                dbHandle.createWritable = async (...args) => { window.__dbWrites++; return originalCreateWritable(...args); };
+            }
+        """)
+
+        await page.evaluate("() => { window.__modalDone = window.__DEBUG_openLibraryCheckModal().then(() => true); }")
+        # Wait until well past the first persist batch (25), but short of all 60.
+        await page.wait_for_function("() => window.__DEBUG_countHashed && window.__DEBUG_countHashed() >= 32", timeout=10000)
+        stop_visible = await page.locator('#duplicates-stop-btn').is_visible()
+        print("Stop button is shown while the backfill is running:", stop_visible)
+        writes_before_stop = await page.evaluate("window.__dbWrites")
+        print("Progress was persisted mid-pass (before Stop, before the pass finished):", writes_before_stop >= 1)
+        peak = await page.evaluate("window.__peakInFlight")
+        print("Several files are hashed concurrently (peak in flight > 1, <= 4):", 1 < peak <= 4, peak)
+
+        await page.click('#duplicates-stop-btn')
+        await page.wait_for_function("() => window.__modalDone === true || window.__DEBUG_findDuplicatesBackfillRunning() === false", timeout=10000)
+        await page.wait_for_timeout(200)
+        hashed_after_stop = await page.evaluate("window.__DEBUG_countHashed()")
+        print("Stop halted the pass early (some, but not all, documents hashed):", 0 < hashed_after_stop < BACKFILL_STOP_DOC_COUNT, hashed_after_stop)
+        note_text = await page.locator('#duplicates-stopped-note').inner_text() if await page.locator('#duplicates-stopped-note').count() else ''
+        print("A stopped-early note is shown above the results:", f"{hashed_after_stop} of {BACKFILL_STOP_DOC_COUNT}" in note_text, repr(note_text))
+        close_enabled = not await page.locator('#modal-close-btn').is_disabled()
+        print("Close button is re-enabled after Stop:", close_enabled)
+        print("Backfill-running flag cleared after Stop:", not await page.evaluate("window.__DEBUG_findDuplicatesBackfillRunning()"))
+
+        # Resume: a fresh Library check only works through what's left.
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
+        await page.evaluate("() => { window.__DEBUG_openLibraryCheckModal(); }")
+        await page.wait_for_timeout(30)
+        progress_text = await page.locator('#duplicates-progress-text').inner_text()
+        remaining = BACKFILL_STOP_DOC_COUNT - hashed_after_stop
+        print("Re-opening resumes with only the remaining documents:", f"of {remaining} " in progress_text, repr(progress_text))
+        await page.wait_for_function("() => window.__DEBUG_findDuplicatesBackfillRunning() === false", timeout=15000)
+        print("Every document is hashed once the resumed pass finishes:", await page.evaluate("window.__DEBUG_countHashed()") == BACKFILL_STOP_DOC_COUNT)
+        print("No stopped-early note after a pass that ran to completion:", await page.locator('#duplicates-stopped-note').count() == 0)
+
+        print("JS ERRORS:", errors)
+        await browser.close()
+
+asyncio.run(main_backfill_stop_resume())

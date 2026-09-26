@@ -692,7 +692,12 @@ its detail panel, and a second modal open not re-triggering the backfill
 progress indicator once every document already has a hash; a deleted
 document excluded from groupings (an exact-hash group correctly shrinking
 from 3 to 2 members after one is deleted, its title no longer appearing
-in the modal)), the Library check modal's broken-file-links section
+in the modal; and, against a 60-document library with an artificially
+slowed `crypto.subtle.digest()`, the backfill hashing up to 4 files at
+once, persisting to `library.sqlite` mid-pass, the Stop button halting
+it early with a "Stopped after checking N of 60" note and the close
+button re-enabled, and a second Library check resuming with only the
+remaining documents)), the Library check modal's broken-file-links section
 (`test_broken_links.py` -- documents whose `file_path`, `original_file_path`,
 or both were deleted from the stub filesystem behind the app's back each
 get their own row with exactly the right File/Original indicators; a
