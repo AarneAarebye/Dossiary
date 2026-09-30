@@ -171,7 +171,7 @@ working" problem that motivated this project in the first place.
   row, including a currency's Grand total, to jump to the documents
   behind that number in the regular table, with a "← Back to Reports"
   link to return.
-- **Collections** — organize documents into your own named groupings, reachable from an expandable Collections section in the nav. Manual collections are hand-picked lists (select documents in the table to bulk-add them to a collection, bulk-archive, bulk-delete, or bulk-flag for review, or add one at a time from a document's own detail view); Smart Collections save your current search/category/type/person/field filters as a live view that keeps matching new documents automatically.
+- **Collections** — organize documents into your own named groupings, reachable from an expandable Collections section in the nav. Manual collections are hand-picked lists (select documents in the table to bulk-add them to a collection, bulk-archive, bulk-delete, or bulk-flag for review, or add one at a time from a document's own detail view); Smart Collections are live views defined by rules — *field, condition, value*, matching all or any of them — that keep matching new documents automatically. Create one from scratch (Tools → Manage collections → **+ New smart collection**), or save the toolbar's current filters with **☆ Save as Smart Collection**; either way it can be changed later with **Edit rules…**. Rules cover text (is, contains, …), tags and people (includes), numbers such as Amount (at least, at most, between), checkboxes, archived/in-review status, empty/not empty, and dates — including relative ones like *in the last 30 days*, *this month* or *last year*, re-evaluated every day.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom
   field values) written next to it, so macOS's built-in file search can
@@ -822,7 +822,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (83
+There's a real, runnable Playwright regression suite in `tests/` (84
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

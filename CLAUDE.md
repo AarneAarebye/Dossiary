@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (83 scripts) + shared
+tests/                   Playwright regression suite (84 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3742,6 +3742,36 @@ this repo's git tags.
   drops unknown ids. Single and bulk delete are the same call with a 1-
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
+- **Smart Collection rules and editor** (`matchesRules()`, `matchesRule()`,
+  `criteriaToRules()`, `smartRuleFields()`, `openSmartCollectionEditor()`,
+  Tools → Manage collections → "+ New smart collection" / "Edit rules…").
+  Smart Collection criteria now come in two shapes. The original toolbar
+  snapshot (`currentFilters()`'s shape) is still evaluated exactly as
+  before, so existing collections behave the same until someone saves them
+  from the editor. The rule shape is `{match: 'all'|'any', rules: [{field,
+  op, value, value2}]}`; `matchesCriteria()` hands anything with a `rules`
+  array to `matchesRules()`. The editor and "Save as Smart Collection"
+  both store rules (the latter converting the toolbar via
+  `criteriaToRules()`, which also turns an old snapshot into rules when it
+  is opened in the editor). **A custom field is referenced by id**
+  (`field:<id>`), so renaming a field needs no criteria update; built-ins
+  are `any` (the same search text as the toolbar box), `title`,
+  `category`, `subcategory`, `document_type`, `tags`, `date`,
+  `import_date`, `notes`, `ocr_text` and `status`. Operators depend on the
+  field's kind (`SMART_OPS_BY_KIND`): text compares case-insensitively and
+  trimmed; tags and person fields use includes/excludes; numbers use
+  inclusive gte/lte/between (matching the old Amount range); dates add
+  relative operators (`last_days`, `this_month`, `last_month`,
+  `this_year`, `last_year`), evaluated against `todayIsoDate()` on every
+  render. Mariner's built-in RECENT and TYPES collections are not
+  pre-created; the relative date and type rules let a person build them.
+  Like the snapshot shape, collection views include archived and
+  needs-review documents. `renameValue()` updates rule values (compared
+  case-insensitively), and `deleteFields()` drops rules on the deleted
+  field (`smartCollectionsFilteringOn()` checks both shapes, resolving ids
+  through `fieldDefs` because `fieldNameToId` is already cleared by then).
+  The editor's live count covers non-deleted documents; saving is refused
+  without a name or with a rule missing its value.
 - **Rename or merge values** (`openManageValuesModal()`, `valuesForKind()`,
   `renameValue()`, `startValueRename()`, Tools → "✎ Rename or merge
   values…") is Mariner's Tag Editor and editable category/merchant lists:

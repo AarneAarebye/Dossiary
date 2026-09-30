@@ -259,6 +259,16 @@
   .manage-collection-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); }
   .manage-collection-kind{ font-size:13px; }
   .manage-collection-rename-input{ flex:1; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:6px 8px; color:var(--text); font-family:var(--font-sans); font-size:13px; }
+  .smart-match-line{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:4px 0 10px; font-size:13px; color:var(--text-dim); }
+  .smart-rule{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--line); }
+  .smart-rule-values{ display:inline-flex; align-items:center; gap:6px; flex:1 1 180px; }
+  .smart-rule-values input{ flex:1; min-width:0; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:7px 8px; color:var(--text); font-family:var(--font-sans); font-size:13px; }
+  .smart-rule-values input[type=date]{ color-scheme:dark; }
+  .smart-rule-values input[type=number][step="1"]{ max-width:90px; flex:0 0 auto; }
+  .smart-rule-unit{ font-size:12px; color:var(--text-dim); }
+  .smart-rule-remove{ padding:4px 9px; }
+  #smart-add-rule-btn{ margin-top:10px; }
+  .smart-match-count{ font-family:var(--font-mono); font-size:11px; color:var(--phosphor); margin-top:12px; }
   .manage-collection-count{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); min-width:24px; text-align:right; }
   button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
   button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
@@ -943,6 +953,7 @@
   const DATE_LOCALE = { en: 'en-US', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
+      smartFieldAnyText: 'Any text', smartFieldStatus: 'Status', smartEditTitle: 'Edit Smart Collection', smartNewTitle: 'New Smart Collection', smartNameLabel: 'Name', smartMatchPrefix: 'Documents matching', smartMatchAll: 'all', smartMatchAny: 'any', smartMatchSuffix: 'of these rules:', smartAddRule: '+ Add rule', smartRemoveRule: 'Remove rule', smartMatchCountSingular: '{count} document matches', smartMatchCountPlural: '{count} documents match', smartNoRules: 'No rules: every document matches.', smartNameRequired: 'Give the collection a name.', smartValueRequired: 'Fill in a value for every rule, or remove the rule.', smartNewButton: '+ New smart collection', smartEditButton: 'Edit rules…', smartAnd: 'and', smartDaysSuffix: 'days', smartOpContains: 'contains', smartOpNotContains: 'doesn\'t contain', smartOpIs: 'is', smartOpIsNot: 'is not', smartOpEmpty: 'is empty', smartOpNotEmpty: 'is not empty', smartOpIncludes: 'includes', smartOpExcludes: 'doesn\'t include', smartOpGte: 'is at least', smartOpLte: 'is at most', smartOpBetween: 'is between', smartOpOn: 'is on', smartOpBefore: 'is before', smartOpAfter: 'is after', smartOpLastDays: 'is in the last', smartOpThisMonth: 'is this month', smartOpLastMonth: 'is last month', smartOpThisYear: 'is this year', smartOpLastYear: 'is last year', smartOpChecked: 'is checked', smartOpUnchecked: 'is not checked', smartOpArchived: 'is archived', smartOpNotArchived: 'is not archived', smartOpInReview: 'is in review', smartOpNotInReview: 'has been reviewed',
       commonCancel: 'Cancel', commonSave: 'Save', commonDone: 'Done', commonDelete: 'Delete',
       commonAdd: 'Add', commonClear: 'Clear', commonRemove: 'Remove', commonNone: '— None —',
       commonDocumentFallback: 'Document #{id}', commonYes: 'Yes', commonNo: 'No',
@@ -1146,6 +1157,7 @@
       reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNotDuplicateLabel: 'Not a duplicate', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
+      smartFieldAnyText: 'Cualquier texto', smartFieldStatus: 'Estado', smartEditTitle: 'Editar colección inteligente', smartNewTitle: 'Nueva colección inteligente', smartNameLabel: 'Nombre', smartMatchPrefix: 'Documentos que cumplen', smartMatchAll: 'todas', smartMatchAny: 'alguna', smartMatchSuffix: 'de estas reglas:', smartAddRule: '+ Añadir regla', smartRemoveRule: 'Quitar regla', smartMatchCountSingular: '{count} documento coincide', smartMatchCountPlural: '{count} documentos coinciden', smartNoRules: 'Sin reglas: coinciden todos los documentos.', smartNameRequired: 'Ponle un nombre a la colección.', smartValueRequired: 'Rellena un valor en cada regla o quita la regla.', smartNewButton: '+ Nueva colección inteligente', smartEditButton: 'Editar reglas…', smartAnd: 'y', smartDaysSuffix: 'días', smartOpContains: 'contiene', smartOpNotContains: 'no contiene', smartOpIs: 'es', smartOpIsNot: 'no es', smartOpEmpty: 'está vacío', smartOpNotEmpty: 'no está vacío', smartOpIncludes: 'incluye', smartOpExcludes: 'no incluye', smartOpGte: 'es al menos', smartOpLte: 'es como máximo', smartOpBetween: 'está entre', smartOpOn: 'es el', smartOpBefore: 'es antes del', smartOpAfter: 'es después del', smartOpLastDays: 'está en los últimos', smartOpThisMonth: 'es de este mes', smartOpLastMonth: 'es del mes pasado', smartOpThisYear: 'es de este año', smartOpLastYear: 'es del año pasado', smartOpChecked: 'está marcado', smartOpUnchecked: 'no está marcado', smartOpArchived: 'está archivado', smartOpNotArchived: 'no está archivado', smartOpInReview: 'está en revisión', smartOpNotInReview: 'está revisado',
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
       commonAdd: 'Añadir', commonClear: 'Borrar', commonRemove: 'Quitar', commonNone: '— Ninguno —',
       commonDocumentFallback: 'Documento n.º {id}', commonYes: 'Sí', commonNo: 'No',
@@ -1349,6 +1361,7 @@
       reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNotDuplicateLabel: 'No es un duplicado', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
+      smartFieldAnyText: 'Texte quelconque', smartFieldStatus: 'Statut', smartEditTitle: 'Modifier la collection intelligente', smartNewTitle: 'Nouvelle collection intelligente', smartNameLabel: 'Nom', smartMatchPrefix: 'Documents qui remplissent', smartMatchAll: 'toutes', smartMatchAny: 'au moins une', smartMatchSuffix: 'de ces règles :', smartAddRule: '+ Ajouter une règle', smartRemoveRule: 'Supprimer la règle', smartMatchCountSingular: '{count} document correspond', smartMatchCountPlural: '{count} documents correspondent', smartNoRules: 'Aucune règle : tous les documents correspondent.', smartNameRequired: 'Donnez un nom à la collection.', smartValueRequired: 'Indiquez une valeur pour chaque règle, ou supprimez la règle.', smartNewButton: '+ Nouvelle collection intelligente', smartEditButton: 'Modifier les règles…', smartAnd: 'et', smartDaysSuffix: 'jours', smartOpContains: 'contient', smartOpNotContains: 'ne contient pas', smartOpIs: 'est', smartOpIsNot: 'n’est pas', smartOpEmpty: 'est vide', smartOpNotEmpty: 'n’est pas vide', smartOpIncludes: 'inclut', smartOpExcludes: 'n’inclut pas', smartOpGte: 'est au moins', smartOpLte: 'est au plus', smartOpBetween: 'est entre', smartOpOn: 'est le', smartOpBefore: 'est avant le', smartOpAfter: 'est après le', smartOpLastDays: 'est dans les derniers', smartOpThisMonth: 'est ce mois-ci', smartOpLastMonth: 'est le mois dernier', smartOpThisYear: 'est cette année', smartOpLastYear: 'est l’année dernière', smartOpChecked: 'est coché', smartOpUnchecked: 'n’est pas coché', smartOpArchived: 'est archivé', smartOpNotArchived: 'n’est pas archivé', smartOpInReview: 'est à vérifier', smartOpNotInReview: 'a été vérifié',
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
       commonAdd: 'Ajouter', commonClear: 'Effacer', commonRemove: 'Retirer', commonNone: '— Aucun —',
       commonDocumentFallback: 'Document n° {id}', commonYes: 'Oui', commonNo: 'Non',
@@ -1552,6 +1565,7 @@
       reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNotDuplicateLabel: 'Pas un doublon', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
+      smartFieldAnyText: 'Beliebiger Text', smartFieldStatus: 'Status', smartEditTitle: 'Smart Collection bearbeiten', smartNewTitle: 'Neue Smart Collection', smartNameLabel: 'Name', smartMatchPrefix: 'Dokumente, die', smartMatchAll: 'alle', smartMatchAny: 'mindestens eine', smartMatchSuffix: 'dieser Regeln erfüllen:', smartAddRule: '+ Regel hinzufügen', smartRemoveRule: 'Regel entfernen', smartMatchCountSingular: '{count} Dokument passt', smartMatchCountPlural: '{count} Dokumente passen', smartNoRules: 'Keine Regeln: Jedes Dokument passt.', smartNameRequired: 'Gib der Collection einen Namen.', smartValueRequired: 'Trage für jede Regel einen Wert ein oder entferne die Regel.', smartNewButton: '+ Neue Smart Collection', smartEditButton: 'Regeln bearbeiten…', smartAnd: 'und', smartDaysSuffix: 'Tagen', smartOpContains: 'enthält', smartOpNotContains: 'enthält nicht', smartOpIs: 'ist', smartOpIsNot: 'ist nicht', smartOpEmpty: 'ist leer', smartOpNotEmpty: 'ist nicht leer', smartOpIncludes: 'enthält', smartOpExcludes: 'enthält nicht', smartOpGte: 'ist mindestens', smartOpLte: 'ist höchstens', smartOpBetween: 'liegt zwischen', smartOpOn: 'ist am', smartOpBefore: 'ist vor', smartOpAfter: 'ist nach', smartOpLastDays: 'liegt in den letzten', smartOpThisMonth: 'ist in diesem Monat', smartOpLastMonth: 'ist im letzten Monat', smartOpThisYear: 'ist in diesem Jahr', smartOpLastYear: 'ist im letzten Jahr', smartOpChecked: 'ist angehakt', smartOpUnchecked: 'ist nicht angehakt', smartOpArchived: 'ist archiviert', smartOpNotArchived: 'ist nicht archiviert', smartOpInReview: 'ist in Prüfung', smartOpNotInReview: 'ist geprüft',
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
       commonAdd: 'Hinzufügen', commonClear: 'Leeren', commonRemove: 'Entfernen', commonNone: '— Keine —',
       commonDocumentFallback: 'Dokument Nr. {id}', commonYes: 'Ja', commonNo: 'Nein',
@@ -1755,6 +1769,7 @@
       reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNotDuplicateLabel: 'Kein Duplikat', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
+      smartFieldAnyText: '任意文本', smartFieldStatus: '状态', smartEditTitle: '编辑智能收藏集', smartNewTitle: '新建智能收藏集', smartNameLabel: '名称', smartMatchPrefix: '符合以下', smartMatchAll: '全部', smartMatchAny: '任一', smartMatchSuffix: '规则的文档：', smartAddRule: '+ 添加规则', smartRemoveRule: '移除规则', smartMatchCountSingular: '{count} 个文档符合', smartMatchCountPlural: '{count} 个文档符合', smartNoRules: '没有规则：所有文档都符合。', smartNameRequired: '请为收藏集命名。', smartValueRequired: '请为每条规则填写值，或移除该规则。', smartNewButton: '+ 新建智能收藏集', smartEditButton: '编辑规则…', smartAnd: '和', smartDaysSuffix: '天', smartOpContains: '包含', smartOpNotContains: '不包含', smartOpIs: '是', smartOpIsNot: '不是', smartOpEmpty: '为空', smartOpNotEmpty: '不为空', smartOpIncludes: '包括', smartOpExcludes: '不包括', smartOpGte: '至少为', smartOpLte: '至多为', smartOpBetween: '介于', smartOpOn: '是', smartOpBefore: '早于', smartOpAfter: '晚于', smartOpLastDays: '在最近', smartOpThisMonth: '在本月', smartOpLastMonth: '在上个月', smartOpThisYear: '在今年', smartOpLastYear: '在去年', smartOpChecked: '已勾选', smartOpUnchecked: '未勾选', smartOpArchived: '已归档', smartOpNotArchived: '未归档', smartOpInReview: '待审阅', smartOpNotInReview: '已审阅',
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
       commonAdd: '添加', commonClear: '清除', commonRemove: '移除', commonNone: '— 无 —',
       commonDocumentFallback: '文档 #{id}', commonYes: '是', commonNo: '否',
@@ -1958,6 +1973,7 @@
       reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNotDuplicateLabel: '不是重复项', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
+      smartFieldAnyText: '任意文本', smartFieldStatus: '狀態', smartEditTitle: '編輯智能收藏集', smartNewTitle: '新建智能收藏集', smartNameLabel: '名稱', smartMatchPrefix: '符合以下', smartMatchAll: '全部', smartMatchAny: '任一', smartMatchSuffix: '規則的文檔：', smartAddRule: '+ 添加規則', smartRemoveRule: '移除規則', smartMatchCountSingular: '{count} 個文檔符合', smartMatchCountPlural: '{count} 個文檔符合', smartNoRules: '沒有規則：所有文檔都符合。', smartNameRequired: '請為收藏集命名。', smartValueRequired: '請為每條規則填寫值，或移除該規則。', smartNewButton: '+ 新建智能收藏集', smartEditButton: '編輯規則…', smartAnd: '和', smartDaysSuffix: '天', smartOpContains: '包含', smartOpNotContains: '不包含', smartOpIs: '是', smartOpIsNot: '不是', smartOpEmpty: '為空', smartOpNotEmpty: '不為空', smartOpIncludes: '包括', smartOpExcludes: '不包括', smartOpGte: '至少為', smartOpLte: '至多為', smartOpBetween: '介於', smartOpOn: '是', smartOpBefore: '早於', smartOpAfter: '晚於', smartOpLastDays: '在最近', smartOpThisMonth: '在本月', smartOpLastMonth: '在上個月', smartOpThisYear: '在今年', smartOpLastYear: '在去年', smartOpChecked: '已勾選', smartOpUnchecked: '未勾選', smartOpArchived: '已歸檔', smartOpNotArchived: '未歸檔', smartOpInReview: '待審閱', smartOpNotInReview: '已審閱',
       commonCancel: '取消',
       commonSave: '保存',
       commonDone: '完成',
@@ -5392,6 +5408,7 @@
   // so both use identical predicate logic; see applyFilters() (Task 2) for the live
   // side, and matchesView()'s 'collection-<id>' branch below for the saved side.
   function matchesCriteria(d, criteria){
+    if(Array.isArray(criteria.rules)) return matchesRules(d, criteria);
     const { q, category, type, person, dynamic, amountMin, amountMax, amountUnset } = criteria;
     if(category){
       if(category === FILTER_UNSET ? !!d.category : d.category !== category) return false;
@@ -6060,6 +6077,17 @@
       let criteria;
       try{ criteria = JSON.parse(c.criteria); }catch(e){ continue; }
       let changed = false;
+      if(Array.isArray(criteria.rules)){
+        const ruleFields = kind === 'tag' ? ['tags']
+          : kind === 'person' ? fieldDefs.filter(f => f.type === 'person').map(f => `field:${f.id}`)
+          : kind.startsWith('field-') ? [`field:${kind.slice(6)}`] : [kind];
+        for(const r of criteria.rules){
+          if(!ruleFields.includes(r.field)) continue;
+          for(const key of ['value', 'value2']){
+            if(typeof r[key] === 'string' && r[key].trim().toLowerCase() === oldValue.toLowerCase()){ r[key] = newValue; changed = true; }
+          }
+        }
+      }
       if(kind === 'category' && criteria.category === oldValue){ criteria.category = newValue; changed = true; }
       if(kind === 'document_type' && criteria.type === oldValue){ criteria.type = newValue; changed = true; }
       if(kind === 'person' && criteria.person === oldValue){ criteria.person = newValue; changed = true; }
@@ -6750,7 +6778,12 @@
   function smartCollectionsFilteringOn(fieldNames){
     return collections.filter(c => {
       if(c.kind !== 'smart' || !c.criteria) return false;
-      try{ return (JSON.parse(c.criteria).dynamic || []).some(f => fieldNames.includes(f.label)); }catch(e){ return false; }
+      const ruleFields = fieldDefs.filter(f => fieldNames.includes(f.name)).map(f => `field:${f.id}`);
+      try{
+        const criteria = JSON.parse(c.criteria);
+        return (criteria.dynamic || []).some(f => fieldNames.includes(f.label))
+          || (criteria.rules || []).some(r => ruleFields.includes(r.field));
+      }catch(e){ return false; }
     });
   }
 
@@ -6793,7 +6826,8 @@
     }
     for(const c of smartCollectionsFilteringOn(doomedNames)){
       const criteria = JSON.parse(c.criteria);
-      criteria.dynamic = criteria.dynamic.filter(f => !doomedNames.includes(f.label));
+      if(criteria.dynamic) criteria.dynamic = criteria.dynamic.filter(f => !doomedNames.includes(f.label));
+      if(criteria.rules) criteria.rules = criteria.rules.filter(r => !doomed.some(f => r.field === `field:${f.id}`));
       c.criteria = JSON.stringify(criteria);
       db.run('UPDATE collections SET criteria = ? WHERE id = ?', [c.criteria, c.id]);
     }
@@ -10353,6 +10387,349 @@
     }
   }
 
+  // --- Smart Collection rules ---
+  // A Smart Collection's criteria come in two shapes. The original one is a
+  // snapshot of the toolbar filters (currentFilters()'s own shape: q,
+  // category, type, person, dynamic, amount range), still evaluated as before
+  // for collections saved that way. The rule shape, {match: 'all'|'any',
+  // rules: [{field, op, value, value2}]}, is what the editor below writes,
+  // and what "Save as Smart Collection" now stores (converted from the
+  // toolbar by criteriaToRules()), so every collection can be opened and
+  // changed. A custom field is referenced by id (`field:<id>`), so renaming
+  // a field needs no criteria update; a rule on a deleted field is removed by
+  // deleteFields(). Date rules can be relative ("in the last 30 days", "this
+  // year"), evaluated against today on every render, like Mariner's own
+  // RECENT collections.
+  const SMART_OPS_WITHOUT_VALUE = ['empty', 'not_empty', 'this_month', 'last_month', 'this_year', 'last_year',
+    'checked', 'unchecked', 'archived', 'not_archived', 'in_review', 'not_in_review'];
+  const SMART_OPS_BY_KIND = {
+    search: ['contains', 'not_contains'],
+    text: ['is', 'is_not', 'contains', 'not_contains', 'empty', 'not_empty'],
+    multi: ['includes', 'excludes', 'empty', 'not_empty'],
+    number: ['is', 'is_not', 'gte', 'lte', 'between', 'empty', 'not_empty'],
+    date: ['on', 'before', 'after', 'between', 'last_days', 'this_month', 'last_month', 'this_year', 'last_year', 'empty', 'not_empty'],
+    checkbox: ['checked', 'unchecked', 'empty'],
+    status: ['archived', 'not_archived', 'in_review', 'not_in_review'],
+  };
+  const SMART_OP_LABEL_KEYS = {
+    contains: 'smartOpContains', not_contains: 'smartOpNotContains', is: 'smartOpIs', is_not: 'smartOpIsNot',
+    empty: 'smartOpEmpty', not_empty: 'smartOpNotEmpty', includes: 'smartOpIncludes', excludes: 'smartOpExcludes',
+    gte: 'smartOpGte', lte: 'smartOpLte', between: 'smartOpBetween', on: 'smartOpOn', before: 'smartOpBefore',
+    after: 'smartOpAfter', last_days: 'smartOpLastDays', this_month: 'smartOpThisMonth', last_month: 'smartOpLastMonth',
+    this_year: 'smartOpThisYear', last_year: 'smartOpLastYear', checked: 'smartOpChecked', unchecked: 'smartOpUnchecked',
+    archived: 'smartOpArchived', not_archived: 'smartOpNotArchived', in_review: 'smartOpInReview', not_in_review: 'smartOpNotInReview',
+  };
+
+  // Every field a rule can test: {id, label, kind, valuesKind} -- valuesKind
+  // names valuesForKind()'s list, used for the value box's suggestions.
+  function smartRuleFields(){
+    const fields = [
+      { id: 'any', label: t('smartFieldAnyText'), kind: 'search' },
+      { id: 'title', label: t('editTitleLabel'), kind: 'text' },
+      { id: 'category', label: t('tableColCategory'), kind: 'text', valuesKind: 'category' },
+      { id: 'subcategory', label: t('editSubcategoryLabel'), kind: 'text', valuesKind: 'subcategory' },
+      { id: 'document_type', label: t('tableColType'), kind: 'text', valuesKind: 'document_type' },
+      { id: 'tags', label: t('tableColTags'), kind: 'multi', valuesKind: 'tag' },
+      { id: 'date', label: t('tableColDate'), kind: 'date' },
+      { id: 'import_date', label: t('tableColImported'), kind: 'date' },
+      { id: 'notes', label: t('captureNotesLabel'), kind: 'text' },
+      { id: 'ocr_text', label: t('editOcrTextLabel'), kind: 'search' },
+      { id: 'status', label: t('smartFieldStatus'), kind: 'status' },
+    ];
+    const kindOf = { text: 'text', number: 'number', date: 'date', reminder: 'date', checkbox: 'checkbox', person: 'multi' };
+    for(const f of [...fieldDefs].sort((a, b) => a.name.localeCompare(b.name))){
+      if(!kindOf[f.type]) continue;
+      fields.push({ id: `field:${f.id}`, label: f.name, kind: kindOf[f.type],
+        valuesKind: f.type === 'person' ? 'person' : f.type === 'text' ? `field-${f.id}` : undefined });
+    }
+    return fields;
+  }
+
+  function smartFieldById(id){
+    if(id.startsWith('field:')){
+      const f = fieldDefs.find(x => x.id === Number(id.slice(6)));
+      return f ? { def: f } : null;
+    }
+    return { builtin: id };
+  }
+
+  // The value a rule tests on one document: a string (or undefined) for
+  // text/number/date/checkbox fields, an array for tags and person fields.
+  function smartRuleActual(d, field){
+    if(field.startsWith('field:')){
+      const f = fieldDefs.find(x => x.id === Number(field.slice(6)));
+      if(!f) return undefined;
+      if(f.type === 'person') return personNamesFor(d, f.name);
+      const v = (d.customFields || {})[f.name];
+      return (f.type === 'date' || f.type === 'reminder') && v ? v.slice(0, 10) : v;
+    }
+    if(field === 'tags') return d.tags || [];
+    if(field === 'date' || field === 'import_date') return d[field] ? d[field].slice(0, 10) : undefined;
+    return d[field];
+  }
+
+  function smartSearchText(d){
+    const personFieldNames = Object.values(d.personFieldValues || {}).map(names => (names || []).join(' '));
+    return [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function monthShift(isoMonth, delta){ // 'YYYY-MM' +/- months
+    const [y, m] = isoMonth.split('-').map(Number);
+    const total = y * 12 + (m - 1) + delta;
+    return `${Math.floor(total / 12)}-${String(total % 12 + 1).padStart(2, '0')}`;
+  }
+
+  function matchesRule(d, rule){
+    const { field, op } = rule;
+    const value = rule.value == null ? '' : String(rule.value);
+    const value2 = rule.value2 == null ? '' : String(rule.value2);
+    if(field === 'status'){
+      if(op === 'archived') return !!d.archived;
+      if(op === 'not_archived') return !d.archived;
+      if(op === 'in_review') return !!d.needs_review;
+      if(op === 'not_in_review') return !d.needs_review;
+      return false;
+    }
+    if(field === 'any'){
+      const hit = smartSearchText(d).includes(value.trim().toLowerCase());
+      return op === 'not_contains' ? !hit : hit;
+    }
+    const actual = smartRuleActual(d, field);
+    const isEmpty = Array.isArray(actual) ? actual.length === 0 : (actual === undefined || actual === null || String(actual).trim() === '');
+    if(op === 'empty') return isEmpty;
+    if(op === 'not_empty') return !isEmpty;
+    if(Array.isArray(actual)){
+      const has = actual.some(v => v.toLowerCase() === value.trim().toLowerCase());
+      return op === 'excludes' ? !has : has;
+    }
+    const info = smartFieldById(field);
+    const fieldType = info && info.def ? info.def.type : null;
+    if(op === 'checked') return actual === '1';
+    if(op === 'unchecked') return actual === '0';
+    const isDate = field === 'date' || field === 'import_date' || fieldType === 'date' || fieldType === 'reminder';
+    if(isDate){
+      if(isEmpty) return false;
+      const today = todayIsoDate();
+      switch(op){
+        case 'on': return actual === value;
+        case 'before': return actual < value;
+        case 'after': return actual > value;
+        case 'between': return actual >= value && actual <= value2;
+        case 'last_days': { const n = parseInt(value, 10); return Number.isInteger(n) && actual > addDaysToIsoDate(today, -n) && actual <= today; }
+        case 'this_month': return actual.slice(0, 7) === today.slice(0, 7);
+        case 'last_month': return actual.slice(0, 7) === monthShift(today.slice(0, 7), -1);
+        case 'this_year': return actual.slice(0, 4) === today.slice(0, 4);
+        case 'last_year': return actual.slice(0, 4) === String(Number(today.slice(0, 4)) - 1);
+      }
+      return false;
+    }
+    if(fieldType === 'number'){
+      if(isEmpty) return false;
+      const n = parseFloat(actual), a = parseFloat(value), b = parseFloat(value2);
+      if(isNaN(n)) return false;
+      switch(op){
+        case 'is': return n === a;
+        case 'is_not': return n !== a;
+        case 'gte': return n >= a;
+        case 'lte': return n <= a;
+        case 'between': return n >= a && n <= b;
+      }
+      return false;
+    }
+    const text = isEmpty ? '' : String(actual).trim().toLowerCase();
+    const needle = value.trim().toLowerCase();
+    switch(op){
+      case 'is': return text === needle;
+      case 'is_not': return text !== needle;
+      case 'contains': return text.includes(needle);
+      case 'not_contains': return !text.includes(needle);
+    }
+    return false;
+  }
+
+  function matchesRules(d, criteria){
+    const rules = criteria.rules || [];
+    if(!rules.length) return true;
+    return criteria.match === 'any' ? rules.some(r => matchesRule(d, r)) : rules.every(r => matchesRule(d, r));
+  }
+  // test-only hook (tests/test_smart_collections.py): ids of non-deleted documents matching a criteria object
+  window.__DEBUG_smartMatchIds = (criteria) => allDocs.filter(d => !d.deleted && matchesCriteria(d, criteria)).map(d => d.id).sort((a, b) => a - b);
+
+  // Converts a toolbar-filter snapshot (the original criteria shape) into
+  // rules that match the same documents.
+  function criteriaToRules(c){
+    if(c && Array.isArray(c.rules)) return { match: c.match === 'any' ? 'any' : 'all', rules: c.rules.map(r => ({...r})) };
+    const rules = [];
+    const scalar = (field, v) => { if(v) rules.push(v === FILTER_UNSET ? { field, op: 'empty' } : { field, op: 'is', value: v }); };
+    if(c.q) rules.push({ field: 'any', op: 'contains', value: c.q });
+    scalar('category', c.category);
+    scalar('document_type', c.type);
+    if(c.person && fieldNameToId['People'] !== undefined){
+      const field = `field:${fieldNameToId['People']}`;
+      rules.push(c.person === FILTER_UNSET ? { field, op: 'empty' } : { field, op: 'includes', value: c.person });
+    }
+    for(const f of c.dynamic || []){
+      const def = fieldDefs.find(x => x.name === f.label);
+      if(!def) continue;
+      const field = `field:${def.id}`;
+      if(f.value === FILTER_UNSET) rules.push({ field, op: 'empty' });
+      else if(def.type === 'person') rules.push({ field, op: 'includes', value: f.value });
+      else if(def.type === 'checkbox') rules.push({ field, op: f.value === '1' ? 'checked' : 'unchecked' });
+      else rules.push({ field, op: 'is', value: f.value });
+    }
+    const amountId = fieldNameToId['Amount'];
+    if(amountId !== undefined){
+      const field = `field:${amountId}`;
+      if(c.amountUnset) rules.push({ field, op: 'empty' });
+      else if(c.amountMin && c.amountMax) rules.push({ field, op: 'between', value: c.amountMin, value2: c.amountMax });
+      else if(c.amountMin) rules.push({ field, op: 'gte', value: c.amountMin });
+      else if(c.amountMax) rules.push({ field, op: 'lte', value: c.amountMax });
+    }
+    return { match: 'all', rules };
+  }
+
+  // --- Smart Collection editor ---
+  // Opens for an existing Smart Collection (collectionId) or a new one (null).
+  // `afterClose` runs once the dialog closes (saved or cancelled) -- the
+  // Manage Collections dialog uses it to reopen itself.
+  function openSmartCollectionEditor(collectionId, afterClose){
+    const existing = collectionId != null ? collections.find(c => c.id === collectionId) : null;
+    let parsed = {};
+    try{ parsed = existing && existing.criteria ? JSON.parse(existing.criteria) : {}; }catch(e){ parsed = {}; }
+    const state = existing ? criteriaToRules(parsed) : { match: 'all', rules: [{ field: 'category', op: 'is', value: '' }] };
+    const finish = () => { closeModal(); if(afterClose) afterClose(); };
+
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${existing ? t('smartEditTitle') : t('smartNewTitle')}</h2>
+          <div class="field">
+            <label for="smart-name-input">${t('smartNameLabel')}</label>
+            <input type="text" id="smart-name-input" value="${existing ? escapeHtml(existing.name) : ''}" />
+          </div>
+          <div class="smart-match-line">
+            <span>${t('smartMatchPrefix')}</span>
+            <select id="smart-match-select">
+              <option value="all"${state.match === 'all' ? ' selected' : ''}>${t('smartMatchAll')}</option>
+              <option value="any"${state.match === 'any' ? ' selected' : ''}>${t('smartMatchAny')}</option>
+            </select>
+            <span>${t('smartMatchSuffix')}</span>
+          </div>
+          <div id="smart-rules"></div>
+          <button type="button" id="smart-add-rule-btn">${t('smartAddRule')}</button>
+          <div class="smart-match-count" id="smart-match-count"></div>
+          <div class="status" id="smart-editor-status"></div>
+          <div class="modal-actions">
+            <button class="primary" id="smart-save-btn">${t('commonSave')}</button>
+            <button id="smart-cancel-btn">${t('commonCancel')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    el('modal-close-btn').addEventListener('click', finish);
+    el('smart-cancel-btn').addEventListener('click', finish);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') finish(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    const fields = smartRuleFields();
+    const updateCount = () => {
+      const count = allDocs.filter(d => !d.deleted && matchesRules(d, state)).length;
+      el('smart-match-count').textContent = !state.rules.length ? t('smartNoRules')
+        : count === 1 ? t('smartMatchCountSingular', {count}) : t('smartMatchCountPlural', {count});
+    };
+    const valueInputHtml = (rule, idx, which) => {
+      const field = fields.find(f => f.id === rule.field);
+      const v = which === 2 ? (rule.value2 ?? '') : (rule.value ?? '');
+      const attrs = `class="smart-rule-value" data-idx="${idx}" data-which="${which}" value="${escapeHtml(String(v))}"`;
+      if(rule.op === 'last_days') return `<input type="number" min="1" step="1" ${attrs} /> <span class="smart-rule-unit">${t('smartDaysSuffix')}</span>`;
+      if(field && field.kind === 'date') return `<input type="date" ${attrs} />`;
+      if(field && field.kind === 'number') return `<input type="number" step="any" ${attrs} />`;
+      const list = field && field.valuesKind ? ` list="smart-values-${idx}"` : '';
+      return `<input type="text"${list} ${attrs} />`;
+    };
+    const renderRules = () => {
+      const rulesEl = el('smart-rules');
+      rulesEl.innerHTML = state.rules.map((rule, idx) => {
+        const field = fields.find(f => f.id === rule.field);
+        const ops = field ? SMART_OPS_BY_KIND[field.kind] : [];
+        const needsValue = !SMART_OPS_WITHOUT_VALUE.includes(rule.op);
+        const suggestions = field && field.valuesKind && needsValue
+          ? `<datalist id="smart-values-${idx}">${valuesForKind(field.valuesKind).map(v => `<option value="${escapeHtml(v.value)}">`).join('')}</datalist>` : '';
+        return `
+          <div class="smart-rule" data-idx="${idx}">
+            <select class="smart-rule-field" data-idx="${idx}">
+              ${fields.map(f => `<option value="${escapeHtml(f.id)}"${f.id === rule.field ? ' selected' : ''}>${escapeHtml(f.label)}</option>`).join('')}
+            </select>
+            <select class="smart-rule-op" data-idx="${idx}">
+              ${ops.map(op => `<option value="${op}"${op === rule.op ? ' selected' : ''}>${t(SMART_OP_LABEL_KEYS[op])}</option>`).join('')}
+            </select>
+            <span class="smart-rule-values">
+              ${needsValue ? valueInputHtml(rule, idx, 1) : ''}
+              ${rule.op === 'between' ? `<span class="smart-rule-unit">${t('smartAnd')}</span> ${valueInputHtml(rule, idx, 2)}` : ''}
+            </span>
+            ${suggestions}
+            <button type="button" class="smart-rule-remove" data-idx="${idx}" title="${t('smartRemoveRule')}" aria-label="${t('smartRemoveRule')}">✕</button>
+          </div>
+        `;
+      }).join('');
+      rulesEl.querySelectorAll('.smart-rule-field').forEach(sel => sel.addEventListener('change', () => {
+        const rule = state.rules[Number(sel.dataset.idx)];
+        const field = fields.find(f => f.id === sel.value);
+        rule.field = sel.value;
+        if(!SMART_OPS_BY_KIND[field.kind].includes(rule.op)) rule.op = SMART_OPS_BY_KIND[field.kind][0];
+        rule.value = ''; delete rule.value2;
+        renderRules();
+      }));
+      rulesEl.querySelectorAll('.smart-rule-op').forEach(sel => sel.addEventListener('change', () => {
+        const rule = state.rules[Number(sel.dataset.idx)];
+        const wasDays = rule.op === 'last_days';
+        rule.op = sel.value;
+        if(SMART_OPS_WITHOUT_VALUE.includes(rule.op) || wasDays !== (rule.op === 'last_days')) rule.value = '';
+        if(rule.op !== 'between') delete rule.value2;
+        renderRules();
+      }));
+      rulesEl.querySelectorAll('.smart-rule-value').forEach(input => input.addEventListener('input', () => {
+        const rule = state.rules[Number(input.dataset.idx)];
+        if(input.dataset.which === '2') rule.value2 = input.value; else rule.value = input.value;
+        updateCount();
+      }));
+      rulesEl.querySelectorAll('.smart-rule-remove').forEach(btn => btn.addEventListener('click', () => {
+        state.rules.splice(Number(btn.dataset.idx), 1);
+        renderRules();
+      }));
+      updateCount();
+    };
+    el('smart-match-select').addEventListener('change', (e) => { state.match = e.target.value; updateCount(); });
+    el('smart-add-rule-btn').addEventListener('click', () => {
+      state.rules.push({ field: 'category', op: 'is', value: '' });
+      renderRules();
+      const values = el('smart-rules').querySelectorAll('.smart-rule-value');
+      if(values.length) values[values.length - 1].focus();
+    });
+    el('smart-save-btn').addEventListener('click', async () => {
+      const statusEl = el('smart-editor-status');
+      const name = el('smart-name-input').value.trim();
+      statusEl.className = 'status err';
+      if(!name){ statusEl.textContent = t('smartNameRequired'); el('smart-name-input').focus(); return; }
+      const incomplete = state.rules.some(r => !SMART_OPS_WITHOUT_VALUE.includes(r.op)
+        && (String(r.value ?? '').trim() === '' || (r.op === 'between' && String(r.value2 ?? '').trim() === '')));
+      if(incomplete){ statusEl.textContent = t('smartValueRequired'); return; }
+      const criteria = JSON.stringify({ match: state.match, rules: state.rules });
+      if(existing){
+        db.run('UPDATE collections SET name = ?, criteria = ? WHERE id = ?', [name, criteria, existing.id]);
+      }else{
+        db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [nextCollectionId, name, 'smart', criteria]);
+      }
+      await persistDb();
+      loadCollections();
+      render();
+      finish();
+    });
+    renderRules();
+    el('smart-name-input').focus();
+  }
+
   // --- Manage Collections modal (rename, delete, create manual collections) ---
 
   function openManageCollectionsModal(){
@@ -10365,6 +10742,7 @@
           <div class="add-field-form" style="margin-top:16px;">
             <input type="text" id="manage-new-collection-input" placeholder="${t('collectionsNewNamePlaceholder')}" />
             <button type="button" id="manage-new-collection-btn">${t('collectionsNewButton')}</button>
+            <button type="button" id="manage-new-smart-btn">${t('smartNewButton')}</button>
           </div>
           <div class="modal-actions" style="margin-top:16px;">
             <button id="mc-done-btn">${t('commonDone')}</button>
@@ -10376,6 +10754,7 @@
     el('mc-done-btn').addEventListener('click', closeModal);
     el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
     document.addEventListener('keydown', onModalKeydown);
+    el('manage-new-smart-btn').addEventListener('click', () => openSmartCollectionEditor(null, openManageCollectionsModal));
     el('manage-new-collection-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') el('manage-new-collection-btn').click(); });
     el('manage-new-collection-btn').addEventListener('click', async () => {
       const name = el('manage-new-collection-input').value.trim();
@@ -10405,6 +10784,7 @@
           <input type="text" class="manage-collection-rename-input" value="${escapeHtml(c.name)}" />
           <span class="manage-collection-name" style="display:none;">${escapeHtml(c.name)}</span>
           <span class="manage-collection-count">${count}</span>
+          ${c.kind === 'smart' ? `<button type="button" class="manage-collection-edit-btn">${t('smartEditButton')}</button>` : ''}
           <button type="button" class="manage-collection-delete-btn">${t('commonDelete')}</button>
         </div>
       `;
@@ -10430,6 +10810,8 @@
       };
       renameInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') commitRename(); });
       renameInput.addEventListener('blur', commitRename);
+      const editBtn = rowEl.querySelector('.manage-collection-edit-btn');
+      if(editBtn) editBtn.addEventListener('click', () => openSmartCollectionEditor(id, openManageCollectionsModal));
       rowEl.querySelector('.manage-collection-delete-btn').addEventListener('click', async () => {
         db.run('DELETE FROM collections WHERE id = ?', [id]);
         db.run('DELETE FROM collection_documents WHERE collection_id = ?', [id]);
@@ -11120,7 +11502,7 @@
     // first would just be immediately overwritten (same reasoning applies to
     // createManualCollection() below).
     const id = nextCollectionId;
-    const criteria = JSON.stringify(currentFilters());
+    const criteria = JSON.stringify(criteriaToRules(currentFilters()));
     db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'smart', criteria]);
     await persistDb();
     loadCollections();

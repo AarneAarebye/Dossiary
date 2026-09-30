@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **83
-scripts covering most of the app's actual functionality** (81 of them
+There's a real, runnable Playwright regression suite in `tests/` — **84
+scripts covering most of the app's actual functionality** (82 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,22 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), rename or merge values (`test_manage_values.py`
+scrollable mobile toolbar), Smart Collection rules and editor
+(`test_smart_collections.py` -- every rule kind evaluated directly through
+`window.__DEBUG_smartMatchIds`: text is/is not/contains/empty
+(case-insensitive), tags and person includes/excludes/empty, checkbox
+checked/unchecked/not set, Amount is/at least/at most/between/empty, any
+text, archived/in-review status, dates on/before/between/empty and
+relative ones (last 30 days, this month, this year, last year, expected
+values computed from today so the test doesn't age), all vs. any, and no
+rules matching every non-deleted document; an old toolbar-snapshot
+collection opening in the editor as the equivalent rules with a live count,
+editing and saving it as rules and the collection view following; a new
+collection refusing a missing name or empty value, relative-date and
+value-less status rules, two boxes for "between", removing a rule, the
+count switching between all and any; the toolbar's "Save as Smart
+Collection" storing rules; a category rename updating rule values; a field
+deletion removing only its rule; the editor in German), rename or merge values (`test_manage_values.py`
 -- values listed with counts, the Waste bin included; merging two
 categories after confirming, with a Smart Collection's category following;
 a cancelled merge changing nothing; merging a document type, dropping the
