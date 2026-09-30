@@ -160,6 +160,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Unterkategorie, Zahlungsmethode und Währung vom jüngsten solchen Dokument
   übernommen — gelb markiert mit einem Hinweis auf die Quelle. Eigene
   Eingaben werden nie ersetzt.
+- **Sicherung** — „🛠 Werkzeuge → 🗄 Bibliothek sichern…“ kopiert die
+  ganze Bibliothek in einen neuen, datierten Ordner innerhalb eines Ordners
+  Ihrer Wahl (externe Festplatte, andere Cloud). Eine Sicherung ist einfach
+  ein weiterer Bibliotheksordner: zum Wiederherstellen öffnen Sie ihn. Beim
+  Öffnen der Bibliothek erinnert ein Hinweis, wenn eine Sicherung fällig ist
+  (standardmäßig alle 30 Tage, einstellbar oder abschaltbar).
 - **Export** — Dokumente auswählen und in der Leiste für Mehrfachaktionen
   **Exportieren…** klicken: Ihre Dateien werden in einen Ordner Ihrer Wahl
   kopiert, benannt nach Datum und Titel, auf Wunsch mit einer `index.csv`
@@ -931,7 +937,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (81
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (82
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

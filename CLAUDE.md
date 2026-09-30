@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (81 scripts) + shared
+tests/                   Playwright regression suite (82 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3742,6 +3742,26 @@ this repo's git tags.
   drops unknown ids. Single and bulk delete are the same call with a 1-
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
+- **Back up library** (`openBackupModal()`, `listLibraryFiles()`,
+  `backupReminderText()`, Tools → "🗄 Back up library…") copies the whole
+  library folder into a new `<library> backup <yyyy-mm-dd hhmm>` folder
+  (never reusing an existing one) inside a folder the person picks --
+  refused if it's the library or inside it (`isInsideLibrary()`, shared
+  with export). `library.sqlite` is written from `db.export()` (the
+  in-memory database is always the authoritative copy); every other file
+  is copied as is, 4 at a time for iCloud's sake, skipping `.DS_Store`/`._*`.
+  Plain copies rather than a zip: no dependency, and a backup is simply
+  another library folder -- restoring means opening it. Stop removes the
+  partial folder (`removeEntry(..., {recursive: true})`) so an incomplete
+  copy never looks like a backup; files that can't be read are listed.
+  `last_backup_at` and `backup_reminder_days` (default 30, 0 = off) are
+  `settings` rows; when a backup is due, `afterDbReady()` appends the
+  reminder to the "Opened library" status line (a status builder, so it
+  retranslates). **`#status` is now a single line** (`nowrap` + ellipsis,
+  full text in its `title`), since that reminder made the line wrap at
+  320px and pushed `.table-wrap` 26px behind the footer --
+  `test_footer_pin.py` caught it; any long status message had the same
+  latent risk.
 - **Export selected documents** (`openExportModal()`, `exportFileName()`,
   `uniqueFileNameIn()`, `buildExportCsv()`, `#bulk-export-btn` in the
   bulk-action bar) copies each selected document's active file into a

@@ -134,6 +134,11 @@ working" problem that motivated this project in the first place.
   Document Type, Category, Subcategory, Payment method and Currency are
   filled in from the most recent one, marked amber with a note saying where
   they came from. Values you've entered are never replaced.
+- **Backup** — "🛠 Tools → 🗄 Back up library…" copies the whole library
+  into a new dated folder inside a folder you choose (an external disk, a
+  different cloud). A backup is just another library folder: to restore,
+  open it. A reminder on opening the library (every 30 days by default,
+  adjustable, or off) tells you when a backup is due.
 - **Export** — select documents and click **Export…** in the bulk-action
   bar to copy their files into a folder you pick, named by date and title,
   with an optional `index.csv` of their details (amount, currency, tags,
@@ -810,7 +815,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (81
+There's a real, runnable Playwright regression suite in `tests/` (82
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

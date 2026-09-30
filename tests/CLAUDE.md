@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **81
-scripts covering most of the app's actual functionality** (79 of them
+There's a real, runnable Playwright regression suite in `tests/` — **82
+scripts covering most of the app's actual functionality** (80 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,14 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), export (`test_export.py` -- a folder inside
+scrollable mobile toolbar), backup (`test_backup.py` -- the "no backup
+yet" reminder on the open status line; a folder inside the library
+refused; a dated folder with every library file byte for byte, a fresh
+`library.sqlite`, `.DS_Store` skipped; a second backup getting its own
+"(2)" folder; no reminder right after a backup; an overdue one depending
+on the configured days, retranslating on a language switch, and 0
+switching it off; the dialog unclosable mid-copy and Stop removing the
+incomplete copy), export (`test_export.py` -- a folder inside
 the library refused; files named by date and title with clashes numbered
 (including one already in the destination, left untouched) and unsafe
 characters replaced; the copies byte-identical; a missing file reported
