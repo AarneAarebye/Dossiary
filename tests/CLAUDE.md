@@ -837,11 +837,16 @@ processing only those, a summary naming the one failed document (missing
 file), a single eligible selection falling back to the single-document
 message, Stop letting the current document finish and saving it while
 leaving the next untouched, and no bulk button in the Waste bin; and, in
-`main_library_check()`, Library check's "Not searchable yet" count (deleted
-and already-built documents excluded), "Show in table" filtering to exactly
-those, "Make all searchable" processing them, a digital PDF being
-remembered via `has_text_layer` and no longer offered, and the section
-disappearing once nothing is left -- the
+`main_library_check()`, Library check's two counts (PDFs not checked for
+text yet vs. documents needing OCR; deleted and already-built documents
+never counted or opened), "Check for text" with Stop mid-run (in-flight
+files finish, a "stopped after N of M" note, the modal unclosable while
+it runs) and a second run finishing the rest, a digital PDF recorded as
+having text, scanned PDFs as checked without, an unreadable PDF left
+unchecked to retry, "Show in table" listing exactly the needs-OCR
+documents, and "Make all searchable" processing only those -- the stub's
+pdf.js fake reports real text for a PDF whose bytes contain `%TEXTLAYER`
+and has a `__STUB_PDF_SLOW` hook for the Stop test -- the
 seed marks the `searchable_pdf_built` backfill done,
 since that one-time migration would otherwise flag every seeded captured
 document with an original as already built), person-type fields as

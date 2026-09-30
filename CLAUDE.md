@@ -2415,14 +2415,33 @@ this repo's git tags.
   `searchable_pdf_built` on purpose: that flag means "this app built the
   file", this one "the file was searchable as it came". Without it, every
   digital PDF (a downloaded bill) would count as not searchable forever.
-  **"Not searchable yet" in Library check** (`#not-searchable-section`,
-  last in the list since it's not a problem, just what OCR hasn't reached)
-  shows only a count -- a scanned archive can have hundreds -- plus "Show
+  **"Not searchable yet" in Library check** (`renderNotSearchableSection()`
+  filling `#not-searchable-slot`, last in the list since it's not a
+  problem, just what OCR hasn't reached) shows two counts, from
+  `notSearchableBuckets()`: PDFs **not checked for text yet**, and
+  documents that **need OCR** (images, which never have a text layer, and
+  PDFs checked without one -- `text_checked` = 1, `has_text_layer` = 0).
+  The split exists because a single "not searchable" count was reported as
+  wildly wrong: a Mariner-migrated library arrived with ~1,340 documents
+  counted, since none of its PDFs (most of which already carry a text
+  layer from Mariner/ScanSnap) had ever been opened to look. Whether a PDF
+  has text is only knowable by opening it -- Mariner's stored OCR text
+  lives apart from the file. **"Check for text"** (`runTextLayerCheck()`)
+  opens each unchecked PDF with pdf.js and runs `pdfHasRealText()`, no
+  OCR, shaped like the duplicate backfill for the same iCloud reason: 4
+  files at a time, a chained save every 25, a Stop that lets in-flight
+  files finish (then a note saying how far it got), and the modal's close
+  controls gated on `findDuplicatesBackfillRunning` while it runs. A file
+  that can't be read stays unchecked, so the next run retries it. Each
+  count comes with its own actions: "Check for text" for the first; "Show
   in table" (the same Reports drill-down the duplicate groups use, back
   link returning to Library check) and "Make all searchable" (the bulk
-  dialog for exactly those documents). It's the one place to find them
-  without adding a toolbar filter, which would have reopened the toolbar-
-  wrap calibration problem described near the top of this file.
+  dialog, for the needs-OCR bucket only -- not a way to start OCR on
+  hundreds of unchecked PDFs by accident) for the second. "Make
+  searchable" also records `text_checked` when it finds no text. It's the
+  one place to find these documents without a toolbar filter, which would
+  have reopened the toolbar-wrap calibration problem described near the
+  top of this file.
 - **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
   written next to every captured document's primary file, containing the
   fields that only live in `library.sqlite` (category, tags, notes, OCR

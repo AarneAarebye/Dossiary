@@ -392,17 +392,25 @@ async def main_bulk():
 
 
 # === Library check: "Not searchable yet" section ===
+# Two buckets: PDFs not yet opened to look for a text layer, and documents
+# known to need OCR (images, and PDFs checked without text). A PDF whose bytes
+# contain "%TEXTLAYER" reports real text in the stub.
+TEXT_PDF = b"%PDF-1.4 %TEXTLAYER digital"
 LC_SEED = {
     "documents": [
-        doc(1, "Scan One", "files/1_one.png", None),
+        doc(1, "Photo One", "files/1_one.png", None),
         doc(2, "Digital Two", "files/2_two.pdf", None),
         doc(3, "Built Three", "files/3_three.pdf", None, searchable_pdf_built=1),
-        doc(4, "Deleted Four", "files/4_four.png", None, deleted=1),
-    ],
+        doc(4, "Deleted Four", "files/4_four.pdf", None, deleted=1),
+        doc(5, "Scanned Five", "files/5_five.pdf", None),
+        doc(6, "Missing Six", "files/6_six.pdf", None),  # no file on disk
+    ] + [doc(i, f"Scan {i}", f"files/{i}_s.pdf", None) for i in range(7, 13)],
     "tags": [], "document_tags": [],
     "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
 }
-LC_FILES = {"files/1_one.png": PNG, "files/2_two.pdf": b"%PDF-1.4 digital", "files/3_three.pdf": b"%PDF built", "files/4_four.png": PNG + b"x"}
+LC_FILES = {"files/1_one.png": PNG, "files/2_two.pdf": TEXT_PDF, "files/3_three.pdf": b"%PDF built",
+            "files/4_four.pdf": SCAN_PDF, "files/5_five.pdf": SCAN_PDF,
+            **{f"files/{i}_s.pdf": SCAN_PDF + str(i).encode() for i in range(7, 13)}}
 
 async def main_library_check():
     async with async_playwright() as p:
@@ -444,46 +452,74 @@ async def main_library_check():
             await page.click('#tools-btn'); await page.click('#library-check-btn')
             await page.wait_for_timeout(800)
 
-        # === Scenario L1: the section counts eligible, non-deleted documents ===
-        await open_check()
-        count = await page.inner_text('#not-searchable-count')
-        print("Library check lists 'Not searchable yet' with a count of 2:", count.endswith('2'), repr(count))
+        async def text(sel):
+            return await page.inner_text(sel) if await page.locator(sel).count() else None
 
-        # === Scenario L2: Show in table filters the table to exactly those ===
+        async def db_docs():
+            state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
+            return {d['id']: d for d in state['documents']}
+
+        # === Scenario L1: unchecked PDFs and known needs-OCR documents are counted apart ===
+        await open_check()
+        unchecked = await text('#not-searchable-unchecked-count')
+        needs = await text('#not-searchable-count')
+        print("PDFs not yet checked are counted separately (2,5,6,7-12 = 9):", unchecked is not None and unchecked.endswith(': 9'), repr(unchecked))
+        print("Only the image counts as needing OCR before any check:", needs is not None and needs.endswith(': 1'), repr(needs))
+
+        # === Scenario L2: Stop lets in-flight files finish, then stops ===
+        await page.evaluate("window.__STUB_PDF_SLOW = true;")
+        await page.click('#text-check-btn')
+        await page.wait_for_timeout(300)
+        print("Progress and Stop shown while checking:", await page.locator('#text-check-progress').is_visible() and await page.locator('#text-check-stop-btn').is_visible())
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+        print("Library check can't be closed mid-check:", await page.locator('#not-searchable-section').count() == 1 and await page.locator('#modal-close-btn').is_disabled())
+        await page.click('#text-check-stop-btn')
+        await page.evaluate("window.__STUB_PDF_SLOW = false; window.__RESOLVE_SLOW_PDFS();")
+        await page.wait_for_timeout(800)
+        note = await text('#text-check-note')
+        # The missing file (id 6) fails at once without waiting on the slow open,
+        # so a worker picks up a fifth file before Stop takes effect: 5 processed,
+        # 4 of them checked, and the unreadable one stays unchecked (5 left).
+        print("Stopped after the in-flight files, with a note:", note is not None and '5 of 9' in note, repr(note))
+        print("...the 4 opened PDFs are counted as checked (5 left):", (await text('#not-searchable-unchecked-count') or '').endswith(': 5'))
+        print("Closable again afterwards:", not await page.locator('#modal-close-btn').is_disabled())
+
+        # === Scenario L3: running it again finishes the rest ===
+        await page.click('#text-check-btn')
+        await page.wait_for_timeout(1000)
+        docs = await db_docs()
+        print("The digital PDF is recorded as having text:", docs[2].get('has_text_layer') == 1 and docs[2].get('text_checked') == 1)
+        print("Scanned PDFs are recorded as checked without text:", all(docs[i].get('text_checked') == 1 and not docs[i].get('has_text_layer') for i in [5] + list(range(7, 13))))
+        print("The unreadable PDF stays unchecked, to retry later:", not docs[6].get('text_checked'))
+        note = await text('#text-check-note')
+        print("...and the note says one couldn't be read:", note is not None and 'Could not be read: 1.' in note, repr(note))
+        print("Only the unreadable PDF is left to check:", (await text('#not-searchable-unchecked-count') or '').endswith(': 1'))
+        print("Needs OCR now counts the image plus the 7 scanned PDFs:", (await text('#not-searchable-count') or '').endswith(': 8'))
+        print("Deleted and already-built documents were never opened:", not docs[4].get('text_checked') and not docs[3].get('text_checked'))
+
+        # === Scenario L4: Show in table lists exactly the needs-OCR documents ===
         await page.click('#not-searchable-show-btn')
         await page.wait_for_timeout(300)
         ids = sorted(await page.locator('#doc-tbody tr').evaluate_all("rs => rs.map(r => +r.dataset.id)"))
-        print("Show in table filters to the two documents:", ids == [1, 2], ids)
-        print("...with the drill-down banner naming the section:", 'Not searchable yet' in await page.inner_text('#report-drilldown-banner'))
+        print("Show in table lists the needs-OCR documents:", ids == [1, 5, 7, 8, 9, 10, 11, 12], ids)
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(900)
 
-        # === Scenario L3: Make all searchable, then a digital PDF is remembered as searchable ===
-        await page.click('#report-drilldown-back-btn') if await page.locator('#report-drilldown-back-btn').count() else None
-        await page.wait_for_timeout(600)
-        if not await page.locator('#not-searchable-make-btn').count():
-            await open_check()
+        # === Scenario L5: Make all searchable targets only the needs-OCR bucket ===
         await page.click('#not-searchable-make-btn')
         await page.wait_for_timeout(150)
-        print("Make all searchable opens the bulk dialog for both:", (await page.inner_text('#make-searchable-count')).endswith('2'))
-        # The stub's text check is global: turn it on only for the PDF pass.
-        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = true;")
+        print("Make all searchable opens the bulk dialog for the 8 needing OCR:", (await text('#make-searchable-count') or '').endswith('8'))
         await page.click('#make-searchable-start-btn')
-        await page.wait_for_timeout(1200)
-        status = await page.inner_text('#make-searchable-status')
-        print("Summary: 1 made searchable, 1 already had text:", 'Made searchable: 1.' in status and 'left unchanged: 1.' in status, repr(status))
-        state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
-        d2 = next(d for d in state['documents'] if d['id'] == 2)
-        print("The digital PDF is remembered as already searchable (has_text_layer):", d2.get('has_text_layer') == 1 and not d2.get('searchable_pdf_built'))
+        await page.wait_for_timeout(2500)
+        status = await text('#make-searchable-status') or ''
+        print("All 8 made searchable:", 'Made searchable: 8.' in status, repr(status[:80]))
         await page.click('#make-searchable-cancel-btn')
         await page.wait_for_timeout(150)
-        await page.click('#nav-item-all')
-        await page.wait_for_timeout(200)
-        await page.click('#doc-tbody tr[data-id="2"]')
-        await page.wait_for_timeout(250)
-        print("...and no longer offers Make searchable:", await page.locator('#make-searchable-btn').count() == 0)
 
-        # === Scenario L4: nothing left -> the section is gone ===
+        # === Scenario L6: what's left is only the unreadable PDF ===
         await open_check()
-        print("Section disappears once everything is searchable:", await page.locator('#not-searchable-section').count() == 0)
+        print("Only the unreadable PDF remains, still unchecked:", (await text('#not-searchable-unchecked-count') or '').endswith(': 1') and await page.locator('#not-searchable-count').count() == 0)
 
         print("JS ERRORS (library check):", errors)
         await browser.close()

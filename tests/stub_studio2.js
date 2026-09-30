@@ -384,8 +384,19 @@ window.pdfjsLib = {
   GlobalWorkerOptions: { workerSrc: '' },
   getDocument: function(opts) {
     window.__STUB_LOG.push('pdfjsLib.getDocument called');
+    // Per-file text: a PDF whose bytes contain "%TEXTLAYER" reports real text,
+    // so one test can mix digital and scanned PDFs (the global
+    // __STUB_PDF_HAS_REAL_TEXT flag below still applies to every PDF).
+    let bytesSayText = false;
+    try{ bytesSayText = new TextDecoder().decode(opts && opts.data).includes('%TEXTLAYER'); }catch(e){}
+    // Optional slow open, for tests exercising Stop mid-run: while
+    // __STUB_PDF_SLOW is set, each open waits until __RESOLVE_SLOW_PDFS() is called.
+    const ready = window.__STUB_PDF_SLOW
+      ? new Promise(resolve => { (window.__SLOW_PDF_WAITERS = window.__SLOW_PDF_WAITERS || []).push(resolve); })
+      : Promise.resolve();
+    window.__RESOLVE_SLOW_PDFS = () => { (window.__SLOW_PDF_WAITERS || []).splice(0).forEach(r => r()); };
     return {
-      promise: Promise.resolve({
+      promise: ready.then(() => ({
         numPages: (window.__STUB_PDF_NUM_PAGES || 1),
         getPage: async (n) => ({
           getViewport: (opts2) => ({ width: 200 * (opts2.scale || 1), height: 260 * (opts2.scale || 1) }),
@@ -394,7 +405,7 @@ window.pdfjsLib = {
           // affecting any existing test that never sets this flag (they all continue
           // to see empty text content, exactly as before this was added).
           getTextContent: async () => ({
-            items: window.__STUB_PDF_HAS_REAL_TEXT ? [{ str: 'This PDF already has real embedded text content in it.' }] : [],
+            items: (window.__STUB_PDF_HAS_REAL_TEXT || bytesSayText) ? [{ str: 'This PDF already has real embedded text content in it.' }] : [],
           }),
           render: (renderCtx) => ({
             promise: (async () => {
@@ -404,7 +415,8 @@ window.pdfjsLib = {
             })(),
           }),
         }),
-      }),
+        destroy: async () => {},
+      })),
     };
   },
 };

@@ -69,10 +69,12 @@ working" problem that motivated this project in the first place.
   untouched original (PDFs that already contain text are left alone).
   Select several documents to do the same for all of them from the
   bulk-action bar: they're processed one after another, with progress, a
-  Stop button, and a summary of what succeeded. **Library check** lists
-  how many documents aren't searchable yet, with buttons to show them in
-  the table or make them all searchable; a PDF that turns out to already
-  contain text is remembered and drops off that list. If you're starting from a paper document, a "Need to
+  Stop button, and a summary of what succeeded. **Library check** shows
+  what isn't searchable yet in two counts: PDFs not checked yet (a quick
+  "Check for text" opens each one to look for a text layer, without OCR --
+  most PDFs from Mariner or a ScanSnap already have one) and documents that
+  need OCR, which you can show in the table or make searchable in one go.
+  If you're starting from a paper document, a "Need to
   scan a paper document first?" toggle in the capture form explains how to
   scan it first — Image Capture or Preview on macOS, the Windows Scan app
   on Windows, detected automatically — since a browser has no way to drive
