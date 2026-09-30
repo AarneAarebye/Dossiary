@@ -125,7 +125,7 @@ working" problem that motivated this project in the first place.
   Restore until you do. Files on disk, thumbnails, and the sidecar `.txt`
   are never touched either way.
 - **Reports** — a 4th nav view totals your documents by Category, Type,
-  People, or any custom field, grouped by currency so amounts in different
+  People, Tags, or any custom field, grouped by currency so amounts in different
   currencies are never added together, with a date-range filter and a
   print-friendly layout for tax season or expense reimbursement. Click any
   row, including a currency's Grand total, to jump to the documents

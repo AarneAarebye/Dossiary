@@ -150,7 +150,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   „Restore“ an. Dateien auf der Festplatte, Vorschaubilder und die
   `.txt`-Begleitdatei werden in beide Richtungen nie angefasst.
 - **Reports** — eine 4. Navigationsansicht, die Ihre Dokumente nach Category, Type,
-  People oder benutzerdefinierten Feldern summiert, gruppiert nach Währung,
+  People, Tags oder benutzerdefinierten Feldern summiert, gruppiert nach Währung,
   damit Beträge in verschiedenen Währungen nie zusammengezählt werden, mit
   einem Datumsbereichsfilter und einem druckfreundlichen Layout für
   Steuererklärung oder Spesenerstattung. Ein Klick auf eine Zeile —

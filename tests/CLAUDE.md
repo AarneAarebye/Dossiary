@@ -171,7 +171,9 @@ grouping across three distinct groups including a blank-Currency "No
 currency set" group; category/type breakdown totals and their independently-
 computed Grand total; the multi-valued People-breakdown row-inflation
 caveat and its on-screen caption, switched to without leaving the Reports
-view; the date-range filter narrowing totals by the document's own Date
+view; the Tags breakdown working the same way (a document under every tag
+it has, the Grand total unaffected, a drill-down with a "Tags includes"
+banner); the date-range filter narrowing totals by the document's own Date
 field and correctly excluding a document with no date set once a bound is
 active; the print button/`@media print` layout hiding the nav and
 toolbar; and, extending this same file, the drill-down feature added on

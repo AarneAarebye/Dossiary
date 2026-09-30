@@ -70,7 +70,10 @@ SEED = {
             "archived": 1, "needs_review": 0, "deleted": 0,
         },
     ],
-    "tags": [], "document_tags": [],
+    # Tags mirror the People setup below, for the Tags breakdown (Scenario 8b):
+    # doc 1 has both tags, doc 2 only "tax", docs 4 and 7 none.
+    "tags": [{"id": 1, "name": "tax"}, {"id": 2, "name": "work"}],
+    "document_tags": [{"document_id": 1, "tag_id": 1}, {"document_id": 1, "tag_id": 2}, {"document_id": 2, "tag_id": 1}],
     "fields": [
         {"id": 1, "name": "Amount", "type": "number", "show_as_column": 0, "autocomplete": 0},
         {"id": 2, "name": "Currency", "type": "text", "show_as_column": 0, "autocomplete": 0},
@@ -181,6 +184,7 @@ async def main():
         print("Breakdown dropdown exists:", breakdown_count == 1)
         breakdown_options = await page.locator('#report-breakdown-field option').all_inner_texts()
         print("Breakdown dropdown options:", breakdown_options)
+        print("Tags is offered as a breakdown:", 'Tags' in breakdown_options)
 
         # === Scenario 6: currency grouping -- EUR (docs 1,2,4,7), USD (doc 5), and "No
         # currency set" (doc 6) are three separate groups, in that order (sorted by
@@ -225,6 +229,30 @@ async def main():
         print("EUR group People rows (label, count, total):", list(zip(people_row_labels, people_row_counts, people_row_totals)))
         print("EUR group Grand total row (independent, still 90.00/4):", people_grand_total_row)
         print("Multi-valued caption shown for People breakdown:", people_caption_count > 0)
+
+        # === Scenario 8b: Tags breakdown -- multi-valued like People: doc 1 (45.00)
+        # counts under both "tax" and "work", doc 2 (30.00) under "tax", docs 4 and 7
+        # under "(none)"; the Grand total stays the real 90.00 ===
+        await page.select_option('#report-breakdown-field', 'tags')
+        await page.wait_for_timeout(150)
+        eur_group = page.locator('.report-currency-group').first
+        tag_rows = list(zip(
+            await eur_group.locator('.report-table tbody td:nth-child(1)').all_inner_texts(),
+            await eur_group.locator('.report-table tbody td:nth-child(2)').all_inner_texts(),
+            await eur_group.locator('.report-table tbody td:nth-child(3)').all_inner_texts()))
+        print("EUR group Tags rows count each tag, a doc under every tag it has:",
+              tag_rows == [('tax', '2', '75.00'), ('work', '1', '45.00'), ('(none)', '2', '15.00')], tag_rows)
+        tag_grand = await eur_group.locator('.report-table tfoot td').all_inner_texts()
+        print("...Grand total unaffected by the double counting (90.00):", any('90.00' in c for c in tag_grand), tag_grand)
+        print("...and the multi-valued caption is shown:", await eur_group.locator('.report-caption').count() > 0)
+        await eur_group.locator('.report-table tbody tr').first.click()
+        await page.wait_for_timeout(250)
+        drill_ids = sorted(await page.locator('#doc-tbody tr').evaluate_all("rs => rs.map(r => +r.dataset.id)"))
+        banner = await page.inner_text('#report-drilldown-banner-text')
+        print("Clicking the tax row drills down to docs 1 and 2:", drill_ids == [1, 2], drill_ids)
+        print("...with a 'Tags includes' banner:", 'Tags' in banner and 'tax' in banner, repr(banner))
+        await page.click('#report-drilldown-back-btn')
+        await page.wait_for_timeout(200)
 
         # === Scenario 9: date-range filter narrows Reports totals -- with the
         # dropdown reset to Category (Scenario 8 left it on People), filtering to

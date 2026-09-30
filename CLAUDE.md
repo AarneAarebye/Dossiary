@@ -1361,13 +1361,14 @@ this repo's git tags.
   (`customFields['Currency']`, blank treated as its own "No currency set" group) —
   Dossiary never assumes a single-currency library. Within each currency group,
   documents are further grouped by a chosen breakdown field (`#report-breakdown-field`,
-  populated from `reportBreakdownFields()`: Category/Type/People from `FIELD_DEFS`,
+  populated from `reportBreakdownFields()`: Category/Type/People/Tags from `FIELD_DEFS`,
   plus any custom field flagged `show_as_column` via the same `dynamicColumnDefs()`
   table columns/filters already use — deliberately excludes `date`/`import_date`
-  (near-unique per document, not a meaningful grouping key), `amount` (the value
-  being summed, not a grouping key), and `tags` (multi-valued like People, but
-  out of scope for v1). **A document with more than one value for a multi-valued
-  breakdown field (People, or a custom person-type field) contributes its full
+  (near-unique per document, not a meaningful grouping key) and `amount` (the value
+  being summed, not a grouping key). Tags joined later, as a multi-valued
+  breakdown exactly like People (label `tableColTags`, "Tags includes: …" on
+  its drill-down banner). **A document with more than one value for a multi-valued
+  breakdown field (People, Tags, or a custom person-type field) contributes its full
   Amount to every value's row** — `renderReportsView()` shows an explicit caption
   when this applies, since row totals then legitimately don't sum to the currency
   group's own Grand total; that Grand total (`computeReportGroups()`'s `grandTotal`/
