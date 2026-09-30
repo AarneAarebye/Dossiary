@@ -867,7 +867,10 @@ documents, "Make all searchable" processing only those, and a found text
 layer copied into OCR text and the sidecar; and, in `main_shared_read()`,
 the duplicate backfill hashing every document and text-checking the PDFs
 it read from the same bytes (text copied only into empty OCR text, a
-document hashed from a separate original left for "Check for text") --
+document hashed from a separate original left for "Check for text", and
+a PDF checked before its text was copied counted as "Text not in search
+yet" and fixed by the same Check for text pass, without touching another
+PDF's existing OCR text) --
 the stub's
 pdf.js fake reports real text for a PDF whose bytes contain `%TEXTLAYER`
 and has a `__STUB_PDF_SLOW` hook for the Stop test -- the

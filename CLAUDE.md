@@ -2483,7 +2483,12 @@ this repo's git tags.
   refreshes the sidecar -- the app's search and Spotlight only ever see
   `ocr_text`, so before this a digital PDF (or a Mariner PDF whose text
   never reached the database) wasn't findable by its contents at all.
-  Existing `ocr_text` is never replaced. Capture does the same: a PDF found
+  Existing `ocr_text` is never replaced. A third count, **"Text not in
+  search yet"** (`notSearchableBuckets().textMissing`: non-deleted PDFs with
+  `has_text_layer` = 1 but empty `ocr_text`), catches PDFs checked before
+  the text was copied over (v1.30.1); "Check for text" includes them in the
+  same pass, and since `recordPdfTextLayer()` copies into any empty
+  `ocr_text`, no separate code path was needed. Capture does the same: a PDF found
   to have text fills the empty OCR text box. **The duplicate backfill
   checks for text from the same read** (`backfillFileHash()`): when the
   file it hashes is the document's active PDF (no separate original, as for

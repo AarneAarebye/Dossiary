@@ -91,7 +91,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   eines PDFs wird außerdem in den OCR-Text des Dokuments übernommen, wenn
   dieser leer ist, sodass die Suche der App (und Spotlight) es über seinen
   Inhalt findet; die Duplikatprüfung erledigt das nebenbei, während sie die
-  Dateien ohnehin liest. Wenn Sie von
+  Dateien ohnehin liest; PDFs, deren Text noch nicht in der Suche ist,
+  zählt die Bibliotheksprüfung eigens, damit „Auf Text prüfen“ auch ältere
+  nachholt. Wenn Sie von
   einem Papierdokument ausgehen, erklärt ein Schalter „Need to scan a
   paper document first?“ im Erfassungsformular, wie Sie zuerst mit
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da

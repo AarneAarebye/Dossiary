@@ -76,7 +76,9 @@ working" problem that motivated this project in the first place.
   need OCR, which you can show in the table or make searchable in one go.
   A PDF's own text is also copied into the document's OCR text when that's
   empty, so the app's search (and Spotlight) find it by its contents; the
-  duplicate check does this for free while it reads the files anyway.
+  duplicate check does this for free while it reads the files anyway, and
+  Library check counts PDFs whose text isn't in search yet so "Check for
+  text" can catch up older ones too.
   If you're starting from a paper document, a "Need to
   scan a paper document first?" toggle in the capture form explains how to
   scan it first — Image Capture or Preview on macOS, the Windows Scan app

@@ -538,12 +538,17 @@ SR_SEED = {
         doc(2, "Scanned", "files/2_s.pdf", None),
         doc(3, "Digital with OCR text", "files/3_t.pdf", None, ocr_text="Text kept from Mariner"),
         doc(4, "Captured with original", "files/4_c.pdf", "files/4_c/c.pdf"),
+        # Checked for text before v1.31 copied it into search: text never reached ocr_text.
+        doc(5, "Checked earlier", "files/5_e.pdf", None, file_hash="hash-5", text_checked=1, has_text_layer=1),
+        # Same, but it has OCR text already: nothing missing.
+        doc(6, "Checked, has OCR text", "files/6_o.pdf", None, file_hash="hash-6", text_checked=1, has_text_layer=1, ocr_text="Mariner text"),
     ],
     "tags": [], "document_tags": [],
     "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
 }
 SR_FILES = {"files/1_d.pdf": TEXT_PDF, "files/2_s.pdf": SCAN_PDF, "files/3_t.pdf": TEXT_PDF + b"3",
-            "files/4_c.pdf": TEXT_PDF + b"4", "files/4_c/c.pdf": TEXT_PDF + b"4o"}
+            "files/4_c.pdf": TEXT_PDF + b"4", "files/4_c/c.pdf": TEXT_PDF + b"4o",
+            "files/5_e.pdf": TEXT_PDF + b"5", "files/6_o.pdf": TEXT_PDF + b"6"}
 
 async def main_shared_read():
     async with async_playwright() as p:
@@ -590,6 +595,16 @@ async def main_shared_read():
         print("A document hashed from its separate original isn't text-checked by the backfill:", not docs[4].get('text_checked'))
         unchecked = page.locator('#not-searchable-unchecked-count')
         print("Only that one is left for Check for text:", await unchecked.count() == 1 and (await unchecked.inner_text()).endswith(': 1'))
+        missing = page.locator('#not-searchable-text-missing-count')
+        print("A PDF checked earlier whose text never reached search is counted:", await missing.count() == 1 and (await missing.inner_text()).endswith(': 1'))
+        await page.click('#text-check-btn')
+        await page.wait_for_timeout(800)
+        state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
+        docs = {d['id']: d for d in state['documents']}
+        print("Check for text copies that PDF's text into search:", 'real embedded text' in (docs[5].get('ocr_text') or ''))
+        print("...and leaves existing OCR text alone:", docs[6].get('ocr_text') == 'Mariner text')
+        print("...and handles the unchecked one in the same pass:", docs[4].get('text_checked') == 1)
+        print("Nothing left to check afterwards:", await page.locator('#not-searchable-text-missing-count').count() == 0 and await page.locator('#not-searchable-unchecked-count').count() == 0)
         print("JS ERRORS (shared read):", errors)
         await browser.close()
 
