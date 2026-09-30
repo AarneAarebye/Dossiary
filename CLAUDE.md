@@ -2438,7 +2438,21 @@ this repo's git tags.
   link returning to Library check) and "Make all searchable" (the bulk
   dialog, for the needs-OCR bucket only -- not a way to start OCR on
   hundreds of unchecked PDFs by accident) for the second. "Make
-  searchable" also records `text_checked` when it finds no text. It's the
+  searchable" also records `text_checked` when it finds no text.
+  **A found text layer also becomes searchable text**: `recordPdfTextLayer()`
+  (the one place that records a check, used by "Check for text", "Make
+  searchable", and the duplicate backfill) copies the PDF's own text
+  (`pdfExtractText()`) into `ocr_text` when that's empty, and the caller
+  refreshes the sidecar -- the app's search and Spotlight only ever see
+  `ocr_text`, so before this a digital PDF (or a Mariner PDF whose text
+  never reached the database) wasn't findable by its contents at all.
+  Existing `ocr_text` is never replaced. Capture does the same: a PDF found
+  to have text fills the empty OCR text box. **The duplicate backfill
+  checks for text from the same read** (`backfillFileHash()`): when the
+  file it hashes is the document's active PDF (no separate original, as for
+  every Mariner-migrated document), it opens those bytes with pdf.js too,
+  so on iCloud Drive a file downloads once for both checks; a document
+  hashed from a separate original is left for "Check for text". It's the
   one place to find these documents without a toolbar filter, which would
   have reopened the toolbar-wrap calibration problem described near the
   top of this file.

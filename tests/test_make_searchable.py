@@ -406,8 +406,12 @@ LC_SEED = {
         doc(6, "Missing Six", "files/6_six.pdf", None),  # no file on disk
     ] + [doc(i, f"Scan {i}", f"files/{i}_s.pdf", None) for i in range(7, 13)],
     "tags": [], "document_tags": [],
+    # Pre-hashed, so opening Library check doesn't run the duplicate backfill
+    # (which would check these PDFs for text itself -- see main_shared_read()).
     "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
 }
+for _d in LC_SEED["documents"]:
+    _d["file_hash"] = f"hash-{_d['id']}"
 LC_FILES = {"files/1_one.png": PNG, "files/2_two.pdf": TEXT_PDF, "files/3_three.pdf": b"%PDF built",
             "files/4_four.pdf": SCAN_PDF, "files/5_five.pdf": SCAN_PDF,
             **{f"files/{i}_s.pdf": SCAN_PDF + str(i).encode() for i in range(7, 13)}}
@@ -490,6 +494,9 @@ async def main_library_check():
         await page.wait_for_timeout(1000)
         docs = await db_docs()
         print("The digital PDF is recorded as having text:", docs[2].get('has_text_layer') == 1 and docs[2].get('text_checked') == 1)
+        print("...and its own text is copied into OCR text, so search finds it:", 'real embedded text' in (docs[2].get('ocr_text') or ''))
+        sidecar2 = await page.evaluate("async () => { try{ const d = await window.__TEST_ROOT.getDirectoryHandle('files'); return await (await (await d.getFileHandle('2_two.txt')).getFile()).text(); }catch(e){ return null; } }")
+        print("...and into its sidecar .txt:", sidecar2 is not None and 'real embedded text' in sidecar2)
         print("Scanned PDFs are recorded as checked without text:", all(docs[i].get('text_checked') == 1 and not docs[i].get('has_text_layer') for i in [5] + list(range(7, 13))))
         print("The unreadable PDF stays unchecked, to retry later:", not docs[6].get('text_checked'))
         note = await text('#text-check-note')
@@ -524,6 +531,69 @@ async def main_library_check():
         print("JS ERRORS (library check):", errors)
         await browser.close()
 
+# === Duplicate backfill checks PDFs for text from the same read ===
+SR_SEED = {
+    "documents": [
+        doc(1, "Digital", "files/1_d.pdf", None),
+        doc(2, "Scanned", "files/2_s.pdf", None),
+        doc(3, "Digital with OCR text", "files/3_t.pdf", None, ocr_text="Text kept from Mariner"),
+        doc(4, "Captured with original", "files/4_c.pdf", "files/4_c/c.pdf"),
+    ],
+    "tags": [], "document_tags": [],
+    "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
+}
+SR_FILES = {"files/1_d.pdf": TEXT_PDF, "files/2_s.pdf": SCAN_PDF, "files/3_t.pdf": TEXT_PDF + b"3",
+            "files/4_c.pdf": TEXT_PDF + b"4", "files/4_c/c.pdf": TEXT_PDF + b"4o"}
+
+async def main_shared_read():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SR_SEED)});")
+        files_b64 = {k: base64.b64encode(v).decode() for k, v in SR_FILES.items()}
+        await page.evaluate("""
+            async (files) => {
+                for(const [path, b64] of Object.entries(files)){
+                    const parts = path.split('/');
+                    let dir = window.__TEST_ROOT;
+                    for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
+                    const h = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+                    const w = await h.createWritable();
+                    await w.write(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+                    await w.close();
+                }
+            }
+        """, files_b64)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(500)
+        await page.click('#tools-btn'); await page.click('#library-check-btn')
+        await page.wait_for_timeout(1000)
+        state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
+        docs = {d['id']: d for d in state['documents']}
+        print("Backfill hashed every document:", all(docs[i].get('file_hash') for i in [1, 2, 3, 4]))
+        print("...and checked the PDFs it read for text, without a separate pass:",
+              docs[1].get('text_checked') == 1 and docs[1].get('has_text_layer') == 1 and docs[2].get('text_checked') == 1 and not docs[2].get('has_text_layer'))
+        print("A PDF's own text fills empty OCR text:", 'real embedded text' in (docs[1].get('ocr_text') or ''))
+        print("...but never replaces existing OCR text:", docs[3].get('ocr_text') == 'Text kept from Mariner')
+        print("A document hashed from its separate original isn't text-checked by the backfill:", not docs[4].get('text_checked'))
+        unchecked = page.locator('#not-searchable-unchecked-count')
+        print("Only that one is left for Check for text:", await unchecked.count() == 1 and (await unchecked.inner_text()).endswith(': 1'))
+        print("JS ERRORS (shared read):", errors)
+        await browser.close()
+
 asyncio.run(main())
 asyncio.run(main_bulk())
 asyncio.run(main_library_check())
+asyncio.run(main_shared_read())

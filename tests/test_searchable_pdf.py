@@ -135,7 +135,8 @@ async def main():
         """)
         doc2 = [d for d in db_state_2['documents'] if d['id'] == 2][0]
         print("already-searchable PDF was NOT rebuilt (searchable_pdf_built should be 0):", doc2.get('searchable_pdf_built'))
-        print("already-searchable PDF's ocr_text is empty (OCR never ran):", not doc2.get('ocr_text'))
+        # OCR never ran; the PDF's own text layer is saved instead, so search finds it.
+        print("already-searchable PDF's ocr_text is its own text layer, not OCR output:", 'real embedded text' in (doc2.get('ocr_text') or '') and 'Hello World' not in (doc2.get('ocr_text') or ''))
 
         # === Scenario: a scanned (no real text) multi-page PDF gets OCR'd page by
         # page and rebuilt into a multi-page searchable PDF ===

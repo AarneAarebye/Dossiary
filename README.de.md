@@ -87,7 +87,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   geprüfte PDFs („Auf Text prüfen“ öffnet jedes und sucht eine Textebene,
   ohne OCR — die meisten PDFs aus Mariner oder von einem ScanSnap haben
   schon eine) und Dokumente, die OCR brauchen; diese lassen sich in der
-  Tabelle anzeigen oder auf einmal durchsuchbar machen. Wenn Sie von
+  Tabelle anzeigen oder auf einmal durchsuchbar machen. Der eigene Text
+  eines PDFs wird außerdem in den OCR-Text des Dokuments übernommen, wenn
+  dieser leer ist, sodass die Suche der App (und Spotlight) es über seinen
+  Inhalt findet; die Duplikatprüfung erledigt das nebenbei, während sie die
+  Dateien ohnehin liest. Wenn Sie von
   einem Papierdokument ausgehen, erklärt ein Schalter „Need to scan a
   paper document first?“ im Erfassungsformular, wie Sie zuerst mit
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da

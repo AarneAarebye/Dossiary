@@ -844,7 +844,12 @@ files finish, a "stopped after N of M" note, the modal unclosable while
 it runs) and a second run finishing the rest, a digital PDF recorded as
 having text, scanned PDFs as checked without, an unreadable PDF left
 unchecked to retry, "Show in table" listing exactly the needs-OCR
-documents, and "Make all searchable" processing only those -- the stub's
+documents, "Make all searchable" processing only those, and a found text
+layer copied into OCR text and the sidecar; and, in `main_shared_read()`,
+the duplicate backfill hashing every document and text-checking the PDFs
+it read from the same bytes (text copied only into empty OCR text, a
+document hashed from a separate original left for "Check for text") --
+the stub's
 pdf.js fake reports real text for a PDF whose bytes contain `%TEXTLAYER`
 and has a `__STUB_PDF_SLOW` hook for the Stop test -- the
 seed marks the `searchable_pdf_built` backfill done,

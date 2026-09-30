@@ -74,6 +74,9 @@ working" problem that motivated this project in the first place.
   "Check for text" opens each one to look for a text layer, without OCR --
   most PDFs from Mariner or a ScanSnap already have one) and documents that
   need OCR, which you can show in the table or make searchable in one go.
+  A PDF's own text is also copied into the document's OCR text when that's
+  empty, so the app's search (and Spotlight) find it by its contents; the
+  duplicate check does this for free while it reads the files anyway.
   If you're starting from a paper document, a "Need to
   scan a paper document first?" toggle in the capture form explains how to
   scan it first — Image Capture or Preview on macOS, the Windows Scan app

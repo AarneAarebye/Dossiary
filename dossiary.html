@@ -2866,7 +2866,9 @@
   // identical uploads always produce the same hash regardless of what
   // OCR/processing happens to either of them afterward.
   async function computeFileHash(file){
-    const buffer = await file.arrayBuffer();
+    return hashArrayBuffer(await file.arrayBuffer());
+  }
+  async function hashArrayBuffer(buffer){
     const digest = await crypto.subtle.digest('SHA-256', buffer);
     return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
@@ -5999,9 +6001,23 @@
       const relPath = d.original_file_path || d.file_path;
       const fileHandle = await resolveFileHandle(relPath, false);
       const file = await fileHandle.getFile();
-      const hash = await computeFileHash(file);
+      const buffer = await file.arrayBuffer();
+      const hash = await hashArrayBuffer(buffer);
       d.file_hash = hash;
       db.run('UPDATE documents SET file_hash = ? WHERE id = ?', [hash, d.id]);
+      // When the hashed file is also the document's active PDF (a migrated
+      // document has no separate original), check it for a text layer from
+      // the same bytes -- on iCloud Drive that saves downloading it again for
+      // "Check for text". Best-effort: a failure here leaves it unchecked.
+      if(relPath === d.file_path && /\.pdf$/i.test(d.file_path) && canMakeSearchable(d) && !d.text_checked){
+        try{
+          const pdfjsLib = await ensurePdfJs();
+          const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+          const { textAdded } = await recordPdfTextLayer(d, pdf);
+          try{ await pdf.destroy(); }catch(e){}
+          if(textAdded){ try{ await writeSidecarForDoc(d); }catch(e){} }
+        }catch(e){ /* stays unchecked */ }
+      }
     }catch(e){ /* file missing/unreadable -- leave file_hash null, not fatal */ }
   }
 
@@ -6377,11 +6393,9 @@
           try{
             const file = await (await resolveFileHandle(d.file_path, false)).getFile();
             const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-            const hasText = await pdfHasRealText(pdf);
+            const { textAdded } = await recordPdfTextLayer(d, pdf);
             try{ await pdf.destroy(); }catch(e){}
-            db.run('UPDATE documents SET text_checked = 1, has_text_layer = ? WHERE id = ?', [hasText ? 1 : 0, d.id]);
-            d.text_checked = true;
-            d.has_text_layer = hasText;
+            if(textAdded){ try{ await writeSidecarForDoc(d); }catch(e){} }
             if(++sinceLastPersist >= PERSIST_EVERY){ sinceLastPersist = 0; await queuePersist(); }
           }catch(e){
             failed++;
@@ -8843,6 +8857,43 @@
     return false;
   }
 
+  // A PDF's own text layer as plain text, page by page.
+  async function pdfExtractText(pdf){
+    const pageTexts = [];
+    for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      pageTexts.push(textContent.items.map(item => item.str || '').join(' ').replace(/\s+/g, ' ').trim());
+    }
+    return pageTexts.join('\n\n').trim();
+  }
+
+  // Records whether an opened PDF already has a text layer (text_checked,
+  // has_text_layer) and, when it does and the document has no OCR text yet,
+  // copies that text into ocr_text -- the app's search, and the sidecar .txt
+  // Spotlight reads, only see ocr_text, so a digital PDF (or a Mariner PDF
+  // whose text never reached the database) becomes findable by its contents.
+  // Existing ocr_text is never replaced. Doesn't persist; the caller does.
+  // Returns {hasText, textAdded}; on textAdded the caller should refresh the
+  // sidecar (writeSidecarForDoc).
+  async function recordPdfTextLayer(d, pdf){
+    const hasText = await pdfHasRealText(pdf);
+    let textAdded = false;
+    db.run('UPDATE documents SET text_checked = 1, has_text_layer = ? WHERE id = ?', [hasText ? 1 : 0, d.id]);
+    d.text_checked = true;
+    d.has_text_layer = hasText;
+    if(hasText && !(d.ocr_text && d.ocr_text.trim())){
+      let text = '';
+      try{ text = await pdfExtractText(pdf); }catch(e){ /* keep the flags, skip the text */ }
+      if(text){
+        db.run('UPDATE documents SET ocr_text = ? WHERE id = ?', [text, d.id]);
+        d.ocr_text = text;
+        textAdded = true;
+      }
+    }
+    return { hasText, textAdded };
+  }
+
   // OCRs every page of an already-open pdf.js document with per-word positions
   // ({blocks:true}), returning the page entries buildSearchablePdf() takes plus
   // each page's plain text. onPage(pageNum, total) reports progress; isStale(),
@@ -8896,6 +8947,10 @@
         if(hasRealText){
           pendingPdfOcrPages = null;
           pendingPdfHasText = true;
+          // Show (and save) the PDF's own text, so search finds it.
+          if(!el('f-ocr-text').value.trim()){
+            try{ el('f-ocr-text').value = await pdfExtractText(pdf); }catch(e){}
+          }
           ocrStatusEl.textContent = t('captureOcrPdfAlreadyText');
           return;
         }
@@ -8992,16 +9047,15 @@
       onProgress(t('ocrLoadingPdf'));
       const pdfjsLib = await ensurePdfJs();
       const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-      if(await pdfHasRealText(pdf)){
-        // Remember it, so it stops being offered (and listed as not searchable).
-        db.run('UPDATE documents SET has_text_layer = 1 WHERE id = ?', [id]);
-        d.has_text_layer = true;
+      // Records the check either way: with text it stops being offered (and
+      // its text becomes searchable); without, it belongs in "needs OCR" even
+      // if OCR below fails.
+      const { hasText, textAdded } = await recordPdfTextLayer(d, pdf);
+      if(hasText){
         await persistDb();
+        if(textAdded){ try{ await writeSidecarForDoc(d); }catch(e){} }
         return { status: 'already-text' };
       }
-      // Checked, no text: it belongs in "needs OCR" even if OCR below fails.
-      db.run('UPDATE documents SET text_checked = 1 WHERE id = ?', [id]);
-      d.text_checked = true;
       onProgress(t('ocrLoadingEngine'));
       const Tesseract = await ensureTesseract();
       const worker = await Tesseract.createWorker(lang.split('+'));
