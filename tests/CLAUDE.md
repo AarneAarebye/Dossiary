@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **82
-scripts covering most of the app's actual functionality** (80 of them
+There's a real, runnable Playwright regression suite in `tests/` — **83
+scripts covering most of the app's actual functionality** (81 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,16 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), backup (`test_backup.py` -- the "no backup
+scrollable mobile toolbar), rename or merge values (`test_manage_values.py`
+-- values listed with counts, the Waste bin included; merging two
+categories after confirming, with a Smart Collection's category following;
+a cancelled merge changing nothing; merging a document type, dropping the
+old type's field setup, keeping the target's, and moving the default type
+and a Smart Collection's type filter; merging two tags that differ only in
+case without duplicate links; renaming a person in place, then merging
+them; renaming a Payment method value with its Smart Collection filter; an
+empty name refused; Escape cancelling without closing; the sidecar and the
+category filter updated), backup (`test_backup.py` -- the "no backup
 yet" reminder on the open status line; a folder inside the library
 refused; a dated folder with every library file byte for byte, a fresh
 `library.sqlite`, `.DS_Store` skipped; a second backup getting its own

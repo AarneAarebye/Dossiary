@@ -134,6 +134,13 @@ working" problem that motivated this project in the first place.
   Document Type, Category, Subcategory, Payment method and Currency are
   filled in from the most recent one, marked amber with a note saying where
   they came from. Values you've entered are never replaced.
+- **Rename or merge values** — "🛠 Tools → ✎ Rename or merge values…"
+  lists the categories, subcategories, document types, tags, people, or
+  values of a text custom field, each with how many documents use it.
+  Rename one to fix a typo everywhere at once; rename it to a value that
+  already exists (e.g. "Grocery" → "Groceries", "Food" → "food") to merge
+  the two. Smart Collections, a type's field setup and the default type
+  follow along.
 - **Backup** — "🛠 Tools → 🗄 Back up library…" copies the whole library
   into a new dated folder inside a folder you choose (an external disk, a
   different cloud). A backup is just another library folder: to restore,
@@ -815,7 +822,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (82
+There's a real, runnable Playwright regression suite in `tests/` (83
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

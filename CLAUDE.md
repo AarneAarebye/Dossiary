@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (82 scripts) + shared
+tests/                   Playwright regression suite (83 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3742,6 +3742,26 @@ this repo's git tags.
   drops unknown ids. Single and bulk delete are the same call with a 1-
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
+- **Rename or merge values** (`openManageValuesModal()`, `valuesForKind()`,
+  `renameValue()`, `startValueRename()`, Tools → "✎ Rename or merge
+  values…") is Mariner's Tag Editor and editable category/merchant lists:
+  pick Categories, Subcategories, Document types, Tags, People, or any
+  text custom field, see every value with its document count (Waste-bin
+  documents included, so a restored one can't bring an old spelling
+  back), and rename one in place (same Enter/blur/Escape convention as the
+  field rename). **Renaming onto a value that already exists merges the
+  two** after a `confirm()` -- it can't be taken apart again. Tags and
+  people merge by moving their join rows (`document_tags`/
+  `document_field_people`, read whole-table and filtered in JS per the
+  sql.js convention above, skipping links the target already has) and
+  deleting the old row; a plain rename updates the row in place, keeping
+  its id. What else is keyed by the value moves with it: Smart Collection
+  criteria (category, type, person, and dynamic filters on that field or
+  on person fields), a renamed type's `document_type_fields` setup (on a
+  merge the target's own setup wins) and `default_document_type`, and the
+  sidecars of every touched document. A person's name is shared by every
+  person-type field, so renaming one renames it everywhere -- the same
+  global `personNameToId` registry described in the People note.
 - **Back up library** (`openBackupModal()`, `listLibraryFiles()`,
   `backupReminderText()`, Tools → "🗄 Back up library…") copies the whole
   library folder into a new `<library> backup <yyyy-mm-dd hhmm>` folder

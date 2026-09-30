@@ -160,6 +160,13 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Unterkategorie, Zahlungsmethode und Währung vom jüngsten solchen Dokument
   übernommen — gelb markiert mit einem Hinweis auf die Quelle. Eigene
   Eingaben werden nie ersetzt.
+- **Werte umbenennen oder zusammenführen** — „🛠 Werkzeuge → ✎ Werte
+  umbenennen oder zusammenführen…“ listet Kategorien, Unterkategorien,
+  Dokumenttypen, Tags, Personen oder die Werte eines Textfelds, jeweils mit
+  der Zahl der Dokumente. Umbenennen korrigiert einen Tippfehler überall
+  auf einmal; umbenennen in einen schon vorhandenen Wert (z. B. „Grocery“ →
+  „Groceries“) führt beide zusammen. Smart Collections, die Felder eines
+  Typs und der Standardtyp ziehen mit.
 - **Sicherung** — „🛠 Werkzeuge → 🗄 Bibliothek sichern…“ kopiert die
   ganze Bibliothek in einen neuen, datierten Ordner innerhalb eines Ordners
   Ihrer Wahl (externe Festplatte, andere Cloud). Eine Sicherung ist einfach
@@ -937,7 +944,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (82
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (83
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was
