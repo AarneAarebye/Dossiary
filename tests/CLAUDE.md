@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **80
-scripts covering most of the app's actual functionality** (78 of them
+There's a real, runnable Playwright regression suite in `tests/` — **81
+scripts covering most of the app's actual functionality** (79 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,15 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), autofill from earlier documents
+scrollable mobile toolbar), export (`test_export.py` -- a folder inside
+the library refused; files named by date and title with clashes numbered
+(including one already in the destination, left untouched) and unsafe
+characters replaced; the copies byte-identical; a missing file reported
+by name; `index.csv` with a row per exported file, quoting, amount/
+currency/tags/custom-field columns, `,` in English and `;` in German, and
+omitted when unticked; `files/` unchanged -- the stub's folder picker takes
+a one-shot `window.__NEXT_PICKED_DIR`, and its directory handles gained
+`resolve()`), autofill from earlier documents
 (`test_autofill.py` -- a known title, typed with odd spacing and case,
 replacing capture's untouched default type from the most recent match and
 filling Category/Subcategory/Payment method/Currency as guesses naming the

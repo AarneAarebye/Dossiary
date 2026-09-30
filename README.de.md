@@ -160,6 +160,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Unterkategorie, Zahlungsmethode und Währung vom jüngsten solchen Dokument
   übernommen — gelb markiert mit einem Hinweis auf die Quelle. Eigene
   Eingaben werden nie ersetzt.
+- **Export** — Dokumente auswählen und in der Leiste für Mehrfachaktionen
+  **Exportieren…** klicken: Ihre Dateien werden in einen Ordner Ihrer Wahl
+  kopiert, benannt nach Datum und Titel, auf Wunsch mit einer `index.csv`
+  ihrer Angaben (Betrag, Währung, Tags, eigene Felder …) — praktisch für
+  die Steuerberatung. In der Bibliothek ändert sich nichts.
 - **Tastenkürzel** — **?** zeigt die Liste. J/K (oder ↓/↑) wechseln
   zwischen Dokumenten, E bearbeitet, D markiert das aktuelle als fertig und
   springt zum nächsten, Enter öffnet die Datei; im Bearbeitungsformular
@@ -926,7 +931,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (80
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (81
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (80 scripts) + shared
+tests/                   Playwright regression suite (81 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3742,6 +3742,22 @@ this repo's git tags.
   drops unknown ids. Single and bulk delete are the same call with a 1-
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
+- **Export selected documents** (`openExportModal()`, `exportFileName()`,
+  `uniqueFileNameIn()`, `buildExportCsv()`, `#bulk-export-btn` in the
+  bulk-action bar) copies each selected document's active file into a
+  folder picked with `showDirectoryPicker()`, named `<yyyy-mm-dd> <title>`
+  (characters not allowed in file names replaced, clashes -- including
+  files already in that folder, which are never overwritten -- numbered
+  " (2)"), plus an optional `index.csv` of the details: the fixed columns,
+  Amount/Currency/Payment method, and every other custom field present in
+  the export. The CSV separator follows the UI language (`;` for de/fr/es,
+  whose spreadsheets use a decimal comma, `,` otherwise) and starts with a
+  BOM so spreadsheets read it as UTF-8. **Read-only for the library**, and
+  `isInsideLibrary()` (`isSameEntry()` / `resolve()`) refuses the library
+  folder or anything in it, so an export can't turn into untracked files
+  under `files/`. A document whose file can't be read is listed, not fatal.
+  Emailing (Mariner's other export) isn't possible from a browser: a
+  `mailto:` link can't carry attachments.
 - **Storage stats** (`computeStorageStats()`, `formatBytes()`,
   `openStorageStatsModal()`) is a brand new, independent toolbar button (now
   an item in the "🛠 Tools" dropdown) and

@@ -55,6 +55,19 @@ class FakeDirHandle {
     this._children.delete(name);
   }
   async isSameEntry(other) { return this === other; }
+  // Like the real API: the path (array of names) from this directory down to
+  // `other`, [] for itself, or null if it isn't inside.
+  async resolve(other) {
+    if (other === this) return [];
+    for (const [name, child] of this._children) {
+      if (child === other) return [name];
+      if (child.kind === 'directory') {
+        const sub = await child.resolve(other);
+        if (sub) return [name, ...sub];
+      }
+    }
+    return null;
+  }
   async queryPermission(desc) { return this._forceDenied ? 'denied' : 'prompt'; }
   async requestPermission(desc) {
     if (this._forceThrow) { const e = new Error('Simulated failure'); e.name = this._forceThrow; throw e; }
@@ -161,6 +174,9 @@ window.__makeEmptyRoot = function() { return new FakeDirHandle('EmptyLibrary'); 
 
 window.showDirectoryPicker = async function(opts) {
   window.__STUB_LOG.push('showDirectoryPicker called with ' + JSON.stringify(opts));
+  // A test can queue a different folder for the next pick (e.g. an export or
+  // backup destination); it's used once, then picks go back to __TEST_ROOT.
+  if (window.__NEXT_PICKED_DIR) { const d = window.__NEXT_PICKED_DIR; window.__NEXT_PICKED_DIR = null; return d; }
   if (!window.__TEST_ROOT) throw Object.assign(new Error('no test root set'), { name: 'AbortError' });
   return window.__TEST_ROOT;
 };

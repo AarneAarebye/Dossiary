@@ -134,6 +134,11 @@ working" problem that motivated this project in the first place.
   Document Type, Category, Subcategory, Payment method and Currency are
   filled in from the most recent one, marked amber with a note saying where
   they came from. Values you've entered are never replaced.
+- **Export** — select documents and click **Export…** in the bulk-action
+  bar to copy their files into a folder you pick, named by date and title,
+  with an optional `index.csv` of their details (amount, currency, tags,
+  custom fields…) — handy for a tax advisor. Nothing in the library
+  changes.
 - **Keyboard shortcuts** — press **?** for the list. J/K (or ↓/↑) move
   through the documents, E edits, D marks the current one Done and moves to
   the next, Enter opens its file; in the Edit form Ctrl/⌘+Enter saves and
@@ -805,7 +810,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (80
+There's a real, runnable Playwright regression suite in `tests/` (81
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

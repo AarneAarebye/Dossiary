@@ -828,6 +828,7 @@
         <button type="button" id="bulk-restore-btn" style="display:none;" data-i18n="bulkRestore">Restore</button>
         <button type="button" id="bulk-edit-btn" data-i18n="detailEdit">Edit</button>
         <button type="button" id="bulk-make-searchable-btn" data-i18n="detailMakeSearchable">Make searchable</button>
+        <button type="button" id="bulk-export-btn" data-i18n="bulkExport">Export…</button>
         <button type="button" id="bulk-clear-selection-btn" data-i18n="bulkClearSelection">Clear selection</button>
       </div>
 
@@ -991,7 +992,7 @@
       tableShowingCount: 'Showing {shown} of {total} documents', tableNoValue: '—',
       detailOpenFile: 'Open file', detailOpenOriginal: 'Open original file', detailEdit: 'Edit',
       detailMakeSearchable: 'Make searchable', makeSearchableIntro: 'Runs OCR on this document\'s file and saves it as a searchable PDF with an invisible text layer, so its text can be found and selected. The untouched original is kept. PDFs that already contain text are left alone.', makeSearchableStart: 'Start', makeSearchableBuilding: 'Building searchable PDF…', makeSearchableDone: 'Done — the document is now a searchable PDF.', makeSearchableAlreadyText: 'This PDF already contains real text, so it was left unchanged.', makeSearchableNoWords: 'OCR found no text, so nothing was changed. Try another OCR language.', makeSearchableUnsupported: 'Only PDF, JPEG, and PNG files can be made searchable.',
-      makeSearchableIntroBulk: 'Runs OCR on each selected document\'s file and saves it as a searchable PDF with an invisible text layer. Documents are processed one after another; each untouched original is kept, and PDFs that already contain text are left alone.', makeSearchableBulkCount: 'Documents to process: {count}', makeSearchableStop: 'Stop after this document', makeSearchableBulkProgress: 'Document {current} of {total}: {title}', makeSearchableBulkBuilt: 'Made searchable: {count}.', makeSearchableBulkAlreadyText: 'Already had text, left unchanged: {count}.', makeSearchableBulkFailed: 'Could not be processed: {count}.', makeSearchableBulkStopped: 'Stopped — not processed: {count}.', libraryCheckNotSearchableLabel: 'Not searchable yet', libraryCheckUncheckedCount: 'Not checked for text yet: {count}', libraryCheckCheckTextBtn: 'Check for text', libraryCheckTextMissingCount: 'Text not in search yet: {count}', libraryCheckCheckTextHint: 'Opens each PDF to see whether it already has a text layer, and copies that text into search — no OCR. Files stored in iCloud Drive may need to download first, so this can take a while; you can stop and continue later.', libraryCheckNeedsOcrCount: 'No text found, needs OCR: {count}', libraryCheckTextCheckProgress: 'Checked {done} of {total} PDFs…', libraryCheckTextCheckStopped: 'Stopped after {done} of {total}; run the check again to continue.', libraryCheckTextCheckFailed: 'Could not be read: {count}.', ocrSuggestionHint: 'Suggested from the document\'s text — please check.', shortcutsTitle: 'Keyboard shortcuts', shortcutsNext: 'Next document', shortcutsPrev: 'Previous document', shortcutsOpen: 'Open the file', shortcutsEdit: 'Edit', shortcutsDone: 'Done (clear the review flag) and go to the next', shortcutsSave: 'Save (in the Edit form)', shortcutsSaveDone: 'Save & Done (in the Edit form)', shortcutsHelp: 'Show this list', autofillHint: 'Filled in from “{title}” — please check.', libraryCheckNotSearchableShow: 'Show in table', libraryCheckNotSearchableMakeAll: 'Make all searchable',
+      makeSearchableIntroBulk: 'Runs OCR on each selected document\'s file and saves it as a searchable PDF with an invisible text layer. Documents are processed one after another; each untouched original is kept, and PDFs that already contain text are left alone.', makeSearchableBulkCount: 'Documents to process: {count}', makeSearchableStop: 'Stop after this document', makeSearchableBulkProgress: 'Document {current} of {total}: {title}', makeSearchableBulkBuilt: 'Made searchable: {count}.', makeSearchableBulkAlreadyText: 'Already had text, left unchanged: {count}.', makeSearchableBulkFailed: 'Could not be processed: {count}.', makeSearchableBulkStopped: 'Stopped — not processed: {count}.', libraryCheckNotSearchableLabel: 'Not searchable yet', libraryCheckUncheckedCount: 'Not checked for text yet: {count}', libraryCheckCheckTextBtn: 'Check for text', libraryCheckTextMissingCount: 'Text not in search yet: {count}', libraryCheckCheckTextHint: 'Opens each PDF to see whether it already has a text layer, and copies that text into search — no OCR. Files stored in iCloud Drive may need to download first, so this can take a while; you can stop and continue later.', libraryCheckNeedsOcrCount: 'No text found, needs OCR: {count}', libraryCheckTextCheckProgress: 'Checked {done} of {total} PDFs…', libraryCheckTextCheckStopped: 'Stopped after {done} of {total}; run the check again to continue.', libraryCheckTextCheckFailed: 'Could not be read: {count}.', ocrSuggestionHint: 'Suggested from the document\'s text — please check.', shortcutsTitle: 'Keyboard shortcuts', shortcutsNext: 'Next document', shortcutsPrev: 'Previous document', shortcutsOpen: 'Open the file', shortcutsEdit: 'Edit', shortcutsDone: 'Done (clear the review flag) and go to the next', shortcutsSave: 'Save (in the Edit form)', shortcutsSaveDone: 'Save & Done (in the Edit form)', shortcutsHelp: 'Show this list', autofillHint: 'Filled in from “{title}” — please check.', bulkExport: 'Export…', exportModalTitle: 'Export documents', exportIntro: 'Copies the files of the {count} selected documents into a folder you choose, named by date and title. Nothing in the library changes.', exportIncludeIndex: 'Also write index.csv with each document\'s details', exportChooseFolderBtn: 'Choose folder and export', exportProgress: 'Exporting {done} of {total}…', exportDone: 'Exported {count} files to “{folder}”.', exportFailed: 'Could not export: {count}.', exportInsideLibrary: 'That folder is the library or inside it — choose a folder outside the library.', exportCsvFile: 'File', libraryCheckNotSearchableShow: 'Show in table', libraryCheckNotSearchableMakeAll: 'Make all searchable',
       detailRegeneratePreview: 'Regenerate preview', detailGeneratePreview: 'Generate preview',
       detailUnarchive: 'Unarchive', detailArchive: 'Archive',
       detailAddToCollection: 'Add to collection…', detailRemoveFromCollection: 'Remove from this collection',
@@ -1194,7 +1195,7 @@
       tableShowingCount: 'Mostrando {shown} de {total} documentos', tableNoValue: '—',
       detailOpenFile: 'Abrir archivo', detailOpenOriginal: 'Abrir archivo original', detailEdit: 'Editar',
       detailMakeSearchable: 'Hacer buscable', makeSearchableIntro: 'Ejecuta OCR sobre el archivo de este documento y lo guarda como PDF buscable con una capa de texto invisible, para que su texto se pueda encontrar y seleccionar. Se conserva el original intacto. Los PDF que ya contienen texto no se modifican.', makeSearchableStart: 'Iniciar', makeSearchableBuilding: 'Creando PDF buscable…', makeSearchableDone: 'Listo: el documento ahora es un PDF buscable.', makeSearchableAlreadyText: 'Este PDF ya contiene texto real, así que no se ha modificado.', makeSearchableNoWords: 'El OCR no encontró texto, así que no se ha cambiado nada. Prueba otro idioma de OCR.', makeSearchableUnsupported: 'Solo los archivos PDF, JPEG y PNG se pueden hacer buscables.',
-      makeSearchableIntroBulk: 'Ejecuta OCR sobre el archivo de cada documento seleccionado y lo guarda como PDF buscable con una capa de texto invisible. Los documentos se procesan uno tras otro; cada original intacto se conserva y los PDF que ya contienen texto no se modifican.', makeSearchableBulkCount: 'Documentos a procesar: {count}', makeSearchableStop: 'Detener tras este documento', makeSearchableBulkProgress: 'Documento {current} de {total}: {title}', makeSearchableBulkBuilt: 'Hechos buscables: {count}.', makeSearchableBulkAlreadyText: 'Ya tenían texto, sin cambios: {count}.', makeSearchableBulkFailed: 'No se pudieron procesar: {count}.', makeSearchableBulkStopped: 'Detenido — sin procesar: {count}.', libraryCheckNotSearchableLabel: 'Aún no buscables', libraryCheckUncheckedCount: 'Aún sin comprobar si tienen texto: {count}', libraryCheckCheckTextBtn: 'Comprobar texto', libraryCheckTextMissingCount: 'Texto aún no incluido en la búsqueda: {count}', libraryCheckCheckTextHint: 'Abre cada PDF para ver si ya tiene una capa de texto y copia ese texto a la búsqueda, sin OCR. Los archivos en iCloud Drive quizá deban descargarse antes, así que puede tardar; puedes detenerlo y continuar más tarde.', libraryCheckNeedsOcrCount: 'Sin texto, necesitan OCR: {count}', libraryCheckTextCheckProgress: 'Comprobados {done} de {total} PDF…', libraryCheckTextCheckStopped: 'Detenido tras {done} de {total}; vuelve a comprobar para continuar.', libraryCheckTextCheckFailed: 'No se pudieron leer: {count}.', ocrSuggestionHint: 'Sugerido a partir del texto del documento; compruébalo.', shortcutsTitle: 'Atajos de teclado', shortcutsNext: 'Documento siguiente', shortcutsPrev: 'Documento anterior', shortcutsOpen: 'Abrir el archivo', shortcutsEdit: 'Editar', shortcutsDone: 'Hecho (quitar la marca de revisión) y pasar al siguiente', shortcutsSave: 'Guardar (en el formulario de edición)', shortcutsSaveDone: 'Guardar y marcar como hecho (en el formulario de edición)', shortcutsHelp: 'Mostrar esta lista', autofillHint: 'Rellenado a partir de «{title}»; compruébalo.', libraryCheckNotSearchableShow: 'Mostrar en la tabla', libraryCheckNotSearchableMakeAll: 'Hacer todos buscables',
+      makeSearchableIntroBulk: 'Ejecuta OCR sobre el archivo de cada documento seleccionado y lo guarda como PDF buscable con una capa de texto invisible. Los documentos se procesan uno tras otro; cada original intacto se conserva y los PDF que ya contienen texto no se modifican.', makeSearchableBulkCount: 'Documentos a procesar: {count}', makeSearchableStop: 'Detener tras este documento', makeSearchableBulkProgress: 'Documento {current} de {total}: {title}', makeSearchableBulkBuilt: 'Hechos buscables: {count}.', makeSearchableBulkAlreadyText: 'Ya tenían texto, sin cambios: {count}.', makeSearchableBulkFailed: 'No se pudieron procesar: {count}.', makeSearchableBulkStopped: 'Detenido — sin procesar: {count}.', libraryCheckNotSearchableLabel: 'Aún no buscables', libraryCheckUncheckedCount: 'Aún sin comprobar si tienen texto: {count}', libraryCheckCheckTextBtn: 'Comprobar texto', libraryCheckTextMissingCount: 'Texto aún no incluido en la búsqueda: {count}', libraryCheckCheckTextHint: 'Abre cada PDF para ver si ya tiene una capa de texto y copia ese texto a la búsqueda, sin OCR. Los archivos en iCloud Drive quizá deban descargarse antes, así que puede tardar; puedes detenerlo y continuar más tarde.', libraryCheckNeedsOcrCount: 'Sin texto, necesitan OCR: {count}', libraryCheckTextCheckProgress: 'Comprobados {done} de {total} PDF…', libraryCheckTextCheckStopped: 'Detenido tras {done} de {total}; vuelve a comprobar para continuar.', libraryCheckTextCheckFailed: 'No se pudieron leer: {count}.', ocrSuggestionHint: 'Sugerido a partir del texto del documento; compruébalo.', shortcutsTitle: 'Atajos de teclado', shortcutsNext: 'Documento siguiente', shortcutsPrev: 'Documento anterior', shortcutsOpen: 'Abrir el archivo', shortcutsEdit: 'Editar', shortcutsDone: 'Hecho (quitar la marca de revisión) y pasar al siguiente', shortcutsSave: 'Guardar (en el formulario de edición)', shortcutsSaveDone: 'Guardar y marcar como hecho (en el formulario de edición)', shortcutsHelp: 'Mostrar esta lista', autofillHint: 'Rellenado a partir de «{title}»; compruébalo.', bulkExport: 'Exportar…', exportModalTitle: 'Exportar documentos', exportIntro: 'Copia los archivos de los {count} documentos seleccionados en una carpeta que elijas, con nombres por fecha y título. La biblioteca no cambia.', exportIncludeIndex: 'Crear también index.csv con los datos de cada documento', exportChooseFolderBtn: 'Elegir carpeta y exportar', exportProgress: 'Exportando {done} de {total}…', exportDone: 'Se exportaron {count} archivos a «{folder}».', exportFailed: 'No se pudieron exportar: {count}.', exportInsideLibrary: 'Esa carpeta es la biblioteca o está dentro de ella; elige una carpeta fuera de la biblioteca.', exportCsvFile: 'Archivo', libraryCheckNotSearchableShow: 'Mostrar en la tabla', libraryCheckNotSearchableMakeAll: 'Hacer todos buscables',
       detailRegeneratePreview: 'Regenerar vista previa', detailGeneratePreview: 'Generar vista previa',
       detailUnarchive: 'Desarchivar', detailArchive: 'Archivar',
       detailAddToCollection: 'Añadir a colección…', detailRemoveFromCollection: 'Quitar de esta colección',
@@ -1397,7 +1398,7 @@
       tableShowingCount: 'Affichage de {shown} sur {total} documents', tableNoValue: '—',
       detailOpenFile: 'Ouvrir le fichier', detailOpenOriginal: 'Ouvrir le fichier original', detailEdit: 'Modifier',
       detailMakeSearchable: 'Rendre interrogeable', makeSearchableIntro: 'Lance l\'OCR sur le fichier de ce document et l\'enregistre en PDF interrogeable avec une couche de texte invisible, pour que son texte puisse être trouvé et sélectionné. L\'original intact est conservé. Les PDF qui contiennent déjà du texte ne sont pas modifiés.', makeSearchableStart: 'Démarrer', makeSearchableBuilding: 'Création du PDF interrogeable…', makeSearchableDone: 'Terminé — le document est maintenant un PDF interrogeable.', makeSearchableAlreadyText: 'Ce PDF contient déjà du texte réel, il n\'a donc pas été modifié.', makeSearchableNoWords: 'L\'OCR n\'a trouvé aucun texte, rien n\'a été modifié. Essayez une autre langue d\'OCR.', makeSearchableUnsupported: 'Seuls les fichiers PDF, JPEG et PNG peuvent être rendus interrogeables.',
-      makeSearchableIntroBulk: 'Lance l\'OCR sur le fichier de chaque document sélectionné et l\'enregistre en PDF interrogeable avec une couche de texte invisible. Les documents sont traités l\'un après l\'autre ; chaque original intact est conservé et les PDF qui contiennent déjà du texte ne sont pas modifiés.', makeSearchableBulkCount: 'Documents à traiter : {count}', makeSearchableStop: 'Arrêter après ce document', makeSearchableBulkProgress: 'Document {current} sur {total} : {title}', makeSearchableBulkBuilt: 'Rendus interrogeables : {count}.', makeSearchableBulkAlreadyText: 'Contenaient déjà du texte, non modifiés : {count}.', makeSearchableBulkFailed: 'Impossible à traiter : {count}.', makeSearchableBulkStopped: 'Arrêté — non traités : {count}.', libraryCheckNotSearchableLabel: 'Pas encore interrogeables', libraryCheckUncheckedCount: 'Pas encore vérifiés pour le texte : {count}', libraryCheckCheckTextBtn: 'Vérifier le texte', libraryCheckTextMissingCount: 'Texte pas encore dans la recherche : {count}', libraryCheckCheckTextHint: 'Ouvre chaque PDF pour voir s\'il contient déjà une couche de texte et copie ce texte dans la recherche, sans OCR. Les fichiers stockés dans iCloud Drive devront peut-être d\'abord être téléchargés, cela peut donc prendre du temps ; vous pouvez arrêter et reprendre plus tard.', libraryCheckNeedsOcrCount: 'Aucun texte, OCR nécessaire : {count}', libraryCheckTextCheckProgress: '{done} PDF vérifiés sur {total}…', libraryCheckTextCheckStopped: 'Arrêté après {done} sur {total} ; relancez la vérification pour continuer.', libraryCheckTextCheckFailed: 'Illisibles : {count}.', ocrSuggestionHint: 'Suggéré d\'après le texte du document — vérifiez-le.', shortcutsTitle: 'Raccourcis clavier', shortcutsNext: 'Document suivant', shortcutsPrev: 'Document précédent', shortcutsOpen: 'Ouvrir le fichier', shortcutsEdit: 'Modifier', shortcutsDone: 'Terminé (retirer l\'indicateur de vérification) et passer au suivant', shortcutsSave: 'Enregistrer (dans le formulaire de modification)', shortcutsSaveDone: 'Enregistrer et terminer (dans le formulaire de modification)', shortcutsHelp: 'Afficher cette liste', autofillHint: 'Rempli d\'après « {title} » — vérifiez-le.', libraryCheckNotSearchableShow: 'Afficher dans le tableau', libraryCheckNotSearchableMakeAll: 'Tout rendre interrogeable',
+      makeSearchableIntroBulk: 'Lance l\'OCR sur le fichier de chaque document sélectionné et l\'enregistre en PDF interrogeable avec une couche de texte invisible. Les documents sont traités l\'un après l\'autre ; chaque original intact est conservé et les PDF qui contiennent déjà du texte ne sont pas modifiés.', makeSearchableBulkCount: 'Documents à traiter : {count}', makeSearchableStop: 'Arrêter après ce document', makeSearchableBulkProgress: 'Document {current} sur {total} : {title}', makeSearchableBulkBuilt: 'Rendus interrogeables : {count}.', makeSearchableBulkAlreadyText: 'Contenaient déjà du texte, non modifiés : {count}.', makeSearchableBulkFailed: 'Impossible à traiter : {count}.', makeSearchableBulkStopped: 'Arrêté — non traités : {count}.', libraryCheckNotSearchableLabel: 'Pas encore interrogeables', libraryCheckUncheckedCount: 'Pas encore vérifiés pour le texte : {count}', libraryCheckCheckTextBtn: 'Vérifier le texte', libraryCheckTextMissingCount: 'Texte pas encore dans la recherche : {count}', libraryCheckCheckTextHint: 'Ouvre chaque PDF pour voir s\'il contient déjà une couche de texte et copie ce texte dans la recherche, sans OCR. Les fichiers stockés dans iCloud Drive devront peut-être d\'abord être téléchargés, cela peut donc prendre du temps ; vous pouvez arrêter et reprendre plus tard.', libraryCheckNeedsOcrCount: 'Aucun texte, OCR nécessaire : {count}', libraryCheckTextCheckProgress: '{done} PDF vérifiés sur {total}…', libraryCheckTextCheckStopped: 'Arrêté après {done} sur {total} ; relancez la vérification pour continuer.', libraryCheckTextCheckFailed: 'Illisibles : {count}.', ocrSuggestionHint: 'Suggéré d\'après le texte du document — vérifiez-le.', shortcutsTitle: 'Raccourcis clavier', shortcutsNext: 'Document suivant', shortcutsPrev: 'Document précédent', shortcutsOpen: 'Ouvrir le fichier', shortcutsEdit: 'Modifier', shortcutsDone: 'Terminé (retirer l\'indicateur de vérification) et passer au suivant', shortcutsSave: 'Enregistrer (dans le formulaire de modification)', shortcutsSaveDone: 'Enregistrer et terminer (dans le formulaire de modification)', shortcutsHelp: 'Afficher cette liste', autofillHint: 'Rempli d\'après « {title} » — vérifiez-le.', bulkExport: 'Exporter…', exportModalTitle: 'Exporter des documents', exportIntro: 'Copie les fichiers des {count} documents sélectionnés dans un dossier de votre choix, nommés par date et titre. La bibliothèque n\'est pas modifiée.', exportIncludeIndex: 'Écrire aussi index.csv avec les détails de chaque document', exportChooseFolderBtn: 'Choisir un dossier et exporter', exportProgress: 'Export de {done} sur {total}…', exportDone: '{count} fichiers exportés vers « {folder} ».', exportFailed: 'Export impossible : {count}.', exportInsideLibrary: 'Ce dossier est la bibliothèque ou se trouve à l\'intérieur — choisissez un dossier en dehors de la bibliothèque.', exportCsvFile: 'Fichier', libraryCheckNotSearchableShow: 'Afficher dans le tableau', libraryCheckNotSearchableMakeAll: 'Tout rendre interrogeable',
       detailRegeneratePreview: "Régénérer l'aperçu", detailGeneratePreview: 'Générer un aperçu',
       detailUnarchive: 'Désarchiver', detailArchive: 'Archiver',
       detailAddToCollection: 'Ajouter à une collection…', detailRemoveFromCollection: 'Retirer de cette collection',
@@ -1600,7 +1601,7 @@
       tableShowingCount: '{shown} von {total} Dokumenten angezeigt', tableNoValue: '—',
       detailOpenFile: 'Datei öffnen', detailOpenOriginal: 'Originaldatei öffnen', detailEdit: 'Bearbeiten',
       detailMakeSearchable: 'Durchsuchbar machen', makeSearchableIntro: 'Führt OCR für die Datei dieses Dokuments aus und speichert sie als durchsuchbares PDF mit unsichtbarer Textebene, sodass ihr Text gefunden und markiert werden kann. Das unveränderte Original bleibt erhalten. PDFs, die bereits Text enthalten, bleiben unverändert.', makeSearchableStart: 'Starten', makeSearchableBuilding: 'Durchsuchbares PDF wird erstellt…', makeSearchableDone: 'Fertig — das Dokument ist jetzt ein durchsuchbares PDF.', makeSearchableAlreadyText: 'Dieses PDF enthält bereits echten Text und wurde daher nicht verändert.', makeSearchableNoWords: 'OCR hat keinen Text gefunden, daher wurde nichts geändert. Versuche eine andere OCR-Sprache.', makeSearchableUnsupported: 'Nur PDF-, JPEG- und PNG-Dateien können durchsuchbar gemacht werden.',
-      makeSearchableIntroBulk: 'Führt OCR für die Datei jedes ausgewählten Dokuments aus und speichert sie als durchsuchbares PDF mit unsichtbarer Textebene. Die Dokumente werden nacheinander verarbeitet; jedes unveränderte Original bleibt erhalten, und PDFs, die bereits Text enthalten, bleiben unverändert.', makeSearchableBulkCount: 'Zu verarbeitende Dokumente: {count}', makeSearchableStop: 'Nach diesem Dokument anhalten', makeSearchableBulkProgress: 'Dokument {current} von {total}: {title}', makeSearchableBulkBuilt: 'Durchsuchbar gemacht: {count}.', makeSearchableBulkAlreadyText: 'Enthielten bereits Text, unverändert: {count}.', makeSearchableBulkFailed: 'Nicht verarbeitbar: {count}.', makeSearchableBulkStopped: 'Angehalten — nicht verarbeitet: {count}.', libraryCheckNotSearchableLabel: 'Noch nicht durchsuchbar', libraryCheckUncheckedCount: 'Noch nicht auf Text geprüft: {count}', libraryCheckCheckTextBtn: 'Auf Text prüfen', libraryCheckTextMissingCount: 'Text noch nicht in der Suche: {count}', libraryCheckCheckTextHint: 'Öffnet jedes PDF, prüft, ob es bereits eine Textebene hat, und übernimmt diesen Text in die Suche — ohne OCR. Dateien in iCloud Drive müssen eventuell erst geladen werden, das kann dauern; Sie können anhalten und später fortsetzen.', libraryCheckNeedsOcrCount: 'Kein Text gefunden, braucht OCR: {count}', libraryCheckTextCheckProgress: '{done} von {total} PDFs geprüft…', libraryCheckTextCheckStopped: 'Angehalten nach {done} von {total}; starten Sie die Prüfung erneut, um fortzufahren.', libraryCheckTextCheckFailed: 'Nicht lesbar: {count}.', ocrSuggestionHint: 'Aus dem Text des Dokuments vorgeschlagen — bitte prüfen.', shortcutsTitle: 'Tastenkürzel', shortcutsNext: 'Nächstes Dokument', shortcutsPrev: 'Vorheriges Dokument', shortcutsOpen: 'Datei öffnen', shortcutsEdit: 'Bearbeiten', shortcutsDone: 'Fertig (Prüfmarkierung entfernen) und zum nächsten', shortcutsSave: 'Speichern (im Bearbeitungsformular)', shortcutsSaveDone: 'Speichern & fertig (im Bearbeitungsformular)', shortcutsHelp: 'Diese Liste anzeigen', autofillHint: 'Aus „{title}“ übernommen — bitte prüfen.', libraryCheckNotSearchableShow: 'In der Tabelle anzeigen', libraryCheckNotSearchableMakeAll: 'Alle durchsuchbar machen',
+      makeSearchableIntroBulk: 'Führt OCR für die Datei jedes ausgewählten Dokuments aus und speichert sie als durchsuchbares PDF mit unsichtbarer Textebene. Die Dokumente werden nacheinander verarbeitet; jedes unveränderte Original bleibt erhalten, und PDFs, die bereits Text enthalten, bleiben unverändert.', makeSearchableBulkCount: 'Zu verarbeitende Dokumente: {count}', makeSearchableStop: 'Nach diesem Dokument anhalten', makeSearchableBulkProgress: 'Dokument {current} von {total}: {title}', makeSearchableBulkBuilt: 'Durchsuchbar gemacht: {count}.', makeSearchableBulkAlreadyText: 'Enthielten bereits Text, unverändert: {count}.', makeSearchableBulkFailed: 'Nicht verarbeitbar: {count}.', makeSearchableBulkStopped: 'Angehalten — nicht verarbeitet: {count}.', libraryCheckNotSearchableLabel: 'Noch nicht durchsuchbar', libraryCheckUncheckedCount: 'Noch nicht auf Text geprüft: {count}', libraryCheckCheckTextBtn: 'Auf Text prüfen', libraryCheckTextMissingCount: 'Text noch nicht in der Suche: {count}', libraryCheckCheckTextHint: 'Öffnet jedes PDF, prüft, ob es bereits eine Textebene hat, und übernimmt diesen Text in die Suche — ohne OCR. Dateien in iCloud Drive müssen eventuell erst geladen werden, das kann dauern; Sie können anhalten und später fortsetzen.', libraryCheckNeedsOcrCount: 'Kein Text gefunden, braucht OCR: {count}', libraryCheckTextCheckProgress: '{done} von {total} PDFs geprüft…', libraryCheckTextCheckStopped: 'Angehalten nach {done} von {total}; starten Sie die Prüfung erneut, um fortzufahren.', libraryCheckTextCheckFailed: 'Nicht lesbar: {count}.', ocrSuggestionHint: 'Aus dem Text des Dokuments vorgeschlagen — bitte prüfen.', shortcutsTitle: 'Tastenkürzel', shortcutsNext: 'Nächstes Dokument', shortcutsPrev: 'Vorheriges Dokument', shortcutsOpen: 'Datei öffnen', shortcutsEdit: 'Bearbeiten', shortcutsDone: 'Fertig (Prüfmarkierung entfernen) und zum nächsten', shortcutsSave: 'Speichern (im Bearbeitungsformular)', shortcutsSaveDone: 'Speichern & fertig (im Bearbeitungsformular)', shortcutsHelp: 'Diese Liste anzeigen', autofillHint: 'Aus „{title}“ übernommen — bitte prüfen.', bulkExport: 'Exportieren…', exportModalTitle: 'Dokumente exportieren', exportIntro: 'Kopiert die Dateien der {count} ausgewählten Dokumente in einen Ordner Ihrer Wahl, benannt nach Datum und Titel. In der Bibliothek ändert sich nichts.', exportIncludeIndex: 'Zusätzlich index.csv mit den Angaben zu jedem Dokument schreiben', exportChooseFolderBtn: 'Ordner wählen und exportieren', exportProgress: 'Exportiere {done} von {total}…', exportDone: '{count} Dateien nach „{folder}“ exportiert.', exportFailed: 'Nicht exportierbar: {count}.', exportInsideLibrary: 'Dieser Ordner ist die Bibliothek oder liegt darin — wählen Sie einen Ordner außerhalb der Bibliothek.', exportCsvFile: 'Datei', libraryCheckNotSearchableShow: 'In der Tabelle anzeigen', libraryCheckNotSearchableMakeAll: 'Alle durchsuchbar machen',
       detailRegeneratePreview: 'Vorschau neu erzeugen', detailGeneratePreview: 'Vorschau erzeugen',
       detailUnarchive: 'Aus Archiv holen', detailArchive: 'Archivieren',
       detailAddToCollection: 'Zu Sammlung hinzufügen…', detailRemoveFromCollection: 'Aus dieser Sammlung entfernen',
@@ -1803,7 +1804,7 @@
       tableShowingCount: '显示 {total} 个文档中的 {shown} 个', tableNoValue: '—',
       detailOpenFile: '打开文件', detailOpenOriginal: '打开原始文件', detailEdit: '编辑',
       detailMakeSearchable: '设为可搜索', makeSearchableIntro: '对此文档的文件运行 OCR，并将其保存为带有隐藏文本层的可搜索 PDF，以便查找和选择其中的文字。原始文件将原样保留。已包含文本的 PDF 不会被更改。', makeSearchableStart: '开始', makeSearchableBuilding: '正在生成可搜索 PDF…', makeSearchableDone: '完成 —— 该文档现在是可搜索 PDF。', makeSearchableAlreadyText: '此 PDF 已包含真实文本，因此未做更改。', makeSearchableNoWords: 'OCR 未识别到文本，因此未做任何更改。请尝试其他 OCR 语言。', makeSearchableUnsupported: '只有 PDF、JPEG 和 PNG 文件可以设为可搜索。',
-      makeSearchableIntroBulk: '对每个所选文档的文件运行 OCR，并将其保存为带有隐藏文本层的可搜索 PDF。文档将逐一处理；每个原始文件都会原样保留，已包含文本的 PDF 不会被更改。', makeSearchableBulkCount: '待处理文档：{count}', makeSearchableStop: '处理完此文档后停止', makeSearchableBulkProgress: '第 {current} 个，共 {total} 个：{title}', makeSearchableBulkBuilt: '已设为可搜索：{count}。', makeSearchableBulkAlreadyText: '已含文本，未更改：{count}。', makeSearchableBulkFailed: '无法处理：{count}。', makeSearchableBulkStopped: '已停止 —— 未处理：{count}。', libraryCheckNotSearchableLabel: '尚不可搜索', libraryCheckUncheckedCount: '尚未检查是否含文本：{count}', libraryCheckCheckTextBtn: '检查文本', libraryCheckTextMissingCount: '文本尚未纳入搜索：{count}', libraryCheckCheckTextHint: '逐一打开每个 PDF，查看其是否已有文本层，并将该文本纳入搜索（不运行 OCR）。存储在 iCloud 云盘中的文件可能需要先下载，因此可能需要一些时间；您可以随时停止，稍后继续。', libraryCheckNeedsOcrCount: '未找到文本，需要 OCR：{count}', libraryCheckTextCheckProgress: '已检查 {done}/{total} 个 PDF……', libraryCheckTextCheckStopped: '已在 {done}/{total} 后停止；再次运行检查即可继续。', libraryCheckTextCheckFailed: '无法读取：{count}。', ocrSuggestionHint: '根据文档文本建议——请核对。', shortcutsTitle: '键盘快捷键', shortcutsNext: '下一个文档', shortcutsPrev: '上一个文档', shortcutsOpen: '打开文件', shortcutsEdit: '编辑', shortcutsDone: '完成（清除待审核标记）并转到下一个', shortcutsSave: '保存（在编辑表单中）', shortcutsSaveDone: '保存并完成（在编辑表单中）', shortcutsHelp: '显示此列表', autofillHint: '根据“{title}”填写——请核对。', libraryCheckNotSearchableShow: '在表格中显示', libraryCheckNotSearchableMakeAll: '全部设为可搜索',
+      makeSearchableIntroBulk: '对每个所选文档的文件运行 OCR，并将其保存为带有隐藏文本层的可搜索 PDF。文档将逐一处理；每个原始文件都会原样保留，已包含文本的 PDF 不会被更改。', makeSearchableBulkCount: '待处理文档：{count}', makeSearchableStop: '处理完此文档后停止', makeSearchableBulkProgress: '第 {current} 个，共 {total} 个：{title}', makeSearchableBulkBuilt: '已设为可搜索：{count}。', makeSearchableBulkAlreadyText: '已含文本，未更改：{count}。', makeSearchableBulkFailed: '无法处理：{count}。', makeSearchableBulkStopped: '已停止 —— 未处理：{count}。', libraryCheckNotSearchableLabel: '尚不可搜索', libraryCheckUncheckedCount: '尚未检查是否含文本：{count}', libraryCheckCheckTextBtn: '检查文本', libraryCheckTextMissingCount: '文本尚未纳入搜索：{count}', libraryCheckCheckTextHint: '逐一打开每个 PDF，查看其是否已有文本层，并将该文本纳入搜索（不运行 OCR）。存储在 iCloud 云盘中的文件可能需要先下载，因此可能需要一些时间；您可以随时停止，稍后继续。', libraryCheckNeedsOcrCount: '未找到文本，需要 OCR：{count}', libraryCheckTextCheckProgress: '已检查 {done}/{total} 个 PDF……', libraryCheckTextCheckStopped: '已在 {done}/{total} 后停止；再次运行检查即可继续。', libraryCheckTextCheckFailed: '无法读取：{count}。', ocrSuggestionHint: '根据文档文本建议——请核对。', shortcutsTitle: '键盘快捷键', shortcutsNext: '下一个文档', shortcutsPrev: '上一个文档', shortcutsOpen: '打开文件', shortcutsEdit: '编辑', shortcutsDone: '完成（清除待审核标记）并转到下一个', shortcutsSave: '保存（在编辑表单中）', shortcutsSaveDone: '保存并完成（在编辑表单中）', shortcutsHelp: '显示此列表', autofillHint: '根据“{title}”填写——请核对。', bulkExport: '导出…', exportModalTitle: '导出文档', exportIntro: '将所选 {count} 个文档的文件复制到您选择的文件夹中，并按日期和标题命名。资料库不会有任何更改。', exportIncludeIndex: '同时写入包含各文档信息的 index.csv', exportChooseFolderBtn: '选择文件夹并导出', exportProgress: '正在导出 {done}/{total}……', exportDone: '已将 {count} 个文件导出到“{folder}”。', exportFailed: '无法导出：{count}。', exportInsideLibrary: '该文件夹就是资料库或位于其中——请选择资料库之外的文件夹。', exportCsvFile: '文件', libraryCheckNotSearchableShow: '在表格中显示', libraryCheckNotSearchableMakeAll: '全部设为可搜索',
       detailRegeneratePreview: '重新生成预览', detailGeneratePreview: '生成预览',
       detailUnarchive: '取消归档', detailArchive: '归档',
       detailAddToCollection: '添加到收藏集…', detailRemoveFromCollection: '从此收藏集中移除',
@@ -2058,7 +2059,7 @@
       detailOpenFile: '打開文件',
       detailOpenOriginal: '打開原始文件',
       detailMakeSearchable: '設為可搜索', makeSearchableIntro: '對此文檔的文件運行 OCR，並將其保存為帶有隱藏文本層的可搜索 PDF，以便查找和選擇其中的文字。原始文件將原樣保留。已包含文本的 PDF 不會被更改。', makeSearchableStart: '開始', makeSearchableBuilding: '正在生成可搜索 PDF…', makeSearchableDone: '完成 —— 該文檔現在是可搜索 PDF。', makeSearchableAlreadyText: '此 PDF 已包含真實文本，因此未做更改。', makeSearchableNoWords: 'OCR 未識別到文本，因此未做任何更改。請嘗試其他 OCR 語言。', makeSearchableUnsupported: '只有 PDF、JPEG 和 PNG 文件可以設為可搜索。',
-      makeSearchableIntroBulk: '對每個所選文檔的文件運行 OCR，並將其保存為帶有隱藏文本層的可搜索 PDF。文檔將逐一處理；每個原始文件都會原樣保留，已包含文本的 PDF 不會被更改。', makeSearchableBulkCount: '待處理文檔：{count}', makeSearchableStop: '處理完此文檔後停止', makeSearchableBulkProgress: '第 {current} 個，共 {total} 個：{title}', makeSearchableBulkBuilt: '已設為可搜索：{count}。', makeSearchableBulkAlreadyText: '已含文本，未更改：{count}。', makeSearchableBulkFailed: '無法處理：{count}。', makeSearchableBulkStopped: '已停止 —— 未處理：{count}。', libraryCheckNotSearchableLabel: '尚不可搜索', libraryCheckUncheckedCount: '尚未檢查是否含文本：{count}', libraryCheckCheckTextBtn: '檢查文本', libraryCheckTextMissingCount: '文本尚未納入搜索：{count}', libraryCheckCheckTextHint: '逐一打開每個 PDF，查看其是否已有文本層，並將該文本納入搜索（不運行 OCR）。存儲在 iCloud 雲碟中的文件可能需要先下載，因此可能需要一些時間；您可以隨時停止，稍後繼續。', libraryCheckNeedsOcrCount: '未找到文本，需要 OCR：{count}', libraryCheckTextCheckProgress: '已檢查 {done}/{total} 個 PDF……', libraryCheckTextCheckStopped: '已在 {done}/{total} 後停止；再次運行檢查即可繼續。', libraryCheckTextCheckFailed: '無法讀取：{count}。', ocrSuggestionHint: '根據文檔文本建議——請核對。', shortcutsTitle: '鍵盤快捷鍵', shortcutsNext: '下一個文檔', shortcutsPrev: '上一個文檔', shortcutsOpen: '打開文件', shortcutsEdit: '編輯', shortcutsDone: '完成（清除待審核標記）並轉到下一個', shortcutsSave: '保存（在編輯表單中）', shortcutsSaveDone: '保存並完成（在編輯表單中）', shortcutsHelp: '顯示此列表', autofillHint: '根據「{title}」填寫——請核對。', libraryCheckNotSearchableShow: '在表格中顯示', libraryCheckNotSearchableMakeAll: '全部設為可搜索',
+      makeSearchableIntroBulk: '對每個所選文檔的文件運行 OCR，並將其保存為帶有隱藏文本層的可搜索 PDF。文檔將逐一處理；每個原始文件都會原樣保留，已包含文本的 PDF 不會被更改。', makeSearchableBulkCount: '待處理文檔：{count}', makeSearchableStop: '處理完此文檔後停止', makeSearchableBulkProgress: '第 {current} 個，共 {total} 個：{title}', makeSearchableBulkBuilt: '已設為可搜索：{count}。', makeSearchableBulkAlreadyText: '已含文本，未更改：{count}。', makeSearchableBulkFailed: '無法處理：{count}。', makeSearchableBulkStopped: '已停止 —— 未處理：{count}。', libraryCheckNotSearchableLabel: '尚不可搜索', libraryCheckUncheckedCount: '尚未檢查是否含文本：{count}', libraryCheckCheckTextBtn: '檢查文本', libraryCheckTextMissingCount: '文本尚未納入搜索：{count}', libraryCheckCheckTextHint: '逐一打開每個 PDF，查看其是否已有文本層，並將該文本納入搜索（不運行 OCR）。存儲在 iCloud 雲碟中的文件可能需要先下載，因此可能需要一些時間；您可以隨時停止，稍後繼續。', libraryCheckNeedsOcrCount: '未找到文本，需要 OCR：{count}', libraryCheckTextCheckProgress: '已檢查 {done}/{total} 個 PDF……', libraryCheckTextCheckStopped: '已在 {done}/{total} 後停止；再次運行檢查即可繼續。', libraryCheckTextCheckFailed: '無法讀取：{count}。', ocrSuggestionHint: '根據文檔文本建議——請核對。', shortcutsTitle: '鍵盤快捷鍵', shortcutsNext: '下一個文檔', shortcutsPrev: '上一個文檔', shortcutsOpen: '打開文件', shortcutsEdit: '編輯', shortcutsDone: '完成（清除待審核標記）並轉到下一個', shortcutsSave: '保存（在編輯表單中）', shortcutsSaveDone: '保存並完成（在編輯表單中）', shortcutsHelp: '顯示此列表', autofillHint: '根據「{title}」填寫——請核對。', bulkExport: '導出…', exportModalTitle: '導出文檔', exportIntro: '將所選 {count} 個文檔的文件複製到您選擇的文件夾中，並按日期和標題命名。資料庫不會有任何更改。', exportIncludeIndex: '同時寫入包含各文檔信息的 index.csv', exportChooseFolderBtn: '選擇文件夾並導出', exportProgress: '正在導出 {done}/{total}……', exportDone: '已將 {count} 個文件導出到「{folder}」。', exportFailed: '無法導出：{count}。', exportInsideLibrary: '該文件夾就是資料庫或位於其中——請選擇資料庫之外的文件夾。', exportCsvFile: '文件', libraryCheckNotSearchableShow: '在表格中顯示', libraryCheckNotSearchableMakeAll: '全部設為可搜索',
       detailEdit: '編輯',
       detailRegeneratePreview: '重新生成預覽',
       detailGeneratePreview: '生成預覽',
@@ -2639,6 +2640,7 @@
   let openDocCollectionMenu = null;
   let openReminderFlyout = null; // same "lives outside modalRoot, tracked separately" reasoning as openDocCollectionMenu just above
   let openRowContextMenu = null;
+  let exportRunning = false; // the Export dialog is copying files -- blocks closing it
   let makeSearchableRunning = false; // the "Make searchable" dialog's OCR/rebuild is in progress -- blocks closing it, like the backfill flag above
   let findDuplicatesBackfillRunning = false; // tracks whether the Library check modal's file_hash backfill is in progress, shared with onModalKeydown()
 
@@ -5919,6 +5921,138 @@
   document.addEventListener('keydown', (e) => {
     if(e.key === 'Escape' && el('tools-menu').style.display === 'block'){ closeToolsMenu(); el('tools-btn').focus(); }
   });
+  // --- Export selected documents ---
+  // Copies each selected document's file (the active one -- the searchable PDF
+  // where there is one) into a folder the person picks, named "<date> <title>"
+  // so the folder reads well on its own, plus an optional index.csv of the
+  // details (for a tax advisor, say). Read-only for the library: nothing in it
+  // changes, and a folder inside the library is refused so the export can't
+  // end up as untracked files in files/.
+  function exportFileName(d){
+    const ext = ((d.file_path || '').match(/\.[^./]+$/) || [''])[0];
+    const date = d.date ? d.date.slice(0, 10) + ' ' : '';
+    const name = (date + displayName(d)).replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120);
+    return (name || `document-${d.id}`) + ext;
+  }
+
+  async function uniqueFileNameIn(dirHandle, name, taken){
+    const dot = name.lastIndexOf('.');
+    const stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
+    for(let n = 1; ; n++){
+      const candidate = n === 1 ? name : `${stem} (${n})${ext}`;
+      if(taken.has(candidate.toLowerCase())) continue;
+      try{ await dirHandle.getFileHandle(candidate); }catch(e){ taken.add(candidate.toLowerCase()); return candidate; }
+    }
+  }
+
+  // German/French/Spanish spreadsheets expect ';' (their decimal separator is
+  // a comma); English and Chinese ones ','.
+  function csvSeparator(){ return ['de', 'fr', 'es'].includes(currentLang) ? ';' : ','; }
+  function buildExportCsv(rows){
+    const sep = csvSeparator();
+    const standard = ['Payment method', 'Amount', 'Currency'];
+    const extraFields = [...new Set(rows.flatMap(({d}) => Object.keys(d.customFields || {})))].filter(n => !standard.includes(n)).sort();
+    const header = [t('exportCsvFile'), t('editTitleLabel'), t('tableColDate'), t('tableColImported'), t('tableColCategory'),
+      t('editSubcategoryLabel'), t('tableColType'), 'Amount', 'Currency', 'Payment method', t('tableColTags'), t('tableColPeople'),
+      t('detailSectionNotes'), ...extraFields];
+    const cell = (v) => {
+      const str = v == null ? '' : String(v);
+      return /["\n\r]/.test(str) || str.includes(sep) ? '"' + str.replace(/"/g, '""') + '"' : str;
+    };
+    const lines = [header.map(cell).join(sep)];
+    for(const {d, fileName} of rows){
+      const cf = d.customFields || {};
+      lines.push([fileName, d.title, (d.date || '').slice(0, 10), (d.import_date || '').slice(0, 10), d.category, d.subcategory,
+        d.document_type, cf['Amount'], cf['Currency'], cf['Payment method'], (d.tags || []).join(', '), (d.people || []).join(', '),
+        d.notes, ...extraFields.map(n => cf[n])].map(cell).join(sep));
+    }
+    return '﻿' + lines.join('\r\n') + '\r\n'; // BOM so spreadsheets read UTF-8
+  }
+
+  function openExportModal(ids){
+    const docs = ids.map(id => allDocs.find(x => x.id === id)).filter(d => d && d.file_path);
+    if(!docs.length) return;
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('exportModalTitle')}</h2>
+          <p>${t('exportIntro', {count: docs.length})}</p>
+          <label class="show-archived-toggle"><input type="checkbox" id="export-index-toggle" checked /> ${t('exportIncludeIndex')}</label>
+          <div class="status" id="export-status"></div>
+          <div class="modal-actions">
+            <button class="primary" id="export-start-btn">${t('exportChooseFolderBtn')}</button>
+            <button id="export-cancel-btn">${t('commonCancel')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const tryClose = () => { if(!exportRunning) closeModal(); };
+    el('modal-close-btn').addEventListener('click', tryClose);
+    el('export-cancel-btn').addEventListener('click', tryClose);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') tryClose(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    el('export-start-btn').addEventListener('click', async () => {
+      const statusEl = el('export-status');
+      let dest;
+      try{ dest = await window.showDirectoryPicker({ mode: 'readwrite' }); }
+      catch(e){ return; } // picker cancelled
+      if(await isInsideLibrary(dest)){
+        statusEl.className = 'status err';
+        statusEl.textContent = t('exportInsideLibrary');
+        return;
+      }
+      const startBtn = el('export-start-btn'), cancelBtn = el('export-cancel-btn');
+      const withIndex = el('export-index-toggle').checked;
+      startBtn.disabled = cancelBtn.disabled = el('export-index-toggle').disabled = true;
+      el('modal-close-btn').disabled = true;
+      exportRunning = true;
+      statusEl.className = 'status busy';
+      const exported = [], failed = [];
+      const taken = new Set();
+      try{
+        for(let i = 0; i < docs.length; i++){
+          const d = docs[i];
+          statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportProgress', {done: i, total: docs.length}));
+          try{
+            const file = await (await resolveFileHandle(d.file_path, false)).getFile();
+            const fileName = await uniqueFileNameIn(dest, exportFileName(d), taken);
+            const w = await (await dest.getFileHandle(fileName, { create: true })).createWritable();
+            await w.write(await file.arrayBuffer());
+            await w.close();
+            exported.push({d, fileName});
+          }catch(e){
+            failed.push({d, error: e.message});
+          }
+        }
+        if(withIndex && exported.length){
+          const indexName = await uniqueFileNameIn(dest, 'index.csv', taken);
+          const w = await (await dest.getFileHandle(indexName, { create: true })).createWritable();
+          await w.write(buildExportCsv(exported));
+          await w.close();
+        }
+      }finally{
+        exportRunning = false;
+        el('modal-close-btn').disabled = false;
+      }
+      statusEl.className = 'status ' + (failed.length ? 'err' : 'ok');
+      statusEl.innerHTML = escapeHtml(t('exportDone', {count: exported.length, folder: dest.name}))
+        + (failed.length ? ` ${escapeHtml(t('exportFailed', {count: failed.length}))}<ul id="export-failed-list">${failed.map(f => `<li>${escapeHtml(displayName(f.d))}: ${escapeHtml(f.error)}</li>`).join('')}</ul>` : '');
+      startBtn.style.display = 'none';
+      cancelBtn.disabled = false;
+      cancelBtn.textContent = t('detailCloseAriaLabel');
+    });
+  }
+
+  // True when `dirHandle` is the library folder or anywhere inside it.
+  async function isInsideLibrary(dirHandle){
+    try{
+      if(await rootDirHandle.isSameEntry(dirHandle)) return true;
+      return (await rootDirHandle.resolve(dirHandle)) !== null;
+    }catch(e){ return false; }
+  }
+
   // --- Keyboard shortcuts (mostly for working through the review queue) ---
   // Table keys only act when no dialog is open and the focus isn't in a text
   // field, so they never interfere with typing. In the Edit form,
@@ -6039,7 +6173,7 @@
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
     if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
-  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning) closeModal(); }
+  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning) closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', useKey: 'librariesUseSqlJs' },
@@ -10572,6 +10706,7 @@
   el('bulk-restore-btn').addEventListener('click', () => bulkSetDeleted([...selectedDocIds], false));
   el('bulk-edit-btn').addEventListener('click', () => openBulkEditForm([...selectedDocIds]));
   el('bulk-make-searchable-btn').addEventListener('click', () => openMakeSearchableModal([...selectedDocIds]));
+  el('bulk-export-btn').addEventListener('click', () => openExportModal([...selectedDocIds]));
   el('bulk-clear-selection-btn').addEventListener('click', () => { selectedDocIds = new Set(); render(); });
 
   async function saveSmartCollection(){
