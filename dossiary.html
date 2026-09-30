@@ -331,7 +331,11 @@
   .detail-panel{
     display:none; flex-direction:column; flex:0 0 340px; width:340px;
     background:var(--panel); border-left:1px solid var(--line);
-    padding:20px 24px; overflow:auto; max-height:calc(100vh - 414px - var(--drilldown-banner-height, 0px));
+    /* Same 70px bottom padding as .table-wrap, and for the same reason: where
+       the toolbar wraps onto an extra row, the chrome above is taller than the
+       max-height budget assumes and the box runs behind the fixed footer; the
+       padding lets its last lines still scroll clear of it. */
+    padding:20px 24px 70px; overflow:auto; max-height:calc(100vh - 414px - var(--drilldown-banner-height, 0px));
   }
   #main-layout.nav-style-sidebar .detail-panel{ max-height:calc(100vh - 374px - var(--drilldown-banner-height, 0px)); }
   #main-layout.bulk-bar-visible .detail-panel{ max-height:calc(100vh - 488px - var(--drilldown-banner-height, 0px)); }

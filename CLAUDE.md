@@ -1630,14 +1630,17 @@ this repo's git tags.
   way as everything else in this section at authoring time
   (`getBoundingClientRect()`, confirming the panel's own bottom edge lands
   at the fixed footer's top edge with no overlap), not assumed just
-  because the numbers happened to match structurally — but, unlike
-  `.table-wrap` itself, this has **no automated regression test guarding
-  it**: `tests/test_footer_pin.py` is the file that actually enforces this
-  class of check on an ongoing basis, and it was never extended to also
-  measure the panel's own bottom edge. A future layout change could
-  silently drift the panel out of alignment with the footer without any
-  test failing to catch it — don't read this note as claiming coverage
-  that doesn't exist. This is
+  because the numbers happened to match structurally. **It's now guarded
+  by `tests/test_footer_pin.py`** (`measure_panel_not_clipped()`, run at
+  every width/nav-style/bulk-bar combination of the desktop sweep), which
+  checks the panel's real last visible line against the footer's top edge
+  rather than its box edge -- and caught a real bug on its first run: at
+  the widths where the toolbar wraps onto an extra row (about <=900px with
+  tabs, <=1100px with the sidebar) the panel's last ~30px stayed hidden
+  behind the footer even fully scrolled, because the panel had only 20px
+  of bottom padding where `.table-wrap` has 70px to absorb exactly this
+  (see the calibration note near the top). The panel now has the same
+  70px. This is
   purely a **horizontal** layout change — the panel sits *beside* the
   table, not above or below it — so none of `.table-wrap`'s own four
   constants needed to move; reusing them for a same-height sibling is not

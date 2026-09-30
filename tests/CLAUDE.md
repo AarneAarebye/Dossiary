@@ -322,7 +322,9 @@ the fixed footer's top edge across all four nav-style x bulk-bar-visible
 combinations across a 800-1440px desktop width sweep at 720px height
 (the box-edge proxy used only above each nav style's own reliability
 threshold -- 1190px tabs, 1410px sidebar since the Storage stats button's
-recalibration -- and a real last-row-not-clipped check below it), plus the app's one mobile
+recalibration -- and a real last-row-not-clipped check below it), the
+detail panel's own real last line against the footer at every one of
+those sweep combinations (`measure_panel_not_clipped()`), plus the app's one mobile
 breakpoint at 320x800 (both nav styles, bulk bar hidden and visible),
 375x800 (tabs, bulk bar hidden and visible), and 640x800 (sidebar, bulk
 bar hidden and visible) — and that the footer itself is always fully

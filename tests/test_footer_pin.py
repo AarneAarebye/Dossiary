@@ -81,6 +81,33 @@ async def measure_last_row_not_clipped(page, label):
     assert clip <= 2, f"[{label}] last table row is clipped behind the fixed footer by {clip:.1f}px (last row bottom {info['lastRowBottom']:.1f}, footer top {info['footerTop']:.1f})"
     print(f"[{label}] last row clip={clip:.1f}px (<=2px accepted): PASS")
 
+async def measure_panel_not_clipped(page, label):
+    """The detail panel sits beside .table-wrap under the same chrome and reuses
+    its max-height constants, so it runs behind the fixed footer at the same
+    toolbar-wrap widths. Like the table, what matters is its real last line:
+    with a document shown, the panel and the page scrolled to their ends, the
+    last visible element must end at or above the footer's top edge. This
+    caught the panel's last ~30px hidden at narrow desktop widths while it
+    only had 20px of bottom padding (now 70px, same as .table-wrap)."""
+    if await page.locator('#detail-panel-body .modal-meta').count() == 0:
+        await page.click('#doc-tbody tr[data-id="1"] td:nth-child(3)')
+        await page.wait_for_timeout(250)
+    info = await page.evaluate("""
+        () => {
+            const p = document.getElementById('detail-panel');
+            p.scrollTop = p.scrollHeight;
+            window.scrollTo(0, document.body.scrollHeight);
+            const shown = [...p.querySelectorAll('#detail-panel-body *')].filter(e => e.offsetParent);
+            const last = Math.max(...shown.map(e => e.getBoundingClientRect().bottom));
+            const f = document.querySelector('footer').getBoundingClientRect();
+            return { lastBottom: last, footerTop: f.top, count: shown.length, scrolls: p.scrollHeight > p.clientHeight + 1 };
+        }
+    """)
+    clip = info['lastBottom'] - info['footerTop']
+    assert info['count'] > 0, f"[{label}] detail panel shows nothing -- no document selected"
+    assert clip <= 2, f"[{label}] detail panel's last line is hidden behind the fixed footer by {clip:.1f}px"
+    print(f"[{label}] panel last-line clip={clip:.1f}px (<=2px accepted): PASS")
+
 async def measure(page, label, min_gap):
     """min_gap: the smallest acceptable gap in px, applied uniformly across
     all scenarios in this file. -2 allows for ~2px tolerance to account for
@@ -169,6 +196,7 @@ async def main():
                 await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden", min_gap=-2)
             else:
                 await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden")
+            await measure_panel_not_clipped(page, f"desktop {width}x720, nav=tabs, bulkbar=hidden")
 
             await page.check('tr[data-id="1"] .row-select-checkbox')
             await page.wait_for_timeout(150)
@@ -176,6 +204,7 @@ async def main():
                 await measure(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE", min_gap=-2)
             else:
                 await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE")
+            await measure_panel_not_clipped(page, f"desktop {width}x720, nav=tabs, bulkbar=VISIBLE")
             await page.click('#bulk-clear-selection-btn')
             await page.wait_for_timeout(150)
 
@@ -186,6 +215,7 @@ async def main():
                 await measure(page, f"desktop {width}x720, nav=sidebar, bulkbar=hidden", min_gap=-2)
             else:
                 await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=sidebar, bulkbar=hidden")
+            await measure_panel_not_clipped(page, f"desktop {width}x720, nav=sidebar, bulkbar=hidden")
 
             await page.check('tr[data-id="1"] .row-select-checkbox')
             await page.wait_for_timeout(150)
@@ -193,6 +223,7 @@ async def main():
                 await measure(page, f"desktop {width}x720, nav=sidebar, bulkbar=VISIBLE", min_gap=-2)
             else:
                 await measure_last_row_not_clipped(page, f"desktop {width}x720, nav=sidebar, bulkbar=VISIBLE")
+            await measure_panel_not_clipped(page, f"desktop {width}x720, nav=sidebar, bulkbar=VISIBLE")
             await page.click('#bulk-clear-selection-btn')
             await page.wait_for_timeout(150)
 
