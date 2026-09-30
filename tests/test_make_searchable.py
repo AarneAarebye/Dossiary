@@ -43,6 +43,8 @@ SEED = {
         doc(7, "Lost Original", "files/7_lost.pdf", "files/7_lost/lost.pdf"),
         # 8: plain image for the close-while-running check
         doc(8, "Slow Scan", "files/8_slow.png", None),
+        # 9: left untouched, for the translation check
+        doc(9, "Untouched", "files/9_untouched.png", None),
     ],
     "tags": [], "document_tags": [],
     # Mark the one-time searchable_pdf_built backfill as done: it would otherwise
@@ -59,6 +61,7 @@ FILES = {
     "files/6_done.pdf": b"%PDF built", "files/6_done/done.png": PNG,
     "files/7_lost.pdf": SCAN_PDF,
     "files/8_slow.png": PNG,
+    "files/9_untouched.png": PNG,
 }
 
 async def main():
@@ -188,7 +191,9 @@ async def main():
         d3 = await db_doc(3)
         print("Text PDF reports it was left unchanged:", 'already contains real text' in status, repr(status))
         print("...and nothing changed in the database:", d3['file_path'] == 'files/3_digital.pdf' and not d3.get('searchable_pdf_built'))
+        print("...but it's remembered as already searchable:", d3.get('has_text_layer') == 1)
         await close()
+        print("...so the panel stops offering it:", await page.locator('#make-searchable-btn').count() == 0)
         await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = false;")
 
         # === Scenario 5: a copy that doesn't match the original's hash is kept ===
@@ -230,7 +235,7 @@ async def main():
         await page.select_option('#lang-select', 'de')
         await page.wait_for_timeout(200)
         await select(7)
-        await select(3)
+        await select(9)
         print("Action label translates:", await page.inner_text('#make-searchable-btn') == 'Durchsuchbar machen')
 
         print("JS ERRORS:", errors)
@@ -385,5 +390,104 @@ async def main_bulk():
         print("JS ERRORS (bulk):", errors)
         await browser.close()
 
+
+# === Library check: "Not searchable yet" section ===
+LC_SEED = {
+    "documents": [
+        doc(1, "Scan One", "files/1_one.png", None),
+        doc(2, "Digital Two", "files/2_two.pdf", None),
+        doc(3, "Built Three", "files/3_three.pdf", None, searchable_pdf_built=1),
+        doc(4, "Deleted Four", "files/4_four.png", None, deleted=1),
+    ],
+    "tags": [], "document_tags": [],
+    "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
+}
+LC_FILES = {"files/1_one.png": PNG, "files/2_two.pdf": b"%PDF-1.4 digital", "files/3_three.pdf": b"%PDF built", "files/4_four.png": PNG + b"x"}
+
+async def main_library_check():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(LC_SEED)});")
+        files_b64 = {k: base64.b64encode(v).decode() for k, v in LC_FILES.items()}
+        await page.evaluate("""
+            async (files) => {
+                for(const [path, b64] of Object.entries(files)){
+                    const parts = path.split('/');
+                    let dir = window.__TEST_ROOT;
+                    for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
+                    const h = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+                    const w = await h.createWritable();
+                    await w.write(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+                    await w.close();
+                }
+            }
+        """, files_b64)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(500)
+
+        async def open_check():
+            await page.click('#tools-btn'); await page.click('#library-check-btn')
+            await page.wait_for_timeout(800)
+
+        # === Scenario L1: the section counts eligible, non-deleted documents ===
+        await open_check()
+        count = await page.inner_text('#not-searchable-count')
+        print("Library check lists 'Not searchable yet' with a count of 2:", count.endswith('2'), repr(count))
+
+        # === Scenario L2: Show in table filters the table to exactly those ===
+        await page.click('#not-searchable-show-btn')
+        await page.wait_for_timeout(300)
+        ids = sorted(await page.locator('#doc-tbody tr').evaluate_all("rs => rs.map(r => +r.dataset.id)"))
+        print("Show in table filters to the two documents:", ids == [1, 2], ids)
+        print("...with the drill-down banner naming the section:", 'Not searchable yet' in await page.inner_text('#report-drilldown-banner'))
+
+        # === Scenario L3: Make all searchable, then a digital PDF is remembered as searchable ===
+        await page.click('#report-drilldown-back-btn') if await page.locator('#report-drilldown-back-btn').count() else None
+        await page.wait_for_timeout(600)
+        if not await page.locator('#not-searchable-make-btn').count():
+            await open_check()
+        await page.click('#not-searchable-make-btn')
+        await page.wait_for_timeout(150)
+        print("Make all searchable opens the bulk dialog for both:", (await page.inner_text('#make-searchable-count')).endswith('2'))
+        # The stub's text check is global: turn it on only for the PDF pass.
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = true;")
+        await page.click('#make-searchable-start-btn')
+        await page.wait_for_timeout(1200)
+        status = await page.inner_text('#make-searchable-status')
+        print("Summary: 1 made searchable, 1 already had text:", 'Made searchable: 1.' in status and 'left unchanged: 1.' in status, repr(status))
+        state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
+        d2 = next(d for d in state['documents'] if d['id'] == 2)
+        print("The digital PDF is remembered as already searchable (has_text_layer):", d2.get('has_text_layer') == 1 and not d2.get('searchable_pdf_built'))
+        await page.click('#make-searchable-cancel-btn')
+        await page.wait_for_timeout(150)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(200)
+        await page.click('#doc-tbody tr[data-id="2"]')
+        await page.wait_for_timeout(250)
+        print("...and no longer offers Make searchable:", await page.locator('#make-searchable-btn').count() == 0)
+
+        # === Scenario L4: nothing left -> the section is gone ===
+        await open_check()
+        print("Section disappears once everything is searchable:", await page.locator('#not-searchable-section').count() == 0)
+
+        print("JS ERRORS (library check):", errors)
+        await browser.close()
+
 asyncio.run(main())
 asyncio.run(main_bulk())
+asyncio.run(main_library_check())

@@ -2404,6 +2404,21 @@ this repo's git tags.
   phrased as "Label: N" so no singular/plural key pairs are needed, and
   lists each failed document with its reason. A failed document stays
   eligible, so the bulk button remains for a retry.
+  **`has_text_layer`** (`documents.has_text_layer`, `0`/`1`, added via
+  `SCHEMA_MIGRATIONS`) records a PDF found to already contain real text --
+  by capture-time OCR (`pendingPdfHasText`) or by "Make searchable" -- so
+  `canMakeSearchable()` stops offering it. Kept separate from
+  `searchable_pdf_built` on purpose: that flag means "this app built the
+  file", this one "the file was searchable as it came". Without it, every
+  digital PDF (a downloaded bill) would count as not searchable forever.
+  **"Not searchable yet" in Library check** (`#not-searchable-section`,
+  last in the list since it's not a problem, just what OCR hasn't reached)
+  shows only a count -- a scanned archive can have hundreds -- plus "Show
+  in table" (the same Reports drill-down the duplicate groups use, back
+  link returning to Library check) and "Make all searchable" (the bulk
+  dialog for exactly those documents). It's the one place to find them
+  without adding a toolbar filter, which would have reopened the toolbar-
+  wrap calibration problem described near the top of this file.
 - **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
   written next to every captured document's primary file, containing the
   fields that only live in `library.sqlite` (category, tags, notes, OCR

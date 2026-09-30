@@ -82,7 +82,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   bleiben unverändert). Mit mehreren ausgewählten Dokumenten geht das über
   die Leiste für Mehrfachaktionen für alle auf einmal: Sie werden
   nacheinander verarbeitet, mit Fortschrittsanzeige, einer Stopp-Schaltfläche
-  und einer Zusammenfassung, was geklappt hat. Wenn Sie von
+  und einer Zusammenfassung, was geklappt hat. Die **Bibliotheksprüfung**
+  zeigt, wie viele Dokumente noch nicht durchsuchbar sind, mit
+  Schaltflächen, um sie in der Tabelle anzuzeigen oder alle durchsuchbar zu
+  machen; ein PDF, das bereits Text enthält, wird gemerkt und verschwindet
+  aus dieser Liste. Wenn Sie von
   einem Papierdokument ausgehen, erklärt ein Schalter „Need to scan a
   paper document first?“ im Erfassungsformular, wie Sie zuerst mit
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da

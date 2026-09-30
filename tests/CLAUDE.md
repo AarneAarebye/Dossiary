@@ -830,7 +830,12 @@ appearing when a selected document is eligible, the dialog counting and
 processing only those, a summary naming the one failed document (missing
 file), a single eligible selection falling back to the single-document
 message, Stop letting the current document finish and saving it while
-leaving the next untouched, and no bulk button in the Waste bin -- the
+leaving the next untouched, and no bulk button in the Waste bin; and, in
+`main_library_check()`, Library check's "Not searchable yet" count (deleted
+and already-built documents excluded), "Show in table" filtering to exactly
+those, "Make all searchable" processing them, a digital PDF being
+remembered via `has_text_layer` and no longer offered, and the section
+disappearing once nothing is left -- the
 seed marks the `searchable_pdf_built` backfill done,
 since that one-time migration would otherwise flag every seeded captured
 document with an original as already built), person-type fields as
