@@ -68,7 +68,7 @@ working" problem that motivated this project in the first place.
   OCRs a saved scan and rebuilds it as a searchable PDF, keeping the
   untouched original (PDFs that already contain text are left alone).
   Select several documents to do the same for all of them from the
-  bulk-action bar: they're processed one after another, with progress, a
+  bulk-action bar's **More ▾** menu: they're processed one after another, with progress, a
   Stop button, and a summary of what succeeded. **Library check** shows
   what isn't searchable yet in two counts: PDFs not checked yet (a quick
   "Check for text" opens each one to look for a text layer, without OCR --
@@ -146,8 +146,16 @@ working" problem that motivated this project in the first place.
   different cloud). A backup is just another library folder: to restore,
   open it. A reminder on opening the library (every 30 days by default,
   adjustable, or off) tells you when a backup is due.
-- **Export** — select documents and click **Export…** in the bulk-action
-  bar to copy their files into a folder you pick, named by date and title,
+- **Page tools** — **Edit pages…** in the detail panel shows a PDF's pages:
+  rotate them, reorder them, remove them, add pages from another PDF or an
+  image, or split the document with ✂ into several (each part becomes its
+  own document with the same category, tags, people and fields). To join
+  documents, select them and choose **More ▾ → Combine…**: their pages go
+  into one PDF, in an order you choose; the document whose details you
+  keep gets the combined file and the others move to the Waste bin with
+  their files untouched. The original file is always kept.
+- **Export** — select documents and choose **More ▾ → Export…** in the
+  bulk-action bar to copy their files into a folder you pick, named by date and title,
   with an optional `index.csv` of their details (amount, currency, tags,
   custom fields…) — handy for a tax advisor. Nothing in the library
   changes.
@@ -812,7 +820,7 @@ separate genuinely distinct values.
 - **Requires Chrome or Edge.** Safari and Firefox don't support the write
   side of the File System Access API as of writing.
 - **Needs network on first load** (to fetch the sql.js, Tesseract.js,
-  jsPDF, and pdf.js WebAssembly/JS bundles from their CDNs) even though
+  jsPDF, pdf.js and pdf-lib WebAssembly/JS bundles from their CDNs) even though
   your documents never
   leave your machine.
 
@@ -822,7 +830,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (84
+There's a real, runnable Playwright regression suite in `tests/` (85
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
@@ -843,5 +851,6 @@ your own browser.
 | [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR text extraction | Apache-2.0 |
 | [jsPDF](https://github.com/parallax/jsPDF) | Building the searchable PDF layer for captured images | MIT |
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendering a PDF's first page (for previews and OCR) | Apache-2.0 |
+| [pdf-lib](https://github.com/Hopding/pdf-lib) | Editing pages: rotating, reordering, splitting and combining PDFs | MIT |
 
 Same in-app, via the "Libraries" link in the footer.

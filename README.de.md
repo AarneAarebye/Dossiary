@@ -80,7 +80,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   gespeicherten Scan aus und baut ihn als durchsuchbares PDF neu auf; das
   unveränderte Original bleibt erhalten (PDFs, die bereits Text enthalten,
   bleiben unverändert). Mit mehreren ausgewählten Dokumenten geht das über
-  die Leiste für Mehrfachaktionen für alle auf einmal: Sie werden
+  das Menü **Mehr ▾** der Leiste für Mehrfachaktionen für alle auf einmal: Sie werden
   nacheinander verarbeitet, mit Fortschrittsanzeige, einer Stopp-Schaltfläche
   und einer Zusammenfassung, was geklappt hat. Die **Bibliotheksprüfung**
   zeigt, was noch nicht durchsuchbar ist, in zwei Zahlen: noch nicht
@@ -173,8 +173,18 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   ein weiterer Bibliotheksordner: zum Wiederherstellen öffnen Sie ihn. Beim
   Öffnen der Bibliothek erinnert ein Hinweis, wenn eine Sicherung fällig ist
   (standardmäßig alle 30 Tage, einstellbar oder abschaltbar).
+- **Seiten bearbeiten** — **Seiten bearbeiten…** im Detailbereich zeigt die
+  Seiten eines PDFs: drehen, umsortieren, entfernen, Seiten aus einem
+  anderen PDF oder einem Bild hinzufügen oder das Dokument mit ✂ in mehrere
+  aufteilen (jeder Teil wird ein eigenes Dokument mit derselben Kategorie,
+  denselben Tags, Personen und Feldern). Zum Zusammenfügen Dokumente
+  auswählen und **Mehr ▾ → Zusammenfügen…** wählen: Ihre Seiten landen in
+  der gewählten Reihenfolge in einem PDF; das Dokument, dessen Angaben Sie
+  behalten, erhält die zusammengefügte Datei, die anderen wandern mit
+  unveränderten Dateien in den Papierkorb. Die Originaldatei bleibt immer
+  erhalten.
 - **Export** — Dokumente auswählen und in der Leiste für Mehrfachaktionen
-  **Exportieren…** klicken: Ihre Dateien werden in einen Ordner Ihrer Wahl
+  **Mehr ▾ → Exportieren…** wählen: Ihre Dateien werden in einen Ordner Ihrer Wahl
   kopiert, benannt nach Datum und Titel, auf Wunsch mit einer `index.csv`
   ihrer Angaben (Betrag, Währung, Tags, eigene Felder …) — praktisch für
   die Steuerberatung. In der Bibliothek ändert sich nichts.
@@ -934,7 +944,7 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   Zeitpunkt der Erstellung die Schreibseite der File System Access API
   nicht.
 - **Benötigt beim ersten Laden eine Netzwerkverbindung** (um die
-  WebAssembly-/JS-Pakete von sql.js, Tesseract.js, jsPDF und pdf.js von
+  WebAssembly-/JS-Pakete von sql.js, Tesseract.js, jsPDF, pdf.js und pdf-lib von
   deren CDNs zu laden), auch wenn Ihre Dokumente niemals Ihren Rechner
   verlassen.
 
@@ -944,7 +954,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (84
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (85
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was
@@ -968,5 +978,6 @@ eigenen Browser.
 | [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR-Texterkennung | Apache-2.0 |
 | [jsPDF](https://github.com/parallax/jsPDF) | Aufbau der durchsuchbaren PDF-Ebene für erfasste Bilder | MIT |
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendern der ersten Seite eines PDFs (für Vorschauen und OCR) | Apache-2.0 |
+| [pdf-lib](https://github.com/Hopding/pdf-lib) | Seiten bearbeiten: PDFs drehen, umsortieren, aufteilen und zusammenfügen | MIT |
 
 Dasselbe auch innerhalb der App, über den Link „Libraries“ im Footer.

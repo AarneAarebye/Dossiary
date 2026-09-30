@@ -314,18 +314,21 @@ async def main_bulk():
             return {d['id']: d for d in state['documents']}
 
         btn = page.locator('#bulk-make-searchable-btn')
+        # The button lives in the bulk bar's More menu: "offered" means not display:none there.
+        async def offered(): return await btn.evaluate("b => b.style.display !== 'none'")
+        async def click_bulk(): await page.click('#bulk-more-btn'); await btn.click()
 
         # === Scenario B1: the bulk button only appears when something selected can be made searchable ===
         await check([4, 5])
-        print("Bulk button hidden when nothing selected can be made searchable:", not await btn.is_visible())
+        print("Bulk button hidden when nothing selected can be made searchable:", not await offered())
         await check([1])
-        print("...and shown once an eligible document is selected:", await btn.is_visible())
+        print("...and shown once an eligible document is selected:", await offered())
         await clear()
 
         # === Scenario B2: the dialog processes only the eligible ones and reports a summary ===
         await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = false;")
         await check([1, 2, 4, 5, 6])
-        await btn.click()
+        await click_bulk()
         await page.wait_for_timeout(150)
         count_text = await page.inner_text('#make-searchable-count')
         print("Dialog counts only the eligible documents (3 of 5 selected):", count_text.endswith('3'), repr(count_text))
@@ -341,13 +344,13 @@ async def main_bulk():
         print("Button turns into Close afterwards:", await page.inner_text('#make-searchable-cancel-btn') == 'Close' and not await page.locator('#make-searchable-start-btn').is_visible())
         await page.click('#make-searchable-cancel-btn')
         await page.wait_for_timeout(150)
-        print("Selection kept; the failed document stays eligible, so the button stays for a retry:", await btn.is_visible())
+        print("Selection kept; the failed document stays eligible, so the button stays for a retry:", await offered())
         await clear()
 
         # === Scenario B3: a PDF with real text is counted separately ===
         await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = true;")
         await check([3])
-        await btn.click()
+        await click_bulk()
         await page.wait_for_timeout(150)
         # One document takes the single-document path and message.
         await page.click('#make-searchable-start-btn')
@@ -361,7 +364,7 @@ async def main_bulk():
         # === Scenario B4: Stop lets the current document finish, then stops ===
         await page.evaluate("window.__STUB_OCR_SLOW = true;")
         await check([7, 8])
-        await btn.click()
+        await click_bulk()
         await page.wait_for_timeout(150)
         await page.click('#make-searchable-start-btn')
         await page.wait_for_timeout(200)
@@ -385,7 +388,7 @@ async def main_bulk():
         await clear()
         await page.click('#nav-item-trash')
         await page.wait_for_timeout(150)
-        print("No bulk Make searchable in the Waste bin view:", await btn.count() == 1 and not await btn.is_visible())
+        print("No bulk Make searchable in the Waste bin view:", await btn.count() == 1 and not await page.locator('#bulk-more-btn').is_visible())
 
         print("JS ERRORS (bulk):", errors)
         await browser.close()

@@ -269,6 +269,22 @@
   .smart-rule-remove{ padding:4px 9px; }
   #smart-add-rule-btn{ margin-top:10px; }
   .smart-match-count{ font-family:var(--font-mono); font-size:11px; color:var(--phosphor); margin-top:12px; }
+  .page-grid{ display:flex; flex-wrap:wrap; align-items:stretch; gap:4px; max-height:58vh; overflow:auto; padding:4px 0; margin:10px 0; }
+  .page-card{ width:124px; border:1px solid var(--line); border-radius:6px; padding:6px; display:flex; flex-direction:column; align-items:center; gap:5px; background:var(--ink-2); }
+  .page-card.removed{ opacity:0.35; }
+  .page-thumb{ width:104px; height:104px; display:flex; align-items:center; justify-content:center; transition:transform .15s; }
+  .page-thumb canvas, .page-thumb img{ max-width:96px; max-height:96px; box-shadow:0 1px 3px rgba(0,0,0,0.4); }
+  .page-num{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .page-card-actions{ display:flex; flex-wrap:wrap; gap:3px; justify-content:center; }
+  .page-card-actions button{ padding:2px 6px; font-size:12px; }
+  .page-split-toggle{ align-self:center; padding:4px 5px; font-size:12px; opacity:0.45; }
+  .page-split-toggle.active{ opacity:1; color:var(--amber); border-color:var(--amber); align-self:stretch; }
+  .page-tools-bar{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .combine-row{ display:flex; align-items:center; gap:8px; }
+  .combine-row .doc-title{ flex:1; min-width:0; }
+  .combine-pos{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); min-width:16px; }
+  .combine-keep{ font-size:12px; color:var(--text-dim); white-space:nowrap; }
+  .combine-row button{ padding:2px 7px; font-size:11px; }
   .manage-collection-count{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); min-width:24px; text-align:right; }
   button{ font-family:var(--font-mono); font-size:12px; letter-spacing:0.03em; padding:9px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--line); background:transparent; color:var(--text); transition:border-color .15s,color .15s; }
   button:hover:not(:disabled){ border-color:var(--phosphor-dim); color:var(--phosphor); }
@@ -845,8 +861,16 @@
         <button type="button" id="bulk-review-btn" data-i18n="bulkFlagForReview">Flag for review</button>
         <button type="button" id="bulk-restore-btn" style="display:none;" data-i18n="bulkRestore">Restore</button>
         <button type="button" id="bulk-edit-btn" data-i18n="detailEdit">Edit</button>
-        <button type="button" id="bulk-make-searchable-btn" data-i18n="detailMakeSearchable">Make searchable</button>
-        <button type="button" id="bulk-export-btn" data-i18n="bulkExport">Export…</button>
+        <!-- Occasional bulk actions live in this menu, so the bar keeps its
+             one-line height (part of .table-wrap's max-height budget). -->
+        <div class="bulk-collection-menu-wrap" id="bulk-more-wrap">
+          <button type="button" id="bulk-more-btn" aria-haspopup="true" aria-expanded="false" data-i18n="bulkMore">More ▾</button>
+          <div class="bulk-collection-menu" id="bulk-more-menu" style="display:none;">
+            <button type="button" class="bulk-collection-option" id="bulk-make-searchable-btn" data-i18n="detailMakeSearchable">Make searchable</button>
+            <button type="button" class="bulk-collection-option" id="bulk-combine-btn" data-i18n="bulkCombine">Combine…</button>
+            <button type="button" class="bulk-collection-option" id="bulk-export-btn" data-i18n="bulkExport">Export…</button>
+          </div>
+        </div>
         <button type="button" id="bulk-clear-selection-btn" data-i18n="bulkClearSelection">Clear selection</button>
       </div>
 
@@ -953,6 +977,8 @@
   const DATE_LOCALE = { en: 'en-US', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
+      bulkMore: 'More ▾',
+      detailEditPages: 'Edit pages…', pagesTitle: 'Edit pages', pagesIntro: 'Rotate, reorder, remove or add pages, or split the document with ✂ into several. The original file is always kept.', pagesLoading: 'Loading pages…', pagesRotateLeft: 'Rotate left', pagesRotateRight: 'Rotate right', pagesMoveLeft: 'Move earlier', pagesMoveRight: 'Move later', pagesRemove: 'Remove page', pagesRestore: 'Keep page', pagesSplitHere: 'Start a new document after this page', pagesAddFile: '+ Add pages from file…', pagesSummary: 'Pages: {pages} · Documents after saving: {docs}', pagesSaving: 'Saving…', pagesSaved: 'Pages saved.', pagesSavedSplit: 'Saved as {count} documents.', pagesNoneLeft: 'At least one page has to remain.', pagesError: 'Could not save the pages: {error}', pagesLoadError: 'Could not open the file: {error}', bulkCombine: 'Combine…', combineTitle: 'Combine into one PDF', combineIntro: 'The documents\' pages are joined into one PDF, in this order. The document whose details you keep gets the combined file; the others move to the Waste bin with their files untouched, so restoring them undoes this.', combineKeepLabel: 'Keep details', combineStart: 'Combine', combineWorking: 'Combining…', combineDone: 'Combined {count} documents into “{title}”.', combineError: 'Could not combine: {error}', combineMoveUp: 'Move up', combineMoveDown: 'Move down', librariesUsePdfLib: 'Editing pages: rotating, reordering, splitting and combining PDFs',
       smartFieldAnyText: 'Any text', smartFieldStatus: 'Status', smartEditTitle: 'Edit Smart Collection', smartNewTitle: 'New Smart Collection', smartNameLabel: 'Name', smartMatchPrefix: 'Documents matching', smartMatchAll: 'all', smartMatchAny: 'any', smartMatchSuffix: 'of these rules:', smartAddRule: '+ Add rule', smartRemoveRule: 'Remove rule', smartMatchCountSingular: '{count} document matches', smartMatchCountPlural: '{count} documents match', smartNoRules: 'No rules: every document matches.', smartNameRequired: 'Give the collection a name.', smartValueRequired: 'Fill in a value for every rule, or remove the rule.', smartNewButton: '+ New smart collection', smartEditButton: 'Edit rules…', smartAnd: 'and', smartDaysSuffix: 'days', smartOpContains: 'contains', smartOpNotContains: 'doesn\'t contain', smartOpIs: 'is', smartOpIsNot: 'is not', smartOpEmpty: 'is empty', smartOpNotEmpty: 'is not empty', smartOpIncludes: 'includes', smartOpExcludes: 'doesn\'t include', smartOpGte: 'is at least', smartOpLte: 'is at most', smartOpBetween: 'is between', smartOpOn: 'is on', smartOpBefore: 'is before', smartOpAfter: 'is after', smartOpLastDays: 'is in the last', smartOpThisMonth: 'is this month', smartOpLastMonth: 'is last month', smartOpThisYear: 'is this year', smartOpLastYear: 'is last year', smartOpChecked: 'is checked', smartOpUnchecked: 'is not checked', smartOpArchived: 'is archived', smartOpNotArchived: 'is not archived', smartOpInReview: 'is in review', smartOpNotInReview: 'has been reviewed',
       commonCancel: 'Cancel', commonSave: 'Save', commonDone: 'Done', commonDelete: 'Delete',
       commonAdd: 'Add', commonClear: 'Clear', commonRemove: 'Remove', commonNone: '— None —',
@@ -1157,6 +1183,8 @@
       reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNotDuplicateLabel: 'Not a duplicate', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
+      bulkMore: 'Más ▾',
+      detailEditPages: 'Editar páginas…', pagesTitle: 'Editar páginas', pagesIntro: 'Gira, reordena, quita o añade páginas, o divide el documento en varios con ✂. El archivo original siempre se conserva.', pagesLoading: 'Cargando páginas…', pagesRotateLeft: 'Girar a la izquierda', pagesRotateRight: 'Girar a la derecha', pagesMoveLeft: 'Mover antes', pagesMoveRight: 'Mover después', pagesRemove: 'Quitar página', pagesRestore: 'Conservar página', pagesSplitHere: 'Empezar un documento nuevo después de esta página', pagesAddFile: '+ Añadir páginas desde un archivo…', pagesSummary: 'Páginas: {pages} · Documentos al guardar: {docs}', pagesSaving: 'Guardando…', pagesSaved: 'Páginas guardadas.', pagesSavedSplit: 'Guardado como {count} documentos.', pagesNoneLeft: 'Debe quedar al menos una página.', pagesError: 'No se pudieron guardar las páginas: {error}', pagesLoadError: 'No se pudo abrir el archivo: {error}', bulkCombine: 'Unir…', combineTitle: 'Unir en un solo PDF', combineIntro: 'Las páginas de los documentos se unen en un PDF, en este orden. El documento cuyos datos conservas recibe el archivo unido; los demás pasan a la Papelera con sus archivos intactos, así que restaurarlos lo deshace.', combineKeepLabel: 'Conservar datos', combineStart: 'Unir', combineWorking: 'Uniendo…', combineDone: 'Se unieron {count} documentos en «{title}».', combineError: 'No se pudo unir: {error}', combineMoveUp: 'Subir', combineMoveDown: 'Bajar', librariesUsePdfLib: 'Edición de páginas: girar, reordenar, dividir y unir PDF',
       smartFieldAnyText: 'Cualquier texto', smartFieldStatus: 'Estado', smartEditTitle: 'Editar colección inteligente', smartNewTitle: 'Nueva colección inteligente', smartNameLabel: 'Nombre', smartMatchPrefix: 'Documentos que cumplen', smartMatchAll: 'todas', smartMatchAny: 'alguna', smartMatchSuffix: 'de estas reglas:', smartAddRule: '+ Añadir regla', smartRemoveRule: 'Quitar regla', smartMatchCountSingular: '{count} documento coincide', smartMatchCountPlural: '{count} documentos coinciden', smartNoRules: 'Sin reglas: coinciden todos los documentos.', smartNameRequired: 'Ponle un nombre a la colección.', smartValueRequired: 'Rellena un valor en cada regla o quita la regla.', smartNewButton: '+ Nueva colección inteligente', smartEditButton: 'Editar reglas…', smartAnd: 'y', smartDaysSuffix: 'días', smartOpContains: 'contiene', smartOpNotContains: 'no contiene', smartOpIs: 'es', smartOpIsNot: 'no es', smartOpEmpty: 'está vacío', smartOpNotEmpty: 'no está vacío', smartOpIncludes: 'incluye', smartOpExcludes: 'no incluye', smartOpGte: 'es al menos', smartOpLte: 'es como máximo', smartOpBetween: 'está entre', smartOpOn: 'es el', smartOpBefore: 'es antes del', smartOpAfter: 'es después del', smartOpLastDays: 'está en los últimos', smartOpThisMonth: 'es de este mes', smartOpLastMonth: 'es del mes pasado', smartOpThisYear: 'es de este año', smartOpLastYear: 'es del año pasado', smartOpChecked: 'está marcado', smartOpUnchecked: 'no está marcado', smartOpArchived: 'está archivado', smartOpNotArchived: 'no está archivado', smartOpInReview: 'está en revisión', smartOpNotInReview: 'está revisado',
       commonCancel: 'Cancelar', commonSave: 'Guardar', commonDone: 'Hecho', commonDelete: 'Eliminar',
       commonAdd: 'Añadir', commonClear: 'Borrar', commonRemove: 'Quitar', commonNone: '— Ninguno —',
@@ -1361,6 +1389,8 @@
       reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNotDuplicateLabel: 'No es un duplicado', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
+      bulkMore: 'Plus ▾',
+      detailEditPages: 'Modifier les pages…', pagesTitle: 'Modifier les pages', pagesIntro: 'Faites pivoter, réordonnez, supprimez ou ajoutez des pages, ou divisez le document en plusieurs avec ✂. Le fichier original est toujours conservé.', pagesLoading: 'Chargement des pages…', pagesRotateLeft: 'Pivoter à gauche', pagesRotateRight: 'Pivoter à droite', pagesMoveLeft: 'Déplacer avant', pagesMoveRight: 'Déplacer après', pagesRemove: 'Retirer la page', pagesRestore: 'Garder la page', pagesSplitHere: 'Commencer un nouveau document après cette page', pagesAddFile: '+ Ajouter des pages depuis un fichier…', pagesSummary: 'Pages : {pages} · Documents après enregistrement : {docs}', pagesSaving: 'Enregistrement…', pagesSaved: 'Pages enregistrées.', pagesSavedSplit: 'Enregistré en {count} documents.', pagesNoneLeft: 'Il doit rester au moins une page.', pagesError: 'Impossible d’enregistrer les pages : {error}', pagesLoadError: 'Impossible d’ouvrir le fichier : {error}', bulkCombine: 'Fusionner…', combineTitle: 'Fusionner en un seul PDF', combineIntro: 'Les pages des documents sont réunies en un PDF, dans cet ordre. Le document dont vous gardez les informations reçoit le fichier fusionné ; les autres vont dans la Corbeille avec leurs fichiers intacts, les restaurer annule donc l’opération.', combineKeepLabel: 'Garder les infos', combineStart: 'Fusionner', combineWorking: 'Fusion…', combineDone: '{count} documents fusionnés dans « {title} ».', combineError: 'Fusion impossible : {error}', combineMoveUp: 'Monter', combineMoveDown: 'Descendre', librariesUsePdfLib: 'Modification des pages : pivoter, réordonner, diviser et fusionner des PDF',
       smartFieldAnyText: 'Texte quelconque', smartFieldStatus: 'Statut', smartEditTitle: 'Modifier la collection intelligente', smartNewTitle: 'Nouvelle collection intelligente', smartNameLabel: 'Nom', smartMatchPrefix: 'Documents qui remplissent', smartMatchAll: 'toutes', smartMatchAny: 'au moins une', smartMatchSuffix: 'de ces règles :', smartAddRule: '+ Ajouter une règle', smartRemoveRule: 'Supprimer la règle', smartMatchCountSingular: '{count} document correspond', smartMatchCountPlural: '{count} documents correspondent', smartNoRules: 'Aucune règle : tous les documents correspondent.', smartNameRequired: 'Donnez un nom à la collection.', smartValueRequired: 'Indiquez une valeur pour chaque règle, ou supprimez la règle.', smartNewButton: '+ Nouvelle collection intelligente', smartEditButton: 'Modifier les règles…', smartAnd: 'et', smartDaysSuffix: 'jours', smartOpContains: 'contient', smartOpNotContains: 'ne contient pas', smartOpIs: 'est', smartOpIsNot: 'n’est pas', smartOpEmpty: 'est vide', smartOpNotEmpty: 'n’est pas vide', smartOpIncludes: 'inclut', smartOpExcludes: 'n’inclut pas', smartOpGte: 'est au moins', smartOpLte: 'est au plus', smartOpBetween: 'est entre', smartOpOn: 'est le', smartOpBefore: 'est avant le', smartOpAfter: 'est après le', smartOpLastDays: 'est dans les derniers', smartOpThisMonth: 'est ce mois-ci', smartOpLastMonth: 'est le mois dernier', smartOpThisYear: 'est cette année', smartOpLastYear: 'est l’année dernière', smartOpChecked: 'est coché', smartOpUnchecked: 'n’est pas coché', smartOpArchived: 'est archivé', smartOpNotArchived: 'n’est pas archivé', smartOpInReview: 'est à vérifier', smartOpNotInReview: 'a été vérifié',
       commonCancel: 'Annuler', commonSave: 'Enregistrer', commonDone: 'Terminé', commonDelete: 'Supprimer',
       commonAdd: 'Ajouter', commonClear: 'Effacer', commonRemove: 'Retirer', commonNone: '— Aucun —',
@@ -1565,6 +1595,8 @@
       reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNotDuplicateLabel: 'Pas un doublon', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
+      bulkMore: 'Mehr ▾',
+      detailEditPages: 'Seiten bearbeiten…', pagesTitle: 'Seiten bearbeiten', pagesIntro: 'Seiten drehen, umsortieren, entfernen oder hinzufügen, oder das Dokument mit ✂ in mehrere aufteilen. Die Originaldatei bleibt immer erhalten.', pagesLoading: 'Seiten werden geladen…', pagesRotateLeft: 'Nach links drehen', pagesRotateRight: 'Nach rechts drehen', pagesMoveLeft: 'Nach vorne', pagesMoveRight: 'Nach hinten', pagesRemove: 'Seite entfernen', pagesRestore: 'Seite behalten', pagesSplitHere: 'Nach dieser Seite ein neues Dokument beginnen', pagesAddFile: '+ Seiten aus Datei hinzufügen…', pagesSummary: 'Seiten: {pages} · Dokumente nach dem Speichern: {docs}', pagesSaving: 'Wird gespeichert…', pagesSaved: 'Seiten gespeichert.', pagesSavedSplit: 'Als {count} Dokumente gespeichert.', pagesNoneLeft: 'Mindestens eine Seite muss bleiben.', pagesError: 'Die Seiten konnten nicht gespeichert werden: {error}', pagesLoadError: 'Die Datei konnte nicht geöffnet werden: {error}', bulkCombine: 'Zusammenfügen…', combineTitle: 'Zu einem PDF zusammenfügen', combineIntro: 'Die Seiten der Dokumente werden in dieser Reihenfolge zu einem PDF verbunden. Das Dokument, dessen Angaben Sie behalten, erhält die zusammengefügte Datei; die anderen wandern mit unveränderten Dateien in den Papierkorb, sodass Wiederherstellen dies rückgängig macht.', combineKeepLabel: 'Angaben behalten', combineStart: 'Zusammenfügen', combineWorking: 'Wird zusammengefügt…', combineDone: '{count} Dokumente zu „{title}“ zusammengefügt.', combineError: 'Zusammenfügen fehlgeschlagen: {error}', combineMoveUp: 'Nach oben', combineMoveDown: 'Nach unten', librariesUsePdfLib: 'Seiten bearbeiten: PDFs drehen, umsortieren, aufteilen und zusammenfügen',
       smartFieldAnyText: 'Beliebiger Text', smartFieldStatus: 'Status', smartEditTitle: 'Smart Collection bearbeiten', smartNewTitle: 'Neue Smart Collection', smartNameLabel: 'Name', smartMatchPrefix: 'Dokumente, die', smartMatchAll: 'alle', smartMatchAny: 'mindestens eine', smartMatchSuffix: 'dieser Regeln erfüllen:', smartAddRule: '+ Regel hinzufügen', smartRemoveRule: 'Regel entfernen', smartMatchCountSingular: '{count} Dokument passt', smartMatchCountPlural: '{count} Dokumente passen', smartNoRules: 'Keine Regeln: Jedes Dokument passt.', smartNameRequired: 'Gib der Collection einen Namen.', smartValueRequired: 'Trage für jede Regel einen Wert ein oder entferne die Regel.', smartNewButton: '+ Neue Smart Collection', smartEditButton: 'Regeln bearbeiten…', smartAnd: 'und', smartDaysSuffix: 'Tagen', smartOpContains: 'enthält', smartOpNotContains: 'enthält nicht', smartOpIs: 'ist', smartOpIsNot: 'ist nicht', smartOpEmpty: 'ist leer', smartOpNotEmpty: 'ist nicht leer', smartOpIncludes: 'enthält', smartOpExcludes: 'enthält nicht', smartOpGte: 'ist mindestens', smartOpLte: 'ist höchstens', smartOpBetween: 'liegt zwischen', smartOpOn: 'ist am', smartOpBefore: 'ist vor', smartOpAfter: 'ist nach', smartOpLastDays: 'liegt in den letzten', smartOpThisMonth: 'ist in diesem Monat', smartOpLastMonth: 'ist im letzten Monat', smartOpThisYear: 'ist in diesem Jahr', smartOpLastYear: 'ist im letzten Jahr', smartOpChecked: 'ist angehakt', smartOpUnchecked: 'ist nicht angehakt', smartOpArchived: 'ist archiviert', smartOpNotArchived: 'ist nicht archiviert', smartOpInReview: 'ist in Prüfung', smartOpNotInReview: 'ist geprüft',
       commonCancel: 'Abbrechen', commonSave: 'Speichern', commonDone: 'Fertig', commonDelete: 'Löschen',
       commonAdd: 'Hinzufügen', commonClear: 'Leeren', commonRemove: 'Entfernen', commonNone: '— Keine —',
@@ -1769,6 +1801,8 @@
       reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNotDuplicateLabel: 'Kein Duplikat', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
+      bulkMore: '更多 ▾',
+      detailEditPages: '编辑页面…', pagesTitle: '编辑页面', pagesIntro: '旋转、重新排序、删除或添加页面，或用 ✂ 将文档拆分为多个。原始文件始终保留。', pagesLoading: '正在加载页面…', pagesRotateLeft: '向左旋转', pagesRotateRight: '向右旋转', pagesMoveLeft: '前移', pagesMoveRight: '后移', pagesRemove: '移除页面', pagesRestore: '保留页面', pagesSplitHere: '在此页之后开始新文档', pagesAddFile: '+ 从文件添加页面…', pagesSummary: '页数：{pages} · 保存后的文档数：{docs}', pagesSaving: '正在保存…', pagesSaved: '页面已保存。', pagesSavedSplit: '已保存为 {count} 个文档。', pagesNoneLeft: '至少要保留一页。', pagesError: '无法保存页面：{error}', pagesLoadError: '无法打开文件：{error}', bulkCombine: '合并…', combineTitle: '合并为一个 PDF', combineIntro: '按此顺序将这些文档的页面合并为一个 PDF。保留其信息的文档获得合并后的文件；其他文档连同未改动的文件移入回收站，恢复它们即可撤销。', combineKeepLabel: '保留信息', combineStart: '合并', combineWorking: '正在合并…', combineDone: '已将 {count} 个文档合并到“{title}”。', combineError: '无法合并：{error}', combineMoveUp: '上移', combineMoveDown: '下移', librariesUsePdfLib: '编辑页面：旋转、重排、拆分和合并 PDF',
       smartFieldAnyText: '任意文本', smartFieldStatus: '状态', smartEditTitle: '编辑智能收藏集', smartNewTitle: '新建智能收藏集', smartNameLabel: '名称', smartMatchPrefix: '符合以下', smartMatchAll: '全部', smartMatchAny: '任一', smartMatchSuffix: '规则的文档：', smartAddRule: '+ 添加规则', smartRemoveRule: '移除规则', smartMatchCountSingular: '{count} 个文档符合', smartMatchCountPlural: '{count} 个文档符合', smartNoRules: '没有规则：所有文档都符合。', smartNameRequired: '请为收藏集命名。', smartValueRequired: '请为每条规则填写值，或移除该规则。', smartNewButton: '+ 新建智能收藏集', smartEditButton: '编辑规则…', smartAnd: '和', smartDaysSuffix: '天', smartOpContains: '包含', smartOpNotContains: '不包含', smartOpIs: '是', smartOpIsNot: '不是', smartOpEmpty: '为空', smartOpNotEmpty: '不为空', smartOpIncludes: '包括', smartOpExcludes: '不包括', smartOpGte: '至少为', smartOpLte: '至多为', smartOpBetween: '介于', smartOpOn: '是', smartOpBefore: '早于', smartOpAfter: '晚于', smartOpLastDays: '在最近', smartOpThisMonth: '在本月', smartOpLastMonth: '在上个月', smartOpThisYear: '在今年', smartOpLastYear: '在去年', smartOpChecked: '已勾选', smartOpUnchecked: '未勾选', smartOpArchived: '已归档', smartOpNotArchived: '未归档', smartOpInReview: '待审阅', smartOpNotInReview: '已审阅',
       commonCancel: '取消', commonSave: '保存', commonDone: '完成', commonDelete: '删除',
       commonAdd: '添加', commonClear: '清除', commonRemove: '移除', commonNone: '— 无 —',
@@ -1973,6 +2007,8 @@
       reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNotDuplicateLabel: '不是重复项', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
+      bulkMore: '更多 ▾',
+      detailEditPages: '編輯頁面…', pagesTitle: '編輯頁面', pagesIntro: '旋轉、重新排序、刪除或添加頁面，或用 ✂ 將文檔拆分為多個。原始文件始終保留。', pagesLoading: '正在加載頁面…', pagesRotateLeft: '向左旋轉', pagesRotateRight: '向右旋轉', pagesMoveLeft: '前移', pagesMoveRight: '後移', pagesRemove: '移除頁面', pagesRestore: '保留頁面', pagesSplitHere: '在此頁之後開始新文檔', pagesAddFile: '+ 從文件添加頁面…', pagesSummary: '頁數：{pages} · 保存後的文檔數：{docs}', pagesSaving: '正在保存…', pagesSaved: '頁面已保存。', pagesSavedSplit: '已保存為 {count} 個文檔。', pagesNoneLeft: '至少要保留一頁。', pagesError: '無法保存頁面：{error}', pagesLoadError: '無法打開文件：{error}', bulkCombine: '合併…', combineTitle: '合併為一個 PDF', combineIntro: '按此順序將這些文檔的頁面合併為一個 PDF。保留其信息的文檔獲得合併後的文件；其他文檔連同未改動的文件移入回收站，恢復它們即可撤銷。', combineKeepLabel: '保留信息', combineStart: '合併', combineWorking: '正在合併…', combineDone: '已將 {count} 個文檔合併到「{title}」。', combineError: '無法合併：{error}', combineMoveUp: '上移', combineMoveDown: '下移', librariesUsePdfLib: '編輯頁面：旋轉、重排、拆分和合併 PDF',
       smartFieldAnyText: '任意文本', smartFieldStatus: '狀態', smartEditTitle: '編輯智能收藏集', smartNewTitle: '新建智能收藏集', smartNameLabel: '名稱', smartMatchPrefix: '符合以下', smartMatchAll: '全部', smartMatchAny: '任一', smartMatchSuffix: '規則的文檔：', smartAddRule: '+ 添加規則', smartRemoveRule: '移除規則', smartMatchCountSingular: '{count} 個文檔符合', smartMatchCountPlural: '{count} 個文檔符合', smartNoRules: '沒有規則：所有文檔都符合。', smartNameRequired: '請為收藏集命名。', smartValueRequired: '請為每條規則填寫值，或移除該規則。', smartNewButton: '+ 新建智能收藏集', smartEditButton: '編輯規則…', smartAnd: '和', smartDaysSuffix: '天', smartOpContains: '包含', smartOpNotContains: '不包含', smartOpIs: '是', smartOpIsNot: '不是', smartOpEmpty: '為空', smartOpNotEmpty: '不為空', smartOpIncludes: '包括', smartOpExcludes: '不包括', smartOpGte: '至少為', smartOpLte: '至多為', smartOpBetween: '介於', smartOpOn: '是', smartOpBefore: '早於', smartOpAfter: '晚於', smartOpLastDays: '在最近', smartOpThisMonth: '在本月', smartOpLastMonth: '在上個月', smartOpThisYear: '在今年', smartOpLastYear: '在去年', smartOpChecked: '已勾選', smartOpUnchecked: '未勾選', smartOpArchived: '已歸檔', smartOpNotArchived: '未歸檔', smartOpInReview: '待審閱', smartOpNotInReview: '已審閱',
       commonCancel: '取消',
       commonSave: '保存',
@@ -5867,6 +5903,9 @@
     const anySearchable = [...selectedDocIds].some(id => canMakeSearchable(allDocs.find(x => x.id === id)));
     el('bulk-make-searchable-btn').style.display = (!isTrash && anySearchable) ? '' : 'none';
     el('bulk-restore-btn').style.display = isTrash ? '' : 'none';
+    el('bulk-more-wrap').style.display = isTrash ? 'none' : '';
+    const combinable = [...selectedDocIds].filter(id => canCombine(allDocs.find(x => x.id === id))).length;
+    el('bulk-combine-btn').style.display = (!isTrash && combinable >= 2) ? '' : 'none';
     // Inbox already means "flagged" for everything visible there, so the bulk
     // action is Done (clear the flag), not Flag for review (set it) -- same
     // relabeling openDetail()'s own single-document review-toggle button already
@@ -6602,13 +6641,14 @@
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
     if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
-  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !backupRunning) closeModal(); }
+  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !backupRunning && !pageToolsRunning) closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', useKey: 'librariesUseSqlJs' },
     { name: 'Tesseract.js', url: 'https://github.com/naptha/tesseract.js', license: 'Apache-2.0', useKey: 'librariesUseTesseract' },
     { name: 'jsPDF', url: 'https://github.com/parallax/jsPDF', license: 'MIT', useKey: 'librariesUseJsPdf' },
     { name: 'pdf.js', url: 'https://github.com/mozilla/pdf.js', license: 'Apache-2.0', useKey: 'librariesUsePdfJs' },
+    { name: 'pdf-lib', url: 'https://github.com/Hopding/pdf-lib', license: 'MIT', useKey: 'librariesUsePdfLib' },
   ];
 
   function openLibrariesModal(){
@@ -7948,6 +7988,9 @@
           variant: null, panelOnly: true, onClick: () => openMakeSearchableModal([id]),
         });
       }
+      if(canEditPages(d)){
+        actions.push({ key: 'edit-pages', label: t('detailEditPages'), variant: null, panelOnly: true, onClick: () => openPageToolsModal(id) });
+      }
       actions.push({
         key: 'archive-toggle', label: d.archived ? t('detailUnarchive') : t('detailArchive'),
         variant: null, onClick: () => toggleArchived(id),
@@ -8064,7 +8107,7 @@
     const actionIdByKey = {
       'open-file': 'open-file-btn', 'open-original': 'open-original-btn', 'edit': 'edit-doc-btn',
       'default-reminder': 'default-reminder-btn',
-      'regen-thumb': 'regen-thumb-btn', 'make-searchable': 'make-searchable-btn', 'archive-toggle': 'archive-toggle-btn', 'review-toggle': 'review-toggle-btn',
+      'regen-thumb': 'regen-thumb-btn', 'make-searchable': 'make-searchable-btn', 'edit-pages': 'edit-pages-btn', 'archive-toggle': 'archive-toggle-btn', 'review-toggle': 'review-toggle-btn',
       'add-to-collection': 'add-to-collection-btn', 'remove-from-collection': 'remove-from-collection-btn',
       'delete-toggle': 'delete-toggle-btn',
     };
@@ -10730,6 +10773,441 @@
     el('smart-name-input').focus();
   }
 
+  // --- Page tools: edit pages, split, combine ---
+  // Built on pdf-lib, which copies pages between PDFs as they are (text
+  // layers included), so nothing is re-rendered or re-compressed. The
+  // untouched original always survives, by the same two rules "Make
+  // searchable" uses (see replaceActiveFile()). Split parts become new
+  // documents with the source's details; combining keeps one document's
+  // details and moves the others to the Waste bin with their files intact,
+  // so both can be undone by hand.
+  const PAGE_TOOLS_PATH_RE = /\.pdf$/i;
+  const COMBINE_PATH_RE = /\.(pdf|jpe?g|png)$/i;
+  let pageToolsRunning = false;
+
+  async function ensurePdfLib(){
+    if(window.PDFLib) return window.PDFLib;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Failed to load PDF editing engine from CDN'));
+      document.head.appendChild(s);
+    });
+    return window.PDFLib;
+  }
+
+  function canEditPages(d){ return !!d && !d.deleted && !!d.file_path && PAGE_TOOLS_PATH_RE.test(d.file_path); }
+  function canCombine(d){ return !!d && !d.deleted && !!d.file_path && COMBINE_PATH_RE.test(d.file_path); }
+
+  function fileKind(path, type){
+    const p = (path || '').toLowerCase();
+    if(type === 'application/pdf' || p.endsWith('.pdf')) return 'pdf';
+    if(type === 'image/png' || p.endsWith('.png')) return 'png';
+    if(type === 'image/jpeg' || p.endsWith('.jpg') || p.endsWith('.jpeg')) return 'jpg';
+    return null;
+  }
+
+  // Builds one PDF from a list of {source, index, rotation} entries, where a
+  // source is {kind: 'pdf'|'jpg'|'png', bytes}. Images become a page of A4
+  // width with the image's own proportions.
+  async function buildPdfFromPages(sources, entries){
+    const PDFLib = await ensurePdfLib();
+    const out = await PDFLib.PDFDocument.create();
+    const loaded = new Map();
+    for(const entry of entries){
+      const src = entry.source;
+      let page;
+      if(src.kind === 'pdf'){
+        if(!loaded.has(src)) loaded.set(src, await PDFLib.PDFDocument.load(src.bytes));
+        [page] = await out.copyPages(loaded.get(src), [entry.index]);
+        out.addPage(page);
+      }else{
+        const img = src.kind === 'png' ? await out.embedPng(src.bytes) : await out.embedJpg(src.bytes);
+        const width = 595, height = Math.round(595 * img.height / img.width);
+        page = out.addPage([width, height]);
+        page.drawImage(img, { x: 0, y: 0, width, height });
+      }
+      if(entry.rotation){
+        const angle = (((page.getRotation().angle || 0) + entry.rotation) % 360 + 360) % 360;
+        page.setRotation(PDFLib.degrees(angle));
+      }
+    }
+    return out.save();
+  }
+
+  // Writes new PDF bytes as a document's active file without ever losing the
+  // untouched original: with a separate original on disk, the active copy is
+  // replaced (a PDF in place, anything else by a new .pdf next to it, the old
+  // copy removed only when it hash-matches the original); without one, the
+  // current file becomes the original and the new PDF goes next to it as
+  // <stem><suffix>.pdf. Updates the row and `d`; the caller persists.
+  async function replaceActiveFile(d, bytes, suffix){
+    const oldPath = d.file_path;
+    let hasSeparateOriginal = !!d.original_file_path && d.original_file_path !== oldPath;
+    if(hasSeparateOriginal){
+      try{ await (await resolveFileHandle(d.original_file_path, false)).getFile(); }
+      catch(e){ hasSeparateOriginal = false; } // missing original -- never overwrite the only copy
+    }
+    const oldIsPdf = PAGE_TOOLS_PATH_RE.test(oldPath);
+    const dir = oldPath.slice(0, oldPath.lastIndexOf('/') + 1);
+    const stem = oldPath.slice(dir.length).replace(/\.[^.]+$/, '');
+    const newOriginal = hasSeparateOriginal ? d.original_file_path : oldPath;
+    const newPath = hasSeparateOriginal ? (oldIsPdf ? oldPath : `${dir}${stem}.pdf`) : `${dir}${stem}${suffix}.pdf`;
+    let oldBytesHash = null;
+    if(hasSeparateOriginal && newPath !== oldPath && d.file_hash){
+      try{ oldBytesHash = await computeFileHash(await (await resolveFileHandle(oldPath, false)).getFile()); }catch(e){}
+    }
+    const writable = await (await resolveFileHandle(newPath, true)).createWritable();
+    await writable.write(bytes);
+    await writable.close();
+    if(oldBytesHash && oldBytesHash === d.file_hash){
+      try{
+        let parent = rootDirHandle;
+        for(const part of oldPath.split('/').slice(0, -1)) parent = await parent.getDirectoryHandle(part);
+        await parent.removeEntry(oldPath.split('/').pop());
+      }catch(e){ /* the superseded copy stays on disk -- harmless */ }
+    }
+    db.run('UPDATE documents SET file_path = ?, original_file_path = ? WHERE id = ?', [newPath, newOriginal, d.id]);
+    const oldBase = sidecarBaseNameFromFilePath(oldPath);
+    Object.assign(d, { file_path: newPath, original_file_path: newOriginal });
+    if(sidecarBaseNameFromFilePath(newPath) !== oldBase) await filesDirHandle.removeEntry(`${oldBase}.txt`).catch(() => {});
+  }
+
+  // After a document's PDF changed: fresh preview, fresh text-layer check
+  // (copying text into empty OCR text, as everywhere), fresh sidecar. All
+  // best-effort -- none of them may undo the saved file.
+  async function refreshAfterPdfChange(d, bytes){
+    const file = new File([bytes], 'document.pdf', { type: 'application/pdf' });
+    try{
+      const thumb = await generateThumbnail(file);
+      if(thumb){
+        const thumbPath = await writeThumbnail(d.id, thumb);
+        db.run('UPDATE documents SET thumbnail_path = ? WHERE id = ?', [thumbPath, d.id]);
+        d.thumbnail_path = thumbPath;
+      }
+    }catch(e){}
+    try{
+      const pdfjsLib = await ensurePdfJs();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes).slice() }).promise;
+      await recordPdfTextLayer(d, pdf);
+    }catch(e){}
+    try{ await writeSidecarForDoc(d); }catch(e){}
+  }
+
+  // A new document holding one split-off part: the source's details (title
+  // numbered, category, type, date, notes, tags, custom fields, people,
+  // manual collections), its own file, no separate original -- the source
+  // document's original already holds these pages untouched.
+  async function createSplitDocument(src, bytes, partNo){
+    const id = nextDocId++;
+    const title = `${src.title || t('commonDocumentFallback', {id: src.id})} (${partNo})`;
+    const filePath = `files/${id}_${safeFilename(title, 'document')}.pdf`;
+    const writable = await (await resolveFileHandle(filePath, true)).createWritable();
+    await writable.write(bytes);
+    await writable.close();
+    const fileHash = await hashArrayBuffer(new Uint8Array(bytes).slice().buffer);
+    const now = nowIso();
+    db.run(`
+      INSERT INTO documents (id, title, category, subcategory, document_type, date,
+                              import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
+                              created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, 'split', NULL, NULL, ?, 0, ?)
+    `, [id, title, src.category || null, src.subcategory || null, src.document_type || null, src.date || null,
+        now, src.notes || null, filePath, now, src.needs_review ? 1 : 0, fileHash]);
+    for(const tag of src.tags || []){
+      if(tagNameToId[tag] !== undefined) db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagNameToId[tag]]);
+    }
+    for(const [name, value] of Object.entries(src.customFields || {})){
+      if(fieldNameToId[name] !== undefined) db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, fieldNameToId[name], value]);
+    }
+    for(const [name, people] of Object.entries(src.personFieldValues || {})){
+      for(const person of people || []){
+        if(fieldNameToId[name] !== undefined && personNameToId[person] !== undefined){
+          db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldNameToId[name], personNameToId[person]]);
+        }
+      }
+    }
+    for(const [collectionId, members] of Object.entries(collectionDocIds)){
+      if(members.has(src.id)) db.run('INSERT OR IGNORE INTO collection_documents (collection_id, document_id) VALUES (?, ?)', [Number(collectionId), id]);
+    }
+    const d = {
+      id, title, category: src.category || null, subcategory: src.subcategory || null, document_type: src.document_type || null,
+      date: src.date || null, import_date: now, notes: src.notes || null, ocr_text: null, ocr_language: null,
+      file_path: filePath, original_file_path: null, created_at: now, source: 'split', source_legacy_id: null,
+      thumbnail_path: null, file_hash: fileHash, archived: false, needs_review: !!src.needs_review, deleted: false,
+      searchable_pdf_built: false, has_text_layer: false, text_checked: false,
+      customFields: {...(src.customFields || {})},
+      personFieldValues: Object.fromEntries(Object.entries(src.personFieldValues || {}).map(([k, v]) => [k, [...(v || [])]])),
+      tags: [...(src.tags || [])], people: [...(src.people || [])],
+    };
+    allDocs.push(d);
+    await refreshAfterPdfChange(d, bytes);
+    return d;
+  }
+
+  function openPageToolsModal(id){
+    const d = allDocs.find(x => x.id === id);
+    if(!canEditPages(d)) return;
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal wide" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('pagesTitle')}</h2>
+          <p class="doc-sub">${escapeHtml(displayName(d))}</p>
+          <p class="field-hint" style="font-style:normal;">${t('pagesIntro')}</p>
+          <div class="page-grid" id="page-grid"><span class="spinner"></span> ${t('pagesLoading')}</div>
+          <div class="page-tools-bar">
+            <button type="button" id="pages-add-file-btn">${t('pagesAddFile')}</button>
+            <span class="doc-sub" id="pages-summary"></span>
+          </div>
+          <div class="status" id="pages-status"></div>
+          <div class="modal-actions">
+            <button class="primary" id="pages-save-btn" disabled>${t('commonSave')}</button>
+            <button id="pages-cancel-btn">${t('commonCancel')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const tryClose = () => { if(!pageToolsRunning) closeModal(); };
+    el('modal-close-btn').addEventListener('click', tryClose);
+    el('pages-cancel-btn').addEventListener('click', tryClose);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') tryClose(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    const sources = [];
+    let pages = []; // {source, index, rotation, removed, splitAfter, thumb}
+    const statusEl = el('pages-status');
+    const fail = (key, e) => { statusEl.className = 'status err'; statusEl.textContent = t(key, {error: e.message}); };
+
+    const thumbFor = async (source, index) => {
+      const box = document.createElement('div');
+      box.className = 'page-thumb';
+      try{
+        if(source.kind === 'pdf'){
+          const page = await source.pdfjs.getPage(index + 1);
+          const base = page.getViewport({ scale: 1 });
+          const canvas = await renderPdfPageToCanvas(source.pdfjs, index + 1, 180 / Math.max(base.width, base.height));
+          box.appendChild(canvas);
+        }else{
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(new Blob([source.bytes], { type: source.kind === 'png' ? 'image/png' : 'image/jpeg' }));
+          box.appendChild(img);
+        }
+      }catch(e){ box.textContent = '?'; }
+      return box;
+    };
+    const addSource = async (bytes, kind) => {
+      const source = { kind, bytes };
+      if(kind === 'pdf'){
+        const pdfjsLib = await ensurePdfJs();
+        source.pdfjs = await pdfjsLib.getDocument({ data: new Uint8Array(bytes).slice() }).promise;
+      }
+      sources.push(source);
+      const count = kind === 'pdf' ? source.pdfjs.numPages : 1;
+      for(let i = 0; i < count; i++){
+        pages.push({ source, index: i, rotation: 0, removed: false, splitAfter: false, thumb: await thumbFor(source, i) });
+      }
+    };
+    const parts = () => {
+      const result = [[]];
+      pages.forEach((p, i) => {
+        if(!p.removed) result[result.length - 1].push(p);
+        if(p.splitAfter && i < pages.length - 1) result.push([]);
+      });
+      return result.filter(part => part.length);
+    };
+    const unchanged = () => sources.length === 1 && pages.every((p, i) => p.index === i && !p.removed && !p.splitAfter && p.rotation % 360 === 0);
+    const iconBtn = (cls, label, text) => `<button type="button" class="${cls}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${text}</button>`;
+    const renderGrid = () => {
+      const grid = el('page-grid');
+      grid.innerHTML = '';
+      pages.forEach((p, i) => {
+        const card = document.createElement('div');
+        card.className = 'page-card' + (p.removed ? ' removed' : '');
+        card.dataset.pos = i;
+        p.thumb.style.transform = `rotate(${p.rotation}deg)`;
+        card.appendChild(p.thumb);
+        const actions = document.createElement('div');
+        actions.innerHTML = `<div class="page-num">${i + 1}</div><div class="page-card-actions">
+          ${iconBtn('page-rotate-left', t('pagesRotateLeft'), '⟲')}${iconBtn('page-rotate-right', t('pagesRotateRight'), '⟳')}
+          ${iconBtn('page-move-left', t('pagesMoveLeft'), '◀')}${iconBtn('page-move-right', t('pagesMoveRight'), '▶')}
+          ${p.removed ? iconBtn('page-restore', t('pagesRestore'), '↺') : iconBtn('page-remove', t('pagesRemove'), '🗑')}</div>`;
+        card.append(...actions.childNodes);
+        grid.appendChild(card);
+        const on = (sel, fn) => card.querySelector(sel)?.addEventListener('click', () => { fn(); renderGrid(); });
+        on('.page-rotate-left', () => { p.rotation -= 90; });
+        on('.page-rotate-right', () => { p.rotation += 90; });
+        on('.page-move-left', () => { if(i > 0) [pages[i - 1], pages[i]] = [pages[i], pages[i - 1]]; });
+        on('.page-move-right', () => { if(i < pages.length - 1) [pages[i + 1], pages[i]] = [pages[i], pages[i + 1]]; });
+        on('.page-remove', () => { p.removed = true; });
+        on('.page-restore', () => { p.removed = false; });
+        if(i < pages.length - 1){
+          const split = document.createElement('button');
+          split.type = 'button';
+          split.className = 'page-split-toggle' + (p.splitAfter ? ' active' : '');
+          split.title = t('pagesSplitHere');
+          split.setAttribute('aria-label', t('pagesSplitHere'));
+          split.setAttribute('aria-pressed', p.splitAfter ? 'true' : 'false');
+          split.textContent = '✂';
+          split.addEventListener('click', () => { p.splitAfter = !p.splitAfter; renderGrid(); });
+          grid.appendChild(split);
+        }
+      });
+      el('pages-summary').textContent = t('pagesSummary', {pages: pages.filter(p => !p.removed).length, docs: parts().length});
+      el('pages-save-btn').disabled = unchanged();
+    };
+
+    (async () => {
+      try{
+        const file = await (await resolveFileHandle(d.file_path, false)).getFile();
+        await addSource(await file.arrayBuffer(), 'pdf');
+        renderGrid();
+      }catch(e){ el('page-grid').textContent = ''; fail('pagesLoadError', e); }
+    })();
+
+    el('pages-add-file-btn').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf,image/jpeg,image/png';
+      input.addEventListener('change', async () => {
+        const file = input.files && input.files[0];
+        if(!file) return;
+        const kind = fileKind(file.name, file.type);
+        if(!kind) return;
+        try{ await addSource(await file.arrayBuffer(), kind); renderGrid(); }
+        catch(e){ fail('pagesLoadError', e); }
+      });
+      input.click();
+    });
+
+    el('pages-save-btn').addEventListener('click', async () => {
+      const split = parts();
+      if(!split.length){ statusEl.className = 'status err'; statusEl.textContent = t('pagesNoneLeft'); return; }
+      pageToolsRunning = true;
+      el('pages-save-btn').disabled = el('pages-cancel-btn').disabled = el('modal-close-btn').disabled = true;
+      el('pages-add-file-btn').disabled = true;
+      statusEl.className = 'status busy';
+      statusEl.innerHTML = `<span class="spinner"></span> ${escapeHtml(t('pagesSaving'))}`;
+      try{
+        const partBytes = [];
+        for(const part of split) partBytes.push(await buildPdfFromPages(sources, part));
+        await replaceActiveFile(d, partBytes[0], '_edited');
+        await refreshAfterPdfChange(d, partBytes[0]);
+        for(let i = 1; i < partBytes.length; i++) await createSplitDocument(d, partBytes[i], i + 1);
+        await persistDb();
+        pageToolsRunning = false;
+        loadCollections();
+        renderStats(); populateFilters(); populateDatalists(); render();
+        openDetail(d.id);
+        setStatusT(partBytes.length > 1 ? 'pagesSavedSplit' : 'pagesSaved', {count: partBytes.length}, 'ok');
+        closeModal();
+      }catch(e){
+        pageToolsRunning = false;
+        el('pages-cancel-btn').disabled = el('modal-close-btn').disabled = false;
+        el('pages-add-file-btn').disabled = false;
+        el('pages-save-btn').disabled = false;
+        fail('pagesError', e);
+      }
+    });
+  }
+
+  // Combine: the selected documents' pages joined into one PDF, in the order
+  // shown. The kept document gets the combined file (its own original stays);
+  // the others go to the Waste bin untouched, so restoring them undoes it.
+  function openCombineModal(ids){
+    const docs = ids.map(id => allDocs.find(x => x.id === id)).filter(canCombine);
+    if(docs.length < 2) return;
+    let keepId = docs[0].id;
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('combineTitle')}</h2>
+          <p class="field-hint" style="font-style:normal;">${t('combineIntro')}</p>
+          <div class="fs-list" id="combine-list"></div>
+          <div class="status" id="combine-status"></div>
+          <div class="modal-actions">
+            <button class="primary" id="combine-start-btn">${t('combineStart')}</button>
+            <button id="combine-cancel-btn">${t('commonCancel')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const tryClose = () => { if(!pageToolsRunning) closeModal(); };
+    el('modal-close-btn').addEventListener('click', tryClose);
+    el('combine-cancel-btn').addEventListener('click', tryClose);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') tryClose(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    const renderList = () => {
+      el('combine-list').innerHTML = docs.map((doc, i) => `
+        <div class="fs-list-item combine-row" data-id="${doc.id}">
+          <span class="combine-pos">${i + 1}</span>
+          <span class="doc-title">${escapeHtml(displayName(doc))}</span>
+          <label class="combine-keep"><input type="radio" name="combine-keep" value="${doc.id}"${doc.id === keepId ? ' checked' : ''} /> ${t('combineKeepLabel')}</label>
+          <button type="button" class="combine-up" title="${t('combineMoveUp')}" aria-label="${t('combineMoveUp')}"${i === 0 ? ' disabled' : ''}>▲</button>
+          <button type="button" class="combine-down" title="${t('combineMoveDown')}" aria-label="${t('combineMoveDown')}"${i === docs.length - 1 ? ' disabled' : ''}>▼</button>
+        </div>
+      `).join('');
+      el('combine-list').querySelectorAll('.combine-row').forEach((row, i) => {
+        row.querySelector('input').addEventListener('change', () => { keepId = Number(row.dataset.id); });
+        row.querySelector('.combine-up').addEventListener('click', () => { [docs[i - 1], docs[i]] = [docs[i], docs[i - 1]]; renderList(); });
+        row.querySelector('.combine-down').addEventListener('click', () => { [docs[i + 1], docs[i]] = [docs[i], docs[i + 1]]; renderList(); });
+      });
+    };
+    renderList();
+
+    el('combine-start-btn').addEventListener('click', async () => {
+      const statusEl = el('combine-status');
+      pageToolsRunning = true;
+      el('combine-start-btn').disabled = el('combine-cancel-btn').disabled = el('modal-close-btn').disabled = true;
+      statusEl.className = 'status busy';
+      statusEl.innerHTML = `<span class="spinner"></span> ${escapeHtml(t('combineWorking'))}`;
+      try{
+        const sources = [], entries = [];
+        for(const doc of docs){
+          const file = await (await resolveFileHandle(doc.file_path, false)).getFile();
+          const source = { kind: fileKind(doc.file_path, file.type), bytes: await file.arrayBuffer() };
+          sources.push(source);
+          if(source.kind === 'pdf'){
+            const PDFLib = await ensurePdfLib();
+            const count = (await PDFLib.PDFDocument.load(source.bytes)).getPageCount();
+            for(let i = 0; i < count; i++) entries.push({ source, index: i, rotation: 0 });
+          }else{
+            entries.push({ source, index: 0, rotation: 0 });
+          }
+        }
+        const bytes = await buildPdfFromPages(sources, entries);
+        const keep = docs.find(doc => doc.id === keepId);
+        await replaceActiveFile(keep, bytes, '_combined');
+        const texts = [keep, ...docs.filter(doc => doc !== keep)].map(doc => (doc.ocr_text || '').trim()).filter(Boolean);
+        const ocrText = texts.length ? texts.join('\n\n') : null;
+        db.run('UPDATE documents SET ocr_text = ? WHERE id = ?', [ocrText, keep.id]);
+        keep.ocr_text = ocrText;
+        for(const doc of docs){
+          if(doc === keep) continue;
+          db.run('UPDATE documents SET deleted = 1 WHERE id = ?', [doc.id]);
+          doc.deleted = true;
+        }
+        await refreshAfterPdfChange(keep, bytes);
+        await persistDb();
+        pageToolsRunning = false;
+        selectedDocIds = new Set();
+        selectedDocId = keep.id;
+        renderStats(); populateFilters(); populateDatalists(); render();
+        openDetail(keep.id);
+        setStatusT('combineDone', {count: docs.length, title: displayName(keep)}, 'ok');
+        closeModal();
+      }catch(e){
+        pageToolsRunning = false;
+        el('combine-start-btn').disabled = el('combine-cancel-btn').disabled = el('modal-close-btn').disabled = false;
+        statusEl.className = 'status err';
+        statusEl.textContent = t('combineError', {error: e.message});
+      }
+    });
+  }
+
   // --- Manage Collections modal (rename, delete, create manual collections) ---
 
   function openManageCollectionsModal(){
@@ -11492,6 +11970,20 @@
   el('bulk-edit-btn').addEventListener('click', () => openBulkEditForm([...selectedDocIds]));
   el('bulk-make-searchable-btn').addEventListener('click', () => openMakeSearchableModal([...selectedDocIds]));
   el('bulk-export-btn').addEventListener('click', () => openExportModal([...selectedDocIds]));
+  el('bulk-combine-btn').addEventListener('click', () => openCombineModal([...selectedDocIds]));
+  const setBulkMoreOpen = (open) => {
+    el('bulk-more-menu').style.display = open ? 'block' : 'none';
+    el('bulk-more-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  el('bulk-more-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    setBulkMoreOpen(el('bulk-more-menu').style.display === 'none');
+  });
+  el('bulk-more-menu').addEventListener('click', () => setBulkMoreOpen(false)); // an item's own listener still runs
+  document.addEventListener('click', (e) => { if(!el('bulk-more-wrap').contains(e.target)) setBulkMoreOpen(false); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && el('bulk-more-menu').style.display !== 'none'){ setBulkMoreOpen(false); el('bulk-more-btn').focus(); }
+  });
   el('bulk-clear-selection-btn').addEventListener('click', () => { selectedDocIds = new Set(); render(); });
 
   async function saveSmartCollection(){

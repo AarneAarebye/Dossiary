@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **84
-scripts covering most of the app's actual functionality** (82 of them
+There's a real, runnable Playwright regression suite in `tests/` — **85
+scripts covering most of the app's actual functionality** (83 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,29 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), Smart Collection rules and editor
+scrollable mobile toolbar), page tools (`test_page_tools.py` -- "Edit
+pages…" offered for a PDF in the panel, not for an image nor in the
+right-click menu; one card per page, Save disabled until something changes,
+rotation shown on the thumbnail, a removed page dimmed, the summary counting
+pages and documents; rotate + reorder + remove + split writing the edited
+copy in place next to an untouched original and a new split document with
+the remaining pages in the new order, its title, category, tags, people,
+amount, collection membership, hash and sidecar; a document without an
+original keeping its file as the original and getting `<stem>_edited.pdf`,
+text layer recorded, OCR text kept; an image added from a file as the last
+page (answered through `expect_file_chooser()`); removing every page
+refused; the bulk bar's More menu opening/closing (aria-expanded, Escape,
+outside click, choosing an item) and the bar staying one line; Combine
+hidden for one document, reorderable, the kept image document getting the
+combined PDF next to its original with the hash-matching image copy
+removed, OCR text joined, the other document binned with its files intact;
+pdf-lib in the Libraries modal; German labels. The shared stub gained a
+fake pdf-lib (`window.PDFLib`) whose "PDFs" are `%PDF-FAKELIB` plus a JSON
+page list `{src, page, rotation, text}`, and the fake pdf.js reads that
+list for page count and per-page text, so a test can check exactly which
+pages ended up where. Real pdf-lib 1.17.1 was also checked by hand in a
+browser: rotation, reordering and an image page come out right), Smart
+Collection rules and editor
 (`test_smart_collections.py` -- every rule kind evaluated directly through
 `window.__DEBUG_smartMatchIds`: text is/is not/contains/empty
 (case-insensitive), tags and person includes/excludes/empty, checkbox

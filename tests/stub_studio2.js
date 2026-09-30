@@ -396,6 +396,50 @@ class FakeJsPDFDoc {
 }
 window.jspdf = { jsPDF: FakeJsPDFDoc };
 
+// ---- Fake pdf-lib: a "PDF" it writes is '%PDF-FAKELIB' plus a JSON list of
+// its pages, each {src, page, rotation, text} -- src is the first line of the
+// file the page came from ('image:jpg'/'image:png' for an embedded image), page
+// its 1-based number there -- so tests can check exactly which pages ended up
+// where, rotated how. Loading any other '%PDF' file gives
+// __STUB_PDF_NUM_PAGES pages (default 1), matching the fake pdf.js below. ----
+const FAKE_PDFLIB_MAGIC = '%PDF-FAKELIB\n';
+window.__fakePdfLibPages = function(data){
+  try{
+    const text = new TextDecoder().decode(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+    return text.startsWith(FAKE_PDFLIB_MAGIC) ? JSON.parse(text.slice(FAKE_PDFLIB_MAGIC.length)).pages : null;
+  }catch(e){ return null; }
+};
+class FakePdfLibPage {
+  constructor(info){ this.info = { ...info }; }
+  getRotation(){ return { angle: this.info.rotation }; }
+  setRotation(d){ this.info.rotation = d.angle; }
+  drawImage(img){ this.info.src = `image:${img.kind}`; this.info.page = 1; this.info.text = false; }
+}
+class FakePdfLibDoc {
+  constructor(pages){ this.pages = pages.map(p => new FakePdfLibPage(p)); }
+  static async create(){ return new FakePdfLibDoc([]); }
+  static async load(bytes){
+    const own = window.__fakePdfLibPages(bytes);
+    if(own) return new FakePdfLibDoc(own);
+    const text = new TextDecoder().decode(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes);
+    if(!text.startsWith('%PDF')) throw new Error('Failed to parse PDF document');
+    const src = text.split('\n')[0];
+    return new FakePdfLibDoc(Array.from({ length: window.__STUB_PDF_NUM_PAGES || 1 },
+      (_, i) => ({ src, page: i + 1, rotation: 0, text: text.includes('%TEXTLAYER') })));
+  }
+  getPageCount(){ return this.pages.length; }
+  async copyPages(src, indices){ return indices.map(i => new FakePdfLibPage(src.pages[i].info)); }
+  addPage(p){
+    const page = p instanceof FakePdfLibPage ? p : new FakePdfLibPage({ src: 'blank', page: 1, rotation: 0, text: false });
+    this.pages.push(page);
+    return page;
+  }
+  async embedJpg(){ return { kind: 'jpg', width: 800, height: 1000 }; }
+  async embedPng(){ return { kind: 'png', width: 800, height: 1000 }; }
+  async save(){ return new TextEncoder().encode(FAKE_PDFLIB_MAGIC + JSON.stringify({ pages: this.pages.map(p => p.info) })); }
+}
+window.PDFLib = { PDFDocument: FakePdfLibDoc, degrees: (angle) => ({ type: 'degrees', angle }) };
+
 // ---- Fake pdf.js: renders a solid-color rectangle so canvas operations are real ----
 window.pdfjsLib = {
   GlobalWorkerOptions: { workerSrc: '' },
@@ -412,9 +456,12 @@ window.pdfjsLib = {
       ? new Promise(resolve => { (window.__SLOW_PDF_WAITERS = window.__SLOW_PDF_WAITERS || []).push(resolve); })
       : Promise.resolve();
     window.__RESOLVE_SLOW_PDFS = () => { (window.__SLOW_PDF_WAITERS || []).splice(0).forEach(r => r()); };
+    // A PDF written by the fake pdf-lib below carries its page list as JSON,
+    // so page count and per-page text follow whatever pages it was built from.
+    const fakeLibPages = window.__fakePdfLibPages(opts && opts.data);
     return {
       promise: ready.then(() => ({
-        numPages: (window.__STUB_PDF_NUM_PAGES || 1),
+        numPages: fakeLibPages ? fakeLibPages.length : (window.__STUB_PDF_NUM_PAGES || 1),
         getPage: async (n) => ({
           getViewport: (opts2) => ({ width: 200 * (opts2.scale || 1), height: 260 * (opts2.scale || 1) }),
           // Controllable via window.__STUB_PDF_HAS_REAL_TEXT (default falsy/false) --
@@ -422,7 +469,7 @@ window.pdfjsLib = {
           // affecting any existing test that never sets this flag (they all continue
           // to see empty text content, exactly as before this was added).
           getTextContent: async () => ({
-            items: (window.__STUB_PDF_HAS_REAL_TEXT || bytesSayText) ? [{ str: 'This PDF already has real embedded text content in it.' }] : [],
+            items: (window.__STUB_PDF_HAS_REAL_TEXT || (fakeLibPages ? fakeLibPages[n - 1].text : bytesSayText)) ? [{ str: 'This PDF already has real embedded text content in it.' }] : [],
           }),
           render: (renderCtx) => ({
             promise: (async () => {

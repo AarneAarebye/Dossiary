@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (84 scripts) + shared
+tests/                   Playwright regression suite (85 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -434,12 +434,12 @@ this repo's git tags.
   correct.
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
-  (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, plus sql.js
-  loaded unconditionally for the database itself) — keep it in sync if a
+  (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, `ensurePdfLib()`,
+  plus sql.js loaded unconditionally for the database itself) — keep it in sync if a
   dependency is added, removed, or swapped. The license for each was
   verified directly against its own repo's `LICENSE` file when this was
   written (sql.js MIT, Tesseract.js Apache-2.0, jsPDF MIT, pdf.js
-  Apache-2.0), not assumed from general familiarity — if any of these
+  Apache-2.0, pdf-lib MIT -- checked against Hopding/pdf-lib's LICENSE.md), not assumed from general familiarity — if any of these
   ever change their license, or a new dependency gets added, verify the
   same way rather than guessing; this is exactly the kind of detail
   that's easy to get subtly wrong from memory.
@@ -2444,7 +2444,7 @@ this repo's git tags.
   (best-effort) and the old one removed when the stem changed -- it's
   derived output, not user data.
   **Bulk "Make searchable"** (`#bulk-make-searchable-btn` in the
-  bulk-action bar) opens the same dialog: `openMakeSearchableModal(ids)`
+  bulk-action bar's More menu -- see the page tools note) opens the same dialog: `openMakeSearchableModal(ids)`
   takes a list, filters it through `canMakeSearchable(d)` (the one
   eligibility rule, shared with the panel action), and a single remaining
   id takes the original single-document path and messages. The button only
@@ -3742,6 +3742,49 @@ this repo's git tags.
   drops unknown ids. Single and bulk delete are the same call with a 1-
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
+- **Page tools** (`openPageToolsModal()`, `openCombineModal()`,
+  `buildPdfFromPages()`, `replaceActiveFile()`, `refreshAfterPdfChange()`,
+  `createSplitDocument()`) are built on **pdf-lib** (`ensurePdfLib()`,
+  1.17.1 from cdnjs, MIT), the one dependency added for them -- it copies
+  pages between PDFs as they are, text layers included, so nothing is
+  re-rendered or re-compressed. `ensurePdfLib()` skips loading when
+  `window.PDFLib` already exists, which is how the test stub's fake takes
+  over. **"Edit pages…"** is a panel-only action for a non-deleted document
+  whose active file is a PDF (`canEditPages()`): a grid of page thumbnails
+  (pdf.js) where each page can be rotated, moved, removed (dimmed, and
+  restorable until Save) and split after (✂ between cards); "+ Add pages
+  from file…" appends a PDF's pages or an image as a page (an A4-wide page
+  with the image's proportions). Save is disabled until something changed.
+  **The original always survives** (`replaceActiveFile()`, the same two
+  rules "Make searchable" uses): with a separate original on disk the active
+  copy is overwritten in place; without one the current file becomes
+  `original_file_path` and the result goes next to it as `<stem>_edited.pdf`
+  (`_combined.pdf` for Combine). `file_hash` stays valid either way, since
+  it's derived from the original. Each part after the first becomes a new
+  document (`createSplitDocument()`, `source = 'split'`, title "<title>
+  (2)" etc.) with the source's category, subcategory, type, date, notes,
+  tags, custom fields, people, review flag and manual collections, its own
+  hash, and no separate original (the source's original already holds
+  those pages). After every write, `refreshAfterPdfChange()` regenerates
+  the preview, re-records the text layer (`recordPdfTextLayer()`, so a part
+  of a digital PDF gets its own OCR text) and rewrites the sidecar -- all
+  best-effort. Existing OCR text on the edited document is kept even if
+  pages were removed (it may be hand-corrected). **Combine…**
+  (`canCombine()`: non-deleted PDF/JPEG/PNG, 2+ selected) joins the
+  selected documents' pages in an order the dialog lets you change; the
+  document whose details you keep gets the combined file and the joined OCR
+  text, and the others go to the Waste bin with their files untouched, so
+  restoring them undoes it by hand. Both dialogs block
+  Escape/backdrop/close while writing (`pageToolsRunning`). **The bulk-action
+  bar gained a "More ▾" menu** (`#bulk-more-btn`/`#bulk-more-menu`, reusing
+  the Add-to-collection menu's CSS) holding Make searchable, Combine… and
+  Export…, each keeping its id and listener: adding Combine as one more bar
+  button made the button labels wrap to two lines at 1440px in tabs layout,
+  growing the bar and pushing `.table-wrap` 16px behind the footer
+  (`test_collections.py` Scenario 30 caught it). Occasional bulk actions go
+  in that menu, the same rule as the toolbar's Tools menu. Items are shown
+  or hidden by `renderBulkActionBar()` as before; the whole menu is hidden in
+  the Waste bin.
 - **Smart Collection rules and editor** (`matchesRules()`, `matchesRule()`,
   `criteriaToRules()`, `smartRuleFields()`, `openSmartCollectionEditor()`,
   Tools → Manage collections → "+ New smart collection" / "Edit rules…").
@@ -3814,7 +3857,7 @@ this repo's git tags.
   latent risk.
 - **Export selected documents** (`openExportModal()`, `exportFileName()`,
   `uniqueFileNameIn()`, `buildExportCsv()`, `#bulk-export-btn` in the
-  bulk-action bar) copies each selected document's active file into a
+  bulk-action bar's More menu) copies each selected document's active file into a
   folder picked with `showDirectoryPicker()`, named `<yyyy-mm-dd> <title>`
   (characters not allowed in file names replaced, clashes -- including
   files already in that folder, which are never overwritten -- numbered
