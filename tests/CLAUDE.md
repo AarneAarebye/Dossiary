@@ -823,7 +823,8 @@ text layer recorded, OCR text kept; an image added from a file as the last
 page (answered through `expect_file_chooser()`); removing every page
 refused; the bulk bar's More menu opening/closing (aria-expanded, Escape,
 outside click, choosing an item) and the bar staying one line; Combine
-hidden for one document, reorderable, the kept image document getting the
+hidden for one document, reorderable, a read-only file named in the Edit pages error with the dialog left open for
+another try; the kept image document getting the
 combined PDF next to its original with the hash-matching image copy
 removed, OCR text joined, the other document binned with its files intact;
 pdf-lib in the Libraries modal; German labels. The shared stub gained a
@@ -931,7 +932,14 @@ it runs) and a second run finishing the rest, a digital PDF recorded as
 having text, scanned PDFs as checked without, an unreadable PDF left
 unchecked to retry, "Show in table" listing exactly the needs-OCR
 documents, "Make all searchable" processing only those, and a found text
-layer copied into OCR text and the sidecar; and, in `main_shared_read()`,
+layer copied into OCR text and the sidecar; and, in `main_errors()`, Library check's needs-OCR count and "Show in table" leaving
+out an image and a checked PDF whose OCR text was typed in (Make searchable
+still offered for them), a read-only active file (the stub's
+`handle.readOnly = true` throws Chrome's `NoModificationAllowedError`)
+reported with its library path and "read-only" instead of "OCR failed", a
+missing file reported as missing, "no text found" (`window.__STUB_OCR_NO_WORDS`)
+shown in the neutral status colour on a single run and, in bulk, counted
+and listed apart from failures with the documents still eligible; and, in `main_shared_read()`,
 the duplicate backfill hashing every document and text-checking the PDFs
 it read from the same bytes (text copied only into empty OCR text, a
 document hashed from a separate original left for "Check for text", and

@@ -87,7 +87,13 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   geprüfte PDFs („Auf Text prüfen“ öffnet jedes und sucht eine Textebene,
   ohne OCR — die meisten PDFs aus Mariner oder von einem ScanSnap haben
   schon eine) und Dokumente, die OCR brauchen; diese lassen sich in der
-  Tabelle anzeigen oder auf einmal durchsuchbar machen. Der eigene Text
+  Tabelle anzeigen oder auf einmal durchsuchbar machen. Ein Dokument, dessen
+  OCR-Text Sie selbst eingetragen haben, ist bereits durchsuchbar und wird
+  nicht mitgezählt. Findet die OCR gar keinen Text (leere Seite, Foto,
+  Handschrift), wird das als solches gemeldet und nicht als Fehler; versuchen
+  Sie eine andere OCR-Sprache. Lässt sich eine Datei nicht speichern, nennt
+  die Meldung sie und den Grund — eine schreibgeschützte Datei etwa muss im
+  Finder unter „Geschützt“ freigegeben werden. Der eigene Text
   eines PDFs wird außerdem in den OCR-Text des Dokuments übernommen, wenn
   dieser leer ist, sodass die Suche der App (und Spotlight) es über seinen
   Inhalt findet; die Duplikatprüfung erledigt das nebenbei, während sie die

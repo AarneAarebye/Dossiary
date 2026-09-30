@@ -73,7 +73,13 @@ working" problem that motivated this project in the first place.
   what isn't searchable yet in two counts: PDFs not checked yet (a quick
   "Check for text" opens each one to look for a text layer, without OCR --
   most PDFs from Mariner or a ScanSnap already have one) and documents that
-  need OCR, which you can show in the table or make searchable in one go.
+  need OCR, which you can show in the table or make searchable in one go. A
+  document whose OCR text you've typed in yourself is already searchable and
+  isn't counted. When OCR finds no text at all (a blank page, a photo,
+  handwriting), that's reported as such rather than as a failure; try
+  another OCR language. If a file can't be saved, the message names it and
+  says why — a read-only file, for example, needs its "Locked" setting
+  removed in Finder.
   A PDF's own text is also copied into the document's OCR text when that's
   empty, so the app's search (and Spotlight) find it by its contents; the
   duplicate check does this for free while it reads the files anyway, and

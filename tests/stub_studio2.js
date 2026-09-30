@@ -11,6 +11,9 @@ class FakeFileHandle {
     return new File([bytes], this.name, { type });
   }
   async createWritable() {
+    // A test can mark a file read-only (handle.readOnly = true) to get the same
+    // error Chrome raises for a locked file.
+    if (this.readOnly) throw new DOMException("Failed to execute 'createWritable' on 'FileSystemFileHandle': Cannot write to a read-only file.", 'NoModificationAllowedError');
     const self = this;
     let buf = new Uint8Array(0);
     return {
@@ -360,11 +363,12 @@ window.Tesseract = {
         return {
           data: {
             // window.__STUB_OCR_TEXT overrides the recognized text (default 'Hello World').
-            text: window.__STUB_OCR_TEXT || 'Hello World',
+            // window.__STUB_OCR_NO_WORDS simulates a page with nothing recognizable.
+            text: window.__STUB_OCR_NO_WORDS ? '' : (window.__STUB_OCR_TEXT || 'Hello World'),
             blocks: [{
               paragraphs: [{
                 lines: [{
-                  words: [
+                  words: window.__STUB_OCR_NO_WORDS ? [] : [
                     { text: 'Hello', bbox: { x0: 10, y0: 20, x1: 80, y1: 45 } },
                     { text: 'World', bbox: { x0: 90, y0: 20, x1: 160, y1: 45 } },
                   ]

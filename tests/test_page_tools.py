@@ -224,6 +224,20 @@ async def main():
         print("The other document is in the Waste bin, files untouched:", by[2]['deleted'] == 1 and await read('files/2_legacy_edited.pdf') is not None)
         print("Status names the result:", 'Combined 2 documents into “Photo”' in await page.inner_text('#status'))
 
+        # === Scenario 5b: a read-only file is named in the error ===
+        await page.evaluate("async () => { (await (await window.__TEST_ROOT.getDirectoryHandle('files')).getFileHandle('1_scan.pdf')).readOnly = true; }")
+        await select(1)
+        await page.click('#edit-pages-btn')
+        await page.wait_for_timeout(400)
+        await card(0, 'page-rotate-right')
+        await page.click('#pages-save-btn')
+        await page.wait_for_timeout(400)
+        err = await page.inner_text('#pages-status')
+        print("Saving to a read-only file names it and says so:", 'TestLib/files/1_scan.pdf' in err and 'read-only' in err, repr(err))
+        print("...the dialog stays open for another try:", await page.locator('#pages-save-btn').is_enabled())
+        await page.click('#pages-cancel-btn')
+        await page.wait_for_timeout(150)
+
         # === Scenario 6: pdf-lib listed among the libraries, German labels ===
         await page.click('#libraries-link')
         await page.wait_for_timeout(150)

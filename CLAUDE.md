@@ -2459,6 +2459,21 @@ this repo's git tags.
   phrased as "Label: N" so no singular/plural key pairs are needed, and
   lists each failed document with its reason. A failed document stays
   eligible, so the bulk button remains for a retry.
+  **Failures say which file and why**: `withFileOp(op, path, fn)` wraps a
+  file read or write and rethrows with `fileOp`/`filePath`/`errorName`
+  attached, and `fileErrorText(e, fallbackKey)` turns that into plain words
+  -- a read-only file (Chrome's `NoModificationAllowedError`, e.g. a file
+  locked in Finder) gets "Could not save "<library>/<path>": the file is
+  read-only" plus how to unlock it, a missing file points at Library check's
+  re-link, anything else names the path and the browser's message. It used
+  to be "OCR failed: Failed to execute 'createWritable'...", although OCR
+  had worked and only saving failed. Make searchable, Edit pages and
+  Combine use it. **"OCR found no text" isn't a failure**: OCR ran and
+  recognized nothing (blank page, photo, handwriting, wrong language). A
+  single run shows it in the neutral status colour; the bulk summary counts
+  it on its own ("No text found, try another OCR language: N"), lists those
+  documents apart from real failures (`#make-searchable-notext-list`), and
+  they stay eligible for a retry.
   **`has_text_layer`** (`documents.has_text_layer`, `0`/`1`, added via
   `SCHEMA_MIGRATIONS`) records a PDF found to already contain real text --
   by capture-time OCR (`pendingPdfHasText`) or by "Make searchable" -- so
@@ -2471,7 +2486,12 @@ this repo's git tags.
   problem, just what OCR hasn't reached) shows two counts, from
   `notSearchableBuckets()`: PDFs **not checked for text yet**, and
   documents that **need OCR** (images, which never have a text layer, and
-  PDFs checked without one -- `text_checked` = 1, `has_text_layer` = 0).
+  PDFs checked without one -- `text_checked` = 1, `has_text_layer` = 0),
+  **leaving out any document that already has OCR text** (typed in by hand
+  or from an earlier OCR run): search and the sidecar read `ocr_text`, not
+  the file, so it's findable already. Reported after a person typed the
+  text of a document OCR couldn't read and Library check kept listing it.
+  The panel still offers "Make searchable" for such a document.
   The split exists because a single "not searchable" count was reported as
   wildly wrong: a Mariner-migrated library arrived with ~1,340 documents
   counted, since none of its PDFs (most of which already carry a text

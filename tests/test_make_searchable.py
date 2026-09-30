@@ -611,7 +611,142 @@ async def main_shared_read():
         print("JS ERRORS (shared read):", errors)
         await browser.close()
 
+
+# Errors in plain words, "no text found" as its own outcome, and Library check
+# no longer counting a document whose OCR text was typed in by hand.
+ERR_SEED = {
+    "documents": [
+        doc(1, "Locked", "files/1_a.pdf", "files/1_a/a.pdf"),
+        doc(2, "Blank", "files/2_b.png", "files/2_b/b.png"),
+        doc(3, "Gone", "files/3_c.pdf"),
+        doc(4, "Typed image", "files/4_d.png", ocr_text="typed by hand"),
+        doc(5, "Typed PDF", "files/5_e.pdf", text_checked=1, has_text_layer=0, ocr_text="typed by hand"),
+        doc(6, "Scanned PDF", "files/6_f.pdf", text_checked=1, has_text_layer=0),
+    ],
+    "tags": [], "document_tags": [],
+    "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
+}
+TINY_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+ERR_FILES = {
+    "files/1_a.pdf": b"%PDF-1.4 locked", "files/1_a/a.pdf": b"%PDF-1.4 locked",
+    "files/2_b.png": TINY_PNG, "files/2_b/b.png": TINY_PNG,
+    "files/4_d.png": TINY_PNG, "files/5_e.pdf": b"%PDF-1.4 typed", "files/6_f.pdf": b"%PDF-1.4 scanned",
+}
+
+async def main_errors():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(ERR_SEED)});")
+        files_b64 = {k: base64.b64encode(v).decode() for k, v in ERR_FILES.items()}
+        await page.evaluate("""
+            async (files) => {
+                for(const [path, b64] of Object.entries(files)){
+                    const parts = path.split('/');
+                    let dir = window.__TEST_ROOT;
+                    for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
+                    const h = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+                    const w = await h.createWritable();
+                    await w.write(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+                    await w.close();
+                }
+                // Lock the active copy of "Locked", like a file locked in Finder.
+                const filesDir = await window.__TEST_ROOT.getDirectoryHandle('files');
+                (await filesDir.getFileHandle('1_a.pdf')).readOnly = true;
+            }
+        """, files_b64)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(500)
+
+        async def select(i):
+            await page.click(f'#doc-tbody tr[data-id="{i}"] td:nth-child(3)')
+            await page.wait_for_timeout(200)
+        async def run_single(i):
+            await select(i)
+            await page.click('#make-searchable-btn')
+            await page.wait_for_timeout(150)
+            await page.click('#make-searchable-start-btn')
+            await page.wait_for_timeout(700)
+            status = page.locator('#make-searchable-status')
+            result = (await status.inner_text(), await status.get_attribute('class'))
+            await page.click('#make-searchable-cancel-btn')
+            await page.wait_for_timeout(150)
+            return result
+
+        # === Scenario E1: Library check skips documents with OCR text typed in ===
+        await page.click('#tools-btn'); await page.click('#library-check-btn')
+        await page.wait_for_timeout(800)
+        print("Needs-OCR count leaves out documents that already have OCR text:",
+              await page.inner_text('#not-searchable-count') == 'No text found, needs OCR: 2', await page.inner_text('#not-searchable-count'))
+        await page.click('#not-searchable-show-btn')
+        await page.wait_for_timeout(300)
+        shown = sorted(await page.locator('#doc-tbody tr[data-id]').evaluate_all("rs => rs.map(r => Number(r.dataset.id))"))
+        print("...and \"Show in table\" lists just those (blank image, scanned PDF):", shown == [2, 6], shown)
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(200)
+        await select(4)
+        print("Make searchable is still offered for a typed-in document (retry with another language):", await page.locator('#make-searchable-btn').count() == 1)
+
+        # === Scenario E2: a read-only file is named, with what to do ===
+        text, cls = await run_single(1)
+        print("Read-only file: message names the file and says it's read-only:",
+              'TestLib/files/1_a.pdf' in text and 'read-only' in text and 'Locked' in text and 'OCR failed' not in text, repr(text))
+        print("...shown as an error:", 'err' in cls)
+
+        # === Scenario E3: OCR finding no text is a neutral result ===
+        await page.evaluate("window.__STUB_OCR_NO_WORDS = true;")
+        text, cls = await run_single(2)
+        print("No text found: explained, not shown as an error:", 'found no text' in text and cls.strip() == 'status', repr(text), cls)
+
+        # === Scenario E4: the bulk summary names failing files, and keeps "no text" apart ===
+        async def run_bulk(ids):
+            for i in ids:
+                await page.check(f'.row-select-checkbox[data-id="{i}"]')
+            await page.wait_for_timeout(150)
+            await page.click('#bulk-more-btn'); await page.click('#bulk-make-searchable-btn')
+            await page.wait_for_timeout(150)
+            await page.click('#make-searchable-start-btn')
+            await page.wait_for_timeout(1200)
+            status = page.locator('#make-searchable-status')
+            result = (await status.inner_text(), await status.get_attribute('class'),
+                      await page.locator('#make-searchable-failed-list li').all_inner_texts(),
+                      await page.locator('#make-searchable-notext-list li').all_inner_texts())
+            await page.click('#make-searchable-cancel-btn')
+            await page.click('#bulk-clear-selection-btn')
+            await page.wait_for_timeout(150)
+            return result
+        await page.evaluate("window.__STUB_OCR_NO_WORDS = false;")
+        status, cls, failed, notext = await run_bulk([1, 3])
+        print("Failures name their files (read-only, missing):",
+              len(failed) == 2 and any('1_a.pdf' in f and 'read-only' in f for f in failed) and any('files/3_c.pdf' in f and 'missing' in f for f in failed), failed)
+        print("...shown as an error:", 'err' in cls and 'Could not be processed: 2.' in status, repr(status))
+        await page.evaluate("window.__STUB_OCR_NO_WORDS = true;")
+        status, cls, failed, notext = await run_bulk([2, 6])
+        print("No text found is counted apart, with the language hint:", 'No text found, try another OCR language: 2.' in status and 'Could not be processed' not in status, repr(status))
+        print("...documents listed on their own, not as failures:", sorted(notext) == ['Blank', 'Scanned PDF'] and failed == [], notext, failed)
+        print("...and not shown as an error:", cls.strip() == 'status', cls)
+        await select(2)
+        print("...they stay eligible for a retry:", await page.locator('#make-searchable-btn').count() == 1)
+
+        print("JS ERRORS (errors):", errors)
+        await browser.close()
+
 asyncio.run(main())
 asyncio.run(main_bulk())
 asyncio.run(main_library_check())
 asyncio.run(main_shared_read())
+asyncio.run(main_errors())
