@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (79 scripts) + shared
+tests/                   Playwright regression suite (80 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -684,6 +684,20 @@ this repo's git tags.
   `currencyInLibraryStyle()`). No sender/organization: too unreliable from
   free text. `window.__DEBUG_suggestFromOcrText` exposes the parser to
   `tests/test_ocr_suggestions.py`.
+- **Autofill from earlier documents** (`findEarlierDocByTitle()`,
+  `applyHistoryAutofill()`), Mariner Paperless's own "Auto fill receipt
+  information from previous files": changing the Title to one an earlier,
+  non-deleted document has (compared trimmed and case-insensitively, the
+  way a merchant or sender name repeats) fills the empty fields from the
+  most recently imported match -- Document Type first, via a real `change`
+  event so the type's fields exist, then Category, Subcategory, Payment
+  method and Currency -- each marked as a guess naming the source
+  (`autofillHint`). Only fields that genuinely repeat per sender: never
+  amounts, dates, notes or tags. Same scope rule as the OCR suggestions:
+  always in capture (where the untouched default document type counts as
+  replaceable), and in Edit only for review-queue documents. Both features
+  share `applyGuess()`/`markGuess()`; a capture type change re-applies the
+  OCR suggestions its rebuild would otherwise drop.
 - **`.field input[type=date]{ color-scheme:dark; }`** exists for the same
   reason the DOCTYPE/quirks-mode note above does — an obscure default that
   "works fine" until someone actually looks closely. Without it, Chrome/

@@ -154,6 +154,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   „bitte prüfen“-Hinweis, füllen nur leere Felder und verschwinden, sobald
   Sie sie bearbeiten. Auch OCR im Erfassungs- oder Bearbeitungsformular
   macht Vorschläge.
+- **Automatisch ausfüllen aus früheren Dokumenten** — geben Sie einen
+  Titel ein, den schon ein früheres Dokument hat (einen bereits abgelegten
+  Händler oder Absender), werden leere Felder für Dokumenttyp, Kategorie,
+  Unterkategorie, Zahlungsmethode und Währung vom jüngsten solchen Dokument
+  übernommen — gelb markiert mit einem Hinweis auf die Quelle. Eigene
+  Eingaben werden nie ersetzt.
 - **Tastenkürzel** — **?** zeigt die Liste. J/K (oder ↓/↑) wechseln
   zwischen Dokumenten, E bearbeitet, D markiert das aktuelle als fertig und
   springt zum nächsten, Enter öffnet die Datei; im Bearbeitungsformular
@@ -920,7 +926,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (79
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (80
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was
