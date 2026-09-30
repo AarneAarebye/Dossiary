@@ -421,7 +421,9 @@ valid rename updating `fields.name` (same id), `document_type_fields`, the
 field's description, a Smart Collection's saved dynamic-filter criteria,
 and every document's in-memory values; a person-type field renaming with
 its people still attached; and the table header, the Smart Collection's
-membership, and the detail panel all reflecting the new name afterward),
+membership, and the detail panel all reflecting the new name afterward,
+plus both affected documents' sidecar `.txt` files rewritten with the new
+field names and without the old ones),
 and comma-aware autocomplete
 for multi-valued fields (`test_comma_autocomplete.py` — the native `list=`
 attribute genuinely removed once `wireCommaAutocomplete()` wires a field,

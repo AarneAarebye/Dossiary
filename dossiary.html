@@ -4002,16 +4002,24 @@
     for(const typeName in typeFieldOrder){
       for(const entry of typeFieldOrder[typeName]) if(entry.field === oldName) entry.field = newName;
     }
+    const affectedDocs = [];
     for(const d of allDocs){
       for(const map of [d.customFields, d.personFieldValues]){
         if(map && Object.prototype.hasOwnProperty.call(map, oldName)){
           map[newName] = map[oldName];
           delete map[oldName];
+          affectedDocs.push(d);
         }
       }
     }
 
     await persistDb();
+    // Sidecars carry field names ("Organization: ..."), so refresh the ones
+    // that mention this field. Best-effort per file: a sidecar is derived
+    // output, and one unwritable file mustn't undo a rename already saved.
+    for(const d of affectedDocs){
+      try{ await writeSidecarForDoc(d); }catch(e){ /* stays stale until the next save */ }
+    }
     renderColumnsMenu(); applyColumnVisibility(); populateFilters(); populateDatalists(); render();
     if(selectedDocId !== null) openDetail(selectedDocId);
     return null;
@@ -7785,16 +7793,7 @@
       // block above, mirroring saveEditedDocument()'s own sidecar-rewrite step.
       for(const id of ids){
         const d = allDocs.find(x => x.id === id);
-        if(!d) continue;
-        const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
-        if(!sidecarBaseName) continue;
-        const otherPersonFieldsForSidecar = { ...(d.personFieldValues || {}) };
-        delete otherPersonFieldsForSidecar['People'];
-        await writeSidecarFile(sidecarBaseName, buildSidecarText({
-          title: d.title, category: d.category, subcategory: d.subcategory, documentType: d.document_type,
-          date: d.date, importDate: d.import_date, customFields: d.customFields || {}, personFields: otherPersonFieldsForSidecar,
-          people: d.people || [], notes: d.notes, ocrText: d.ocr_text, tags: d.tags || [],
-        }));
+        if(d) await writeSidecarForDoc(d);
       }
 
       await persistDb();
@@ -7980,6 +7979,21 @@
     if(!filePath) return null;
     const name = filePath.replace(/^files\//, '');
     return name.replace(/\.[^.]+$/, '');
+  }
+
+  // Rewrites a document's sidecar .txt from its current in-memory state (d is
+  // already updated). Shared by every path that changes metadata outside the
+  // Edit form: bulk edit, "Make searchable", renaming a field.
+  async function writeSidecarForDoc(d){
+    const sidecarBaseName = sidecarBaseNameFromFilePath(d.file_path);
+    if(!sidecarBaseName) return;
+    const otherPersonFields = { ...(d.personFieldValues || {}) };
+    delete otherPersonFields['People'];
+    await writeSidecarFile(sidecarBaseName, buildSidecarText({
+      title: d.title, category: d.category, subcategory: d.subcategory, documentType: d.document_type,
+      date: d.date, importDate: d.import_date, customFields: d.customFields || {}, personFields: otherPersonFields,
+      people: d.people || [], notes: d.notes, ocrText: d.ocr_text, tags: d.tags || [],
+    }));
   }
 
   async function saveEditedDocument(id){
@@ -8949,13 +8963,7 @@
     try{
       const newBase = sidecarBaseNameFromFilePath(newPath);
       const oldBase = sidecarBaseNameFromFilePath(oldPath);
-      const otherPersonFields = { ...(d.personFieldValues || {}) };
-      delete otherPersonFields['People'];
-      await writeSidecarFile(newBase, buildSidecarText({
-        title: d.title, category: d.category, subcategory: d.subcategory, documentType: d.document_type,
-        date: d.date, importDate: d.import_date, customFields: d.customFields || {}, personFields: otherPersonFields,
-        people: d.people || [], notes: d.notes, ocrText: d.ocr_text, tags: d.tags || [],
-      }));
+      await writeSidecarForDoc(d);
       if(oldBase !== newBase) await filesDirHandle.removeEntry(`${oldBase}.txt`).catch(() => {});
     }catch(e){ /* no sidecar refresh -- not fatal */ }
 

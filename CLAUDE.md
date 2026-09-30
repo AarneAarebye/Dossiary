@@ -2929,10 +2929,12 @@ this repo's git tags.
   rename input's convention (Enter/blur saves, Escape cancels -- with
   `stopPropagation()` so Escape doesn't also close Field Settings), except
   a rejected name keeps the input open with the reason shown in
-  `.fs-rename-status`. **Known, accepted gap**: sidecar `.txt` files
-  already on disk keep the old field name until each document is next
-  saved, the same "sidecars refresh only on an explicit save" rule every
-  other metadata change already follows.
+  `.fs-rename-status`. Sidecar `.txt` files carry field names
+  ("Organization: ..."), so after the rename is saved every document with a
+  value in that field gets its sidecar rewritten (`writeSidecarForDoc()`,
+  best-effort per file -- one unwritable sidecar mustn't undo a rename
+  that's already persisted). `writeSidecarForDoc(d)` is the shared "rewrite
+  from in-memory state" helper; bulk edit and "Make searchable" use it too.
 - **Reminder-type custom fields** (`fields.type === 'reminder'`, a fifth
   value alongside `text`/`number`/`date`/`checkbox`/`person`) let a
   person turn any custom field — Renewal Date, Warranty End, Policy

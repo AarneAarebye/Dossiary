@@ -170,6 +170,24 @@ async def main():
         print("Detail panel shows the value under the new name:", 'Correspondent' in panel and 'Acme GmbH' in panel and 'Organization' not in panel)
         print("...and the renamed person-type field keeps its people:", 'WRITER' in panel.upper() and 'Jana' in panel and 'AUTHOR' not in panel.upper())
 
+        # Sidecar .txt files carry field names, so a rename refreshes the ones
+        # that mention the field, instead of leaving the old name until each
+        # document is next saved.
+        async def sidecar(name):
+            return await page.evaluate("""
+                async (name) => {
+                    try{
+                        const dir = await window.__TEST_ROOT.getDirectoryHandle('files');
+                        return await (await (await dir.getFileHandle(name)).getFile()).text();
+                    }catch(e){ return null; }
+                }
+            """, name)
+        s1 = await sidecar('1_a.txt')
+        s2 = await sidecar('2_b.txt')
+        print("Sidecar of doc 1 uses the new field names:", s1 is not None and 'Correspondent: Acme GmbH' in s1 and 'Writer: Jana' in s1, repr((s1 or '')[:200]))
+        print("...and no longer the old ones:", s1 is not None and 'Organization:' not in s1 and 'Author:' not in s1)
+        print("Sidecar of doc 2 refreshed too:", s2 is not None and 'Correspondent: Someone Else' in s2)
+
         print("JS ERRORS:", errors)
         await browser.close()
 
