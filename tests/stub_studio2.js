@@ -343,7 +343,8 @@ window.Tesseract = {
         }
         return {
           data: {
-            text: 'Hello World',
+            // window.__STUB_OCR_TEXT overrides the recognized text (default 'Hello World').
+            text: window.__STUB_OCR_TEXT || 'Hello World',
             blocks: [{
               paragraphs: [{
                 lines: [{

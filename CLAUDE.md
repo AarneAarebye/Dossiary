@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (77 scripts) + shared
+tests/                   Playwright regression suite (78 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -647,6 +647,29 @@ this repo's git tags.
   one) or remove the visual flag thinking it's unnecessary friction — an
   unflagged default here would be a silently wrong date more often than
   a right one, for anyone working through a backlog of older documents.
+- **Suggested values from OCR text** (`suggestFromOcrText()`,
+  `applyOcrGuess()`, `applyOcrSuggestions()`) offer a likely date, amount
+  and currency, read from a document's OCR text, as guesses with the same
+  amber `.field-guess` look as the date preset above (plus an
+  `.ocr-guess-hint` note), cleared on first edit. **When**: in the Edit form
+  only for review-queue (`needs_review`) documents -- where fields are
+  expected to be empty; an ordinary edit never quietly gains values -- and
+  re-applied after a type change rebuilds the dynamic fields; and right
+  after OCR runs, in both capture and Edit. **Never over a real value**: a
+  guess only fills an empty field or replaces another guess (capture's
+  "today", the default-currency guess, whose note it hides). Kept guesses
+  save like typed values, the same as the date preset. **Deliberately
+  conservative parsing**: the first plausible date in the text (ISO,
+  `dd.mm.yyyy`/`yy`, `dd/mm/yyyy` -- day-first unless a part is > 12 or the
+  UI language is English -- and de/en/fr/es month names, impossible dates
+  skipped); an amount only from a line naming a total ("Gesamt", "Summe",
+  "Total", "Betrag", "Amount due", ... or the line after it, since OCR
+  often splits label and figure), the largest such figure, with
+  `1.234,56`/`1,234.56` both understood; the currency from that figure or
+  the text, written the way the library already writes it (`€` vs `EUR`,
+  `currencyInLibraryStyle()`). No sender/organization: too unreliable from
+  free text. `window.__DEBUG_suggestFromOcrText` exposes the parser to
+  `tests/test_ocr_suggestions.py`.
 - **`.field input[type=date]{ color-scheme:dark; }`** exists for the same
   reason the DOCTYPE/quirks-mode note above does — an obscure default that
   "works fine" until someone actually looks closely. Without it, Chrome/

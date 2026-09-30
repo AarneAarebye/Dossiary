@@ -121,6 +121,12 @@ working" problem that motivated this project in the first place.
   document doesn't unarchive it, and vice versa — an archived document
   stays reachable only via "Show archived" in the main table, same as any
   other archived document.
+- **Suggested values while reviewing** — when a document in the review
+  queue has OCR text, its Edit form suggests a date, an amount and a
+  currency read from that text (the first plausible date; the amount only
+  from a line naming a total). Suggestions are amber with a "please check"
+  note, only fill empty fields, and clear the moment you edit them. Running
+  OCR in the capture or Edit form suggests them too.
 - **Waste bin** — "Delete" on a document doesn't actually destroy anything;
   it just moves the document to the "🗑 Waste bin" (from the toolbar),
   where it stays until you click "Restore" — there is no "empty bin"
@@ -787,7 +793,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (77
+There's a real, runnable Playwright regression suite in `tests/` (78
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

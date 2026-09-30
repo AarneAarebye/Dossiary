@@ -145,6 +145,13 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   markieren hebt die Archivierung nicht auf, und umgekehrt — ein
   archiviertes Dokument bleibt nur über „Show archived“ in der
   Haupttabelle erreichbar, wie jedes andere archivierte Dokument auch.
+- **Vorschläge beim Prüfen** — hat ein Dokument aus der Prüfliste OCR-Text,
+  schlägt sein Bearbeitungsformular daraus ein Datum, einen Betrag und
+  eine Währung vor (das erste plausible Datum; den Betrag nur aus einer
+  Zeile, die eine Summe nennt). Vorschläge sind gelb markiert mit einem
+  „bitte prüfen“-Hinweis, füllen nur leere Felder und verschwinden, sobald
+  Sie sie bearbeiten. Auch OCR im Erfassungs- oder Bearbeitungsformular
+  macht Vorschläge.
 - **Papierkorb** — „Delete“ bei einem Dokument zerstört nichts wirklich; es
   verschiebt das Dokument nur in den „🗑 Waste bin“ (aus der Symbolleiste),
   wo es bleibt, bis Sie auf „Restore“ klicken — es gibt nirgendwo eine
@@ -906,7 +913,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (77
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (78
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

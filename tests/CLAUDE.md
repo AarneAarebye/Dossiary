@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **77
-scripts covering most of the app's actual functionality** (75 of them
+There's a real, runnable Playwright regression suite in `tests/` — **78
+scripts covering most of the app's actual functionality** (76 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,18 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), the Storage stats modal
+scrollable mobile toolbar), suggested values from OCR text
+(`test_ocr_suggestions.py` -- the parser case by case through
+`window.__DEBUG_suggestFromOcrText` (German and English totals, the total
+on the line after its label, both thousands styles, month names,
+impossible dates skipped, no amount without a total line, an ambiguous
+slash date following the UI language); a review-queue document's Edit
+form suggesting date/amount/currency as guesses with notes, an edited
+guess losing its mark, guesses returning after a type change without
+touching a typed date, kept guesses saved; no guesses for a reviewed
+document or over an existing date; and capture's OCR replacing the
+"today" preset -- the stub's OCR text is overridable via
+`window.__STUB_OCR_TEXT`), the Storage stats modal
 (`test_storage_stats.py` -- the real-folder walk correctly sums
 `files/`/`thumbnails/`/`inbox/`/`library.sqlite` against an
 independently-computed expectation, not just the app's own arithmetic; a
