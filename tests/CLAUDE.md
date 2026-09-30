@@ -825,7 +825,13 @@ legacy PDF with no original keeps its file as the new original, gets a
 real text is reported and left untouched; a copy that doesn't match the
 original's hash stays on disk; a missing original is never overwritten in
 place; and the dialog can't be closed mid-run via Escape, backdrop,
-close or cancel -- the seed marks the `searchable_pdf_built` backfill done,
+close or cancel; and, in `main_bulk()`, the bulk-action bar's button only
+appearing when a selected document is eligible, the dialog counting and
+processing only those, a summary naming the one failed document (missing
+file), a single eligible selection falling back to the single-document
+message, Stop letting the current document finish and saving it while
+leaving the next untouched, and no bulk button in the Waste bin -- the
+seed marks the `searchable_pdf_built` backfill done,
 since that one-time migration would otherwise flag every seeded captured
 document with an original as already built), person-type fields as
 columns and filters (`test_person_field_columns.py` -- Author gets a

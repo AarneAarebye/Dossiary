@@ -79,7 +79,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Schaltfläche **Durchsuchbar machen** im Detailbereich führt OCR für einen
   gespeicherten Scan aus und baut ihn als durchsuchbares PDF neu auf; das
   unveränderte Original bleibt erhalten (PDFs, die bereits Text enthalten,
-  bleiben unverändert). Wenn Sie von
+  bleiben unverändert). Mit mehreren ausgewählten Dokumenten geht das über
+  die Leiste für Mehrfachaktionen für alle auf einmal: Sie werden
+  nacheinander verarbeitet, mit Fortschrittsanzeige, einer Stopp-Schaltfläche
+  und einer Zusammenfassung, was geklappt hat. Wenn Sie von
   einem Papierdokument ausgehen, erklärt ein Schalter „Need to scan a
   paper document first?“ im Erfassungsformular, wie Sie zuerst mit
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da

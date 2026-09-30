@@ -236,4 +236,154 @@ async def main():
         print("JS ERRORS:", errors)
         await browser.close()
 
+
+# === Bulk: "Make searchable" from the bulk-action bar ===
+BULK_SEED = {
+    "documents": [
+        doc(1, "Scan A", "files/1_a.png", "files/1_a/a.png", file_hash=PNG_HASH),
+        doc(2, "Scan B", "files/2_b.pdf", None),
+        doc(3, "Digital C", "files/3_c.pdf", None),
+        doc(4, "Built D", "files/4_d.pdf", "files/4_d/d.png", searchable_pdf_built=1),
+        doc(5, "Word E", "files/5_e.docx", None),
+        doc(6, "Missing F", "files/6_f.png", None),  # file not on disk -> fails
+        doc(7, "Scan G", "files/7_g.png", None),
+        doc(8, "Scan H", "files/8_h.png", None),
+    ],
+    "tags": [], "document_tags": [],
+    "settings": [{"key": "searchable_pdf_built_backfill_migrated", "value": "1"}],
+}
+BULK_FILES = {
+    "files/1_a.png": PNG, "files/1_a/a.png": PNG,
+    "files/2_b.pdf": SCAN_PDF, "files/3_c.pdf": b"%PDF-1.4 digital",
+    "files/4_d.pdf": b"%PDF built", "files/5_e.docx": b"docx",
+    "files/7_g.png": PNG, "files/8_h.png": PNG,
+}
+
+async def main_bulk():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(BULK_SEED)});")
+        files_b64 = {k: base64.b64encode(v).decode() for k, v in BULK_FILES.items()}
+        await page.evaluate("""
+            async (files) => {
+                for(const [path, b64] of Object.entries(files)){
+                    const parts = path.split('/');
+                    let dir = window.__TEST_ROOT;
+                    for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
+                    const h = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+                    const w = await h.createWritable();
+                    await w.write(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+                    await w.close();
+                }
+            }
+        """, files_b64)
+        await page.click("#open-btn")
+        await page.wait_for_timeout(500)
+
+        async def check(ids):
+            for i in ids:
+                await page.check(f'.row-select-checkbox[data-id="{i}"]')
+            await page.wait_for_timeout(150)
+
+        async def clear():
+            await page.click('#bulk-clear-selection-btn')
+            await page.wait_for_timeout(150)
+
+        async def db_docs():
+            state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
+            return {d['id']: d for d in state['documents']}
+
+        btn = page.locator('#bulk-make-searchable-btn')
+
+        # === Scenario B1: the bulk button only appears when something selected can be made searchable ===
+        await check([4, 5])
+        print("Bulk button hidden when nothing selected can be made searchable:", not await btn.is_visible())
+        await check([1])
+        print("...and shown once an eligible document is selected:", await btn.is_visible())
+        await clear()
+
+        # === Scenario B2: the dialog processes only the eligible ones and reports a summary ===
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = false;")
+        await check([1, 2, 4, 5, 6])
+        await btn.click()
+        await page.wait_for_timeout(150)
+        count_text = await page.inner_text('#make-searchable-count')
+        print("Dialog counts only the eligible documents (3 of 5 selected):", count_text.endswith('3'), repr(count_text))
+        await page.click('#make-searchable-start-btn')
+        await page.wait_for_timeout(1200)
+        status = await page.inner_text('#make-searchable-status')
+        print("Summary reports 2 made searchable and 1 failure:", 'Made searchable: 2.' in status and 'Could not be processed: 1.' in status, repr(status))
+        failed = await page.locator('#make-searchable-failed-list li').all_inner_texts()
+        print("...and names the failed document:", len(failed) == 1 and failed[0].startswith('Missing F'), failed)
+        docs = await db_docs()
+        print("Eligible documents were rebuilt:", docs[1]['searchable_pdf_built'] == 1 and docs[2]['searchable_pdf_built'] == 1)
+        print("...ineligible and failed ones left alone:", docs[4]['file_path'] == 'files/4_d.pdf' and docs[5]['file_path'] == 'files/5_e.docx' and not docs[5].get('searchable_pdf_built') and not docs[6].get('searchable_pdf_built'))
+        print("Button turns into Close afterwards:", await page.inner_text('#make-searchable-cancel-btn') == 'Close' and not await page.locator('#make-searchable-start-btn').is_visible())
+        await page.click('#make-searchable-cancel-btn')
+        await page.wait_for_timeout(150)
+        print("Selection kept; the failed document stays eligible, so the button stays for a retry:", await btn.is_visible())
+        await clear()
+
+        # === Scenario B3: a PDF with real text is counted separately ===
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = true;")
+        await check([3])
+        await btn.click()
+        await page.wait_for_timeout(150)
+        # One document takes the single-document path and message.
+        await page.click('#make-searchable-start-btn')
+        await page.wait_for_timeout(600)
+        print("A single eligible selection uses the single-document message:", 'already contains real text' in await page.inner_text('#make-searchable-status'))
+        await page.click('#make-searchable-cancel-btn')
+        await page.wait_for_timeout(150)
+        await clear()
+        await page.evaluate("window.__STUB_PDF_HAS_REAL_TEXT = false;")
+
+        # === Scenario B4: Stop lets the current document finish, then stops ===
+        await page.evaluate("window.__STUB_OCR_SLOW = true;")
+        await check([7, 8])
+        await btn.click()
+        await page.wait_for_timeout(150)
+        await page.click('#make-searchable-start-btn')
+        await page.wait_for_timeout(200)
+        print("Stop button shown while running:", await page.locator('#make-searchable-stop-btn').is_visible())
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+        print("Dialog can't be closed mid-run:", await page.locator('#make-searchable-status').count() == 1)
+        progress = await page.inner_text('#make-searchable-status')
+        print("Progress names the current document:", 'Document 1 of 2: Scan G' in progress, repr(progress))
+        await page.click('#make-searchable-stop-btn')
+        await page.evaluate("window.__STUB_OCR_SLOW = false; window.__RESOLVE_SLOW_OCR();")
+        await page.wait_for_timeout(800)
+        status = await page.inner_text('#make-searchable-status')
+        print("Stopped after the first document:", 'Made searchable: 1.' in status and 'not processed: 1.' in status, repr(status))
+        docs = await db_docs()
+        print("...the finished one was saved, the other untouched:", docs[7]['searchable_pdf_built'] == 1 and not docs[8].get('searchable_pdf_built'))
+        await page.click('#make-searchable-cancel-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario B5: not offered in the Waste bin ===
+        await clear()
+        await page.click('#nav-item-trash')
+        await page.wait_for_timeout(150)
+        print("No bulk Make searchable in the Waste bin view:", await btn.count() == 1 and not await btn.is_visible())
+
+        print("JS ERRORS (bulk):", errors)
+        await browser.close()
+
 asyncio.run(main())
+asyncio.run(main_bulk())

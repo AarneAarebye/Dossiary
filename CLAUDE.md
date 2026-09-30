@@ -2388,6 +2388,22 @@ this repo's git tags.
   language are stored. The sidecar is rewritten under the new file stem
   (best-effort) and the old one removed when the stem changed -- it's
   derived output, not user data.
+  **Bulk "Make searchable"** (`#bulk-make-searchable-btn` in the
+  bulk-action bar) opens the same dialog: `openMakeSearchableModal(ids)`
+  takes a list, filters it through `canMakeSearchable(d)` (the one
+  eligibility rule, shared with the panel action), and a single remaining
+  id takes the original single-document path and messages. The button only
+  shows when at least one selected document is eligible (never in the
+  Waste bin), and the dialog says how many it will process. Documents run
+  one after another, each persisted as it finishes (`makeDocumentSearchable()`
+  already calls `persistDb()` per document -- a long batch is exactly where
+  a closed tab or crash should keep what's done, the same reasoning as the
+  Library check backfill's periodic saves). "Stop after this document"
+  lets the current one finish. The summary counts made searchable /
+  already had text / could not be processed / not processed (stopped),
+  phrased as "Label: N" so no singular/plural key pairs are needed, and
+  lists each failed document with its reason. A failed document stays
+  eligible, so the bulk button remains for a retry.
 - **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
   written next to every captured document's primary file, containing the
   fields that only live in `library.sqlite` (category, tags, notes, OCR
