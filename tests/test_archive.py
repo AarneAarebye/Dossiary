@@ -127,4 +127,75 @@ async def main():
         print("JS ERRORS:", errors)
         await browser.close()
 
+
+# The Archive nav view: only archived documents (flagged for review or not),
+# so All Documents + Inbox + Archive + Waste bin add up to the whole library.
+def vdoc(i, title, **flags):
+    d = {"id": i, "title": title, "category": None, "document_type": None,
+         "date": "2026-01-01T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+         "file_path": None, "original_file_path": None, "created_at": "2026-07-28T08:19:45+00:00",
+         "source": "captured", "source_legacy_id": None, "archived": 0, "needs_review": 0, "deleted": 0}
+    d.update(flags)
+    return d
+
+VIEW_SEED = {
+    "documents": [
+        vdoc(1, "Plain"), vdoc(2, "In review", needs_review=1), vdoc(3, "Archived", archived=1),
+        vdoc(4, "Archived and flagged", archived=1, needs_review=1),
+        vdoc(5, "Deleted", deleted=1), vdoc(6, "Deleted and archived", deleted=1, archived=1),
+    ],
+    "tags": [], "document_tags": [],
+}
+
+async def main_archive_view():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 1440, 'height': 900})
+        errors = []
+        page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+        async def route_handler(route):
+            url = route.request.url
+            if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
+                await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+            else:
+                await route.continue_()
+        await page.route('**/*', route_handler)
+        await page.add_init_script(open('stub_studio2.js').read())
+        await page.goto(f"file://{APP_PATH}")
+        await page.wait_for_timeout(200)
+        await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(VIEW_SEED)});")
+        await page.click("#open-btn")
+        await page.wait_for_timeout(500)
+
+        badge = lambda v: page.inner_text(f'#nav-count-{v}')
+        rows = lambda: page.locator('#doc-tbody tr[data-id]').evaluate_all("rs => rs.map(r => Number(r.dataset.id)).sort((a, b) => a - b)")
+        counts = {v: int(await badge(v)) for v in ('all', 'inbox', 'archive', 'trash')}
+        print("Badges: All 1, Inbox 1, Archive 2, Waste bin 2:", counts == {'all': 1, 'inbox': 1, 'archive': 2, 'trash': 2}, counts)
+        print("...and they add up to every document in the library:", sum(counts.values()) == len(VIEW_SEED['documents']))
+        await page.click('#nav-item-archive')
+        await page.wait_for_timeout(200)
+        print("Archive view lists archived documents, flagged or not, deleted ones excluded:", await rows() == [3, 4], await rows())
+        print("\"Show archived\" isn't offered there:", not await page.locator('#show-archived-wrap, label:has(#show-archived)').first.is_visible())
+        await page.check('.row-select-checkbox[data-id="3"]')
+        await page.wait_for_timeout(150)
+        print("The bulk bar offers Unarchive:", await page.inner_text('#bulk-archive-btn') == 'Unarchive')
+        await page.click('#bulk-archive-btn')
+        await page.wait_for_timeout(300)
+        state = await page.evaluate("async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text())")
+        print("...which unarchives the selected document:", next(d for d in state['documents'] if d['id'] == 3)['archived'] == 0 and await rows() == [4])
+        print("Badges follow:", await badge('archive') == '1' and await badge('all') == '2')
+        await page.click('#nav-item-all')
+        await page.wait_for_timeout(150)
+        await page.check('.row-select-checkbox[data-id="1"]')
+        await page.wait_for_timeout(150)
+        print("Elsewhere the button still archives:", await page.inner_text('#bulk-archive-btn') == 'Archive')
+        await page.click('#bulk-clear-selection-btn')
+        await page.select_option('#lang-select', 'de')
+        await page.wait_for_timeout(150)
+        print("Nav label translated:", 'Archiv' in await page.inner_text('#nav-item-archive'))
+        print("JS ERRORS (archive view):", errors)
+        await browser.close()
+
 asyncio.run(main())
+asyncio.run(main_archive_view())

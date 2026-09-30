@@ -88,7 +88,12 @@ someone manually switches back off in Field Settings staying off across a
 reopen of the same already-migrated library), archiving (hidden from the
 default table/search view, reappearing with its pill once "Show archived"
 is checked, a pre-`archived`-column document reading back as not-archived
-rather than erroring, and archiving/unarchiving actually persisting), the
+rather than erroring, and archiving/unarchiving actually persisting; and,
+in `main_archive_view()`, the 📦 Archive nav view: badges for All
+Documents, Inbox, Archive and Waste bin adding up to every document,
+Archive listing archived documents whether flagged or not but never deleted
+ones, "Show archived" hidden there, the bulk bar's button reading and doing
+Unarchive there and Archive elsewhere, and the label translated), the
 review queue (`test_review_queue.py` — an inbox-imported document landing
 flagged and reachable via the Inbox nav view rather than All Documents;
 Done clearing the flag from the detail modal; any document, not just

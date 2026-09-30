@@ -151,8 +151,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   review“, wenn Sie später darauf zurückkommen möchten. Markierung und
   Archivierung sind voneinander unabhängig: Ein archiviertes Dokument zu
   markieren hebt die Archivierung nicht auf, und umgekehrt — ein
-  archiviertes Dokument bleibt nur über „Show archived“ in der
-  Haupttabelle erreichbar, wie jedes andere archivierte Dokument auch.
+  archiviertes Dokument steht in der Ansicht **📦 Archiv** (und in der
+  Haupttabelle mit aktiviertem „Show archived“), wie jedes andere
+  archivierte Dokument auch.
+- **Archiv-Ansicht** — „📦 Archiv“ in der Navigation zeigt alle
+  archivierten Dokumente samt Anzahl, sodass Alle Dokumente + Inbox +
+  Archiv + Papierkorb immer die Gesamtzahl der Bibliothek ergeben. Wählen
+  Sie dort Dokumente aus, wird die Schaltfläche der Leiste für
+  Mehrfachaktionen zu **Aus Archiv holen**.
 - **Vorschläge beim Prüfen** — hat ein Dokument aus der Prüfliste OCR-Text,
   schlägt sein Bearbeitungsformular daraus ein Datum, einen Betrag und
   eine Währung vor (das erste plausible Datum; den Betrag nur aus einer

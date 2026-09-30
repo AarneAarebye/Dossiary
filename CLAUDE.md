@@ -1195,6 +1195,17 @@ this repo's git tags.
   generic fields system (see below) has no concept of "hidden from the
   view by default," only optional columns/filters that are always visible
   once configured, which doesn't fit what an archive needs to do.
+  **The "📦 Archive" nav view** (`#nav-item-archive`, `data-view="archive"`,
+  `matchesView()`'s `'archive'` branch: `!!d.archived`, after the shared
+  deleted check) lists every archived document, flagged for review or not,
+  with its own badge. Added because the badges didn't add up: an archived
+  document counted in none of All Documents / Inbox / Waste bin, so a
+  library of 1,355 showed 1333 + 7 + 14. Now All + Inbox + Archive + Waste
+  bin equals the total (with "Show archived" off, which is only offered in
+  All Documents). The bulk-action bar's Archive button reads Unarchive in
+  this view and clears the flag (`bulkSetArchived(ids, currentView !==
+  'archive')`). "Show archived" stays, for searching active and archived
+  documents together.
 - **Review queue** (`documents.needs_review`, `toggleNeedsReview()`, the
   Inbox nav item — `#nav-item-inbox`, `data-view="inbox"`) is a second,
   independent staging flag, built as a direct structural mirror of

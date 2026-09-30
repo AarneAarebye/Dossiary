@@ -127,8 +127,12 @@ working" problem that motivated this project in the first place.
   open a document and click "Flag for review" if you want to come back to
   it later. Flagging and archiving are independent: flagging an archived
   document doesn't unarchive it, and vice versa — an archived document
-  stays reachable only via "Show archived" in the main table, same as any
-  other archived document.
+  lives in the **📦 Archive** view (and in the main table with "Show
+  archived" ticked), same as any other archived document.
+- **Archive view** — "📦 Archive" in the nav lists every archived document,
+  with its count, so All Documents + Inbox + Archive + Waste bin always add
+  up to the library's total. Select documents there and the bulk bar's
+  button becomes **Unarchive**.
 - **Suggested values while reviewing** — when a document in the review
   queue has OCR text, its Edit form suggests a date, an amount and a
   currency read from that text (the first plausible date; the amount only
