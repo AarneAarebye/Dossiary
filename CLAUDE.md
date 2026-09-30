@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (78 scripts) + shared
+tests/                   Playwright regression suite (79 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -647,6 +647,20 @@ this repo's git tags.
   one) or remove the visual flag thinking it's unnecessary friction — an
   unflagged default here would be a silently wrong date more often than
   a right one, for anyone working through a backlog of older documents.
+- **Keyboard shortcuts** (`KEYBOARD_SHORTCUTS`, `openShortcutsModal()`,
+  `markDoneAndAdvance()`, one `document` keydown listener) are aimed at
+  working through the review queue: J/K or ↓/↑ move the selection (via the
+  row's own click handler, so selection/highlight/panel stay one code
+  path), Enter/O opens the file (the panel's own `open-file` action from
+  `buildDetailActions()`), E edits, D is Done-and-next (only for a document
+  still in review -- in the Inbox the finished one leaves the list, so
+  "next" is whatever took its place), ? shows the list. Table keys never
+  fire with a dialog open, in the Reports view, with a modifier held, or
+  when focus is in a field, button or link (those keep their own
+  Enter/Space). The Edit form adds Ctrl/⌘+Enter (Save) and
+  Ctrl/⌘+Shift+Enter (Save & Done), which do work from inside its fields.
+  The list lives behind "?" rather than a footer link, since the footer's
+  height is part of `.table-wrap`'s max-height budget.
 - **Suggested values from OCR text** (`suggestFromOcrText()`,
   `applyOcrGuess()`, `applyOcrSuggestions()`) offer a likely date, amount
   and currency, read from a document's OCR text, as guesses with the same

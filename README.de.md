@@ -152,6 +152,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   „bitte prüfen“-Hinweis, füllen nur leere Felder und verschwinden, sobald
   Sie sie bearbeiten. Auch OCR im Erfassungs- oder Bearbeitungsformular
   macht Vorschläge.
+- **Tastenkürzel** — **?** zeigt die Liste. J/K (oder ↓/↑) wechseln
+  zwischen Dokumenten, E bearbeitet, D markiert das aktuelle als fertig und
+  springt zum nächsten, Enter öffnet die Datei; im Bearbeitungsformular
+  speichert Strg/⌘+Enter, Strg/⌘+Umschalt+Enter ist „Speichern & fertig“ —
+  praktisch zum Abarbeiten der Prüfliste.
 - **Papierkorb** — „Delete“ bei einem Dokument zerstört nichts wirklich; es
   verschiebt das Dokument nur in den „🗑 Waste bin“ (aus der Symbolleiste),
   wo es bleibt, bis Sie auf „Restore“ klicken — es gibt nirgendwo eine
@@ -913,7 +918,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (78
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (79
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

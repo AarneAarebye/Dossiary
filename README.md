@@ -127,6 +127,11 @@ working" problem that motivated this project in the first place.
   from a line naming a total). Suggestions are amber with a "please check"
   note, only fill empty fields, and clear the moment you edit them. Running
   OCR in the capture or Edit form suggests them too.
+- **Keyboard shortcuts** — press **?** for the list. J/K (or ↓/↑) move
+  through the documents, E edits, D marks the current one Done and moves to
+  the next, Enter opens its file; in the Edit form Ctrl/⌘+Enter saves and
+  Ctrl/⌘+Shift+Enter is Save & Done — handy for working through the review
+  queue.
 - **Waste bin** — "Delete" on a document doesn't actually destroy anything;
   it just moves the document to the "🗑 Waste bin" (from the toolbar),
   where it stays until you click "Restore" — there is no "empty bin"
@@ -793,7 +798,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (78
+There's a real, runnable Playwright regression suite in `tests/` (79
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

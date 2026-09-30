@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **78
-scripts covering most of the app's actual functionality** (76 of them
+There's a real, runnable Playwright regression suite in `tests/` — **79
+scripts covering most of the app's actual functionality** (77 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -810,7 +810,15 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), suggested values from OCR text
+scrollable mobile toolbar), keyboard shortcuts
+(`test_keyboard_shortcuts.py` -- J/K/arrows moving the selection and the
+panel, clamped at the top; D clearing the review flag and selecting the
+next document; E opening Edit; Ctrl+Shift+Enter saving and marking Done
+from inside a field, Ctrl+Enter saving only; no effect while typing in the
+search box or with the ? list open; D leaving a reviewed document alone;
+Enter opening the file exactly once; the list translating -- note that a
+Playwright `evaluate()` string ending in an arrow function gets *called*,
+so wrap setup code in `() => { ... }`), suggested values from OCR text
 (`test_ocr_suggestions.py` -- the parser case by case through
 `window.__DEBUG_suggestFromOcrText` (German and English totals, the total
 on the line after its label, both thousands styles, month names,
