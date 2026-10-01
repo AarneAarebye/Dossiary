@@ -481,10 +481,15 @@ working" problem that motivated this project in the first place.
 1. Open `dossiary.html` directly in **Chrome or Edge** (double-click
    it, or drag it into a browser window — don't use an embedded preview
    pane; folder write access requires a real top-level page).
-2. Click **"Open library folder"** and choose a folder. If it's empty,
-   you'll be offered to initialize a new library there. If it already has a
+2. Click **"Open library folder"** and choose a folder. If it already has a
    `library.sqlite` (e.g. from a migration — see below), it opens straight
-   into your existing documents.
+   into your existing documents. Otherwise you're offered to create a new
+   library there: give it a name and Dossiary creates a `<name>.dossiary`
+   folder inside the chosen one (the same naming migrated libraries use),
+   or click **Use this folder as the library** to set up the chosen folder
+   itself. The `.dossiary` ending is only a naming convention — a browser
+   app can't register a file type, so it stays an ordinary folder, and any
+   folder with a `library.sqlite` opens either way.
 3. Click **"＋ Add document"** to capture something new.
 
 ### Installing it as an app (currently unavailable)
@@ -852,7 +857,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (87
+There's a real, runnable Playwright regression suite in `tests/` (88
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

@@ -39,18 +39,21 @@ using it.
 
    ![The "No library open" starting screen](docs/user-guide/en/01-no-library.png)
 
-3. Click **Open library folder** and choose (or create) an empty folder
-   somewhere on your computer — this will become your document library.
-   Your browser will ask for permission to read and write to that folder;
-   allow it, since that's how Dossiary saves your documents.
-4. Since the folder is empty, Dossiary offers to set it up as a brand new
-   library:
+3. Click **Open library folder** and choose where your library should
+   live — your Documents folder, for example. Your browser will ask for
+   permission to read and write to that folder; allow it, since that's how
+   Dossiary saves your documents.
+4. Since there's no library there yet, Dossiary offers to create one:
 
-   ![Dossiary offering to initialize a new, empty library folder](docs/user-guide/en/02-empty-folder.png)
+   ![Dossiary offering to create a new library in the chosen folder](docs/user-guide/en/02-empty-folder.png)
 
-   Click **Initialize a new library here**. Dossiary creates a small
-   database file and a couple of folders inside — that's the entire
-   footprint. Nothing else touches your disk.
+   Type a name (or keep "My Documents") and click **Create library in
+   this folder**. Dossiary creates a folder named after it, ending in
+   `.dossiary` — `My Documents.dossiary` — and puts a small database file
+   and a couple of folders inside. That's the entire footprint; nothing
+   else touches your disk. (If you already made an empty folder for the
+   library yourself, pick that one and click **Use this folder as the
+   library** instead.)
 5. You now have an empty, ready-to-use library:
 
    ![A freshly created, empty library, ready for its first document](docs/user-guide/en/03-library-ready.png)
@@ -87,22 +90,25 @@ Click **+ Add document**. This opens the capture form:
 4. Click **Save document**. That's it — your document is now in your
    library, permanently, alongside its extracted text.
 
-Repeat this for as many documents as you like. Each one gets its own
-entry in your document table:
+Repeat this for as many documents as you like. Dossiary shows your
+documents as preview tiles; the **☰ List / ▦ Grid** switch next to
+"Showing N of M documents" changes to a table and back, and a slider sets
+the tile size. In the table each document gets its own row:
 
 ![The document table after a few captures](docs/user-guide/en/07-table.png)
 
 ## Finding it again
 
 The whole point of doing this is being able to find something again in
-seconds, months or years later. At the top of the table:
+seconds, months or years later. Above your documents:
 
 - **Search** looks across titles, categories, notes, tags, and the OCR'd
   text — so even if you don't remember what you called something, typing
   a word you know was *on* the document will usually find it.
-- **Filters** (category, type, person) narrow the table to just what
+- **Filters** (category, type, person) narrow the list to just what
   matches.
-- Click any **column header** to sort by it.
+- In the table, click any **column header** to sort by it; the tiles
+  follow the same order.
 
 ![Search results filtered down to one matching document](docs/user-guide/en/08-search.png)
 

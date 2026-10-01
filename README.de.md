@@ -568,10 +568,16 @@ das dieses Projekt überhaupt erst ausgelöst hat.
    Vorschau öffnen; Schreibzugriff auf Ordner erfordert eine echte
    Top-Level-Seite).
 2. Klicken Sie auf **„Open library folder“** und wählen Sie einen Ordner.
-   Ist er leer, wird Ihnen angeboten, dort eine neue Bibliothek
-   anzulegen. Enthält er bereits ein `library.sqlite` (z. B. aus einer
-   Migration — siehe unten), öffnet es sich direkt mit Ihren vorhandenen
-   Dokumenten.
+   Enthält er bereits ein `library.sqlite` (z. B. aus einer Migration —
+   siehe unten), öffnet er sich direkt mit Ihren vorhandenen Dokumenten.
+   Andernfalls wird angeboten, dort eine neue Bibliothek anzulegen: Geben
+   Sie einen Namen ein, und Dossiary legt im gewählten Ordner einen Ordner
+   `<Name>.dossiary` an (dieselbe Benennung wie bei migrierten
+   Bibliotheken) — oder klicken Sie auf **Diesen Ordner als Bibliothek
+   verwenden**, um den gewählten Ordner selbst einzurichten. Die Endung
+   `.dossiary` ist nur eine Namenskonvention: Eine Browser-App kann keinen
+   Dateityp registrieren, der Ordner bleibt also ein gewöhnlicher Ordner,
+   und jeder Ordner mit `library.sqlite` lässt sich so oder so öffnen.
 3. Klicken Sie auf **„＋ Add document“**, um etwas Neues zu erfassen.
 
 ### Als App installieren (derzeit nicht verfügbar)
@@ -979,7 +985,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (87
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (88
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

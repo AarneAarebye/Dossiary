@@ -43,14 +43,17 @@ usar la aplicación en la práctica.
 
    ![La pantalla inicial "Ninguna biblioteca abierta"](docs/user-guide/es/01-no-library.png)
 
-3. Haz clic en **Abrir carpeta de biblioteca** y elige (o crea) una
-   carpeta vacía en tu ordenador — esta se convertirá en tu biblioteca de
-   documentos. Tu navegador te pedirá permiso para leer y escribir en esa
-   carpeta; concédelo, ya que así es como Dossiary guarda tus documentos.
-4. Como la carpeta está vacía, Dossiary te ofrecerá configurarla como una
-   biblioteca completamente nueva. Haz clic en **Inicializar una nueva
-   biblioteca aquí**. Dossiary crea un pequeño archivo de base de datos y
-   un par de carpetas dentro — eso es todo lo que toca en tu disco.
+3. Haz clic en **Abrir carpeta de biblioteca** y elige dónde debe estar tu
+   biblioteca — por ejemplo, tu carpeta Documentos. Tu navegador te pedirá
+   permiso para leer y escribir en esa carpeta; concédelo, ya que así es
+   como Dossiary guarda tus documentos.
+4. Como ahí aún no hay ninguna biblioteca, Dossiary te ofrece crear una.
+   Escribe un nombre (o deja «Mis documentos») y haz clic en **Crear la
+   biblioteca en esta carpeta**. Dossiary crea una carpeta con ese nombre
+   terminada en `.dossiary` — `Mis documentos.dossiary` — y dentro un
+   pequeño archivo de base de datos y un par de carpetas. Eso es todo lo
+   que toca en tu disco. (Si ya creaste tú una carpeta vacía para la
+   biblioteca, elígela y haz clic en **Usar esta carpeta como biblioteca**.)
 5. A partir de ahí tienes una biblioteca vacía y lista para usar — lista
    para tu primer documento.
 
@@ -90,22 +93,26 @@ Haz clic en **+ Añadir documento**. Esto abre el formulario de captura:
    en tu biblioteca de forma permanente, junto con el texto extraído.
 
 Repite este proceso con tantos documentos como quieras. Cada uno obtiene
-su propia entrada en tu tabla de documentos:
+su propia vista previa: Dossiary muestra tus documentos como miniaturas,
+y el interruptor **☰ Lista / ▦ Cuadrícula** junto a "Showing N of M
+documents" cambia a una tabla y viceversa (un control deslizante ajusta el
+tamaño de las miniaturas). En la tabla, cada documento tiene su fila:
 
 ![La tabla de documentos tras capturar unos cuantos](docs/user-guide/es/02-table.png)
 
 ## Volver a encontrarlo
 
 Todo esto tiene sentido para poder encontrar algo de nuevo en segundos,
-meses o años después. En la parte superior de la tabla:
+meses o años después. Encima de tus documentos:
 
 - La **Búsqueda** revisa títulos, categorías, notas, etiquetas y el texto
   reconocido por OCR — así que aunque no recuerdes cómo llamaste a algo,
   escribir una palabra que sabes que aparecía *en* el documento
   normalmente lo encontrará.
-- Los **filtros** (categoría, tipo, persona) reducen la tabla solo a lo
+- Los **filtros** (categoría, tipo, persona) reducen la lista solo a lo
   que coincide.
-- Haz clic en cualquier **encabezado de columna** para ordenar por ella.
+- En la tabla, haz clic en cualquier **encabezado de columna** para
+  ordenar por ella; las miniaturas siguen el mismo orden.
 
 ![Resultados de búsqueda filtrados a un documento coincidente](docs/user-guide/es/06-search.png)
 

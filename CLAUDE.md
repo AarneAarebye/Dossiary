@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (87 scripts) + shared
+tests/                   Playwright regression suite (88 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2558,6 +2558,24 @@ this repo's git tags.
   repo does the equivalent thing in Python (`build_sidecar_text()`) for
   migrated documents; keep both in sync if the sidecar format changes,
   since a person migrating and then capturing should get consistent files.
+- **New libraries are `<Name>.dossiary` folders** (`createLibraryFolder()`,
+  `libraryFolderName()`, `showNewLibraryForm()`, the `#new-library-form`
+  on the init-state screen). When a picked folder has no `library.sqlite`,
+  the screen offers a name (default `newLibraryDefaultName`, "My
+  Documents") with a live preview of the folder it will create, and
+  **Create library in this folder** makes `<Name>.dossiary` inside the
+  picked folder and runs `initNewLibrary()` there (`rootDirHandle` is
+  switched to the new folder first, so recent libraries record it). The
+  same naming LibraryLifeboat's migration uses, so a library folder is
+  recognisable. It's a convention only: a browser app can't register a
+  package type, and opening never requires the extension. A name already
+  ending in `.dossiary` (any case) isn't doubled; names with `/ \ : * ? "
+  < > |` or a leading dot are refused; an existing folder of that name is
+  never reused. **"Use this folder as the library" (`#init-btn`, the old
+  "Initialize a new library here") still sets up the picked folder itself**
+  and becomes the main action -- the name form hidden -- when that folder
+  already ends in `.dossiary`. A language switch on this screen swaps an
+  untouched default name and rebuilds the preview (`setLang()`).
 - **Recent libraries** (`renderRecentLibraries()`, `recordRecentLibrary()`,
   `reconnectRecentLibrary()`, `#recent-libraries` on the empty-state screen)
   reverses what an earlier version of this note called an unavoidable

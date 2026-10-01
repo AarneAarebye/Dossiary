@@ -44,16 +44,20 @@ l'application concrètement.
 
    ![L'écran de démarrage "Aucune bibliothèque ouverte"](docs/user-guide/fr/01-no-library.png)
 
-3. Cliquez sur **Ouvrir un dossier de bibliothèque** et choisissez (ou
-   créez) un dossier vide quelque part sur votre ordinateur — il
-   deviendra votre bibliothèque de documents. Votre navigateur vous
-   demandera la permission de lire et d'écrire dans ce dossier ;
-   autorisez-la, c'est ainsi que Dossiary enregistre vos documents.
-4. Le dossier étant vide, Dossiary vous proposera de le configurer comme
-   une toute nouvelle bibliothèque. Cliquez sur **Initialiser une nouvelle
-   bibliothèque ici**. Dossiary crée un petit fichier de base de données
-   et quelques dossiers à l'intérieur — c'est tout ce qu'il touche sur
-   votre disque.
+3. Cliquez sur **Ouvrir un dossier de bibliothèque** et choisissez où
+   votre bibliothèque doit se trouver — votre dossier Documents, par
+   exemple. Votre navigateur vous demandera la permission de lire et
+   d'écrire dans ce dossier ; autorisez-la, c'est ainsi que Dossiary
+   enregistre vos documents.
+4. Comme il n'y a pas encore de bibliothèque à cet endroit, Dossiary
+   propose d'en créer une. Saisissez un nom (ou gardez « Mes documents »)
+   et cliquez sur **Créer la bibliothèque dans ce dossier**. Dossiary crée
+   un dossier portant ce nom suivi de `.dossiary` — `Mes
+   documents.dossiary` — avec à l'intérieur un petit fichier de base de
+   données et quelques dossiers. C'est tout ce qu'il touche sur votre
+   disque. (Si vous avez déjà créé un dossier vide pour la bibliothèque,
+   choisissez-le et cliquez plutôt sur **Utiliser ce dossier comme
+   bibliothèque**.)
 5. Vous disposez alors d'une bibliothèque vide, prête à l'emploi — prête
    pour votre premier document.
 
@@ -97,23 +101,27 @@ capture :
    accompagné du texte extrait.
 
 Répétez ce processus pour autant de documents que vous le souhaitez.
-Chacun obtient sa propre ligne dans votre tableau de documents :
+Dossiary affiche vos documents sous forme de vignettes ; le bouton
+**☰ Liste / ▦ Grille** à côté de "Showing N of M documents" passe au
+tableau et inversement, et un curseur règle la taille des vignettes. Dans
+le tableau, chacun obtient sa propre ligne :
 
 ![Le tableau de documents après quelques captures](docs/user-guide/fr/02-table.png)
 
 ## Le retrouver ensuite
 
 Tout cela n'a d'intérêt que si vous pouvez retrouver quelque chose en
-quelques secondes, des mois ou des années plus tard. En haut du tableau :
+quelques secondes, des mois ou des années plus tard. Au-dessus de vos
+documents :
 
 - La **recherche** parcourt les titres, catégories, notes, étiquettes et
   le texte reconnu par OCR — donc même si vous ne vous souvenez plus
   comment vous avez appelé un document, taper un mot que vous savez avoir
   figuré *sur* le document le retrouvera généralement.
-- Les **filtres** (catégorie, type, personne) réduisent le tableau à ce
+- Les **filtres** (catégorie, type, personne) réduisent la liste à ce
   qui correspond.
-- Cliquez sur n'importe quel **en-tête de colonne** pour trier selon
-  celle-ci.
+- Dans le tableau, cliquez sur n'importe quel **en-tête de colonne** pour
+  trier selon celle-ci ; les vignettes suivent le même ordre.
 
 ![Résultats de recherche filtrés sur un document correspondant](docs/user-guide/fr/06-search.png)
 

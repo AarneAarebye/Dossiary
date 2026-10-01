@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **87
-scripts covering most of the app's actual functionality** (85 of them
+There's a real, runnable Playwright regression suite in `tests/` — **88
+scripts covering most of the app's actual functionality** (86 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -815,7 +815,16 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), Library check's unused preview files
+scrollable mobile toolbar), creating a new library (`test_new_library.py`
+-- the no-library screen's name form with its default name and folder
+preview, creating as the main action; a name with a slash refused, an
+existing `Taken.dossiary` never reused, typing updating the preview and
+clearing the error; Enter creating `Family Papers.dossiary` with the
+library inside it and nothing in the picked folder, the new library open
+under that name; an existing `.DOSSIARY` ending not doubled; a picked
+`Prepared.dossiary` folder hiding the form and making "Use this folder as
+the library" the main action, which sets the library up in it; and the
+untouched default name and preview following a switch to German), Library check's unused preview files
 (`test_unused_previews.py` -- an old PNG and a preview in a subfolder
 listed with their total size, a Waste-bin document's preview and the
 current JPEG not listed, `.DS_Store` ignored; declining the confirmation

@@ -45,16 +45,20 @@ App tatsächlich benutzt.
 
    ![Der Startbildschirm "Keine Bibliothek geöffnet"](docs/user-guide/de/01-no-library.png)
 
-3. Klicke auf **Bibliotheksordner öffnen** und wähle (oder erstelle) einen
-   leeren Ordner irgendwo auf deinem Computer — dieser wird zu deiner
-   Dokumentenbibliothek. Dein Browser fragt nach der Erlaubnis, diesen
-   Ordner lesen und beschreiben zu dürfen; erlaube das, denn genau so
-   speichert Dossiary deine Dokumente.
-4. Da der Ordner leer ist, bietet Dossiary an, ihn als brandneue
-   Bibliothek einzurichten. Klicke auf **Eine neue Bibliothek hier
-   initialisieren**. Dossiary legt eine kleine Datenbankdatei und ein
-   paar Ordner darin an — das ist der gesamte Fußabdruck. Sonst wird
-   nichts auf deiner Festplatte verändert.
+3. Klicke auf **Bibliotheksordner öffnen** und wähle, wo deine
+   Bibliothek liegen soll — zum Beispiel deinen Dokumente-Ordner. Dein
+   Browser fragt nach der Erlaubnis, diesen Ordner lesen und beschreiben
+   zu dürfen; erlaube das, denn genau so speichert Dossiary deine
+   Dokumente.
+4. Da dort noch keine Bibliothek ist, bietet Dossiary an, eine anzulegen.
+   Gib einen Namen ein (oder lass „Meine Dokumente“ stehen) und klicke auf
+   **Bibliothek in diesem Ordner anlegen**. Dossiary legt einen Ordner mit
+   diesem Namen und der Endung `.dossiary` an — `Meine
+   Dokumente.dossiary` — und darin eine kleine Datenbankdatei und ein paar
+   Ordner. Das ist der gesamte Fußabdruck; sonst wird nichts auf deiner
+   Festplatte verändert. (Hast du selbst schon einen leeren Ordner für die
+   Bibliothek angelegt, wähle ihn und klicke stattdessen auf **Diesen
+   Ordner als Bibliothek verwenden**.)
 5. Danach hast du eine leere, einsatzbereite Bibliothek — bereit für dein
    erstes Dokument.
 
@@ -94,23 +98,27 @@ Klicke auf **+ Dokument hinzufügen**. Das öffnet das Erfassungsformular:
 4. Klicke auf **Dokument speichern**. Das war's — dein Dokument ist jetzt
    dauerhaft in deiner Bibliothek, zusammen mit dem erkannten Text.
 
-Wiederhole das für so viele Dokumente, wie du möchtest. Jedes bekommt
-seinen eigenen Eintrag in deiner Dokumententabelle:
+Wiederhole das für so viele Dokumente, wie du möchtest. Dossiary zeigt
+deine Dokumente als Vorschau-Kacheln; der Schalter **☰ Liste / ▦ Raster**
+neben „Showing N of M documents“ wechselt zur Tabelle und zurück, und ein
+Regler stellt die Kachelgröße ein. In der Tabelle bekommt jedes Dokument
+seine eigene Zeile:
 
 ![Die Dokumententabelle nach ein paar erfassten Dokumenten](docs/user-guide/de/02-table.png)
 
 ## Es wiederfinden
 
 Der ganze Sinn der Sache ist, etwas Monate oder Jahre später innerhalb
-von Sekunden wiederzufinden. Oben in der Tabelle:
+von Sekunden wiederzufinden. Über deinen Dokumenten:
 
 - Die **Suche** durchsucht Titel, Kategorien, Notizen, Tags und den
   per OCR erkannten Text — selbst wenn du nicht mehr weißt, wie du etwas
   genannt hast, findest du es meist, indem du ein Wort eintippst, das
   *auf* dem Dokument stand.
-- **Filter** (Kategorie, Typ, Person) grenzen die Tabelle auf genau das
+- **Filter** (Kategorie, Typ, Person) grenzen die Liste auf genau das
   ein, was passt.
-- Klicke auf eine **Spaltenüberschrift**, um danach zu sortieren.
+- Klicke in der Tabelle auf eine **Spaltenüberschrift**, um danach zu
+  sortieren; die Kacheln folgen derselben Reihenfolge.
 
 ![Suchergebnisse, gefiltert auf ein passendes Dokument](docs/user-guide/de/06-search.png)
 
