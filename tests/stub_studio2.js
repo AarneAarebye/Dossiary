@@ -318,6 +318,9 @@ class FakeDatabase {
     if (table === 'reminder_snoozes' && isReplace) {
       this.tables.reminder_snoozes = this.tables.reminder_snoozes.filter(r => !(r.document_id === row.document_id && r.field_id === row.field_id));
     }
+    if (table === 'collection_documents' && isIgnore) {
+      if (this.tables.collection_documents.some(cd => cd.collection_id === row.collection_id && cd.document_id === row.document_id)) return;
+    }
     if (table === 'tags' && isIgnore) { if (this.tables.tags.some(t => t.name === row.name)) return; }
     if (table === 'document_tags' && isIgnore) {
       if (this.tables.document_tags.some(dt => dt.document_id === row.document_id && dt.tag_id === row.tag_id)) return;

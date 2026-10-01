@@ -174,7 +174,8 @@ kurz.
   ![Die Berichte-Ansicht mit Dokumentenanzahl und Summen pro Kategorie](docs/user-guide/de/09-reports.png)
 
 - **Sammlungen** — fasse eine Gruppe von Dokumenten zusammen, entweder von
-  Hand (auswählen und hinzufügen) oder als "Intelligente Sammlung", die
+  Hand (auswählen und hinzufügen, oder Dokumente auf den Namen der
+  Sammlung in der Seitenleiste ziehen) oder als "Intelligente Sammlung", die
   automatisch mit deiner aktuellen Such-/Filtereinstellung mitwächst,
   sobald neue Dokumente dazukommen.
 - **Archivieren** — eine Markierung für "brauche ich nicht mehr in meiner

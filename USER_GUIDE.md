@@ -161,7 +161,8 @@ get started, so this section is intentionally brief.
   ![The Reports view, showing document counts and totals per category](docs/user-guide/en/11-reports.png)
 
 - **Collections** — save a group of documents together, either by hand
-  (drag-select and add) or as a "Smart Collection" that automatically
+  (select and add, or drag documents onto the collection's name in the
+  sidebar) or as a "Smart Collection" that automatically
   keeps matching your current search/filter as new documents arrive.
 
   ![The Manage Collections dialog](docs/user-guide/en/12-collections.png)

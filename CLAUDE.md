@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (90 scripts) + shared
+tests/                   Playwright regression suite (91 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3561,6 +3561,22 @@ this repo's git tags.
   Archive/Delete/Flag for review already have their own buttons in the
   bulk-action bar; duplicating them in the context menu wasn't judged worth
   the extra code for what's already one click away.
+  **Dragging documents onto a collection** (`startDocDrag()`,
+  `endDocDrag()`, `dropDocsOnCollection()`): rows and grid tiles are
+  `draggable` (not in the Waste bin), and every *manual* collection in the
+  nav accepts the drop -- a smart collection's rules decide its membership,
+  so it doesn't. A checked row carries the whole checked selection (shown
+  as an "N documents" drag image), an unchecked one only itself; the drop
+  goes through `addDocumentsToCollection()`, and the status line counts
+  only documents that weren't in the collection yet ("Already in …"
+  otherwise). `draggedDocIds` is set only while one of our own items is
+  being dragged, and the page-wide file-drop listeners (drag-and-drop
+  import, `#drop-overlay`) return early while it is, so an internal drag
+  never shows the import overlay or imports anything. Dragging over a
+  collapsed Collections header opens it for the drag only
+  (`dragOpenedCollections`, restored without saving the setting). A
+  `document`-level `dragend` also ends the drag, since a `render()` during
+  the drop can replace the source row before its own `dragend` fires.
 - **Duplicate detection** (`documents.file_hash`, `computeFileHash()`,
   `openLibraryCheckModal()`) flags two kinds of likely-duplicate document:
   an exact match on the file's own bytes, and a heuristic match on

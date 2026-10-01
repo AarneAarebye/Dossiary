@@ -178,7 +178,8 @@ brève.
   ![La vue Rapports, montrant le nombre de documents et les totaux par catégorie](docs/user-guide/fr/09-reports.png)
 
 - **Collections** — regroupez des documents ensemble, soit manuellement
-  (sélection et ajout), soit sous forme de "Collection intelligente" qui
+  (sélection et ajout, ou en faisant glisser des documents sur le nom
+  de la collection dans la barre latérale), soit sous forme de "Collection intelligente" qui
   se met automatiquement à jour selon votre recherche/filtre actuel à
   mesure que de nouveaux documents arrivent.
 - **Archiver** — une marque signifiant "je n'ai plus besoin de voir ceci

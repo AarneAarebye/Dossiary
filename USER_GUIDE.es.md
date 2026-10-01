@@ -167,7 +167,8 @@ necesaria para empezar, así que esta sección es intencionadamente breve.
   ![La vista de Informes, mostrando el número de documentos y los totales por categoría](docs/user-guide/es/09-reports.png)
 
 - **Colecciones** — guarda un grupo de documentos juntos, ya sea a mano
-  (seleccionando y añadiendo) o como una "Colección inteligente" que se
+  (seleccionando y añadiendo, o arrastrando documentos sobre el nombre
+  de la colección en la barra lateral) o como una "Colección inteligente" que se
   mantiene automáticamente al día con tu búsqueda/filtro actual a medida
   que llegan nuevos documentos.
 - **Archivar** — una marca de "ya no necesito ver esto en mi lista

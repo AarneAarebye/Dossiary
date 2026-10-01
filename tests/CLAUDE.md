@@ -825,7 +825,15 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-the Reports pie chart (`test_report_pie.py` -- 10 positive values giving
+dragging documents onto a collection (`test_drag_to_collection.py` --
+real HTML5 drag-and-drop via Playwright: an unchecked row added alone, a
+checked row carrying the whole checked selection, a document already there
+reported and not added twice, a smart collection not taking the drop, no
+file-drop overlay or import during any of it, no highlight left behind, a
+grid tile drop, a collapsed Collections section opening for the drag and
+closing afterwards, nothing draggable in the Waste bin, and the German
+message; `stub_studio2.js`'s `INSERT OR IGNORE INTO collection_documents`
+now skips an existing pair like the real primary key does), the Reports pie chart (`test_report_pie.py` -- 10 positive values giving
 7 own slices plus "Other" with the right total and share, each of the 7
 largest rows' swatch matching its slice and the rest sharing Other's
 colour, a negative row without a swatch plus the chart's note, the pie
