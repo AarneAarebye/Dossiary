@@ -92,13 +92,14 @@ Haz clic en **+ Añadir documento**. Esto abre el formulario de captura:
 4. Haz clic en **Guardar documento**. Ya está — tu documento está ahora
    en tu biblioteca de forma permanente, junto con el texto extraído.
 
-Repite este proceso con tantos documentos como quieras. Cada uno obtiene
-su propia vista previa: Dossiary muestra tus documentos como miniaturas,
-y el interruptor **☰ Lista / ▦ Cuadrícula** junto a "Showing N of M
-documents" cambia a una tabla y viceversa (un control deslizante ajusta el
-tamaño de las miniaturas). En la tabla, cada documento tiene su fila:
+Repite este proceso con tantos documentos como quieras. Dossiary muestra
+tus documentos como miniaturas:
 
-![La tabla de documentos tras capturar unos cuantos](docs/user-guide/es/02-table.png)
+![Los documentos como miniaturas tras capturar unos cuantos](docs/user-guide/es/02-table.png)
+
+El interruptor **☰ Lista / ▦ Cuadrícula** junto a "Showing N of M
+documents" cambia a una tabla, con una fila por documento, y viceversa; el
+control deslizante de al lado ajusta el tamaño de las miniaturas.
 
 ## Volver a encontrarlo
 

@@ -37,8 +37,9 @@ USER_GUIDE.zh-Hant.md    Traditional Chinese translation of USER_GUIDE.md,
                           derived from USER_GUIDE.zh-Hans.md via OpenCC
 docs/user-guide/         Screenshots for each USER_GUIDE.<lang>.md, one
                           subfolder per language (en/, de/, es/, fr/,
-                          zh-Hans/, zh-Hant/) -- see that section's own
-                          note below for how they were captured
+                          zh-Hans/, zh-Hant/), plus capture.py and the
+                          fabricated demo/ images it captures from -- see
+                          that section's own note below
 MIGRATION.md             Migrating from Mariner Paperless, linked from README.md
 MIGRATION.de.md          German translation of MIGRATION.md
 CLAUDE.md                This file
@@ -121,6 +122,24 @@ guides 9, with their own numbering** (`02-table`, `03-capture-blank`, …,
 `09-reports` — no empty-folder, library-ready, or collections images),
 so a capture has to be saved under each guide's own filenames, not
 English's.
+
+**Since v1.37 the capture is a script: `docs/user-guide/capture.py`**
+(Playwright for Python, headless, no browser extension and no person
+clicking a picker). It serves the repo on `localhost:8833` and replaces
+only `showDirectoryPicker()`, which returns a `Documents` folder in the
+origin-private file system (OPFS) -- a real `FileSystemDirectoryHandle`,
+so the real app code runs unchanged against real sql.js, Tesseract.js and
+pdf.js from the CDN. Each language gets a fresh browser context (its
+`localStorage` language preset, a matching `locale` so date inputs format
+the same way), creates "<My Documents>.dossiary" through the real
+new-library form, adds Amount/Currency to the three demo types via
+`__DEBUG_dbRun()` and reopens the library, captures the three fabricated
+demo documents from `docs/user-guide/demo/` with real OCR, stages the
+inbox scan by writing into OPFS, and saves every shot under that guide's
+own filenames. `python3 docs/user-guide/capture.py all` rewrites all 66
+images; pass `en,de` to limit languages, or an output folder to review
+first. Bump `APP_VERSION` before capturing for a release, since the
+footer shows it.
 
 **This same per-language screenshot pattern extended to four more guides**
 once Spanish, French, and both Chinese scripts joined English/German as UI

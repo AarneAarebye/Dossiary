@@ -91,11 +91,13 @@ Click **+ Add document**. This opens the capture form:
    library, permanently, alongside its extracted text.
 
 Repeat this for as many documents as you like. Dossiary shows your
-documents as preview tiles; the **☰ List / ▦ Grid** switch next to
-"Showing N of M documents" changes to a table and back, and a slider sets
-the tile size. In the table each document gets its own row:
+documents as preview tiles:
 
-![The document table after a few captures](docs/user-guide/en/07-table.png)
+![The documents as preview tiles after a few captures](docs/user-guide/en/07-table.png)
+
+The **☰ List / ▦ Grid** switch next to "Showing N of M documents" changes
+to a table, with one row per document, and back; the slider next to it
+sets the tile size.
 
 ## Finding it again
 

@@ -99,12 +99,13 @@ Klicke auf **+ Dokument hinzufügen**. Das öffnet das Erfassungsformular:
    dauerhaft in deiner Bibliothek, zusammen mit dem erkannten Text.
 
 Wiederhole das für so viele Dokumente, wie du möchtest. Dossiary zeigt
-deine Dokumente als Vorschau-Kacheln; der Schalter **☰ Liste / ▦ Raster**
-neben „Showing N of M documents“ wechselt zur Tabelle und zurück, und ein
-Regler stellt die Kachelgröße ein. In der Tabelle bekommt jedes Dokument
-seine eigene Zeile:
+deine Dokumente als Vorschau-Kacheln:
 
-![Die Dokumententabelle nach ein paar erfassten Dokumenten](docs/user-guide/de/02-table.png)
+![Die Dokumente als Vorschau-Kacheln nach ein paar Erfassungen](docs/user-guide/de/02-table.png)
+
+Der Schalter **☰ Liste / ▦ Raster** neben „Showing N of M documents“
+wechselt zu einer Tabelle mit einer Zeile pro Dokument und zurück; der
+Regler daneben stellt die Kachelgröße ein.
 
 ## Es wiederfinden
 

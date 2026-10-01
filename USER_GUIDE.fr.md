@@ -101,12 +101,13 @@ capture :
    accompagné du texte extrait.
 
 Répétez ce processus pour autant de documents que vous le souhaitez.
-Dossiary affiche vos documents sous forme de vignettes ; le bouton
-**☰ Liste / ▦ Grille** à côté de "Showing N of M documents" passe au
-tableau et inversement, et un curseur règle la taille des vignettes. Dans
-le tableau, chacun obtient sa propre ligne :
+Dossiary affiche vos documents sous forme de vignettes :
 
-![Le tableau de documents après quelques captures](docs/user-guide/fr/02-table.png)
+![Les documents sous forme de vignettes après quelques captures](docs/user-guide/fr/02-table.png)
+
+Le bouton **☰ Liste / ▦ Grille** à côté de "Showing N of M documents"
+passe à un tableau, une ligne par document, et inversement ; le curseur
+voisin règle la taille des vignettes.
 
 ## Le retrouver ensuite
 
