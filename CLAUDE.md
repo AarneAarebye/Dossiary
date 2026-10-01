@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (85 scripts) + shared
+tests/                   Playwright regression suite (86 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3773,6 +3773,38 @@ this repo's git tags.
   drops unknown ids. Single and bulk delete are the same call with a 1-
   or many-element id array, one `persistDb()` at the end, mirroring
   `deleteOrphanedTags()`.
+- **Grid view** (`viewMode`, `loadViewMode()`/`saveViewMode()`/
+  `applyViewMode()`, `renderGrid()`, `loadTileThumb()`,
+  `createMissingPreviews()`) is a per-library choice (`view_mode`
+  setting, `'list'` | `'grid'`) between the table and preview tiles. The
+  grid (`#doc-grid`) is a second rendering of the same filtered, sorted
+  list inside `.table-wrap`, toggled by a `view-grid` class on
+  `#main-layout` that hides `#doc-table`, so `.table-wrap`'s height
+  calibration is untouched. **Tiles share every row handler**: `render()`
+  wires click/dblclick/contextmenu over `docItems` (rows plus tiles,
+  highlighted together by `highlightDoc()`), tiles carry the same
+  `.row-select-checkbox` (bulk selection), and `tableRows()` returns tiles
+  in grid mode, so J/K/D/Enter keep working. **The switch lives on the
+  count line** (`.count-row` = `#count-line` + `#view-controls`), not the
+  toolbar, to stay clear of the toolbar-wrap calibration -- and
+  `.view-controls` is pinned to the count line's own 13px height, its 16px
+  buttons overflowing slightly, because the first version made the row
+  3px taller and `test_footer_pin.py`/`test_collections.py` caught the
+  table sliding behind the footer. `#count-line` itself still holds only
+  the "Showing N of M" text (several tests read it). The tile size
+  (`grid_tile_size`, 140-360px, a `--tile-w` CSS variable) has a slider
+  shown only in grid mode. **Previews load lazily** (an
+  `IntersectionObserver` on `.table-wrap`, 400px margin) and are cached as
+  object URLs per path (`thumbUrlCache`, cleared on library switch and by
+  `writeThumbnail()` for the path it rewrites), so a 1,300-document grid
+  doesn't read every thumbnail from iCloud at once. Nothing is generated
+  automatically, in line with the "no automatic bulk preview generation"
+  note under Document previews: **"Create missing previews (N)"** appears
+  when listed documents lack one and makes them on click, one at a time,
+  saving every 25 and stoppable by clicking again. `THUMB_MAX_DIM` went
+  from 320 to 640 so large tiles stay sharp; existing previews keep their
+  size. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot) is
+  unchanged.
 - **Page tools** (`openPageToolsModal()`, `openCombineModal()`,
   `buildPdfFromPages()`, `replaceActiveFile()`, `refreshAfterPdfChange()`,
   `createSplitDocument()`) are built on **pdf-lib** (`ensurePdfLib()`,

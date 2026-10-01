@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **85
-scripts covering most of the app's actual functionality** (83 of them
+There's a real, runnable Playwright regression suite in `tests/` — **86
+scripts covering most of the app's actual functionality** (84 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -815,7 +815,19 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), page tools (`test_page_tools.py` -- "Edit
+scrollable mobile toolbar), the grid view (`test_grid_view.py` -- List
+by default with the count line's text unchanged; Grid showing one tile per
+listed document in the table's order (Waste bin excluded), the table
+hidden, the choice saved, and the count row still exactly as tall as the
+count line alone; a stored preview shown, a placeholder with the file kind
+for none, "Preview missing" for a stored path whose file is gone, tiles
+taller than the old 140px panel preview; click selecting and showing
+details, J moving to the next tile, right-click opening the document menu,
+tile checkboxes driving the bulk bar; the size slider widening tiles and
+being saved; "Create missing previews (2)" making and saving both
+previews, showing them and disappearing; reopening keeping grid and size;
+German labels; back to List; no switch in Reports. Pass a path to save a
+screenshot), page tools (`test_page_tools.py` -- "Edit
 pages…" offered for a PDF in the panel, not for an image nor in the
 right-click menu; one card per page, Save disabled until something changes,
 rotation shown on the thumbnail, a removed page dimmed, the summary counting

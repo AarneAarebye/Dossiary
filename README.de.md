@@ -185,6 +185,15 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   ein weiterer Bibliotheksordner: zum Wiederherstellen öffnen Sie ihn. Beim
   Öffnen der Bibliothek erinnert ein Hinweis, wenn eine Sicherung fällig ist
   (standardmäßig alle 30 Tage, einstellbar oder abschaltbar).
+- **Rasteransicht** — der Schalter **☰ Liste / ▦ Raster** rechts neben
+  „Showing N of M“ zeigt die Dokumente als Vorschau-Kacheln statt als
+  Tabelle, mit einem Regler für die Kachelgröße; die Wahl wird je
+  Bibliothek gespeichert. Kacheln verhalten sich wie Zeilen: Klick zeigt
+  die Details, Doppelklick öffnet, Rechtsklick öffnet das Menü, Haken
+  wählt aus, J/K wechselt. Dokumente ohne Vorschau zeigen einen Platzhalter,
+  und **Fehlende Vorschauen erstellen** erzeugt sie für die angezeigten
+  Dokumente (lässt sich anhalten). Neue Vorschauen sind doppelt so scharf
+  wie bisher.
 - **Seiten bearbeiten** — **Seiten bearbeiten…** im Detailbereich zeigt die
   Seiten eines PDFs: drehen, umsortieren, entfernen, Seiten aus einem
   anderen PDF oder einem Bild hinzufügen oder das Dokument mit ✂ in mehrere
@@ -966,7 +975,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (85
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (86
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was
