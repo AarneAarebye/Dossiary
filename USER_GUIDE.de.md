@@ -183,6 +183,11 @@ kurz.
   dort, wo er hingehört, und der Kategoriefilter findet auch Dokumente, die
   nur teilweise dazugehören.
 
+- **Aufgeräumte Werkzeugleiste** — du nutzt manche Buttons der
+  Werkzeugleiste nicht (etwa ohne Scanner)? **🛠 Werkzeuge → 👁
+  Werkzeugleisten-Buttons…** blendet sie für diese Bibliothek aus; ein
+  Haken holt sie zurück.
+
 - **Teilen** — **Teilen…** im Detailbereich eines Dokuments (oder unter
   Mehr ▾ für mehrere ausgewählte Dokumente) sendet die Dateien per Mail,
   Nachrichten, AirDrop oder jeder anderen App, die dein System anbietet.

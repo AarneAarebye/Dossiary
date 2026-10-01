@@ -177,6 +177,10 @@ necesaria para empezar, así que esta sección es intencionadamente breve.
   corresponde, y filtrar por una categoría también encuentra documentos
   que pertenecen a ella en parte.
 
+- **Una barra más ordenada** — ¿no usas algunos botones de la barra (por
+  ejemplo, sin escáner)? **🛠 Herramientas → 👁 Botones de la barra…** los
+  oculta en esta biblioteca; al volver a marcarlos reaparecen.
+
 - **Compartir** — **Compartir…** en el panel de un documento (o en Más ▾
   para varios documentos seleccionados) envía los archivos por Mail,
   Mensajes, AirDrop o cualquier otra aplicación que ofrezca tu sistema.

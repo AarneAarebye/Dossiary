@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **88
-scripts covering most of the app's actual functionality** (86 of them
+There's a real, runnable Playwright regression suite in `tests/` — **96
+scripts covering most of the app's actual functionality** (94 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -1166,6 +1166,106 @@ signal of its actual diff size or risk — if something regresses that a
 commit's message gives no reason to suspect it touched, check that commit's
 actual diff rather than trusting the message, especially for any commit
 touching `dossiary.html` alongside doc files.
+
+**The older scripts, by name.** The narrative above grew feature by
+feature and describes most of the early tests only by what they cover,
+never by file name. This list maps each of them to what it checks:
+
+- **Capture and edit basics**
+  - `test_studio.py` -- the oldest test: opens a seeded library (rows,
+    open-file button, image OCR) and adds a new document.
+  - `test_studio2.py` -- a new library from an empty folder: the
+    init-state screen, the first save, PDF OCR enabled with no stale "not
+    available" note, and a plain PDF save getting a real
+    `original_file_path` with `searchable_pdf_built` 0.
+  - `test_edit.py` -- the Edit button, saving title/category/subcategory/
+    people/tags, and the table row, panel and persisted rows
+    (`documents`, `people`, `document_field_people`, `tags`) afterwards.
+  - `test_edit_cancel.py` -- Cancel discards the edit: the panel and row
+    keep the original title.
+  - `test_subcategory.py` -- subcategory shown in the row, the panel and
+    the sidecar, persisted, and found by search.
+  - `test_date_preset.py` -- the capture date's "today" guess: amber
+    styling and hint, both cleared on the first edit, the value saved.
+  - `test_date_picker_color_scheme.py` -- both date inputs have
+    `color-scheme: dark`, so the picker icon is visible.
+  - `test_extensionless_file.py` -- a file with no extension saves through
+    both capture and Inbox, without its active copy colliding with the
+    original's subfolder (`TypeMismatchError`).
+  - `test_sidecar_and_search.py` -- the sidecar's content, OCR text found
+    by search (and gibberish not), and the search box's clear button
+    restoring the rows and focus.
+  - `test_scan_hint_and_ocr_languages.py` -- the scan-hint toggle, and the
+    OCR language options in both forms.
+  - `test_scan_hint_os_detection.py` -- `detectOS()`/`scanHintHtml()`:
+    Image Capture/Preview on macOS, Windows Scan on Windows, the generic
+    text on Linux or with no OS signal.
+- **Clear buttons**
+  - `test_clear_button.py` -- clearing Document Type empties it, removes
+    its dynamic fields and returns focus, in both forms.
+  - `test_all_clear_buttons.py` -- every built-in field's clear button in
+    both forms empties its input.
+- **People and custom fields**
+  - `test_people.py` -- People as a person-type field:
+    `document_field_people` links, `document_people` left untouched, name
+    pills in the row, the People filter.
+  - `test_generic_fields.py` -- text/number/date/checkbox inputs, values
+    in `document_field_values`, an `&` in a value never split, Yes/No and
+    formatted dates in the panel, search over field values.
+  - `test_dynamic_fields.py` -- which fields each document type shows, in
+    `document_type_fields` order; none for no type or an unknown type;
+    fields removed when switching type (by design).
+  - `test_add_field_inline.py` -- "+ Add a custom field": hidden until a
+    type is entered, the toggle, the Amount hint, built-in and duplicate
+    names refused, the new field saved and attached to the type, and
+    values already typed into other fields surviving the insert, in
+    capture and Edit.
+  - `test_field_settings.py` -- the Field Settings dialog: document
+    types, available vs. displayed fields, adding a field to a type and
+    persisting it.
+  - `test_field_autocomplete_default.py` -- the one-time migration
+    switching autocomplete on for existing text fields (and its marker),
+    new text fields defaulting to it, number fields not, and switching it
+    off sticking.
+  - `test_orphaned_fields.py` -- a value in a field no longer set up for
+    the document's type shows in Edit with the orphaned hint, editable;
+    capture never shows orphaned fields.
+  - `test_orphaned_clear.py` -- clearing an orphaned field and saving
+    removes its value.
+- **Amount, Currency and Payment method**
+  - `test_sentinel_field_migration.py` -- an old-shape library: the three
+    `fields` rows created with the right flags, values backfilled from the
+    old `documents` columns, and Currency added beside Amount in
+    `document_type_fields`.
+  - `test_amount_payment_dynamic.py` -- Amount and Payment method appear
+    only for types set up with them.
+  - `test_currency.py` -- Currency as its own per-type field, and the
+    `default_currency` guess in capture (persisted, flagged, cleared).
+  - `test_edit_currency_guess.py` -- the Edit-form Currency guess, only
+    for a document with a real, non-zero Amount and no Currency.
+  - `test_payment_date.py` -- a Payment Date custom field ordered among
+    Payment method/Amount/Currency, saved, formatted in the panel, and
+    pre-filled in Edit.
+  - `test_header_amount_payment.py` -- the panel's Payment line and Amount
+    label appear only when the document has them; Date always shows.
+- **Table and columns**
+  - `test_columns.py` -- Payment method's column and filter hidden by
+    default, Category shown, and the Columns menu toggling both.
+  - `test_columns_persist.py` -- column choices surviving a reopen.
+  - `test_generic_column_system.py` -- any custom field (not just the
+    seeded ones) opting into a column and autocomplete from Field
+    Settings; Amount gets no Column checkbox, Currency does.
+  - `test_import_date_column.py` -- the Imported column: visible by
+    default, in the Columns menu, toggled off and on, showing a real date.
+  - `test_sticky_header.py` -- with many rows, the table header stays at
+    the top while scrolling and has an opaque background.
+- **Archive and Inbox folder**
+  - `test_archive.py` -- "Show archived" off by default, the count line,
+    the archived pill, Archive/Unarchive, and a document from before the
+    `archived` column reading as not archived.
+  - `test_inbox_folder_creation.py` -- `inbox/` created for a new library
+    and for an existing one that lacked it, with no banner for the empty
+    folder.
 
 **Running it**: `cd tests && python3 test_<name>.py` (each is a standalone
 script, not a pytest suite — no test runner or config needed beyond

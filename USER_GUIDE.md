@@ -169,6 +169,10 @@ get started, so this section is intentionally brief.
   then count each part where it belongs, and filtering by a category also
   finds documents that are partly in it.
 
+- **A tidier toolbar** — don't use some of the toolbar's buttons (no
+  scanner, say)? **🛠 Tools → 👁 Toolbar buttons…** hides them for this
+  library; ticking them again brings them back.
+
 - **Sharing** — **Share…** in a document's panel (or under More ▾ for
   several selected documents) sends the files with Mail, Messages, AirDrop
   or any other app your system offers.

@@ -187,6 +187,11 @@ brève.
   catégorie comptent alors chaque part au bon endroit, et filtrer par une
   catégorie trouve aussi les documents qui en relèvent en partie.
 
+- **Une barre plus épurée** — vous n'utilisez pas certains boutons de la
+  barre (sans scanner, par exemple) ? **🛠 Outils → 👁 Boutons de la
+  barre…** les masque pour cette bibliothèque ; les recocher les fait
+  revenir.
+
 - **Partager** — **Partager…** dans le panneau d'un document (ou sous
   Plus ▾ pour plusieurs documents sélectionnés) envoie les fichiers par
   Mail, Messages, AirDrop ou toute autre app proposée par votre système.
