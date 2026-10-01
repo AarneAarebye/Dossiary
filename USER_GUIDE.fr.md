@@ -170,8 +170,10 @@ n'est nécessaire pour démarrer, donc cette section reste volontairement
 brève.
 
 - **Rapports** — des totaux regroupés par catégorie, type ou personne,
-  avec un filtre de plage de dates. Utile pour la déclaration d'impôts ou
-  pour le remboursement de frais.
+  avec un filtre de plage de dates et un graphique circulaire montrant où
+  est passé l'argent. Utile pour la déclaration d'impôts ou pour le
+  remboursement de frais. Cliquez sur une ligne ou une part pour voir les
+  documents correspondants.
 
   ![La vue Rapports, montrant le nombre de documents et les totaux par catégorie](docs/user-guide/fr/09-reports.png)
 

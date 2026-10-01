@@ -167,8 +167,9 @@ davon ist nötig, um anzufangen, deshalb bleibt dieser Abschnitt bewusst
 kurz.
 
 - **Berichte** — Summen gruppiert nach Kategorie, Typ oder Person, mit
-  einem Datumsbereichsfilter. Nützlich zur Steuerzeit oder für
-  Spesenabrechnungen.
+  einem Datumsbereichsfilter und einem Tortendiagramm, wohin das Geld
+  ging. Nützlich zur Steuerzeit oder für Spesenabrechnungen. Ein Klick auf
+  eine Zeile oder ein Segment zeigt die Dokumente dahinter.
 
   ![Die Berichte-Ansicht mit Dokumentenanzahl und Summen pro Kategorie](docs/user-guide/de/09-reports.png)
 

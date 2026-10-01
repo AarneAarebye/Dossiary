@@ -200,7 +200,12 @@ working" problem that motivated this project in the first place.
   print-friendly layout for tax season or expense reimbursement. Click any
   row, including a currency's Grand total, to jump to the documents
   behind that number in the regular table, with a "← Back to Reports"
-  link to return.
+  link to return. Each currency also gets a pie chart of its totals beside
+  the table, which doubles as the legend (the 7 largest values get their
+  own colour, the rest share "Other"); clicking a slice works like
+  clicking its row. Negative totals are left out of the chart, and a
+  People or Tags breakdown gets none, since a document counts once per
+  name there.
 - **Collections** — organize documents into your own named groupings, reachable from an expandable Collections section in the nav. Manual collections are hand-picked lists (select documents in the table to bulk-add them to a collection, bulk-archive, bulk-delete, or bulk-flag for review, or add one at a time from a document's own detail view); Smart Collections are live views defined by rules — *field, condition, value*, matching all or any of them — that keep matching new documents automatically. Create one from scratch (Tools → Manage collections → **+ New smart collection**), or save the toolbar's current filters with **☆ Save as Smart Collection**; either way it can be changed later with **Edit rules…**. Rules cover text (is, contains, …), tags and people (includes), numbers such as Amount (at least, at most, between), checkboxes, archived/in-review status, empty/not empty, and dates — including relative ones like *in the last 30 days*, *this month* or *last year*, re-evaluated every day.
 - **Spotlight/Finder search** — every captured document also gets a plain
   `.txt` sidecar file (title, category, tags, notes, OCR text, custom

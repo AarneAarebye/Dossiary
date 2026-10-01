@@ -159,8 +159,10 @@ merece la pena conocer — cada una es realmente útil, pero ninguna es
 necesaria para empezar, así que esta sección es intencionadamente breve.
 
 - **Informes** — totales agrupados por categoría, tipo o persona, con un
-  filtro de rango de fechas. Útil para la declaración de la renta o para
-  reembolsos de gastos.
+  filtro de rango de fechas y un gráfico circular de en qué se fue el
+  dinero. Útil para la declaración de la renta o para reembolsos de
+  gastos. Haz clic en una fila o un sector para ver los documentos que hay
+  detrás.
 
   ![La vista de Informes, mostrando el número de documentos y los totales por categoría](docs/user-guide/es/09-reports.png)
 

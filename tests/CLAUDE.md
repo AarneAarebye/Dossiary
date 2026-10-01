@@ -825,7 +825,15 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-copying another library's setup into a new one (`test_copy_setup.py` --
+the Reports pie chart (`test_report_pie.py` -- 10 positive values giving
+7 own slices plus "Other" with the right total and share, each of the 7
+largest rows' swatch matching its slice and the rest sharing Other's
+colour, a negative row without a swatch plus the chart's note, the pie
+beside the table and labelled, a single-value currency drawn as a circle,
+no pie for a currency with nothing positive or for the multi-valued Tags
+breakdown, a slice and "Other" drilling down to the right documents,
+Enter on a focused slice, and German labels -- read via `textContent`,
+since SVG `<title>` isn't an HTMLElement for `inner_text`), copying another library's setup into a new one (`test_copy_setup.py` --
 from a recent library: custom field copied with its id and its
 switched-off autocomplete, no built-in field duplicated, document types'
 field order, field descriptions, the smart but not the manual collection,

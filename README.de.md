@@ -234,7 +234,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Steuererklärung oder Spesenerstattung. Ein Klick auf eine Zeile —
   auch auf die Gesamtsumme einer Währung — zeigt die dahinterstehenden
   Dokumente in der normalen Tabelle, mit einem Link „← Back to Reports"
-  zurück.
+  zurück. Jede Währung bekommt außerdem neben der Tabelle ein
+  Tortendiagramm ihrer Summen, für das die Tabelle als Legende dient (die
+  7 größten Werte haben eine eigene Farbe, der Rest teilt sich „Sonstige“);
+  ein Klick auf ein Segment wirkt wie ein Klick auf die Zeile. Negative
+  Summen fehlen im Diagramm, und eine Aufschlüsselung nach People oder
+  Tags hat keins, weil ein Dokument dort für jeden Namen einmal zählt.
 - **Collections** — organisieren Sie Dokumente in Ihren eigenen benannten Gruppierungen, erreichbar über einen erweiterbaren Collections-Bereich in der Navigation. Manuelle Collections sind handgewählte Listen (wählen Sie Dokumente in der Tabelle aus, um sie stapelweise einer Collection hinzuzufügen, zu archivieren, zu löschen oder zur Überprüfung zu kennzeichnen, oder fügen Sie sie einzeln aus der Detailansicht eines Dokuments hinzu); Smart Collections sind Live-Views, die durch Regeln festgelegt werden — *Feld, Bedingung, Wert*, wobei alle oder mindestens eine erfüllt sein müssen — und automatisch auch neu hinzugekommene Dokumente erfassen. Legen Sie eine von Grund auf an (Werkzeuge → Collections verwalten → **+ Neue Smart Collection**) oder speichern Sie die aktuellen Filter der Werkzeugleiste mit **☆ Als Smart Collection speichern**; in beiden Fällen lässt sie sich später mit **Regeln bearbeiten…** ändern. Regeln gibt es für Text (ist, enthält, …), Tags und Personen (enthält), Zahlen wie den Betrag (mindestens, höchstens, zwischen), Kontrollkästchen, den Status archiviert/in Prüfung, leer/nicht leer und Datumsangaben — auch relative wie *in den letzten 30 Tagen*, *diesen Monat* oder *letztes Jahr*, die jeden Tag neu ausgewertet werden.
 - **Spotlight-/Finder-Suche** — jedes erfasste Dokument bekommt zusätzlich
   eine einfache `.txt`-Begleitdatei (Sidecar-Datei) daneben (Titel,
@@ -993,7 +998,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (89
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (90
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

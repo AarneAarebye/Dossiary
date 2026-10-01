@@ -458,6 +458,15 @@
   #reports-empty{ font-family:var(--font-mono); font-size:13px; color:var(--text-dim); }
   .report-print-btn{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:8px 14px; border-radius:var(--radius); cursor:pointer; margin-bottom:16px; }
   .report-print-btn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  .report-group-body{ display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+  .report-group-body .report-table{ flex:1 1 360px; }
+  .report-pie{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .report-pie svg{ width:180px; height:180px; display:block; }
+  .report-slice{ cursor:pointer; stroke:var(--ink); stroke-width:1.5; }
+  .report-slice:hover, .report-slice:focus-visible{ opacity:0.8; outline:none; }
+  .report-pie-note{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); max-width:200px; text-align:center; }
+  .report-swatch{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:8px; vertical-align:baseline;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
   .inbox-banner{
     margin:0 32px 14px; padding:12px 16px; border:1px solid var(--amber-dim); border-radius:var(--radius);
@@ -716,6 +725,8 @@
     #app{ background:#fff !important; color:#000 !important; }
     .report-currency-group h3, .report-caption, .report-table tfoot td, .report-table td, .report-table th{ color:#000 !important; }
     .report-table{ min-width:0 !important; }
+    .report-pie-note{ color:#000 !important; }
+    .report-slice{ stroke:#fff; }
   }
 </style>
 
@@ -1200,7 +1211,7 @@
       collectionsNewButton: '+ New collection',
       reportsNone: '(none)', reportsNoCurrencySet: 'No currency set',
       reportsMultiValueCaption: "Documents with more than one {label} are counted once per name, so this breakdown's row totals may not add up to the Grand total below.",
-      reportsColCount: 'Count', reportsColTotal: 'Total', reportsGrandTotal: 'Grand total',
+      reportsColCount: 'Count', reportsColTotal: 'Total', reportsGrandTotal: 'Grand total', reportsPieOther: 'Other', reportsPieAriaLabel: 'Share of the total by {field}', reportsPieNegativeNote: 'Negative totals are left out of the chart.',
       reportsNoDocuments: 'No documents match the current filters.', reportsPrintButton: '🖨 Print',
       reportsBreakdownCategory: 'Category', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'People',
       reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} includes: {value}',
@@ -1412,7 +1423,7 @@
       collectionsNewButton: '+ Nueva colección',
       reportsNone: '(ninguno)', reportsNoCurrencySet: 'Sin moneda establecida',
       reportsMultiValueCaption: 'Los documentos con más de un(a) {label} se cuentan una vez por nombre, por lo que los totales de las filas de este desglose pueden no coincidir con el Total general de abajo.',
-      reportsColCount: 'Recuento', reportsColTotal: 'Total', reportsGrandTotal: 'Total general',
+      reportsColCount: 'Recuento', reportsColTotal: 'Total', reportsGrandTotal: 'Total general', reportsPieOther: 'Otros', reportsPieAriaLabel: 'Parte del total por {field}', reportsPieNegativeNote: 'Los totales negativos no aparecen en el gráfico.',
       reportsNoDocuments: 'Ningún documento coincide con los filtros actuales.', reportsPrintButton: '🖨 Imprimir',
       reportsBreakdownCategory: 'Categoría', reportsBreakdownType: 'Tipo', reportsBreakdownPeople: 'Personas',
       reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} incluye: {value}',
@@ -1624,7 +1635,7 @@
       collectionsNewButton: '+ Nouvelle collection',
       reportsNone: '(aucun)', reportsNoCurrencySet: 'Aucune devise définie',
       reportsMultiValueCaption: "Les documents ayant plusieurs valeurs pour {label} sont comptés une fois par nom, donc les totaux des lignes de ce détail peuvent ne pas correspondre au Total général ci-dessous.",
-      reportsColCount: 'Nombre', reportsColTotal: 'Total', reportsGrandTotal: 'Total général',
+      reportsColCount: 'Nombre', reportsColTotal: 'Total', reportsGrandTotal: 'Total général', reportsPieOther: 'Autres', reportsPieAriaLabel: 'Part du total par {field}', reportsPieNegativeNote: 'Les totaux négatifs ne figurent pas dans le graphique.',
       reportsNoDocuments: 'Aucun document ne correspond aux filtres actuels.', reportsPrintButton: '🖨 Imprimer',
       reportsBreakdownCategory: 'Catégorie', reportsBreakdownType: 'Type', reportsBreakdownPeople: 'Personnes',
       reportDrilldownRowLabel: '{field} : {value}', reportDrilldownMultiValueLabel: '{field} inclut : {value}',
@@ -1836,7 +1847,7 @@
       collectionsNewButton: '+ Neue Sammlung',
       reportsNone: '(keine)', reportsNoCurrencySet: 'Keine Währung angegeben',
       reportsMultiValueCaption: 'Dokumente mit mehr als einem/einer {label} werden pro Name einmal gezählt, daher stimmen die Zeilensummen dieser Aufschlüsselung möglicherweise nicht mit der Gesamtsumme unten überein.',
-      reportsColCount: 'Anzahl', reportsColTotal: 'Summe', reportsGrandTotal: 'Gesamtsumme',
+      reportsColCount: 'Anzahl', reportsColTotal: 'Summe', reportsGrandTotal: 'Gesamtsumme', reportsPieOther: 'Sonstige', reportsPieAriaLabel: 'Anteil an der Gesamtsumme nach {field}', reportsPieNegativeNote: 'Negative Summen sind im Diagramm nicht enthalten.',
       reportsNoDocuments: 'Keine Dokumente entsprechen den aktuellen Filtern.', reportsPrintButton: '🖨 Drucken',
       reportsBreakdownCategory: 'Kategorie', reportsBreakdownType: 'Typ', reportsBreakdownPeople: 'Personen',
       reportDrilldownRowLabel: '{field}: {value}', reportDrilldownMultiValueLabel: '{field} enthält: {value}',
@@ -2048,7 +2059,7 @@
       collectionsNewButton: '+ 新建收藏集',
       reportsNone: '（无）', reportsNoCurrencySet: '未设置货币',
       reportsMultiValueCaption: '拥有多个{label}的文档会按每个名称各计一次，因此此细分中各行的合计可能与下方的总计不一致。',
-      reportsColCount: '文档数', reportsColTotal: '小计', reportsGrandTotal: '总计',
+      reportsColCount: '文档数', reportsColTotal: '小计', reportsGrandTotal: '总计', reportsPieOther: '其他', reportsPieAriaLabel: '按{field}划分的总计占比', reportsPieNegativeNote: '图表中不包含负数合计。',
       reportsNoDocuments: '没有符合当前筛选条件的文档。', reportsPrintButton: '🖨 打印',
       reportsBreakdownCategory: '分类', reportsBreakdownType: '类型', reportsBreakdownPeople: '人员',
       reportDrilldownRowLabel: '{field}：{value}', reportDrilldownMultiValueLabel: '{field}包含：{value}',
@@ -2380,7 +2391,7 @@
       reportsMultiValueCaption: '擁有多個{label}的文檔會按每個名稱各計一次，因此此細分中各行的合計可能與下方的總計不一致。',
       reportsColCount: '文檔數',
       reportsColTotal: '小計',
-      reportsGrandTotal: '總計',
+      reportsGrandTotal: '總計', reportsPieOther: '其他', reportsPieAriaLabel: '按{field}劃分的總計佔比', reportsPieNegativeNote: '圖表中不包含負數合計。',
       reportsNoDocuments: '沒有符合當前篩選條件的文檔。',
       reportsPrintButton: '🖨 打印',
       reportsBreakdownCategory: '分類',
@@ -5606,23 +5617,70 @@
 
   // Builds the grouped totals HTML into #reports-view, replacing whatever it
   // currently contains. Called from render()'s `currentView === 'reports'` branch.
+  // A pie of each currency group's row totals, beside its table. The table
+  // is the legend: each row with a slice gets a matching swatch. The largest
+  // REPORT_PIE_COLORS.length - 1 values get their own colour, the rest share
+  // one "Other" slice. Only positive totals are drawn (a pie can't show a
+  // refund), with a note when any were left out. No pie for a multi-valued
+  // breakdown (People, Tags): a document counts once per value there, so the
+  // shares would overlap.
+  const REPORT_PIE_COLORS = ['#4fe0a6', '#d99a3f', '#6cb4ff', '#e0715c', '#b48cff', '#5ed6d6', '#e8d36a', '#ff8fc6'];
+  const REPORT_PIE_OTHER_COLOR = '#7d8784';
+  function reportPie(g){
+    if(g.multiValued) return null;
+    const positive = g.rows.map((r, ri) => ({ ri, value: r.total })).filter(x => x.value > 0);
+    const sum = positive.reduce((a, x) => a + x.value, 0);
+    if(!(sum > 0)) return null;
+    const own = positive.length > REPORT_PIE_COLORS.length ? REPORT_PIE_COLORS.length - 1 : positive.length;
+    const slices = positive.slice(0, own).map((x, i) => ({ rowIdx: [x.ri], value: x.value, color: REPORT_PIE_COLORS[i], label: g.rows[x.ri].label }));
+    const rest = positive.slice(own);
+    if(rest.length) slices.push({ rowIdx: rest.map(x => x.ri), value: rest.reduce((a, x) => a + x.value, 0), color: REPORT_PIE_OTHER_COLOR, label: t('reportsPieOther'), other: true });
+    const colorByRow = {};
+    slices.forEach(sl => sl.rowIdx.forEach(ri => { colorByRow[ri] = sl.color; }));
+    return { slices, sum, colorByRow, hasNegative: g.rows.some(r => r.total < 0) };
+  }
+  function reportPieSvg(g, gi, pie){
+    const r = 50, c = 50;
+    let angle = -Math.PI / 2;
+    const paths = pie.slices.map((sl, si) => {
+      const pct = sl.value / pie.sum * 100;
+      const title = `<title>${escapeHtml(sl.label)}: ${sl.value.toFixed(2)} (${pct.toFixed(1)}%)</title>`;
+      const attrs = `class="report-slice" data-group-idx="${gi}" data-slice-idx="${si}" fill="${sl.color}" tabindex="0" role="button" aria-label="${escapeHtml(sl.label)}: ${sl.value.toFixed(2)} (${pct.toFixed(1)}%)"`;
+      if(pie.slices.length === 1) return `<circle ${attrs} cx="${c}" cy="${c}" r="${r}">${title}</circle>`;
+      const start = angle;
+      angle += sl.value / pie.sum * Math.PI * 2;
+      const x1 = c + r * Math.cos(start), y1 = c + r * Math.sin(start);
+      const x2 = c + r * Math.cos(angle), y2 = c + r * Math.sin(angle);
+      const large = angle - start > Math.PI ? 1 : 0;
+      return `<path ${attrs} d="M${c},${c} L${x1.toFixed(3)},${y1.toFixed(3)} A${r},${r} 0 ${large} 1 ${x2.toFixed(3)},${y2.toFixed(3)} Z">${title}</path>`;
+    }).join('');
+    return `<svg viewBox="-2 -2 104 104" role="img" aria-label="${escapeHtml(t('reportsPieAriaLabel', {field: g.breakdownLabel}))}">${paths}</svg>`;
+  }
+
   function renderReportsView(docs){
     const breakdownSelect = el('report-breakdown-field');
     const fieldId = breakdownSelect ? breakdownSelect.value : 'category';
     const groups = computeReportGroups(docs, fieldId);
-    const groupsHtml = groups.length ? groups.map((g, gi) => `
+    const pies = groups.map(reportPie);
+    const groupsHtml = groups.length ? groups.map((g, gi) => {
+      const pie = pies[gi];
+      const swatch = (ri) => pie && pie.colorByRow[ri] ? `<span class="report-swatch" style="background:${pie.colorByRow[ri]}"></span>` : '';
+      return `
       <div class="report-currency-group">
         <h3>${g.currency ? escapeHtml(g.currency) : t('reportsNoCurrencySet')}</h3>
         ${g.multiValued ? `<p class="report-caption">${t('reportsMultiValueCaption', {label: escapeHtml(g.breakdownLabel)})}</p>` : ''}
+        <div class="report-group-body">
         <table class="report-table">
           <thead><tr><th>${escapeHtml(g.breakdownLabel)}</th><th>${t('reportsColCount')}</th><th>${t('reportsColTotal')}</th></tr></thead>
           <tbody>
-            ${g.rows.map((r, ri) => `<tr class="report-row" data-group-idx="${gi}" data-row-idx="${ri}"><td>${escapeHtml(r.label)}</td><td>${r.count}</td><td>${r.total.toFixed(2)}</td></tr>`).join('')}
+            ${g.rows.map((r, ri) => `<tr class="report-row" data-group-idx="${gi}" data-row-idx="${ri}"><td>${swatch(ri)}${escapeHtml(r.label)}</td><td>${r.count}</td><td>${r.total.toFixed(2)}</td></tr>`).join('')}
           </tbody>
           <tfoot><tr class="report-row" data-group-idx="${gi}" data-row-idx="grand"><td>${t('reportsGrandTotal')}</td><td>${g.documentCount}</td><td>${g.grandTotal.toFixed(2)}</td></tr></tfoot>
         </table>
+        ${pie ? `<div class="report-pie">${reportPieSvg(g, gi, pie)}${pie.hasNegative ? `<div class="report-pie-note">${t('reportsPieNegativeNote')}</div>` : ''}</div>` : ''}
+        </div>
       </div>
-    `).join('') : `<p id="reports-empty">${t('reportsNoDocuments')}</p>`;
+    `; }).join('') : `<p id="reports-empty">${t('reportsNoDocuments')}</p>`;
     reportsView.innerHTML = `<button type="button" id="reports-print-btn" class="report-print-btn">${t('reportsPrintButton')}</button>` + groupsHtml;
     el('reports-print-btn').addEventListener('click', () => window.print());
     // Every row -- breakdown rows, the "(none)" row (just another row from
@@ -5642,6 +5700,18 @@
           drillIntoReportRow(row.docIds, t(labelKey, {field: group.breakdownLabel, value: row.label}));
         }
       });
+    });
+    // A slice drills down like its row; "Other" into all of its rows' documents.
+    const drillSlice = (node) => {
+      const gi = Number(node.dataset.groupIdx);
+      const group = groups[gi];
+      const slice = pies[gi].slices[Number(node.dataset.sliceIdx)];
+      const docIds = [...new Set(slice.rowIdx.flatMap(ri => group.rows[ri].docIds))];
+      drillIntoReportRow(docIds, t('reportDrilldownRowLabel', {field: group.breakdownLabel, value: slice.label}));
+    };
+    reportsView.querySelectorAll('.report-slice').forEach(node => {
+      node.addEventListener('click', () => drillSlice(node));
+      node.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); drillSlice(node); } });
     });
   }
 

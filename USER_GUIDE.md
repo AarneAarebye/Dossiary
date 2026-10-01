@@ -154,7 +154,9 @@ knowing about — each is genuinely useful, but none of it is necessary to
 get started, so this section is intentionally brief.
 
 - **Reports** — totals grouped by category, type, or person, with a date
-  range filter. Useful for tax season or expense reimbursement.
+  range filter and a pie chart of where the money went. Useful for tax
+  season or expense reimbursement. Click a row or a slice to see the
+  documents behind it.
 
   ![The Reports view, showing document counts and totals per category](docs/user-guide/en/11-reports.png)
 

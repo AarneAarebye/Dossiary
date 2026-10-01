@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (89 scripts) + shared
+tests/                   Playwright regression suite (90 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -1527,6 +1527,22 @@ this repo's git tags.
   breakdowns. See
   `docs/superpowers/specs/2026-09-22-reports-drilldown-design.md` for the
   full design.
+  **Pie chart** (`reportPie()`, `reportPieSvg()`,
+  `REPORT_PIE_COLORS`): each currency group gets a hand-built SVG pie of
+  its row totals beside the table (`.report-group-body`, a wrapping flex
+  row) -- no charting dependency. The table is the legend: a row with a
+  slice gets a `.report-swatch` in its colour (`print-color-adjust:exact`,
+  since browsers drop background colours when printing). Rows are already
+  sorted by total, so the 7 largest positive values get their own colour
+  and any further ones share one grey "Other" slice; with 8 or fewer, every
+  value gets a colour. Only positive totals are drawn -- a pie can't show a
+  refund -- with `reportsPieNegativeNote` when any row is negative; a group
+  with no positive total gets no pie, and neither does a multi-valued
+  breakdown (People, Tags, person fields), whose rows overlap. A slice is a
+  focusable `role="button"` drilling down exactly like its row (Enter/Space
+  too), "Other" into the union of its rows' documents; each has a
+  `<title>` with value and share. A lone value draws a `<circle>`, since an
+  arc from a point back to itself renders nothing.
 - **Collections** (`collections` + `collection_documents` tables,
   `openManageCollectionsModal()`, `createManualCollection()`,
   `addDocumentsToCollection()`) are user-created document groupings, manually
