@@ -128,6 +128,23 @@ async def main():
         await page.wait_for_timeout(150)
         print("Tile checkboxes drive the bulk-action bar:", await page.inner_text('#bulk-action-count') == '2 selected', await page.inner_text('#bulk-action-count'))
         await page.click('#bulk-clear-selection-btn')
+        await page.wait_for_timeout(150)
+        # The table's select-all sits in its hidden header; the grid has its own.
+        tile_count = await page.locator('#doc-grid .doc-tile').count()
+        print("The grid has its own Select all:", await page.locator('#grid-select-all-checkbox').is_visible())
+        await page.check('#grid-select-all-checkbox')
+        await page.wait_for_timeout(200)
+        print("...which selects every listed tile:", await page.inner_text('#bulk-action-count') == f'{tile_count} selected'
+              and await page.locator('#doc-grid .doc-tile .row-select-checkbox:checked').count() == tile_count)
+        await page.uncheck('#doc-grid .doc-tile[data-id="1"] .row-select-checkbox')
+        await page.wait_for_timeout(150)
+        print("Unticking one tile clears Select all:", not await page.is_checked('#grid-select-all-checkbox'))
+        await page.check('#grid-select-all-checkbox')
+        await page.wait_for_timeout(150)
+        await page.uncheck('#grid-select-all-checkbox')
+        await page.wait_for_timeout(200)
+        print("...and unticking Select all clears the selection:", await page.locator('#doc-grid .doc-tile .row-select-checkbox:checked').count() == 0
+              and not await page.locator('#bulk-action-bar').is_visible())
 
         # === Scenario 4: tile size ===
         print("Slider shown in grid view:", await page.locator('#grid-size-range').is_visible())

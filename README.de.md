@@ -198,6 +198,17 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   durch scharfe und lässt bereits ausreichend große unverändert. Die
   Bibliotheksprüfung bietet danach an, die alten, von keinem Dokument mehr
   verwendeten Vorschaudateien zu löschen.
+- **Auf Kategorien aufteilen** — im Bearbeiten-Formular teilt **+ Auf
+  Kategorien aufteilen** den Betrag eines Dokuments in Zeilen mit je einer
+  Kategorie, einem Betrag und einer optionalen Notiz auf (ein
+  Supermarkt-Bon: Lebensmittel plus Haushaltswaren); was nicht aufgeteilt
+  ist, bleibt bei der Kategorie des Dokuments. Die Zeilen dürfen nicht mehr
+  als den Betrag ergeben. Berichte nach Kategorie zählen jede Zeile unter
+  ihrer Kategorie (die Gesamtsumme ändert sich nicht), und der
+  Kategoriefilter sowie Kategorie-Regeln intelligenter Sammlungen finden
+  ein Dokument auch über seine Zeilen. Die Zeilen erscheinen im
+  Detailbereich und in der Spotlight-Begleitdatei, und das Umbenennen oder
+  Zusammenführen einer Kategorie ändert sie mit.
 - **Kalenderansicht** — die dritte Option am selben Schalter
   (**▤ Kalender**): ein Monatsraster mit jedem Dokument an seinem Datum
   (dem Datum des Dokuments, nicht dem Importdatum), beginnend mit dem
@@ -1006,7 +1017,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (93
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (94
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

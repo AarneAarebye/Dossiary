@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (93 scripts) + shared
+tests/                   Playwright regression suite (94 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3891,7 +3891,10 @@ this repo's git tags.
   grid (`#doc-grid`) is a second rendering of the same filtered, sorted
   list inside `.table-wrap`, toggled by a `view-grid` class on
   `#main-layout` that hides `#doc-table`, so `.table-wrap`'s height
-  calibration is untouched. **Tiles share every row handler**: `render()`
+  calibration is untouched. Since the table's select-all checkbox lives in
+  that hidden header, the grid starts with its own
+  (`#grid-select-all-checkbox`, a full-width `.grid-select-all` row), and
+  `render()` wires and syncs both. **Tiles share every row handler**: `render()`
   wires click/dblclick/contextmenu over `docItems` (rows plus tiles,
   highlighted together by `highlightDoc()`), tiles carry the same
   `.row-select-checkbox` (bulk selection), and `tableRows()` returns tiles
@@ -3941,6 +3944,31 @@ this repo's git tags.
   status line reports "Previews recreated: N. Already sharp: M.", or that
   it was stopped. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot)
   is unchanged.
+- **Line-item splits** (`document_splits (document_id, position, category,
+  amount, note)`, `d.splits`, `wireSplitsEditor()`, `readSplits()`,
+  `allCategoryNames()`): Mariner's split receipts. Edit-form only (capture
+  stays simple; split after saving). Lines need a category and an amount
+  (`,` or `.` decimals, stored as 2-decimal text); blank lines are
+  skipped; `readSplits()` refuses lines that add up to more than the
+  Amount (read from the form's own Amount input, so a just-typed Amount
+  counts), and `saveEditedDocument()` checks that before writing anything.
+  The rest of the Amount stays with the document's own category -- it is
+  never stored as a line. Saving replaces the document's lines
+  (delete-then-insert). **Where lines count**: `computeReportGroups()`
+  with the `category` breakdown puts each line under its category and the
+  rest under the document's (a document counted once per row it touches;
+  `grandTotal` unchanged); other breakdowns ignore splits. The toolbar
+  Category filter (`matchesCriteria()`) matches a document's category or
+  any line's; a Smart Collection `category` rule tests each of them -- a
+  positive operator needs any to match, `is_not`/`not_contains` all
+  (`empty`/`not_empty` look at the document's own category only). Category
+  option lists (filter, datalist, Rename or merge values counts) include
+  line categories via `allCategoryNames()`/`valuesForKind()`, and
+  `renameValue('category', …)` renames them in `document_splits` too. The
+  detail panel shows a "Split" line and `buildSidecarText()` a `Splits:`
+  line (`writeSidecarForDoc()` passes `d.splits`). The table is created by
+  `SCHEMA`'s `CREATE TABLE IF NOT EXISTS` on every open, so no migration
+  entry; copying a library's setup doesn't copy it (it's document data).
 - **Calendar view** (`viewMode === 'calendar'`, `renderCalendar()`,
   `calendarMonth`, `calendarWeekStart()`, `shiftMonth()`, `#doc-calendar`)
   is the third value of the same `view_mode` setting and switch: a third

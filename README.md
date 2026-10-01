@@ -168,6 +168,16 @@ working" problem that motivated this project in the first place.
   Mariner) with sharp ones, leaving any that are already large enough
   alone. Library check then offers to delete the old preview files no
   document uses any more.
+- **Split by category** — in the Edit form, **+ Split across categories**
+  divides a document's Amount into lines, each with a category, an amount
+  and an optional note (one supermarket receipt: groceries plus household
+  items); whatever isn't split stays with the document's own category. The
+  lines can't add up to more than the Amount. Reports broken down by
+  Category count each line under its own category (the grand total doesn't
+  change), and the Category filter and Smart Collection category rules
+  find a document through its lines too. The lines show in the detail
+  panel and the Spotlight sidecar, and renaming or merging a category
+  updates them.
 - **Calendar view** — the third option on the same switch
   (**▤ Calendar**): a month grid with each document on its own date (the
   document's date, not when it was imported), starting on your language's
