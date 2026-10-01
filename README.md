@@ -168,7 +168,7 @@ working" problem that motivated this project in the first place.
   Mariner) with sharp ones, leaving any that are already large enough
   alone. Library check then offers to delete the old preview files no
   document uses any more.
-- **Split by category** — in the Edit form, **+ Split across categories**
+- **Split by category** — in the capture and Edit forms, **+ Split across categories**
   divides a document's Amount into lines, each with a category, an amount
   and an optional note (one supermarket receipt: groceries plus household
   items); whatever isn't split stays with the document's own category. The

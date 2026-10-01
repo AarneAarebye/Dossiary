@@ -3946,12 +3946,15 @@ this repo's git tags.
   is unchanged.
 - **Line-item splits** (`document_splits (document_id, position, category,
   amount, note)`, `d.splits`, `wireSplitsEditor()`, `readSplits()`,
-  `allCategoryNames()`): Mariner's split receipts. Edit-form only (capture
-  stays simple; split after saving). Lines need a category and an amount
+  `allCategoryNames()`): Mariner's split receipts, in both the capture
+  and the Edit form (`splitsFieldHtml(p)`/`wireSplitsEditor(p, d)` with the
+  `f`/`e` prefix; `d` is null in capture). Lines need a category and an amount
   (`,` or `.` decimals, stored as 2-decimal text); blank lines are
   skipped; `readSplits()` refuses lines that add up to more than the
   Amount (read from the form's own Amount input, so a just-typed Amount
-  counts), and `saveEditedDocument()` checks that before writing anything.
+  counts), and `saveNewDocument()`/`saveEditedDocument()` check that before
+  writing anything -- in capture before the id is reserved or any file is
+  copied, so a refused split leaves nothing behind.
   The rest of the Amount stays with the document's own category -- it is
   never stored as a line. Saving replaces the document's lines
   (delete-then-insert). **Where lines count**: `computeReportGroups()`

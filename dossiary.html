@@ -9516,15 +9516,7 @@
             <div class="field-hint" id="e-new-field-currency-hint" style="display:none;">${t('captureAddFieldAmountHint')}</div>
             <div class="add-field-status" id="e-new-field-status"></div>
           </div>
-          <div class="field splits-field" id="e-splits">
-            <button type="button" class="scan-toggle" id="e-splits-start">${t('splitsStart')}</button>
-            <div id="e-splits-body" style="display:none;">
-              <label>${t('splitsLabel')}</label>
-              <div class="splits-rows" id="e-split-rows"></div>
-              <button type="button" class="scan-toggle" id="e-split-add">${t('splitsAddLine')}</button>
-              <div class="field-hint splits-summary" id="e-splits-summary"></div>
-            </div>
-          </div>
+          ${splitsFieldHtml('e')}
           <div class="field">
             <label for="e-tags">${t('captureTagsLabel')}</label>
             <div class="field-with-clear">
@@ -9605,7 +9597,7 @@
       suggestFromText(); // the rebuild dropped any Amount/Currency guesses
     });
     wireAddFieldControls('e');
-    wireSplitsEditor(d);
+    wireSplitsEditor('e', d);
     wireClearButton('e-type', 'e-type-clear');
     wireClearButton('e-category', 'e-category-clear');
     wireClearButton('e-subcategory', 'e-subcategory-clear');
@@ -9651,13 +9643,26 @@
     }));
   }
 
-  // --- Line-item splits (Edit form) ---
+  // --- Line-item splits (capture 'f' and Edit 'e' forms) ---
   // A document's Amount divided across categories, each line with an amount
   // and an optional note; whatever isn't split stays with the document's own
-  // category. Read back by readSplits(), which saveEditedDocument() uses.
-  function editAmountValue(d){
-    const input = document.querySelector('#dynamic-fields-e [data-dynamic-field="Amount"] input');
-    const raw = input ? input.value : (d.customFields || {})['Amount'];
+  // category. Read back by readSplits(), which saveNewDocument() and
+  // saveEditedDocument() check before writing anything. `d` is the document
+  // being edited, or null in capture.
+  function splitsFieldHtml(p){
+    return `<div class="field splits-field" id="${p}-splits">
+            <button type="button" class="scan-toggle" id="${p}-splits-start">${t('splitsStart')}</button>
+            <div id="${p}-splits-body" style="display:none;">
+              <label>${t('splitsLabel')}</label>
+              <div class="splits-rows" id="${p}-split-rows"></div>
+              <button type="button" class="scan-toggle" id="${p}-split-add">${t('splitsAddLine')}</button>
+              <div class="field-hint splits-summary" id="${p}-splits-summary"></div>
+            </div>
+          </div>`;
+  }
+  function formAmountValue(p, d){
+    const input = document.querySelector(`#dynamic-fields-${p} [data-dynamic-field="Amount"] input`);
+    const raw = input ? input.value : (d ? (d.customFields || {})['Amount'] : null);
     const n = parseFloat(String(raw == null ? '' : raw).replace(',', '.'));
     return isNaN(n) ? null : n;
   }
@@ -9675,9 +9680,9 @@
   }
   // {splits, error}: blank lines are skipped; a line needs both a category
   // and an amount; the lines can't add up to more than the Amount.
-  function readSplits(d){
+  function readSplits(p, d){
     const splits = [];
-    for(const row of document.querySelectorAll('#e-split-rows .split-row')){
+    for(const row of document.querySelectorAll(`#${p}-split-rows .split-row`)){
       const category = row.querySelector('.split-category').value.trim();
       const amountRaw = row.querySelector('.split-amount').value.trim();
       const note = row.querySelector('.split-note').value.trim();
@@ -9687,40 +9692,42 @@
       splits.push({ category, amount: Math.round(amount * 100) / 100, note });
     }
     if(!splits.length) return { splits, error: null };
-    const total = editAmountValue(d);
+    const total = formAmountValue(p, d);
     if(total == null) return { splits, error: t('splitsErrorNoAmount') };
     const sum = splits.reduce((a, sp) => a + sp.amount, 0);
     if(total >= 0 ? sum > total + 0.004 : sum < total - 0.004) return { splits, error: t('splitsErrorTooMuch') };
     return { splits, error: null };
   }
-  function updateSplitsSummary(d){
-    const summary = el('e-splits-summary');
+  function updateSplitsSummary(p, d){
+    const summary = el(`${p}-splits-summary`);
     if(!summary) return;
-    const { splits, error } = readSplits(d);
-    const total = editAmountValue(d);
+    const { splits, error } = readSplits(p, d);
+    const total = formAmountValue(p, d);
     summary.classList.toggle('err', !!error);
     if(error){ summary.textContent = error; return; }
     if(total == null){ summary.textContent = t('splitsSummaryNoAmount'); return; }
     const sum = splits.reduce((a, sp) => a + sp.amount, 0);
-    summary.textContent = t('splitsSummary', {split: sum.toFixed(2), amount: total.toFixed(2), rest: (total - sum).toFixed(2), category: el('e-category').value.trim() || t('reportsNone')});
+    summary.textContent = t('splitsSummary', {split: sum.toFixed(2), amount: total.toFixed(2), rest: (total - sum).toFixed(2), category: el(`${p}-category`).value.trim() || t('reportsNone')});
   }
-  function wireSplitsEditor(d){
-    const rowsEl = el('e-split-rows');
-    const show = () => { el('e-splits-start').style.display = 'none'; el('e-splits-body').style.display = ''; };
+  function wireSplitsEditor(p, d){
+    const rowsEl = el(`${p}-split-rows`);
+    const update = () => updateSplitsSummary(p, d);
+    const show = () => { el(`${p}-splits-start`).style.display = 'none'; el(`${p}-splits-body`).style.display = ''; };
     const addRow = (sp) => {
       rowsEl.insertAdjacentHTML('beforeend', splitRowHtml(sp));
       const row = rowsEl.lastElementChild;
-      row.querySelector('.split-remove-btn').addEventListener('click', () => { row.remove(); updateSplitsSummary(d); });
+      row.querySelector('.split-remove-btn').addEventListener('click', () => { row.remove(); update(); });
       return row;
     };
-    (d.splits || []).forEach(addRow);
-    if((d.splits || []).length) show();
-    el('e-splits-start').addEventListener('click', () => { show(); addRow({}).querySelector('.split-category').focus(); updateSplitsSummary(d); });
-    el('e-split-add').addEventListener('click', () => { addRow({}).querySelector('.split-category').focus(); updateSplitsSummary(d); });
+    const existing = d ? (d.splits || []) : [];
+    existing.forEach(addRow);
+    if(existing.length) show();
+    el(`${p}-splits-start`).addEventListener('click', () => { show(); addRow({}).querySelector('.split-category').focus(); update(); });
+    el(`${p}-split-add`).addEventListener('click', () => { addRow({}).querySelector('.split-category').focus(); update(); });
     // Delegated, so the summary follows the lines, the Amount (rebuilt with
     // the dynamic fields on a type change) and the Category.
-    document.querySelector('#modal-root .modal').addEventListener('input', () => updateSplitsSummary(d));
-    updateSplitsSummary(d);
+    document.querySelector('#modal-root .modal').addEventListener('input', update);
+    update();
   }
 
   async function saveEditedDocument(id){
@@ -9732,7 +9739,7 @@
 
     try{
       const d = allDocs.find(x => x.id === id);
-      const { splits: splitsForDoc, error: splitsError } = readSplits(d);
+      const { splits: splitsForDoc, error: splitsError } = readSplits('e', d);
       if(splitsError){
         editStatus.className = 'status err';
         editStatus.textContent = splitsError;
@@ -10322,6 +10329,7 @@
             <div class="field-hint" id="f-new-field-currency-hint" style="display:none;">${t('captureAddFieldAmountHint')}</div>
             <div class="add-field-status" id="f-new-field-status"></div>
           </div>
+          ${splitsFieldHtml('f')}
           <div class="field">
             <label for="f-tags">${t('captureTagsLabel')}</label>
             <div class="field-with-clear">
@@ -10369,6 +10377,7 @@
     });
     el('f-title').addEventListener('change', () => applyHistoryAutofill('f', el('f-title').value, null));
     wireAddFieldControls('f');
+    wireSplitsEditor('f', null);
     wireClearButton('f-type', 'f-type-clear');
     wireClearButton('f-category', 'f-category-clear');
     wireClearButton('f-subcategory', 'f-subcategory-clear');
@@ -11003,6 +11012,13 @@
     if(!pendingFile){ return; }
     const captureStatus = el('capture-status');
     const saveBtn = el('save-doc-btn');
+    // Checked before anything is written, so refused lines leave no files behind.
+    const { splits: splitsForDoc, error: splitsError } = readSplits('f', null);
+    if(splitsError){
+      captureStatus.className = 'status err';
+      captureStatus.textContent = splitsError;
+      return;
+    }
     saveBtn.disabled = true;
     captureStatus.className = 'status busy';
     captureStatus.innerHTML = '<span class="spinner"></span> ' + t('statusSaving');
@@ -11142,12 +11158,16 @@
         if(name) customFieldsForDoc[name] = value;
       }
 
+      splitsForDoc.forEach((sp, i) => {
+        db.run('INSERT INTO document_splits (document_id, position, category, amount, note) VALUES (?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null]);
+      });
+
       const otherPersonFieldsForSidecar = { ...personFieldValuesForDoc };
       delete otherPersonFieldsForSidecar['People']; // People keeps its own dedicated sidecar line
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({
         title, category, subcategory, documentType, date, importDate, customFields: customFieldsForDoc,
-        personFields: otherPersonFieldsForSidecar, people: peopleForDoc, notes, ocrText, tags: tagsForDoc,
+        personFields: otherPersonFieldsForSidecar, people: peopleForDoc, notes, ocrText, tags: tagsForDoc, splits: splitsForDoc,
       }));
 
       await persistDb();
@@ -11159,7 +11179,7 @@
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
         thumbnail_path: thumbnailPathForDb, thumbnail_hd: !!thumbnailPathForDb, file_hash: fileHashForDb, customFields: customFieldsForDoc,
         searchable_pdf_built: !!searchablePdfBuilt, has_text_layer: pendingPdfHasText && pendingFile.type === 'application/pdf',
-        personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
+        personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc, splits: splitsForDoc,
       });
       renderStats(); populateFilters(); populateDatalists(); render();
       subLabel.textContent = rootDirHandle.name;

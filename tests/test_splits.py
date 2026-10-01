@@ -167,6 +167,40 @@ async def main():
         print("Removing every line removes the split:", (await saved())['document_splits'] == []
               and 'Split' not in await page.inner_text('#detail-panel-body'))
 
+        # === Splitting while adding a document ===
+        await page.click('#add-btn')
+        await page.wait_for_timeout(300)
+        await page.set_input_files('#file-input', 'tiny.pdf')
+        await page.wait_for_timeout(300)
+        await page.fill('#f-type', 'Receipt')
+        await page.dispatch_event('#f-type', 'change')
+        await page.wait_for_timeout(200)
+        await page.fill('#f-title', 'Hardware store')
+        await page.fill('#f-category', 'DIY')
+        await page.locator('#dynamic-fields-f [data-dynamic-field="Amount"] input').fill('50')
+        print("The capture form offers to split too:", await page.inner_text('#f-splits-start') == '+ Split across categories')
+        await page.click('#f-splits-start')
+        await page.locator('#f-split-rows .split-category').fill('Garden')
+        await page.locator('#f-split-rows .split-amount').fill('80')
+        await page.wait_for_timeout(150)
+        files_before = await page.evaluate("() => [...window.__TEST_ROOT._children.get('files')._children.keys()].length")
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(400)
+        print("Too much is refused before anything is written:", await page.inner_text('#capture-status') == 'The lines add up to more than the Amount.'
+              and await page.evaluate("() => [...window.__TEST_ROOT._children.get('files')._children.keys()].length") == files_before
+              and not await page.locator('#save-doc-btn').is_disabled())
+        await page.locator('#f-split-rows .split-amount').fill('20')
+        await page.wait_for_timeout(150)
+        print("...and the summary updates:", await page.inner_text('#f-splits-summary') == 'Split 20.00 of 50.00; 30.00 stays with “DIY”.')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(600)
+        db = await saved()
+        new_id = max(d['id'] for d in db['documents'])
+        print("Saving a new document saves its line:", [(r['document_id'], r['category'], r['amount']) for r in db['document_splits']] == [(new_id, 'Garden', '20.00')])
+        await page.click(f'#doc-tbody tr[data-id="{new_id}"]')
+        await page.wait_for_timeout(300)
+        print("...shown in the detail panel:", 'Split Garden 20.00' in await page.inner_text('#detail-panel-body'))
+
         # === German ===
         await page.evaluate("() => { const s = document.getElementById('lang-select'); s.value = 'de'; s.dispatchEvent(new Event('change')); }")
         await page.wait_for_timeout(200)

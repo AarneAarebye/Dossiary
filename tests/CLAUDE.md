@@ -834,7 +834,9 @@ the line under its own category with the grand total unchanged, its
 drill-down, and other breakdowns ignoring it; reopening Edit showing the
 saved line; lines over the Amount and a line without an amount flagged and
 not saved; a category rename reaching the line; removing every line; the
-German summary; `stub_studio2.js` knows the `document_splits` table), the calendar view (`test_calendar_view.py` -- the switch's third button
+German summary; and in the capture form: too much refused before any file
+is written, the summary, the line saved with the new document and shown in
+its panel; `stub_studio2.js` knows the `document_splits` table), the calendar view (`test_calendar_view.py` -- the switch's third button
 replacing the table; opening on the newest document's month with its
 count; Sunday-first in English, March 1st 2026 the first cell; a date
 stored with a time still landing on its day; outside days empty;

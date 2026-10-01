@@ -198,7 +198,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   durch scharfe und lässt bereits ausreichend große unverändert. Die
   Bibliotheksprüfung bietet danach an, die alten, von keinem Dokument mehr
   verwendeten Vorschaudateien zu löschen.
-- **Auf Kategorien aufteilen** — im Bearbeiten-Formular teilt **+ Auf
+- **Auf Kategorien aufteilen** — im Erfassungs- und im Bearbeiten-Formular teilt **+ Auf
   Kategorien aufteilen** den Betrag eines Dokuments in Zeilen mit je einer
   Kategorie, einem Betrag und einer optionalen Notiz auf (ein
   Supermarkt-Bon: Lebensmittel plus Haushaltswaren); was nicht aufgeteilt
