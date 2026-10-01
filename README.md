@@ -196,8 +196,12 @@ working" problem that motivated this project in the first place.
 - **Export** — select documents and choose **More ▾ → Export…** in the
   bulk-action bar to copy their files into a folder you pick, named by date and title,
   with an optional `index.csv` of their details (amount, currency, tags,
-  custom fields…) — handy for a tax advisor. Nothing in the library
-  changes.
+  custom fields…) — handy for a tax advisor. Exported PDFs carry their
+  details in the PDF's own properties too (title, subject from category
+  and type, tags as keywords), so they show in Finder's Get Info or a PDF
+  reader; this can be switched off, and a PDF that can't be opened is
+  copied unchanged. Nothing in the library changes — only the copies get
+  the details.
 - **Keyboard shortcuts** — press **?** for the list. J/K (or ↓/↑) move
   through the documents, E edits, D marks the current one Done and moves to
   the next, Enter opens its file; in the Edit form Ctrl/⌘+Enter saves and

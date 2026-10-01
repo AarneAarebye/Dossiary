@@ -4129,7 +4129,20 @@ this repo's git tags.
   folder or anything in it, so an export can't turn into untracked files
   under `files/`. A document whose file can't be read is listed, not fatal.
   Emailing (Mariner's other export) isn't possible from a browser: a
-  `mailto:` link can't carry attachments.
+  `mailto:` link can't carry attachments. **Details in exported PDFs**
+  (`pdfWithDetails()`, `#export-details-toggle`, on by default): each
+  exported PDF copy gets Title (`displayName()`), Subject (category,
+  subcategory, type) and Keywords (tags, written as one comma-separated
+  string because pdf-lib joins a list with spaces) via pdf-lib, loaded with
+  `updateMetadata: false` so the scanner's own Creator/Producer and dates
+  survive and pages are copied as they are. Deliberately the copies only:
+  rewriting library files on every edit would mean a slow write per change
+  (iCloud) for something the sidecars already provide, and images can't
+  carry it this way. A PDF pdf-lib can't open (encrypted, damaged, library
+  unavailable) is copied unchanged and counted (`exportDetailsSkipped`).
+  Checked against the real pdf-lib 1.17.1 once (properties read back,
+  pages and Creator/Producer kept); the suite uses the stub's fake, whose
+  `save()` records the properties as `props`.
 - **Storage stats** (`computeStorageStats()`, `formatBytes()`,
   `openStorageStatsModal()`) is a brand new, independent toolbar button (now
   an item in the "🛠 Tools" dropdown) and

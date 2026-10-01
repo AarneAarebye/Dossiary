@@ -449,7 +449,11 @@ class FakePdfLibDoc {
   }
   async embedJpg(){ return { kind: 'jpg', width: 800, height: 1000 }; }
   async embedPng(){ return { kind: 'png', width: 800, height: 1000 }; }
-  async save(){ return new TextEncoder().encode(FAKE_PDFLIB_MAGIC + JSON.stringify({ pages: this.pages.map(p => p.info) })); }
+  // Document properties, kept so a test can read back what was written.
+  setTitle(v){ (this.props = this.props || {}).title = v; }
+  setSubject(v){ (this.props = this.props || {}).subject = v; }
+  setKeywords(v){ (this.props = this.props || {}).keywords = v; }
+  async save(){ return new TextEncoder().encode(FAKE_PDFLIB_MAGIC + JSON.stringify({ pages: this.pages.map(p => p.info), ...(this.props ? { props: this.props } : {}) })); }
 }
 window.PDFLib = { PDFDocument: FakePdfLibDoc, degrees: (angle) => ({ type: 'degrees', angle }) };
 

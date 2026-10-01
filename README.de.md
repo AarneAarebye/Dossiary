@@ -231,7 +231,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   **Mehr ▾ → Exportieren…** wählen: Ihre Dateien werden in einen Ordner Ihrer Wahl
   kopiert, benannt nach Datum und Titel, auf Wunsch mit einer `index.csv`
   ihrer Angaben (Betrag, Währung, Tags, eigene Felder …) — praktisch für
-  die Steuerberatung. In der Bibliothek ändert sich nichts.
+  die Steuerberatung. Exportierte PDFs tragen ihre Angaben auch in den
+  eigenen PDF-Eigenschaften (Titel, Thema aus Kategorie und Typ, Tags als
+  Stichwörter), sichtbar in Finders „Informationen“ oder einem PDF-Reader;
+  das lässt sich abschalten, und ein PDF, das sich nicht öffnen lässt,
+  wird unverändert kopiert. In der Bibliothek ändert sich nichts — nur die
+  Kopien bekommen die Angaben.
 - **Tastenkürzel** — **?** zeigt die Liste. J/K (oder ↓/↑) wechseln
   zwischen Dokumenten, E bearbeitet, D markiert das aktuelle als fertig und
   springt zum nächsten, Enter öffnet die Datei; im Bearbeitungsformular

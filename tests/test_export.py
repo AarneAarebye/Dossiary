@@ -110,7 +110,10 @@ async def main():
         existing = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('2026-02-15 Stadtwerke.pdf')).getFile()).text()")
         print("A file already in the folder is left alone:", existing == 'already here')
         copied = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('2026-02-15 Stadtwerke (2).pdf')).getFile()).text()")
-        print("The copy has the document's own bytes:", copied == '%PDF-1.4 doc 1')
+        props = json.loads(copied.split('\n', 1)[1]).get('props') if copied.startswith('%PDF-FAKELIB') else None
+        print("By default the exported PDF carries its details:", props == {'title': 'Stadtwerke', 'subject': 'Home · Invoice', 'keywords': ['tax']})
+        print("...and only the details changed, not the pages:", json.loads(copied.split('\n', 1)[1])['pages'][0]['src'] == '%PDF-1.4 doc 1')
+        print("The details option is on by default:", await page.is_checked('#export-details-toggle'))
         csv = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('index.csv')).getFile()).text()")
         lines = csv.lstrip('﻿').strip().split('\r\n')
         print("index.csv: a header plus one row per exported file:", len(lines) == 4, len(lines))
@@ -137,10 +140,29 @@ async def main():
         await page.click('#bulk-more-btn'); await page.click('#bulk-export-btn')
         await page.wait_for_timeout(200)
         await page.uncheck('#export-index-toggle')
+        await page.uncheck('#export-details-toggle')
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
         names_no = await page.evaluate("async () => { const n = []; for await (const [k] of window.__EXPORT_NO.entries()) n.push(k); return n; }")
         print("Without the index option, only the files are written:", 'index.csv' not in names_no and len(names_no) == 3, names_no)
+        raw = await page.evaluate("async () => await (await (await window.__EXPORT_NO.getFileHandle('2026-02-15 Stadtwerke.pdf')).getFile()).text()")
+        print("Without the details option, the copy has the document's own bytes:", raw == '%PDF-1.4 doc 1')
+
+        # === Scenario 4: a PDF that can't be opened is copied unchanged, and says so ===
+        await page.click('#export-cancel-btn')
+        await page.wait_for_timeout(150)
+        await page.evaluate("""async () => {
+            const h = await (await window.__TEST_ROOT.getDirectoryHandle('files')).getFileHandle('3_a.pdf');
+            const w = await h.createWritable(); await w.write(new TextEncoder().encode('not really a pdf')); await w.close();
+            window.__EXPORT_BAD = window.__makeEmptyRoot(); window.__NEXT_PICKED_DIR = window.__EXPORT_BAD;
+        }""")
+        await page.click('#bulk-more-btn'); await page.click('#bulk-export-btn')
+        await page.wait_for_timeout(200)
+        await page.click('#export-start-btn')
+        await page.wait_for_timeout(800)
+        status_bad = await page.inner_text('#export-status')
+        bad = await page.evaluate("async () => { for await (const [k, h] of window.__EXPORT_BAD.entries()) if(k.startsWith('2026-01-10')) return await (await h.getFile()).text(); }")
+        print("A PDF that can't be opened is copied unchanged, and reported:", bad == 'not really a pdf' and '1 PDF(s) ohne Angaben kopiert' in status_bad, repr(status_bad[:200]))
 
         print("JS ERRORS:", errors)
         await browser.close()

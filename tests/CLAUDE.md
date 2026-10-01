@@ -825,7 +825,10 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;
+details in exported PDFs (`test_export.py`'s later checks -- by default the
+copy carries title, subject and keywords with its pages untouched; with the
+option off the copy is byte-identical; a PDF pdf-lib can't open copied
+unchanged and reported), hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;
 the dialog listing the six optional buttons ticked and never Add document
 or Tools; unticking hiding them at once and saving the setting; Details
 staying hidden after Reports sets its display; the choice surviving a
