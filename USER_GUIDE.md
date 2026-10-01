@@ -97,7 +97,8 @@ documents as preview tiles:
 
 The **☰ List / ▦ Grid** switch next to "Showing N of M documents" changes
 to a table, with one row per document, and back; the slider next to it
-sets the tile size.
+sets the tile size. **▤ Calendar**, on the same switch, shows a month at
+a time with each document on its date.
 
 ## Finding it again
 

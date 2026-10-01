@@ -105,7 +105,8 @@ deine Dokumente als Vorschau-Kacheln:
 
 Der Schalter **☰ Liste / ▦ Raster** neben „Showing N of M documents“
 wechselt zu einer Tabelle mit einer Zeile pro Dokument und zurück; der
-Regler daneben stellt die Kachelgröße ein.
+Regler daneben stellt die Kachelgröße ein. **▤ Kalender** auf demselben
+Schalter zeigt jeweils einen Monat, jedes Dokument an seinem Datum.
 
 ## Es wiederfinden
 

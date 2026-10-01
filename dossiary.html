@@ -436,6 +436,28 @@
   .doc-grid{ display:none; grid-template-columns:repeat(auto-fill, minmax(var(--tile-w, 200px), 1fr)); gap:14px; padding:6px 2px 8px; }
   #main-layout.view-grid .doc-grid{ display:grid; }
   #main-layout.view-grid #doc-table{ display:none; }
+  .doc-calendar{ display:none; padding:4px 2px 8px; }
+  #main-layout.view-calendar .doc-calendar{ display:block; }
+  #main-layout.view-calendar #doc-table{ display:none; }
+  .cal-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .cal-head button{ background:var(--ink-2); border:1px solid var(--line); color:var(--text); font-family:var(--font-mono); font-size:12px; padding:4px 10px; border-radius:var(--radius); cursor:pointer; }
+  .cal-head button:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  .cal-title{ font-family:var(--font-display); font-size:17px; font-weight:600; min-width:150px; text-align:center; }
+  .cal-month-count{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-left:6px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); border-left:1px solid var(--line); border-top:1px solid var(--line); }
+  .cal-weekday{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); padding:6px 8px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .cal-day{ min-height:96px; max-height:150px; overflow-y:auto; padding:4px 5px 6px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .cal-day.cal-outside{ background:rgba(0,0,0,0.18); }
+  .cal-day.cal-outside .cal-day-num{ opacity:0.4; }
+  .cal-day-num{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+  .cal-day.cal-today .cal-day-num{ color:var(--text-ink); background:var(--phosphor); border-radius:9px; padding:0 6px; align-self:flex-start; }
+  .cal-chip{ font-size:12px; line-height:1.35; padding:2px 6px; border-radius:var(--radius); background:var(--ink-2); border:1px solid var(--line); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; flex-shrink:0; }
+  .cal-chip:hover{ border-color:var(--phosphor-dim); }
+  .cal-chip.row-selected{ border-color:var(--phosphor); background:rgba(79,224,166,0.12); }
+  .cal-undated{ margin-top:14px; }
+  .cal-undated-title{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin-bottom:6px; }
+  .cal-undated-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .cal-undated-chips .cal-chip{ max-width:260px; }
   .doc-tile{ position:relative; display:flex; flex-direction:column; gap:6px; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--ink-2); cursor:pointer; min-width:0; }
   .doc-tile:hover{ border-color:var(--phosphor-dim); }
   .doc-tile.row-selected{ border-color:var(--phosphor); box-shadow:inset 0 0 0 1px var(--phosphor); background:rgba(79,224,166,0.06); }
@@ -926,7 +948,7 @@
           <button type="button" id="upgrade-previews-btn" class="view-ctl-btn" style="display:none;"></button>
           <input type="range" id="grid-size-range" min="140" max="360" step="20" data-i18n-title="gridSizeTitle" data-i18n-aria-label="gridSizeTitle" title="Preview size" aria-label="Preview size" />
           <span class="view-switch" role="group">
-            <button type="button" id="view-list-btn" class="view-ctl-btn" aria-pressed="true" data-i18n="viewList">☰ List</button><button type="button" id="view-grid-btn" class="view-ctl-btn" aria-pressed="false" data-i18n="viewGrid">▦ Grid</button>
+            <button type="button" id="view-list-btn" class="view-ctl-btn" aria-pressed="true" data-i18n="viewList">☰ List</button><button type="button" id="view-grid-btn" class="view-ctl-btn" aria-pressed="false" data-i18n="viewGrid">▦ Grid</button><button type="button" id="view-calendar-btn" class="view-ctl-btn" aria-pressed="false" data-i18n="viewCalendar">▤ Calendar</button>
           </span>
         </div>
       </div>
@@ -968,6 +990,7 @@
       <div class="table-detail-row" id="table-detail-row">
         <div class="table-wrap" id="table-wrap" style="display:none;">
           <div class="doc-grid" id="doc-grid"></div>
+          <div class="doc-calendar" id="doc-calendar"></div>
           <table id="doc-table">
             <thead>
               <tr id="doc-thead-row">
@@ -1069,6 +1092,7 @@
   const DATE_LOCALE = { en: 'en-US', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
+      viewCalendar: '▤ Calendar', calPrevMonth: 'Previous month', calNextMonth: 'Next month', calThisMonth: 'Today', calMonthCountSingular: '1 document this month', calMonthCountPlural: '{count} documents this month', calUndated: 'No date ({count})',
       collectionsFoldersHeading: 'Folders', collectionsNewFolderPlaceholder: 'New folder name', collectionsNewFolderButton: '+ New folder', collectionsNoFolder: 'No folder', collectionsFolderSelectLabel: 'Folder for “{name}”', collectionsFolderDeleteConfirm: 'Delete the folder “{name}”? Its collections stay, without a folder.',
       dragToCollectionAddedSingular: 'Added 1 document to “{name}”.', dragToCollectionAddedPlural: 'Added {count} documents to “{name}”.', dragToCollectionAlready: 'Already in “{name}”.',
       newLibraryNameLabel: 'Name of the new library', createLibraryBtn: 'Create library in this folder', newLibraryDefaultName: 'My Documents', newLibraryHint: 'Creates the folder “{name}” inside “{parent}”.', newLibraryNameInvalid: 'Enter a name without / \\ : * ? " < > | and not starting with a dot.', newLibraryExists: 'There’s already a folder called “{name}” here. Choose another name.', copySetupLabel: 'Copy the setup of', copySetupNone: 'Nothing, start empty', copySetupPick: 'Another library folder…', copySetupHint: 'Copies fields, document types, field descriptions, smart collections and settings. No documents, tags or people.', copySetupDenied: 'No permission to read “{name}”.', copySetupNoLibrary: '“{name}” isn’t a Dossiary library (no library.sqlite in it).', statusSetupCopiedFrom: 'Setup copied from “{name}”.',
@@ -1283,6 +1307,7 @@
       reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNotDuplicateLabel: 'Not a duplicate', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
+      viewCalendar: '▤ Calendario', calPrevMonth: 'Mes anterior', calNextMonth: 'Mes siguiente', calThisMonth: 'Hoy', calMonthCountSingular: '1 documento este mes', calMonthCountPlural: '{count} documentos este mes', calUndated: 'Sin fecha ({count})',
       collectionsFoldersHeading: 'Carpetas', collectionsNewFolderPlaceholder: 'Nombre de la nueva carpeta', collectionsNewFolderButton: '+ Nueva carpeta', collectionsNoFolder: 'Sin carpeta', collectionsFolderSelectLabel: 'Carpeta de «{name}»', collectionsFolderDeleteConfirm: '¿Eliminar la carpeta «{name}»? Sus colecciones se conservan, sin carpeta.',
       dragToCollectionAddedSingular: 'Se añadió 1 documento a «{name}».', dragToCollectionAddedPlural: 'Se añadieron {count} documentos a «{name}».', dragToCollectionAlready: 'Ya está en «{name}».',
       newLibraryNameLabel: 'Nombre de la nueva biblioteca', createLibraryBtn: 'Crear la biblioteca en esta carpeta', newLibraryDefaultName: 'Mis documentos', newLibraryHint: 'Crea la carpeta «{name}» dentro de «{parent}».', newLibraryNameInvalid: 'Escribe un nombre sin / \\ : * ? " < > | y que no empiece por punto.', newLibraryExists: 'Ya hay una carpeta llamada «{name}» aquí. Elige otro nombre.', copySetupLabel: 'Copiar la configuración de', copySetupNone: 'Nada, empezar vacía', copySetupPick: 'Otra carpeta de biblioteca…', copySetupHint: 'Copia campos, tipos de documento, descripciones de campos, colecciones inteligentes y ajustes. Ni documentos, ni etiquetas, ni personas.', copySetupDenied: 'Sin permiso para leer «{name}».', copySetupNoLibrary: '«{name}» no es una biblioteca de Dossiary (no contiene library.sqlite).', statusSetupCopiedFrom: 'Configuración copiada de «{name}».',
@@ -1497,6 +1522,7 @@
       reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNotDuplicateLabel: 'No es un duplicado', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
+      viewCalendar: '▤ Calendrier', calPrevMonth: 'Mois précédent', calNextMonth: 'Mois suivant', calThisMonth: 'Aujourd’hui', calMonthCountSingular: '1 document ce mois-ci', calMonthCountPlural: '{count} documents ce mois-ci', calUndated: 'Sans date ({count})',
       collectionsFoldersHeading: 'Dossiers', collectionsNewFolderPlaceholder: 'Nom du nouveau dossier', collectionsNewFolderButton: '+ Nouveau dossier', collectionsNoFolder: 'Aucun dossier', collectionsFolderSelectLabel: 'Dossier de « {name} »', collectionsFolderDeleteConfirm: 'Supprimer le dossier « {name} » ? Ses collections sont conservées, sans dossier.',
       dragToCollectionAddedSingular: '1 document ajouté à « {name} ».', dragToCollectionAddedPlural: '{count} documents ajoutés à « {name} ».', dragToCollectionAlready: 'Déjà dans « {name} ».',
       newLibraryNameLabel: 'Nom de la nouvelle bibliothèque', createLibraryBtn: 'Créer la bibliothèque dans ce dossier', newLibraryDefaultName: 'Mes documents', newLibraryHint: 'Crée le dossier « {name} » dans « {parent} ».', newLibraryNameInvalid: 'Saisissez un nom sans / \\ : * ? " < > | et qui ne commence pas par un point.', newLibraryExists: 'Il existe déjà un dossier « {name} » ici. Choisissez un autre nom.', copySetupLabel: 'Copier la configuration de', copySetupNone: 'Rien, commencer vide', copySetupPick: 'Un autre dossier de bibliothèque…', copySetupHint: 'Copie les champs, types de document, descriptions de champs, collections intelligentes et réglages. Ni documents, ni étiquettes, ni personnes.', copySetupDenied: 'Pas d’autorisation de lire « {name} ».', copySetupNoLibrary: '« {name} » n’est pas une bibliothèque Dossiary (pas de library.sqlite).', statusSetupCopiedFrom: 'Configuration copiée depuis « {name} ».',
@@ -1711,6 +1737,7 @@
       reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNotDuplicateLabel: 'Pas un doublon', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
+      viewCalendar: '▤ Kalender', calPrevMonth: 'Vorheriger Monat', calNextMonth: 'Nächster Monat', calThisMonth: 'Heute', calMonthCountSingular: '1 Dokument in diesem Monat', calMonthCountPlural: '{count} Dokumente in diesem Monat', calUndated: 'Ohne Datum ({count})',
       collectionsFoldersHeading: 'Ordner', collectionsNewFolderPlaceholder: 'Name des neuen Ordners', collectionsNewFolderButton: '+ Neuer Ordner', collectionsNoFolder: 'Kein Ordner', collectionsFolderSelectLabel: 'Ordner für „{name}“', collectionsFolderDeleteConfirm: 'Ordner „{name}“ löschen? Seine Sammlungen bleiben erhalten, ohne Ordner.',
       dragToCollectionAddedSingular: '1 Dokument zu „{name}“ hinzugefügt.', dragToCollectionAddedPlural: '{count} Dokumente zu „{name}“ hinzugefügt.', dragToCollectionAlready: 'Schon in „{name}“.',
       newLibraryNameLabel: 'Name der neuen Bibliothek', createLibraryBtn: 'Bibliothek in diesem Ordner anlegen', newLibraryDefaultName: 'Meine Dokumente', newLibraryHint: 'Legt den Ordner „{name}“ in „{parent}“ an.', newLibraryNameInvalid: 'Gib einen Namen ohne / \\ : * ? " < > | ein, der nicht mit einem Punkt beginnt.', newLibraryExists: 'Hier gibt es bereits einen Ordner „{name}“. Wähle einen anderen Namen.', copySetupLabel: 'Einrichtung übernehmen von', copySetupNone: 'Nichts, leer beginnen', copySetupPick: 'Anderer Bibliotheksordner…', copySetupHint: 'Übernimmt Felder, Dokumenttypen, Feldbeschreibungen, intelligente Sammlungen und Einstellungen. Keine Dokumente, Tags oder Personen.', copySetupDenied: 'Keine Berechtigung, „{name}“ zu lesen.', copySetupNoLibrary: '„{name}“ ist keine Dossiary-Bibliothek (keine library.sqlite darin).', statusSetupCopiedFrom: 'Einrichtung von „{name}“ übernommen.',
@@ -1925,6 +1952,7 @@
       reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNotDuplicateLabel: 'Kein Duplikat', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
+      viewCalendar: '▤ 日历', calPrevMonth: '上个月', calNextMonth: '下个月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文档', calMonthCountPlural: '本月 {count} 份文档', calUndated: '无日期（{count}）',
       collectionsFoldersHeading: '文件夹', collectionsNewFolderPlaceholder: '新文件夹名称', collectionsNewFolderButton: '+ 新建文件夹', collectionsNoFolder: '无文件夹', collectionsFolderSelectLabel: '“{name}”所在的文件夹', collectionsFolderDeleteConfirm: '删除文件夹“{name}”？其中的收藏集会保留，但不再属于任何文件夹。',
       dragToCollectionAddedSingular: '已将 1 份文档添加到“{name}”。', dragToCollectionAddedPlural: '已将 {count} 份文档添加到“{name}”。', dragToCollectionAlready: '已在“{name}”中。',
       newLibraryNameLabel: '新资料库的名称', createLibraryBtn: '在此文件夹中创建资料库', newLibraryDefaultName: '我的文档', newLibraryHint: '将在“{parent}”中创建文件夹“{name}”。', newLibraryNameInvalid: '请输入不含 / \\ : * ? " < > | 且不以点开头的名称。', newLibraryExists: '此处已有名为“{name}”的文件夹，请换一个名称。', copySetupLabel: '复制以下资料库的设置', copySetupNone: '不复制，从空白开始', copySetupPick: '其他资料库文件夹…', copySetupHint: '复制字段、文档类型、字段说明、智能收藏集和设置。不复制文档、标签或人员。', copySetupDenied: '没有读取“{name}”的权限。', copySetupNoLibrary: '“{name}”不是 Dossiary 资料库（其中没有 library.sqlite）。', statusSetupCopiedFrom: '已从“{name}”复制设置。',
@@ -2139,6 +2167,7 @@
       reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNotDuplicateLabel: '不是重复项', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
+      viewCalendar: '▤ 日曆', calPrevMonth: '上個月', calNextMonth: '下個月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文檔', calMonthCountPlural: '本月 {count} 份文檔', calUndated: '無日期（{count}）',
       collectionsFoldersHeading: '文件夾', collectionsNewFolderPlaceholder: '新文件夾名稱', collectionsNewFolderButton: '+ 新建文件夾', collectionsNoFolder: '無文件夾', collectionsFolderSelectLabel: '「{name}」所在的文件夾', collectionsFolderDeleteConfirm: '刪除文件夾「{name}」？其中的收藏集會保留，但不再屬於任何文件夾。',
       dragToCollectionAddedSingular: '已將 1 份文檔添加到「{name}」。', dragToCollectionAddedPlural: '已將 {count} 份文檔添加到「{name}」。', dragToCollectionAlready: '已在「{name}」中。',
       newLibraryNameLabel: '新資料庫的名稱', createLibraryBtn: '在此文件夾中創建資料庫', newLibraryDefaultName: '我的文檔', newLibraryHint: '將在「{parent}」中創建文件夾「{name}」。', newLibraryNameInvalid: '請輸入不含 / \\ : * ? " < > | 且不以點開頭的名稱。', newLibraryExists: '此處已有名為「{name}」的文件夾，請換一個名稱。', copySetupLabel: '複製以下資料庫的設置', copySetupNone: '不複製，從空白開始', copySetupPick: '其他資料庫文件夾…', copySetupHint: '複製字段、文檔類型、字段說明、智能收藏集和設置。不複製文檔、標籤或人員。', copySetupDenied: '沒有讀取「{name}」的權限。', copySetupNoLibrary: '「{name}」不是 Dossiary 資料庫（其中沒有 library.sqlite）。', statusSetupCopiedFrom: '已從「{name}」複製設置。',
@@ -3953,6 +3982,7 @@
   }
 
   function resetAll(){
+    calendarMonth = null;
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
     inboxDirHandle = null; pendingInboxFiles = [];
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
@@ -6239,9 +6269,10 @@
     `).join('');
 
     renderGrid(sorted);
+    renderCalendar(sorted);
     updatePreviewsButton(sorted);
-    // Table rows and grid tiles share every handler below.
-    const docItems = [...tbody.querySelectorAll('tr'), ...el('doc-grid').querySelectorAll('.doc-tile')];
+    // Table rows, grid tiles and calendar chips share every handler below.
+    const docItems = [...tbody.querySelectorAll('tr'), ...el('doc-grid').querySelectorAll('.doc-tile'), ...el('doc-calendar').querySelectorAll('.cal-chip')];
     const highlightDoc = (id) => {
       docItems.forEach(item => item.classList.toggle('row-selected', Number(item.dataset.id) === id));
     };
@@ -7017,7 +7048,9 @@
   }
 
   function tableRows(){
-    return viewMode === 'grid' ? [...el('doc-grid').querySelectorAll('.doc-tile[data-id]')] : [...tbody.querySelectorAll('tr[data-id]')];
+    if(viewMode === 'grid') return [...el('doc-grid').querySelectorAll('.doc-tile[data-id]')];
+    if(viewMode === 'calendar') return [...el('doc-calendar').querySelectorAll('.cal-chip[data-id]')];
+    return [...tbody.querySelectorAll('tr[data-id]')];
   }
   function selectRow(tr){
     if(!tr) return;
@@ -11355,7 +11388,8 @@
   let previewsRun = null; // {stop, done, total} while "Create missing previews" runs
 
   function loadViewMode(){
-    viewMode = readSetting('view_mode') === 'list' ? 'list' : 'grid'; // Grid unless List was chosen
+    const saved = readSetting('view_mode');
+    viewMode = saved === 'list' || saved === 'calendar' ? saved : 'grid'; // Grid unless List or Calendar was chosen
     const n = parseInt(readSetting('grid_tile_size'), 10);
     gridTileSize = Number.isInteger(n) && n >= GRID_TILE_MIN && n <= GRID_TILE_MAX ? n : 200;
     applyViewMode();
@@ -11363,19 +11397,89 @@
 
   function applyViewMode(){
     mainLayout.classList.toggle('view-grid', viewMode === 'grid');
+    mainLayout.classList.toggle('view-calendar', viewMode === 'calendar');
     el('view-list-btn').setAttribute('aria-pressed', viewMode === 'list' ? 'true' : 'false');
     el('view-grid-btn').setAttribute('aria-pressed', viewMode === 'grid' ? 'true' : 'false');
+    el('view-calendar-btn').setAttribute('aria-pressed', viewMode === 'calendar' ? 'true' : 'false');
     el('grid-size-range').style.display = viewMode === 'grid' ? '' : 'none';
     el('grid-size-range').value = gridTileSize;
     el('doc-grid').style.setProperty('--tile-w', `${gridTileSize}px`);
   }
 
   async function saveViewMode(mode){
-    viewMode = mode === 'grid' ? 'grid' : 'list';
+    viewMode = mode === 'grid' || mode === 'calendar' ? mode : 'list';
     writeSetting('view_mode', viewMode);
     await persistDb();
     applyViewMode();
     render();
+  }
+
+  // --- Calendar view ---
+  // A third rendering of the same filtered, sorted documents, by their own
+  // date (not the import date): a month grid, starting on the locale's first
+  // weekday, with each document a chip on its day, and the undated ones in
+  // a strip below. Chips are ordinary document items (click, double-click,
+  // right-click, drag -- see render()). calendarMonth ('YYYY-MM') is session
+  // state; it starts at the newest dated document listed, or this month.
+  let calendarMonth = null;
+  function calendarWeekStart(){
+    try{
+      const loc = new Intl.Locale(DATE_LOCALE[currentLang] || 'en-US');
+      const info = loc.getWeekInfo ? loc.getWeekInfo() : loc.weekInfo;
+      if(info && info.firstDay) return info.firstDay % 7; // 1 = Monday ... 7 = Sunday
+    }catch(e){ /* older browser */ }
+    return currentLang === 'en' ? 0 : 1;
+  }
+  function shiftMonth(ym, delta){
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+  function renderCalendar(sorted){
+    const cal = el('doc-calendar');
+    if(viewMode !== 'calendar'){ cal.innerHTML = ''; return; }
+    const dayOf = d => (d.date && /^\d{4}-\d{2}-\d{2}/.test(d.date)) ? d.date.slice(0, 10) : null;
+    const dated = sorted.filter(dayOf);
+    const today = todayIsoDate();
+    if(!calendarMonth){
+      const newest = dated.map(dayOf).sort().pop();
+      calendarMonth = (newest || today).slice(0, 7);
+    }
+    const [y, m] = calendarMonth.split('-').map(Number);
+    const locale = DATE_LOCALE[currentLang] || 'en-US';
+    const title = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    const byDay = {};
+    dated.forEach(d => { const k = dayOf(d); (byDay[k] = byDay[k] || []).push(d); });
+    const inMonth = dated.filter(d => dayOf(d).startsWith(calendarMonth)).length;
+    const weekStart = calendarWeekStart();
+    const weekdays = Array.from({length: 7}, (_, i) => new Date(Date.UTC(2024, 0, 7 + ((weekStart + i) % 7))).toLocaleDateString(locale, { weekday: 'short', timeZone: 'UTC' })); // 2024-01-07 was a Sunday
+    const first = new Date(Date.UTC(y, m - 1, 1));
+    const lead = (first.getUTCDay() - weekStart + 7) % 7;
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const cells = Math.ceil((lead + daysInMonth) / 7) * 7;
+    const chip = d => `<div class="cal-chip${d.id === selectedDocId ? ' row-selected' : ''}" data-id="${d.id}" title="${escapeHtml([displayName(d), d.category, formatAmount(d)].filter(Boolean).join(' · '))}">${escapeHtml(displayName(d))}</div>`;
+    let gridHtml = weekdays.map(w => `<div class="cal-weekday">${escapeHtml(w)}</div>`).join('');
+    for(let i = 0; i < cells; i++){
+      const date = new Date(Date.UTC(y, m - 1, 1 - lead + i));
+      const iso = date.toISOString().slice(0, 10);
+      const outside = !iso.startsWith(calendarMonth);
+      const docs = outside ? [] : (byDay[iso] || []);
+      gridHtml += `<div class="cal-day${outside ? ' cal-outside' : ''}${iso === today ? ' cal-today' : ''}" data-date="${iso}"><div class="cal-day-num">${date.getUTCDate()}</div>${docs.map(chip).join('')}</div>`;
+    }
+    const undated = sorted.filter(d => !dayOf(d));
+    cal.innerHTML = `
+      <div class="cal-head">
+        <button type="button" id="cal-prev-btn" title="${escapeHtml(t('calPrevMonth'))}" aria-label="${escapeHtml(t('calPrevMonth'))}">‹</button>
+        <div class="cal-title" id="cal-title">${escapeHtml(title)}</div>
+        <button type="button" id="cal-next-btn" title="${escapeHtml(t('calNextMonth'))}" aria-label="${escapeHtml(t('calNextMonth'))}">›</button>
+        <button type="button" id="cal-today-btn">${escapeHtml(t('calThisMonth'))}</button>
+        <span class="cal-month-count" id="cal-month-count">${inMonth === 1 ? t('calMonthCountSingular') : t('calMonthCountPlural', {count: inMonth})}</span>
+      </div>
+      <div class="cal-grid">${gridHtml}</div>
+      ${undated.length ? `<div class="cal-undated"><div class="cal-undated-title">${t('calUndated', {count: undated.length})}</div><div class="cal-undated-chips">${undated.map(chip).join('')}</div></div>` : ''}`;
+    el('cal-prev-btn').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, -1); render(); });
+    el('cal-next-btn').addEventListener('click', () => { calendarMonth = shiftMonth(calendarMonth, 1); render(); });
+    el('cal-today-btn').addEventListener('click', () => { calendarMonth = today.slice(0, 7); render(); });
   }
 
   function clearThumbCache(path){
@@ -12782,6 +12886,7 @@
   el('nav-style-toggle').addEventListener('click', () => saveNavStyle(navStyle === 'sidebar' ? 'tabs' : 'sidebar'));
   el('view-list-btn').addEventListener('click', () => { if(viewMode !== 'list') saveViewMode('list'); });
   el('view-grid-btn').addEventListener('click', () => { if(viewMode !== 'grid') saveViewMode('grid'); });
+  el('view-calendar-btn').addEventListener('click', () => { if(viewMode !== 'calendar') saveViewMode('calendar'); });
   el('grid-size-range').addEventListener('input', (e) => {
     gridTileSize = Number(e.target.value);
     el('doc-grid').style.setProperty('--tile-w', `${gridTileSize}px`);

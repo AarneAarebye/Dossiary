@@ -100,6 +100,8 @@ tus documentos como miniaturas:
 El interruptor **☰ Lista / ▦ Cuadrícula** junto a "Showing N of M
 documents" cambia a una tabla, con una fila por documento, y viceversa; el
 control deslizante de al lado ajusta el tamaño de las miniaturas.
+**▤ Calendario**, en el mismo interruptor, muestra un mes cada vez con
+cada documento en su fecha.
 
 ## Volver a encontrarlo
 

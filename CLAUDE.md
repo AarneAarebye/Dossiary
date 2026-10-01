@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (92 scripts) + shared
+tests/                   Playwright regression suite (93 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3941,6 +3941,24 @@ this repo's git tags.
   status line reports "Previews recreated: N. Already sharp: M.", or that
   it was stopped. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot)
   is unchanged.
+- **Calendar view** (`viewMode === 'calendar'`, `renderCalendar()`,
+  `calendarMonth`, `calendarWeekStart()`, `shiftMonth()`, `#doc-calendar`)
+  is the third value of the same `view_mode` setting and switch: a third
+  rendering of the filtered, sorted list inside `.table-wrap` (hidden
+  table, `view-calendar` class), so its height calibration is untouched.
+  Documents go on their own `date` (first 10 characters, so a stored time
+  doesn't matter), never `import_date`; undated ones are listed under the
+  month. The grid starts on the locale's first weekday
+  (`Intl.Locale#getWeekInfo()`, falling back to Sunday for English and
+  Monday otherwise) and leaves days outside the month empty. Each document
+  is a `.cal-chip` with a `data-id`, added to `render()`'s `docItems` so it
+  gets the same click/dblclick/contextmenu/drag handlers as rows and
+  tiles, and `tableRows()` returns the chips so J/K/D work; there's no
+  checkbox, so bulk selection stays a List/Grid thing. `calendarMonth`
+  ('YYYY-MM') is session state, reset by `resetAll()`, starting at the
+  newest dated document listed or else this month; the head shows the
+  month's document count. A day with many documents scrolls inside its
+  cell (`max-height`).
 - **Page tools** (`openPageToolsModal()`, `openCombineModal()`,
   `buildPdfFromPages()`, `replaceActiveFile()`, `refreshAfterPdfChange()`,
   `createSplitDocument()`) are built on **pdf-lib** (`ensurePdfLib()`,

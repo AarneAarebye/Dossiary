@@ -825,7 +825,16 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-collection folders (`test_collection_folders.py` -- the plain list
+the calendar view (`test_calendar_view.py` -- the switch's third button
+replacing the table; opening on the newest document's month with its
+count; Sunday-first in English, March 1st 2026 the first cell; a date
+stored with a time still landing on its day; outside days empty;
+undated documents below; previous month and Today (marking today); a
+chip selecting with its details, K moving to the previous chip, the
+context menu, dragging a chip onto a collection; the search narrowing
+the chips; the view remembered after reopening; German month name,
+Monday first, March 1st the seventh cell, translated labels; back to
+List), collection folders (`test_collection_folders.py` -- the plain list
 without folders and no folder picker yet; creating folders (button and
 Enter), the folder picker per collection, assignments saved, per-folder
 counts; the nav grouping collections under their folders with unfiled

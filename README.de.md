@@ -198,6 +198,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   durch scharfe und lässt bereits ausreichend große unverändert. Die
   Bibliotheksprüfung bietet danach an, die alten, von keinem Dokument mehr
   verwendeten Vorschaudateien zu löschen.
+- **Kalenderansicht** — die dritte Option am selben Schalter
+  (**▤ Kalender**): ein Monatsraster mit jedem Dokument an seinem Datum
+  (dem Datum des Dokuments, nicht dem Importdatum), beginnend mit dem
+  ersten Wochentag Ihrer Sprache, mit ‹ › zum Blättern und **Heute** zum
+  Zurückkehren. Dokumente ohne Datum stehen unter dem Monat. Gezeigt wird,
+  was Suche und Filter auflisten, und die Einträge verhalten sich wie
+  Zeilen (Klick, Doppelklick, Rechtsklick, auf eine Collection ziehen,
+  J/K).
 - **Seiten bearbeiten** — **Seiten bearbeiten…** im Detailbereich zeigt die
   Seiten eines PDFs: drehen, umsortieren, entfernen, Seiten aus einem
   anderen PDF oder einem Bild hinzufügen oder das Dokument mit ✂ in mehrere
@@ -998,7 +1006,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (92
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (93
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

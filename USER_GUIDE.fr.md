@@ -107,7 +107,8 @@ Dossiary affiche vos documents sous forme de vignettes :
 
 Le bouton **☰ Liste / ▦ Grille** à côté de "Showing N of M documents"
 passe à un tableau, une ligne par document, et inversement ; le curseur
-voisin règle la taille des vignettes.
+voisin règle la taille des vignettes. **▤ Calendrier**, sur le même
+bouton, affiche un mois à la fois, chaque document à sa date.
 
 ## Le retrouver ensuite
 

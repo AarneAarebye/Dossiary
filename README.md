@@ -168,6 +168,13 @@ working" problem that motivated this project in the first place.
   Mariner) with sharp ones, leaving any that are already large enough
   alone. Library check then offers to delete the old preview files no
   document uses any more.
+- **Calendar view** — the third option on the same switch
+  (**▤ Calendar**): a month grid with each document on its own date (the
+  document's date, not when it was imported), starting on your language's
+  first weekday, with ‹ › to change month and **Today** to come back.
+  Documents without a date are listed below the month. It shows whatever
+  the search and filters list, and its entries work like rows (click,
+  double-click, right-click, drag onto a collection, J/K).
 - **Page tools** — **Edit pages…** in the detail panel shows a PDF's pages:
   rotate them, reorder them, remove them, add pages from another PDF or an
   image, or split the document with ✂ into several (each part becomes its
