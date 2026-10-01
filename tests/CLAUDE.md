@@ -825,7 +825,11 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-line-item splits (`test_splits.py` -- the Edit form's split toggle; a
+hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;
+the dialog listing the six optional buttons ticked and never Add document
+or Tools; unticking hiding them at once and saving the setting; Details
+staying hidden after Reports sets its display; the choice surviving a
+reopen; ticking one again; German labels), line-item splits (`test_splits.py` -- the Edit form's split toggle; a
 line with a comma decimal and a note, the summary of what's split and what
 stays; the line saved, shown in the panel and the sidecar; a split-only
 category in the Category filter and matching it; a Smart Collection

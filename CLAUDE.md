@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (94 scripts) + shared
+tests/                   Playwright regression suite (95 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -1909,7 +1909,18 @@ this repo's git tags.
   listener that doesn't stop propagation, so the item's own listener
   still runs); Escape closes it and returns focus to `#tools-btn`; an
   outside click closes it like Columns. **Put new occasional actions in
-  this menu rather than on the toolbar.** **"Switch library"
+  this menu rather than on the toolbar.** **"👁 Toolbar buttons…"**
+  (`openToolbarButtonsModal()`, `OPTIONAL_TOOLBAR_BUTTONS`,
+  `hidden_toolbar_buttons` setting, a JSON key list) lets a library hide
+  daily buttons it doesn't use -- Check inbox, Check reminders, Scan, Scan
+  Multi, Details, Columns (its `.columns-menu-wrap`); never Add document or
+  Tools, so nothing becomes unreachable. Hiding only, deliberately: a
+  shorter toolbar can only free height, while adding or reordering buttons
+  is what keeps breaking the `.table-wrap` calibration. `.toolbar-hidden`
+  is `display:none !important`, because other code sets these buttons'
+  inline display (Details is hidden in Reports and shown again after);
+  hidden buttons keep their listeners. Copying a library's setup copies
+  the choice (it's a `settings` row). **"Switch library"
   (`#reload-btn`) is not in this menu -- it's a small `.sub-switch-btn`
   text link right after the library's name (`#sub-label`) in the
   header**, where "which library am I in" and "change it" read together;

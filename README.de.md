@@ -376,7 +376,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   daneben. „⇄ Switch library“ steht direkt neben dem Namen der geöffneten
   Bibliothek in der Kopfzeile; es führt zurück zum Startbildschirm, wo Sie
   eine zuletzt geöffnete Bibliothek wählen oder einen anderen Ordner
-  öffnen.
+  öffnen. Buttons, die Sie nie nutzen (etwa ohne Scanner), lassen sich
+  über „🛠 Werkzeuge → 👁 Werkzeugleisten-Buttons…“ ausblenden; die Wahl
+  wird je Bibliothek gespeichert, „Dokument hinzufügen“ und „Werkzeuge“
+  bleiben immer.
 - **Konfigurierbare Spalten & Filter** — über den Schalter „⚙ Columns“ in
   der Symbolleiste lassen sich Tabellenspalten ein-/ausblenden (Kategorie,
   Typ, Zahlungsmethode, Personen, Datum, Importiert, Betrag, Tags); jede
@@ -1017,7 +1020,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (94
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (95
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

@@ -322,7 +322,9 @@ working" problem that motivated this project in the first place.
   stats — live in the "🛠 Tools" dropdown next to it. "⇄ Switch library"
   sits right next to the open library's name in the header; it returns to
   the start screen, where you pick a recent library or open another
-  folder.
+  folder. Buttons you never use (no scanner, say) can be hidden with
+  "🛠 Tools → 👁 Toolbar buttons…"; the choice is saved per library, and
+  Add document and Tools always stay.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
   People, Date, Imported, Amount, Tags); each one that supports filtering
