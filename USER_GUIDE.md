@@ -161,6 +161,14 @@ get started, so this section is intentionally brief.
 
   ![The Reports view, showing document counts and totals per category](docs/user-guide/en/11-reports.png)
 
+- **Splitting a receipt** — one receipt can cover several categories (a
+  supermarket bill with groceries and household items). Below the fields
+  of the add or edit form, click **+ Split across categories** and add a
+  line per category with its amount, plus an optional note. Whatever you
+  don't split stays with the document's own category. Reports by category
+  then count each part where it belongs, and filtering by a category also
+  finds documents that are partly in it.
+
 - **Collections** — save a group of documents together, either by hand
   (select and add, or drag documents onto the collection's name in the
   sidebar) or as a "Smart Collection" that automatically

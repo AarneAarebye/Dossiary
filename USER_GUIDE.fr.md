@@ -178,6 +178,15 @@ brève.
 
   ![La vue Rapports, montrant le nombre de documents et les totaux par catégorie](docs/user-guide/fr/09-reports.png)
 
+- **Répartir un ticket** — un ticket peut concerner plusieurs catégories
+  (un ticket de supermarché avec de l'alimentation et des produits
+  ménagers). Sous les champs du formulaire d'ajout ou de modification,
+  cliquez sur **+ Répartir entre catégories** et ajoutez une ligne par
+  catégorie avec son montant, et une note si vous le souhaitez. Ce que vous
+  ne répartissez pas reste dans la catégorie du document. Les rapports par
+  catégorie comptent alors chaque part au bon endroit, et filtrer par une
+  catégorie trouve aussi les documents qui en relèvent en partie.
+
 - **Collections** — regroupez des documents ensemble, soit manuellement
   (sélection et ajout, ou en faisant glisser des documents sur le nom
   de la collection dans la barre latérale), soit sous forme de "Collection intelligente" qui

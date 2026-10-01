@@ -168,6 +168,15 @@ necesaria para empezar, así que esta sección es intencionadamente breve.
 
   ![La vista de Informes, mostrando el número de documentos y los totales por categoría](docs/user-guide/es/09-reports.png)
 
+- **Dividir un recibo** — un recibo puede abarcar varias categorías (un
+  tique del supermercado con comida y artículos del hogar). Debajo de los
+  campos del formulario de añadir o editar, haz clic en **+ Dividir entre
+  categorías** y añade una línea por categoría con su importe y, si
+  quieres, una nota. Lo que no dividas se queda en la categoría del
+  documento. Los informes por categoría cuentan entonces cada parte donde
+  corresponde, y filtrar por una categoría también encuentra documentos
+  que pertenecen a ella en parte.
+
 - **Colecciones** — guarda un grupo de documentos juntos, ya sea a mano
   (seleccionando y añadiendo, o arrastrando documentos sobre el nombre
   de la colección en la barra lateral) o como una "Colección inteligente" que se

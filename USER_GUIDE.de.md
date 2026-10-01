@@ -174,6 +174,15 @@ kurz.
 
   ![Die Berichte-Ansicht mit Dokumentenanzahl und Summen pro Kategorie](docs/user-guide/de/09-reports.png)
 
+- **Einen Beleg aufteilen** — ein Beleg kann mehrere Kategorien betreffen
+  (ein Supermarkt-Bon mit Lebensmitteln und Haushaltswaren). Klicke unter
+  den Feldern des Erfassungs- oder Bearbeiten-Formulars auf **+ Auf
+  Kategorien aufteilen** und lege pro Kategorie eine Zeile mit ihrem
+  Betrag an, auf Wunsch mit Notiz. Was du nicht aufteilst, bleibt bei der
+  Kategorie des Dokuments. Berichte nach Kategorie zählen dann jeden Teil
+  dort, wo er hingehört, und der Kategoriefilter findet auch Dokumente, die
+  nur teilweise dazugehören.
+
 - **Sammlungen** — fasse eine Gruppe von Dokumenten zusammen, entweder von
   Hand (auswählen und hinzufügen, oder Dokumente auf den Namen der
   Sammlung in der Seitenleiste ziehen) oder als "Intelligente Sammlung", die
