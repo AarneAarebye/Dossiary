@@ -159,7 +159,7 @@ working" problem that motivated this project in the first place.
 - **Grid view** — documents are shown as preview tiles by default; the
   **☰ List / ▦ Grid** switch at the right of the "Showing N of M" line
   changes to a table and back, with a slider for the tile size; the choice is remembered per
-  library. Tiles work like rows: click to see details, double-click to
+  library. Tiles work like rows (with their own **Select all visible** above them): click to see details, double-click to
   open, right-click for the menu, tick to select, J/K to move. Documents
   without a preview show a placeholder, and **Create missing previews**
   makes them for the listed documents (it can be stopped). New previews
@@ -897,7 +897,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (88
+There's a real, runnable Playwright regression suite in `tests/` (96
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

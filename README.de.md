@@ -188,7 +188,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Rasteransicht** — Dokumente erscheinen standardmäßig als
   Vorschau-Kacheln; der Schalter **☰ Liste / ▦ Raster** rechts neben
   „Showing N of M“ wechselt zur Tabelle und zurück, mit einem Regler für die Kachelgröße; die Wahl wird je
-  Bibliothek gespeichert. Kacheln verhalten sich wie Zeilen: Klick zeigt
+  Bibliothek gespeichert. Kacheln verhalten sich wie Zeilen (mit eigenem **Alle sichtbaren auswählen** darüber): Klick zeigt
   die Details, Doppelklick öffnet, Rechtsklick öffnet das Menü, Haken
   wählt aus, J/K wechselt. Dokumente ohne Vorschau zeigen einen Platzhalter,
   und **Fehlende Vorschauen erstellen** erzeugt sie für die angezeigten
