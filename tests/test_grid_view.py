@@ -55,6 +55,7 @@ async def main():
                 await route.continue_()
         await page.route('**/*', route_handler)
         await page.add_init_script(open('stub_studio2.js').read())
+        await page.add_init_script("window.__STUB_KEEP_DEFAULT_VIEW = true;")  # check the app's own default
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
@@ -81,13 +82,17 @@ async def main():
         settings = lambda st: {s['key']: s['value'] for s in st['settings']}
         tiles = lambda: page.locator('#doc-grid .doc-tile').evaluate_all("ts => ts.map(t => Number(t.dataset.id))")
         count_row = page.locator('.count-row')
-        h_list = (await count_row.bounding_box())['height']
 
-        # === Scenario 1: List is the default; the switch sits on the count line ===
-        print("List view by default, no tiles:", await page.locator('#doc-table').is_visible() and await tiles() == [])
-        print("Switch shown with List pressed, size slider hidden:",
-              await page.get_attribute('#view-list-btn', 'aria-pressed') == 'true' and not await page.locator('#grid-size-range').is_visible())
+        # === Scenario 1: Grid is the default; List keeps the table and count line ===
+        print("Grid by default for a library that never chose a view:", not await page.locator('#doc-table').is_visible() and len(await tiles()) == 6
+              and await page.get_attribute('#view-grid-btn', 'aria-pressed') == 'true')
+        await page.click('#view-list-btn')
+        await page.wait_for_timeout(300)
+        print("List shows the table, size slider hidden:", await page.locator('#doc-table').is_visible() and await tiles() == []
+              and not await page.locator('#grid-size-range').is_visible())
+        print("Choosing List is saved:", settings(await state()).get('view_mode') == 'list')
         print("Count line text unchanged:", await page.inner_text('#count-line') == 'Showing 6 of 6 documents')
+        h_list = (await count_row.bounding_box())['height']
 
         # === Scenario 2: switching to Grid ===
         await page.click('#view-grid-btn')

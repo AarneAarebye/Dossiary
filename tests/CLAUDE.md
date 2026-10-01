@@ -820,8 +820,12 @@ scrollable mobile toolbar), Library check's unused preview files
 listed with their total size, a Waste-bin document's preview and the
 current JPEG not listed, `.DS_Store` ignored; declining the confirmation
 deleting nothing, confirming deleting exactly the two, the result shown in
-place, and the next check finding nothing), the grid view (`test_grid_view.py` -- List
-by default with the count line's text unchanged; Grid showing one tile per
+place, and the next check finding nothing), the grid view (`test_grid_view.py` -- Grid
+by default for a library that never chose a view (the test sets
+`window.__STUB_KEEP_DEFAULT_VIEW`, since the shared stub otherwise starts
+every library in List so the rest of the suite can drive the table),
+choosing List showing the table and being saved, the count line's text
+unchanged; Grid showing one tile per
 listed document in the table's order (Waste bin excluded), the table
 hidden, the choice saved, and the count row still exactly as tall as the
 count line alone; a stored preview shown, a placeholder with the file kind

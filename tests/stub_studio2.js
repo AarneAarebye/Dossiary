@@ -197,6 +197,12 @@ class FakeDatabase {
     } else {
       this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [] };
     }
+    // The app opens a library that never chose a view in Grid; nearly every
+    // test drives the table, so test libraries start in List unless a test
+    // sets window.__STUB_KEEP_DEFAULT_VIEW to check the real default.
+    if (!window.__STUB_KEEP_DEFAULT_VIEW && !this.tables.settings.some(r => r.key === 'view_mode')) {
+      this.tables.settings.push({ key: 'view_mode', value: 'list' });
+    }
   }
   run(sql, params) {
     params = params || [];

@@ -10982,7 +10982,7 @@
 
   // --- Grid view ---
   // A per-library choice (view_mode) between the table and a grid of preview
-  // tiles. The grid is a second rendering of the same filtered, sorted
+  // tiles; Grid until someone picks List. The grid is a second rendering of the same filtered, sorted
   // documents inside .table-wrap, so filters, sorting, selection, the detail
   // panel, the context menu and the keyboard shortcuts all carry over, and
   // .table-wrap's height calibration is untouched. The switch and the tile-size
@@ -10992,7 +10992,7 @@
   // nothing is generated automatically -- "Create missing previews" is an
   // explicit click, per the no-silent-writes convention -- so is "Recreate
   // older previews" (see runPreviewJob()).
-  let viewMode = 'list';
+  let viewMode = 'grid';
   let gridTileSize = 200;
   const GRID_TILE_MIN = 140, GRID_TILE_MAX = 360;
   const thumbUrlCache = new Map();
@@ -11000,7 +11000,7 @@
   let previewsRun = null; // {stop, done, total} while "Create missing previews" runs
 
   function loadViewMode(){
-    viewMode = readSetting('view_mode') === 'grid' ? 'grid' : 'list';
+    viewMode = readSetting('view_mode') === 'list' ? 'list' : 'grid'; // Grid unless List was chosen
     const n = parseInt(readSetting('grid_tile_size'), 10);
     gridTileSize = Number.isInteger(n) && n >= GRID_TILE_MIN && n <= GRID_TILE_MAX ? n : 200;
     applyViewMode();

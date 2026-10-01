@@ -185,9 +185,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   ein weiterer Bibliotheksordner: zum Wiederherstellen öffnen Sie ihn. Beim
   Öffnen der Bibliothek erinnert ein Hinweis, wenn eine Sicherung fällig ist
   (standardmäßig alle 30 Tage, einstellbar oder abschaltbar).
-- **Rasteransicht** — der Schalter **☰ Liste / ▦ Raster** rechts neben
-  „Showing N of M“ zeigt die Dokumente als Vorschau-Kacheln statt als
-  Tabelle, mit einem Regler für die Kachelgröße; die Wahl wird je
+- **Rasteransicht** — Dokumente erscheinen standardmäßig als
+  Vorschau-Kacheln; der Schalter **☰ Liste / ▦ Raster** rechts neben
+  „Showing N of M“ wechselt zur Tabelle und zurück, mit einem Regler für die Kachelgröße; die Wahl wird je
   Bibliothek gespeichert. Kacheln verhalten sich wie Zeilen: Klick zeigt
   die Details, Doppelklick öffnet, Rechtsklick öffnet das Menü, Haken
   wählt aus, J/K wechselt. Dokumente ohne Vorschau zeigen einen Platzhalter,

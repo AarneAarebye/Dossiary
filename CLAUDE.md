@@ -3775,8 +3775,13 @@ this repo's git tags.
   `deleteOrphanedTags()`.
 - **Grid view** (`viewMode`, `loadViewMode()`/`saveViewMode()`/
   `applyViewMode()`, `renderGrid()`, `loadTileThumb()`,
-  `createMissingPreviews()`) is a per-library choice (`view_mode`
-  setting, `'list'` | `'grid'`) between the table and preview tiles. The
+  `runPreviewJob()`) is a per-library choice (`view_mode` setting,
+  `'list'` | `'grid'`) between the table and preview tiles. **Grid is the
+  default** for a library that never chose (only a saved `'list'` gives
+  List). Because nearly every test drives the table, the test stub's
+  `FakeDatabase` adds `view_mode = 'list'` to any library without one,
+  unless a test sets `window.__STUB_KEEP_DEFAULT_VIEW` (as
+  `test_grid_view.py` does to check the real default). The
   grid (`#doc-grid`) is a second rendering of the same filtered, sorted
   list inside `.table-wrap`, toggled by a `view-grid` class on
   `#main-layout` that hides `#doc-table`, so `.table-wrap`'s height

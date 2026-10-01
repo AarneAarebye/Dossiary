@@ -156,9 +156,9 @@ working" problem that motivated this project in the first place.
   different cloud). A backup is just another library folder: to restore,
   open it. A reminder on opening the library (every 30 days by default,
   adjustable, or off) tells you when a backup is due.
-- **Grid view** — the **☰ List / ▦ Grid** switch at the right of the
-  "Showing N of M" line shows the documents as preview tiles instead of a
-  table, with a slider for the tile size; the choice is remembered per
+- **Grid view** — documents are shown as preview tiles by default; the
+  **☰ List / ▦ Grid** switch at the right of the "Showing N of M" line
+  changes to a table and back, with a slider for the tile size; the choice is remembered per
   library. Tiles work like rows: click to see details, double-click to
   open, right-click for the menu, tick to select, J/K to move. Documents
   without a preview show a placeholder, and **Create missing previews**
