@@ -489,7 +489,13 @@ working" problem that motivated this project in the first place.
    or click **Use this folder as the library** to set up the chosen folder
    itself. The `.dossiary` ending is only a naming convention — a browser
    app can't register a file type, so it stays an ordinary folder, and any
-   folder with a `library.sqlite` opens either way.
+   folder with a `library.sqlite` opens either way. **Copy the setup of**
+   can start the new library with another library's custom fields,
+   document types and their field order, field descriptions, Smart
+   Collections and settings (handy for one library per year) — picked
+   from your recent libraries or any library folder, which is only read.
+   Documents, tags, people, manual collections and the last-backup date
+   are never copied.
 3. Click **"＋ Add document"** to capture something new.
 
 ### Installing it as an app (currently unavailable)

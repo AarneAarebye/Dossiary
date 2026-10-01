@@ -188,6 +188,11 @@ necesaria para empezar, así que esta sección es intencionadamente breve.
   reminder". Nada se ejecuta en segundo plano — Dossiary solo comprueba
   cuando realmente lo abres o pulsas el botón.
 
+- **Una biblioteca por año** — al crear una biblioteca nueva, "Copiar la
+  configuración de" la inicia con los campos personalizados, tipos de
+  documento, descripciones de campos, colecciones inteligentes y ajustes
+  de otra biblioteca. Sus documentos se quedan donde están.
+
 ## ¿Y ahora qué?
 
 - ¿Tienes curiosidad por saber cómo almacena realmente Dossiary tus

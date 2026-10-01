@@ -200,6 +200,12 @@ brève.
   Rien ne s'exécute en arrière-plan — Dossiary ne vérifie que lorsque vous
   ouvrez réellement l'application ou cliquez sur le bouton.
 
+- **Une bibliothèque par an** — en créant une nouvelle bibliothèque,
+  « Copier la configuration de » la démarre avec les champs
+  personnalisés, types de document, descriptions de champs, collections
+  intelligentes et réglages d'une autre bibliothèque. Ses documents
+  restent où ils sont.
+
 ## Et ensuite ?
 
 - Curieux de savoir comment Dossiary stocke réellement vos données, ou

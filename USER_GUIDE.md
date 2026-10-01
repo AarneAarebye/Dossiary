@@ -181,6 +181,11 @@ get started, so this section is intentionally brief.
   reminder." Nothing runs in the background — Dossiary only ever checks
   when you actually open it or click the button.
 
+- **One library per year** — when you create a new library, "Copy the
+  setup of" can start it with another library's custom fields, document
+  types, field descriptions, Smart Collections and settings. Its documents
+  stay where they are.
+
 ## Where to go next
 
 - Curious how Dossiary actually stores your data, or want the full list

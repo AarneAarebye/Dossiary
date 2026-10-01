@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (88 scripts) + shared
+tests/                   Playwright regression suite (89 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2595,6 +2595,28 @@ this repo's git tags.
   and becomes the main action -- the name form hidden -- when that folder
   already ends in `.dossiary`. A language switch on this screen swaps an
   untouched default name and rebuilds the preview (`setLang()`).
+  **"Copy the setup of"** (`#copy-setup-select`, `renderCopySetupOptions()`,
+  `readSetupSourceOrShowError()`, `copySetupFrom()`) starts either path
+  with another library's setup: its `fields` (ids kept, since
+  `visible_columns`, `sort_key` and Smart Collection rules refer to
+  `field-<id>`/`field:<id>`), `document_type_fields`, `field_descriptions`,
+  smart `collections`, and every `settings` row except
+  `SETUP_SETTINGS_NOT_COPIED` (`last_backup_at`) -- the migration markers
+  included, so `migrateTextFieldsAutocompleteDefault()` doesn't switch a
+  copied field's deliberately-off autocomplete back on. Never documents,
+  tags, people or manual collections. The source comes from Recent
+  libraries or "Another library folder…" (`showDirectoryPicker({mode:
+  'read'})`), and is read into a separate in-memory sql.js database, never
+  written. It's read *before* the new folder is created, so an unreadable
+  source (no permission, no `library.sqlite`) is reported in
+  `#copy-setup-error` and leaves nothing half-made. `copySetupFrom()` runs
+  in `initNewLibrary(setup)` right after `SCHEMA` and before the field
+  migrations, which find the copied built-in fields by name and add only
+  what's missing. Columns are listed explicitly (`SELECT id, name, ... FROM
+  fields`, not `SELECT *`), per the sql.js convention above and so the test
+  stub's `FakeDatabase` can serve it; a table an older source lacks is
+  skipped. The status line adds `statusSetupCopiedFrom`
+  (`setupCopiedFromName`, read by `afterDbReady()`).
 - **Recent libraries** (`renderRecentLibraries()`, `recordRecentLibrary()`,
   `reconnectRecentLibrary()`, `#recent-libraries` on the empty-state screen)
   reverses what an earlier version of this note called an unavoidable

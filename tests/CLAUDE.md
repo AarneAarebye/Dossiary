@@ -824,7 +824,19 @@ library inside it and nothing in the picked folder, the new library open
 under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
-untouched default name and preview following a switch to German), Library check's unused preview files
+untouched default name and preview following a switch to German),
+copying another library's setup into a new one (`test_copy_setup.py` --
+from a recent library: custom field copied with its id and its
+switched-off autocomplete, no built-in field duplicated, document types'
+field order, field descriptions, the smart but not the manual collection,
+settings but not `last_backup_at`, no documents/tags/people, the status
+line naming the source, the copied column and smart collection showing,
+and the source's `library.sqlite` byte-for-byte unchanged; "Another
+library folder…" adding and selecting the picked folder, used with "Use
+this folder as the library"; a picked folder without `library.sqlite`
+reported with no `.dossiary` folder created; a cancelled picker keeping
+the earlier choice; the options retranslating to German; and "Nothing"
+giving a plain library), Library check's unused preview files
 (`test_unused_previews.py` -- an old PNG and a preview in a subfolder
 listed with their total size, a Waste-bin document's preview and the
 current JPEG not listed, `.DS_Store` ignored; declining the confirmation

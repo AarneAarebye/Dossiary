@@ -578,6 +578,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
    `.dossiary` ist nur eine Namenskonvention: Eine Browser-App kann keinen
    Dateityp registrieren, der Ordner bleibt also ein gewöhnlicher Ordner,
    und jeder Ordner mit `library.sqlite` lässt sich so oder so öffnen.
+   **Einrichtung übernehmen von** startet die neue Bibliothek mit den
+   eigenen Feldern, Dokumenttypen samt Feldreihenfolge,
+   Feldbeschreibungen, intelligenten Sammlungen und Einstellungen einer
+   anderen Bibliothek (praktisch für eine Bibliothek pro Jahr) — gewählt
+   aus den zuletzt geöffneten Bibliotheken oder einem beliebigen
+   Bibliotheksordner, der dabei nur gelesen wird. Dokumente, Tags,
+   Personen, manuelle Sammlungen und das Datum der letzten Sicherung
+   werden nie übernommen.
 3. Klicken Sie auf **„＋ Add document“**, um etwas Neues zu erfassen.
 
 ### Als App installieren (derzeit nicht verfügbar)
@@ -985,7 +993,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (88
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (89
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

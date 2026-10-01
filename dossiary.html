@@ -305,6 +305,7 @@
   .new-library-row{ display:flex; gap:8px; flex-wrap:wrap; }
   .new-library-row input{ flex:1 1 200px; min-width:0; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:8px 10px; color:var(--text); font-family:var(--font-sans); font-size:13.5px; }
   .new-library-form .status{ padding:4px 0 0; }
+  .copy-setup-row select{ width:100%; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:8px 10px; color:var(--text); font-family:var(--font-sans); font-size:13.5px; }
   .empty .hint{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); margin-top:18px; line-height:1.7; text-align:left; }
 
   /* .table-wrap is a bounded scroll container so thead's sticky header has
@@ -881,6 +882,12 @@
           <div class="field-hint" id="new-library-hint"></div>
           <div class="status err" id="new-library-error"></div>
         </div>
+        <div class="new-library-form copy-setup-row" id="copy-setup-row">
+          <label for="copy-setup-select" data-i18n="copySetupLabel">Copy the setup of</label>
+          <select id="copy-setup-select"></select>
+          <div class="field-hint" data-i18n="copySetupHint">Copies fields, document types, field descriptions, smart collections and settings. No documents, tags or people.</div>
+          <div class="status err" id="copy-setup-error"></div>
+        </div>
         <button id="init-btn" data-i18n="initButton">Use this folder as the library</button>
         <button id="pick-again-btn" data-i18n="initPickAgain">Choose a different folder</button>
       </div>
@@ -1035,7 +1042,7 @@
   const DATE_LOCALE = { en: 'en-US', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
-      newLibraryNameLabel: 'Name of the new library', createLibraryBtn: 'Create library in this folder', newLibraryDefaultName: 'My Documents', newLibraryHint: 'Creates the folder “{name}” inside “{parent}”.', newLibraryNameInvalid: 'Enter a name without / \\ : * ? " < > | and not starting with a dot.', newLibraryExists: 'There’s already a folder called “{name}” here. Choose another name.',
+      newLibraryNameLabel: 'Name of the new library', createLibraryBtn: 'Create library in this folder', newLibraryDefaultName: 'My Documents', newLibraryHint: 'Creates the folder “{name}” inside “{parent}”.', newLibraryNameInvalid: 'Enter a name without / \\ : * ? " < > | and not starting with a dot.', newLibraryExists: 'There’s already a folder called “{name}” here. Choose another name.', copySetupLabel: 'Copy the setup of', copySetupNone: 'Nothing, start empty', copySetupPick: 'Another library folder…', copySetupHint: 'Copies fields, document types, field descriptions, smart collections and settings. No documents, tags or people.', copySetupDenied: 'No permission to read “{name}”.', copySetupNoLibrary: '“{name}” isn’t a Dossiary library (no library.sqlite in it).', statusSetupCopiedFrom: 'Setup copied from “{name}”.',
       libraryCheckUnusedPreviewsLabel: 'Unused preview files', libraryCheckDeleteUnusedPreviewsBtn: 'Delete unused preview files', libraryCheckUnusedPreviewsSummary: 'Preview images no document uses any more: {count} ({size}). Your documents aren\'t affected.', libraryCheckConfirmDeleteUnusedPreviews: 'Delete {count} unused preview files ({size})? Only previews no document uses are removed; your documents aren\'t touched. This can\'t be undone.', libraryCheckUnusedPreviewsDeleted: 'Deleted unused preview files: {removed}.', libraryCheckUnusedPreviewsPartly: 'Deleted unused preview files: {removed}. Could not delete: {left}.',
       gridUpgradePreviews: 'Recreate older previews ({count})', gridPreviewsUpgraded: 'Previews recreated: {recreated}. Already sharp: {kept}.', gridPreviewsUpgradedStopped: 'Stopped. Previews recreated: {recreated}. Already sharp: {kept}. Click again to continue.',
       viewList: '☰ List', viewGrid: '▦ Grid', gridSizeTitle: 'Preview size', gridNoPreview: 'No preview', gridPreviewMissing: 'Preview missing', gridCreatePreviews: 'Create missing previews ({count})', gridCreatingPreviews: 'Creating previews… {done} of {total} — click to stop',
@@ -1247,7 +1254,7 @@
       reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNotDuplicateLabel: 'Not a duplicate', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
-      newLibraryNameLabel: 'Nombre de la nueva biblioteca', createLibraryBtn: 'Crear la biblioteca en esta carpeta', newLibraryDefaultName: 'Mis documentos', newLibraryHint: 'Crea la carpeta «{name}» dentro de «{parent}».', newLibraryNameInvalid: 'Escribe un nombre sin / \\ : * ? " < > | y que no empiece por punto.', newLibraryExists: 'Ya hay una carpeta llamada «{name}» aquí. Elige otro nombre.',
+      newLibraryNameLabel: 'Nombre de la nueva biblioteca', createLibraryBtn: 'Crear la biblioteca en esta carpeta', newLibraryDefaultName: 'Mis documentos', newLibraryHint: 'Crea la carpeta «{name}» dentro de «{parent}».', newLibraryNameInvalid: 'Escribe un nombre sin / \\ : * ? " < > | y que no empiece por punto.', newLibraryExists: 'Ya hay una carpeta llamada «{name}» aquí. Elige otro nombre.', copySetupLabel: 'Copiar la configuración de', copySetupNone: 'Nada, empezar vacía', copySetupPick: 'Otra carpeta de biblioteca…', copySetupHint: 'Copia campos, tipos de documento, descripciones de campos, colecciones inteligentes y ajustes. Ni documentos, ni etiquetas, ni personas.', copySetupDenied: 'Sin permiso para leer «{name}».', copySetupNoLibrary: '«{name}» no es una biblioteca de Dossiary (no contiene library.sqlite).', statusSetupCopiedFrom: 'Configuración copiada de «{name}».',
       libraryCheckUnusedPreviewsLabel: 'Archivos de vista previa sin usar', libraryCheckDeleteUnusedPreviewsBtn: 'Eliminar archivos de vista previa sin usar', libraryCheckUnusedPreviewsSummary: 'Imágenes de vista previa que ya no usa ningún documento: {count} ({size}). Tus documentos no se ven afectados.', libraryCheckConfirmDeleteUnusedPreviews: '¿Eliminar {count} archivos de vista previa sin usar ({size})? Solo se quitan vistas previas que no usa ningún documento; tus documentos no se tocan. Esto no se puede deshacer.', libraryCheckUnusedPreviewsDeleted: 'Archivos de vista previa sin usar eliminados: {removed}.', libraryCheckUnusedPreviewsPartly: 'Archivos de vista previa sin usar eliminados: {removed}. No se pudieron eliminar: {left}.',
       gridUpgradePreviews: 'Recrear vistas previas antiguas ({count})', gridPreviewsUpgraded: 'Vistas previas recreadas: {recreated}. Ya nítidas: {kept}.', gridPreviewsUpgradedStopped: 'Detenido. Vistas previas recreadas: {recreated}. Ya nítidas: {kept}. Vuelve a hacer clic para continuar.',
       viewList: '☰ Lista', viewGrid: '▦ Cuadrícula', gridSizeTitle: 'Tamaño de la vista previa', gridNoPreview: 'Sin vista previa', gridPreviewMissing: 'Falta la vista previa', gridCreatePreviews: 'Crear vistas previas que faltan ({count})', gridCreatingPreviews: 'Creando vistas previas… {done} de {total} — haz clic para detener',
@@ -1459,7 +1466,7 @@
       reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNotDuplicateLabel: 'No es un duplicado', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
-      newLibraryNameLabel: 'Nom de la nouvelle bibliothèque', createLibraryBtn: 'Créer la bibliothèque dans ce dossier', newLibraryDefaultName: 'Mes documents', newLibraryHint: 'Crée le dossier « {name} » dans « {parent} ».', newLibraryNameInvalid: 'Saisissez un nom sans / \\ : * ? " < > | et qui ne commence pas par un point.', newLibraryExists: 'Il existe déjà un dossier « {name} » ici. Choisissez un autre nom.',
+      newLibraryNameLabel: 'Nom de la nouvelle bibliothèque', createLibraryBtn: 'Créer la bibliothèque dans ce dossier', newLibraryDefaultName: 'Mes documents', newLibraryHint: 'Crée le dossier « {name} » dans « {parent} ».', newLibraryNameInvalid: 'Saisissez un nom sans / \\ : * ? " < > | et qui ne commence pas par un point.', newLibraryExists: 'Il existe déjà un dossier « {name} » ici. Choisissez un autre nom.', copySetupLabel: 'Copier la configuration de', copySetupNone: 'Rien, commencer vide', copySetupPick: 'Un autre dossier de bibliothèque…', copySetupHint: 'Copie les champs, types de document, descriptions de champs, collections intelligentes et réglages. Ni documents, ni étiquettes, ni personnes.', copySetupDenied: 'Pas d’autorisation de lire « {name} ».', copySetupNoLibrary: '« {name} » n’est pas une bibliothèque Dossiary (pas de library.sqlite).', statusSetupCopiedFrom: 'Configuration copiée depuis « {name} ».',
       libraryCheckUnusedPreviewsLabel: 'Fichiers d’aperçu inutilisés', libraryCheckDeleteUnusedPreviewsBtn: 'Supprimer les fichiers d’aperçu inutilisés', libraryCheckUnusedPreviewsSummary: 'Images d’aperçu qu’aucun document n’utilise plus : {count} ({size}). Vos documents ne sont pas concernés.', libraryCheckConfirmDeleteUnusedPreviews: 'Supprimer {count} fichiers d’aperçu inutilisés ({size}) ? Seuls les aperçus qu’aucun document n’utilise sont retirés ; vos documents ne sont pas touchés. Cette action est irréversible.', libraryCheckUnusedPreviewsDeleted: 'Fichiers d’aperçu inutilisés supprimés : {removed}.', libraryCheckUnusedPreviewsPartly: 'Fichiers d’aperçu inutilisés supprimés : {removed}. Impossible à supprimer : {left}.',
       gridUpgradePreviews: 'Recréer les anciens aperçus ({count})', gridPreviewsUpgraded: 'Aperçus recréés : {recreated}. Déjà nets : {kept}.', gridPreviewsUpgradedStopped: 'Arrêté. Aperçus recréés : {recreated}. Déjà nets : {kept}. Cliquez à nouveau pour continuer.',
       viewList: '☰ Liste', viewGrid: '▦ Grille', gridSizeTitle: 'Taille de l’aperçu', gridNoPreview: 'Pas d’aperçu', gridPreviewMissing: 'Aperçu manquant', gridCreatePreviews: 'Créer les aperçus manquants ({count})', gridCreatingPreviews: 'Création des aperçus… {done} sur {total} — cliquez pour arrêter',
@@ -1671,7 +1678,7 @@
       reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNotDuplicateLabel: 'Pas un doublon', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
-      newLibraryNameLabel: 'Name der neuen Bibliothek', createLibraryBtn: 'Bibliothek in diesem Ordner anlegen', newLibraryDefaultName: 'Meine Dokumente', newLibraryHint: 'Legt den Ordner „{name}“ in „{parent}“ an.', newLibraryNameInvalid: 'Gib einen Namen ohne / \\ : * ? " < > | ein, der nicht mit einem Punkt beginnt.', newLibraryExists: 'Hier gibt es bereits einen Ordner „{name}“. Wähle einen anderen Namen.',
+      newLibraryNameLabel: 'Name der neuen Bibliothek', createLibraryBtn: 'Bibliothek in diesem Ordner anlegen', newLibraryDefaultName: 'Meine Dokumente', newLibraryHint: 'Legt den Ordner „{name}“ in „{parent}“ an.', newLibraryNameInvalid: 'Gib einen Namen ohne / \\ : * ? " < > | ein, der nicht mit einem Punkt beginnt.', newLibraryExists: 'Hier gibt es bereits einen Ordner „{name}“. Wähle einen anderen Namen.', copySetupLabel: 'Einrichtung übernehmen von', copySetupNone: 'Nichts, leer beginnen', copySetupPick: 'Anderer Bibliotheksordner…', copySetupHint: 'Übernimmt Felder, Dokumenttypen, Feldbeschreibungen, intelligente Sammlungen und Einstellungen. Keine Dokumente, Tags oder Personen.', copySetupDenied: 'Keine Berechtigung, „{name}“ zu lesen.', copySetupNoLibrary: '„{name}“ ist keine Dossiary-Bibliothek (keine library.sqlite darin).', statusSetupCopiedFrom: 'Einrichtung von „{name}“ übernommen.',
       libraryCheckUnusedPreviewsLabel: 'Unbenutzte Vorschaudateien', libraryCheckDeleteUnusedPreviewsBtn: 'Unbenutzte Vorschaudateien löschen', libraryCheckUnusedPreviewsSummary: 'Vorschaubilder, die kein Dokument mehr verwendet: {count} ({size}). Deine Dokumente sind nicht betroffen.', libraryCheckConfirmDeleteUnusedPreviews: '{count} unbenutzte Vorschaudateien ({size}) löschen? Es werden nur Vorschauen entfernt, die kein Dokument verwendet; deine Dokumente bleiben unberührt. Dies kann nicht rückgängig gemacht werden.', libraryCheckUnusedPreviewsDeleted: 'Unbenutzte Vorschaudateien gelöscht: {removed}.', libraryCheckUnusedPreviewsPartly: 'Unbenutzte Vorschaudateien gelöscht: {removed}. Nicht löschbar: {left}.',
       gridUpgradePreviews: 'Ältere Vorschauen neu erstellen ({count})', gridPreviewsUpgraded: 'Vorschauen neu erstellt: {recreated}. Bereits scharf: {kept}.', gridPreviewsUpgradedStopped: 'Angehalten. Vorschauen neu erstellt: {recreated}. Bereits scharf: {kept}. Erneut klicken, um fortzufahren.',
       viewList: '☰ Liste', viewGrid: '▦ Raster', gridSizeTitle: 'Vorschaugröße', gridNoPreview: 'Keine Vorschau', gridPreviewMissing: 'Vorschau fehlt', gridCreatePreviews: 'Fehlende Vorschauen erstellen ({count})', gridCreatingPreviews: 'Vorschauen werden erstellt… {done} von {total} — Klick zum Anhalten',
@@ -1883,7 +1890,7 @@
       reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNotDuplicateLabel: 'Kein Duplikat', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
-      newLibraryNameLabel: '新资料库的名称', createLibraryBtn: '在此文件夹中创建资料库', newLibraryDefaultName: '我的文档', newLibraryHint: '将在“{parent}”中创建文件夹“{name}”。', newLibraryNameInvalid: '请输入不含 / \\ : * ? " < > | 且不以点开头的名称。', newLibraryExists: '此处已有名为“{name}”的文件夹，请换一个名称。',
+      newLibraryNameLabel: '新资料库的名称', createLibraryBtn: '在此文件夹中创建资料库', newLibraryDefaultName: '我的文档', newLibraryHint: '将在“{parent}”中创建文件夹“{name}”。', newLibraryNameInvalid: '请输入不含 / \\ : * ? " < > | 且不以点开头的名称。', newLibraryExists: '此处已有名为“{name}”的文件夹，请换一个名称。', copySetupLabel: '复制以下资料库的设置', copySetupNone: '不复制，从空白开始', copySetupPick: '其他资料库文件夹…', copySetupHint: '复制字段、文档类型、字段说明、智能收藏集和设置。不复制文档、标签或人员。', copySetupDenied: '没有读取“{name}”的权限。', copySetupNoLibrary: '“{name}”不是 Dossiary 资料库（其中没有 library.sqlite）。', statusSetupCopiedFrom: '已从“{name}”复制设置。',
       libraryCheckUnusedPreviewsLabel: '未使用的预览文件', libraryCheckDeleteUnusedPreviewsBtn: '删除未使用的预览文件', libraryCheckUnusedPreviewsSummary: '不再被任何文档使用的预览图：{count} 个（{size}）。你的文档不受影响。', libraryCheckConfirmDeleteUnusedPreviews: '删除 {count} 个未使用的预览文件（{size}）？只会移除没有文档使用的预览图，你的文档不会被改动。此操作无法撤销。', libraryCheckUnusedPreviewsDeleted: '已删除未使用的预览文件：{removed}。', libraryCheckUnusedPreviewsPartly: '已删除未使用的预览文件：{removed}。无法删除：{left}。',
       gridUpgradePreviews: '重新创建旧预览（{count}）', gridPreviewsUpgraded: '已重新创建预览：{recreated}。本已清晰：{kept}。', gridPreviewsUpgradedStopped: '已停止。已重新创建预览：{recreated}。本已清晰：{kept}。再次点击以继续。',
       viewList: '☰ 列表', viewGrid: '▦ 网格', gridSizeTitle: '预览大小', gridNoPreview: '无预览', gridPreviewMissing: '预览缺失', gridCreatePreviews: '创建缺失的预览（{count}）', gridCreatingPreviews: '正在创建预览… {done}/{total} — 点击停止',
@@ -2095,7 +2102,7 @@
       reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNotDuplicateLabel: '不是重复项', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
-      newLibraryNameLabel: '新資料庫的名稱', createLibraryBtn: '在此文件夾中創建資料庫', newLibraryDefaultName: '我的文檔', newLibraryHint: '將在「{parent}」中創建文件夾「{name}」。', newLibraryNameInvalid: '請輸入不含 / \\ : * ? " < > | 且不以點開頭的名稱。', newLibraryExists: '此處已有名為「{name}」的文件夾，請換一個名稱。',
+      newLibraryNameLabel: '新資料庫的名稱', createLibraryBtn: '在此文件夾中創建資料庫', newLibraryDefaultName: '我的文檔', newLibraryHint: '將在「{parent}」中創建文件夾「{name}」。', newLibraryNameInvalid: '請輸入不含 / \\ : * ? " < > | 且不以點開頭的名稱。', newLibraryExists: '此處已有名為「{name}」的文件夾，請換一個名稱。', copySetupLabel: '複製以下資料庫的設置', copySetupNone: '不複製，從空白開始', copySetupPick: '其他資料庫文件夾…', copySetupHint: '複製字段、文檔類型、字段說明、智能收藏集和設置。不複製文檔、標籤或人員。', copySetupDenied: '沒有讀取「{name}」的權限。', copySetupNoLibrary: '「{name}」不是 Dossiary 資料庫（其中沒有 library.sqlite）。', statusSetupCopiedFrom: '已從「{name}」複製設置。',
       libraryCheckUnusedPreviewsLabel: '未使用的預覽檔案', libraryCheckDeleteUnusedPreviewsBtn: '刪除未使用的預覽檔案', libraryCheckUnusedPreviewsSummary: '不再被任何文檔使用的預覽圖：{count} 個（{size}）。你的文檔不受影響。', libraryCheckConfirmDeleteUnusedPreviews: '刪除 {count} 個未使用的預覽檔案（{size}）？只會移除沒有文檔使用的預覽圖，你的文檔不會被改動。此操作無法撤銷。', libraryCheckUnusedPreviewsDeleted: '已刪除未使用的預覽檔案：{removed}。', libraryCheckUnusedPreviewsPartly: '已刪除未使用的預覽檔案：{removed}。無法刪除：{left}。',
       gridUpgradePreviews: '重新創建舊預覽（{count}）', gridPreviewsUpgraded: '已重新創建預覽：{recreated}。本已清晰：{kept}。', gridPreviewsUpgradedStopped: '已停止。已重新創建預覽：{recreated}。本已清晰：{kept}。再次點擊以繼續。',
       viewList: '☰ 列表', viewGrid: '▦ 網格', gridSizeTitle: '預覽大小', gridNoPreview: '無預覽', gridPreviewMissing: '預覽缺失', gridCreatePreviews: '創建缺失的預覽（{count}）', gridCreatingPreviews: '正在創建預覽… {done}/{total} — 點擊停止',
@@ -2493,6 +2500,7 @@
     // proceedWithRootDirHandle() itself sets it.
     if(initState.style.display !== 'none' && rootDirHandle){
       el('init-message').innerHTML = t('initMessageWithName', {name: escapeHtml(rootDirHandle.name)}); // the <b> wrap lives inside the STRINGS value itself (initMessageWithName), not here -- don't re-wrap and produce nested <b><b>...</b></b>
+      renderCopySetupOptions(el('copy-setup-select').value); // its option labels are built in JS
     }
     // renderStats()/populateFilters() aren't called from inside render() (they're
     // only invoked from the handful of call sites that actually change the
@@ -3621,7 +3629,8 @@
   // picker popping up on top of that list forces an extra cancel.
   el('reload-btn').addEventListener('click', () => { resetAll(); });
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
-  el('init-btn').addEventListener('click', initNewLibrary);
+  el('init-btn').addEventListener('click', useFolderAsLibrary);
+  el('copy-setup-select').addEventListener('change', onCopySetupChange);
   el('create-library-btn').addEventListener('click', createLibraryFolder);
   el('new-library-name').addEventListener('input', updateNewLibraryHint);
   el('new-library-name').addEventListener('keydown', (e) => { if(e.key === 'Enter') createLibraryFolder(); });
@@ -3716,6 +3725,8 @@
     el('init-btn').classList.toggle('primary', pickedIsLibraryFolder);
     el('new-library-name').value = t('newLibraryDefaultName');
     updateNewLibraryHint();
+    copySetupPickedHandle = null;
+    renderCopySetupOptions('');
   }
   async function createLibraryFolder(){
     const errorEl = el('new-library-error');
@@ -3726,21 +3737,114 @@
     let exists = false;
     try{ await parent.getDirectoryHandle(folderName); exists = true; }catch(e){ /* free */ }
     if(exists){ errorEl.textContent = t('newLibraryExists', {name: folderName}); return; }
+    // Read the setup source first, so a library that can't be read leaves
+    // nothing half-created behind.
+    const setup = await readSetupSourceOrShowError();
+    if(setup === false) return;
     try{
       rootDirHandle = await parent.getDirectoryHandle(folderName, { create: true });
     }catch(e){
       errorEl.textContent = t('statusCouldNotInitLibrary', {error: e.message});
       return;
     }
-    await initNewLibrary();
+    await initNewLibrary(setup);
+  }
+  async function useFolderAsLibrary(){
+    const setup = await readSetupSourceOrShowError();
+    if(setup === false) return;
+    await initNewLibrary(setup);
   }
 
-  async function initNewLibrary(){
+  // "Copy the setup of": a new library can start with another library's
+  // fields, document types and their field order, field descriptions, smart
+  // collections and settings -- useful for one library per year. Never
+  // documents, tags, people or manual collections (which would be empty).
+  // The source is only read, never written: its library.sqlite is opened
+  // as a separate in-memory database.
+  let copySetupPickedHandle = null; // a folder chosen via "Another library folder…"
+  let copySetupRecent = [];
+  async function renderCopySetupOptions(selected){
+    const sel = el('copy-setup-select');
+    try{ copySetupRecent = await getRecentLibraries(); }catch(e){ copySetupRecent = []; }
+    copySetupRecent.sort((a, b) => b.lastOpenedAt.localeCompare(a.lastOpenedAt));
+    const opts = [`<option value="">${escapeHtml(t('copySetupNone'))}</option>`];
+    copySetupRecent.forEach(entry => opts.push(`<option value="recent:${entry.id}">${escapeHtml(entry.name)}</option>`));
+    if(copySetupPickedHandle) opts.push(`<option value="picked">${escapeHtml(copySetupPickedHandle.name)}</option>`);
+    opts.push(`<option value="pick">${escapeHtml(t('copySetupPick'))}</option>`);
+    sel.innerHTML = opts.join('');
+    sel.value = selected;
+    if(sel.value !== selected) sel.value = '';
+    el('copy-setup-error').textContent = '';
+  }
+  async function onCopySetupChange(e){
+    el('copy-setup-error').textContent = '';
+    if(e.target.value !== 'pick') return;
+    try{
+      copySetupPickedHandle = await window.showDirectoryPicker({ mode: 'read' });
+      await renderCopySetupOptions('picked');
+    }catch(err){
+      await renderCopySetupOptions(copySetupPickedHandle ? 'picked' : '');
+    }
+  }
+  // Returns {db, name} for the chosen source, null for "Nothing", or false
+  // after showing why the chosen one can't be read.
+  async function readSetupSourceOrShowError(){
+    const value = el('copy-setup-select').value;
+    let handle = null;
+    if(value === 'picked') handle = copySetupPickedHandle;
+    else if(value.startsWith('recent:')){
+      const entry = copySetupRecent.find(en => `recent:${en.id}` === value);
+      handle = entry ? entry.handle : null;
+    }
+    if(!handle) return null;
+    const errorEl = el('copy-setup-error');
+    try{
+      let perm = await handle.queryPermission({ mode: 'read' });
+      if(perm !== 'granted') perm = await handle.requestPermission({ mode: 'read' });
+      if(perm !== 'granted'){ errorEl.textContent = t('copySetupDenied', {name: handle.name}); return false; }
+      let bytes;
+      try{ bytes = await (await (await handle.getFileHandle('library.sqlite')).getFile()).arrayBuffer(); }
+      catch(e){ errorEl.textContent = t('copySetupNoLibrary', {name: handle.name}); return false; }
+      await ensureSqlJs();
+      return { db: new SQL.Database(new Uint8Array(bytes)), name: handle.name };
+    }catch(e){
+      errorEl.textContent = t('copySetupNoLibrary', {name: handle.name});
+      return false;
+    }
+  }
+  // Settings that describe one library's own history, not its setup.
+  const SETUP_SETTINGS_NOT_COPIED = ['last_backup_at'];
+  // Copies into the (fresh, empty) global db. Field ids are kept, since
+  // visible_columns, sort_key and smart collection rules refer to them.
+  // Runs before the field migrations, which then find their fields by name
+  // and add only what the source lacked. A table the source can't provide
+  // (an older library) is skipped.
+  function copySetupFrom(srcDb){
+    const copy = (table, cols, keep) => {
+      let res;
+      try{ res = srcDb.exec(`SELECT ${cols.join(', ')} FROM ${table}`); }catch(e){ return; }
+      if(!res || !res.length) return;
+      const placeholders = cols.map(() => '?').join(', ');
+      for(const row of res[0].values){
+        if(keep && !keep(row)) continue;
+        db.run(`INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`, row);
+      }
+    };
+    copy('fields', ['id', 'name', 'type', 'show_as_column', 'autocomplete']);
+    copy('document_type_fields', ['document_type', 'field_name', 'position']);
+    copy('field_descriptions', ['field_name', 'description']);
+    copy('collections', ['id', 'name', 'kind', 'criteria'], row => row[2] === 'smart');
+    copy('settings', ['key', 'value'], row => !SETUP_SETTINGS_NOT_COPIED.includes(row[0]));
+  }
+
+  async function initNewLibrary(setup = null){
     try{
       setStatusT('statusSettingUpSqlite', null, 'busy');
       await ensureSqlJs();
       db = new SQL.Database();
       db.run(SCHEMA);
+      if(setup){ copySetupFrom(setup.db); setup.db.close && setup.db.close(); }
+      setupCopiedFromName = setup ? setup.name : null;
       migrateSentinelFieldsToGeneric(); // seeds Payment method/Amount/Currency as available fields from the start
       migratePeopleToGenericField(); // seeds People as an available person-type field from the start
       migrateDefaultReminderField(); // seeds the always-available default Reminder field from the start
@@ -3754,6 +3858,7 @@
       initState.style.display = 'none';
       setStatusT('statusInitializedNewLibrary', null, 'ok');
       afterDbReady();
+      setupCopiedFromName = null;
     }catch(e){
       setStatusT('statusCouldNotInitLibrary', {error: e.message}, 'err');
     }
@@ -3778,6 +3883,7 @@
     afterDbReady();
   }
 
+  let setupCopiedFromName = null; // set by initNewLibrary() for afterDbReady()'s status line
   function afterDbReady(){
     emptyState.style.display = 'none';
     initState.style.display = 'none';
@@ -3785,7 +3891,8 @@
     const opened = {count: allDocs.length, name: rootDirHandle.name};
     // The backup reminder rides along on the same line; the builder re-runs on
     // a language change, like any status builder.
-    setStatusLive(() => [t('statusOpenedLibrary', opened), backupReminderText()].filter(Boolean).join(' '), 'ok');
+    const copiedFrom = setupCopiedFromName;
+    setStatusLive(() => [t('statusOpenedLibrary', opened), copiedFrom ? t('statusSetupCopiedFrom', {name: copiedFrom}) : '', backupReminderText()].filter(Boolean).join(' '), 'ok');
     checkInbox(); // fire-and-forget -- best effort, doesn't block the library from opening
     recordRecentLibrary(rootDirHandle); // fire-and-forget, same reasoning as checkInbox() above
     // Silent when nothing's due, same as checkInbox() finding nothing staged --

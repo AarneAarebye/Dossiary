@@ -198,6 +198,12 @@ kurz.
   Dossiary prüft nur, wenn du die App tatsächlich öffnest oder den Button
   klickst.
 
+- **Eine Bibliothek pro Jahr** — beim Anlegen einer neuen Bibliothek
+  kann „Einrichtung übernehmen von“ sie mit den eigenen Feldern,
+  Dokumenttypen, Feldbeschreibungen, intelligenten Sammlungen und
+  Einstellungen einer anderen Bibliothek starten. Deren Dokumente bleiben,
+  wo sie sind.
+
 ## Wie geht es weiter?
 
 - Neugierig, wie Dossiary deine Daten tatsächlich speichert, oder willst
