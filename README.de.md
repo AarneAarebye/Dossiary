@@ -193,7 +193,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   wählt aus, J/K wechselt. Dokumente ohne Vorschau zeigen einen Platzhalter,
   und **Fehlende Vorschauen erstellen** erzeugt sie für die angezeigten
   Dokumente (lässt sich anhalten). Neue Vorschauen sind doppelt so scharf
-  wie bisher.
+  wie bisher und werden als kompakte JPEGs gespeichert; **Ältere
+  Vorschauen neu erstellen** ersetzt kleine (etwa aus Mariner übernommene)
+  durch scharfe und lässt bereits ausreichend große unverändert.
 - **Seiten bearbeiten** — **Seiten bearbeiten…** im Detailbereich zeigt die
   Seiten eines PDFs: drehen, umsortieren, entfernen, Seiten aus einem
   anderen PDF oder einem Bild hinzufügen oder das Dokument mit ✂ in mehrere

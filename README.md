@@ -163,7 +163,10 @@ working" problem that motivated this project in the first place.
   open, right-click for the menu, tick to select, J/K to move. Documents
   without a preview show a placeholder, and **Create missing previews**
   makes them for the listed documents (it can be stopped). New previews
-  are twice as sharp as before.
+  are twice as sharp as before and stored as compact JPEGs; **Recreate
+  older previews** replaces small ones (for example those migrated from
+  Mariner) with sharp ones, leaving any that are already large enough
+  alone.
 - **Page tools** — **Edit pages…** in the detail panel shows a PDF's pages:
   rotate them, reorder them, remove them, add pages from another PDF or an
   image, or split the document with ✂ into several (each part becomes its

@@ -825,7 +825,11 @@ taller than the old 140px panel preview; click selecting and showing
 details, J moving to the next tile, right-click opening the document menu,
 tile checkboxes driving the bulk bar; the size slider widening tiles and
 being saved; "Create missing previews (2)" making and saving both
-previews, showing them and disappearing; reopening keeping grid and size;
+previews as real JPEG bytes (`thumbnails/<id>.jpg`), marked full size,
+showing them and disappearing; "Recreate older previews (4)" recreating
+two tiny previews and one whose file is missing, keeping a 600x800 one
+untouched (only marked), the button disappearing, the status line's
+counts, and the old preview file left on disk; reopening keeping grid and size;
 German labels; back to List; no switch in Reports. Pass a path to save a
 screenshot), page tools (`test_page_tools.py` -- "Edit
 pages…" offered for a PDF in the panel, not for an image nor in the

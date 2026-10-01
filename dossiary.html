@@ -404,7 +404,7 @@
      behind the footer). */
   .count-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 32px; }
   .count-row .count-line{ padding:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .view-controls{ display:flex; align-items:center; gap:10px; flex-shrink:0; height:13px; }
+  .view-controls{ display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-shrink:1; min-width:0; overflow-x:clip; height:13px; } /* narrow windows clip the preview buttons on the left, never the switch */
   .view-ctl-btn{ font-family:var(--font-mono); font-size:11px; line-height:14px; padding:0 7px; color:var(--text-dim); background:transparent; border:1px solid var(--line); border-radius:var(--radius); cursor:pointer; white-space:nowrap; }
   .view-ctl-btn:hover{ color:var(--phosphor); border-color:var(--phosphor-dim); }
   .view-switch{ display:inline-flex; }
@@ -875,6 +875,7 @@
         <div class="count-line" id="count-line" style="display:none;"></div>
         <div class="view-controls" id="view-controls" style="display:none;">
           <button type="button" id="create-previews-btn" class="view-ctl-btn" style="display:none;"></button>
+          <button type="button" id="upgrade-previews-btn" class="view-ctl-btn" style="display:none;"></button>
           <input type="range" id="grid-size-range" min="140" max="360" step="20" data-i18n-title="gridSizeTitle" data-i18n-aria-label="gridSizeTitle" title="Preview size" aria-label="Preview size" />
           <span class="view-switch" role="group">
             <button type="button" id="view-list-btn" class="view-ctl-btn" aria-pressed="true" data-i18n="viewList">☰ List</button><button type="button" id="view-grid-btn" class="view-ctl-btn" aria-pressed="false" data-i18n="viewGrid">▦ Grid</button>
@@ -1020,6 +1021,7 @@
   const DATE_LOCALE = { en: 'en-US', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
+      gridUpgradePreviews: 'Recreate older previews ({count})', gridPreviewsUpgraded: 'Previews recreated: {recreated}. Already sharp: {kept}.', gridPreviewsUpgradedStopped: 'Stopped. Previews recreated: {recreated}. Already sharp: {kept}. Click again to continue.',
       viewList: '☰ List', viewGrid: '▦ Grid', gridSizeTitle: 'Preview size', gridNoPreview: 'No preview', gridPreviewMissing: 'Preview missing', gridCreatePreviews: 'Create missing previews ({count})', gridCreatingPreviews: 'Creating previews… {done} of {total} — click to stop',
       navArchive: 'Archive',
       fileErrorReadOnly: 'Could not save “{path}”: the file is read-only. Remove its write protection (on a Mac: select it in Finder, File → Get Info, untick “Locked”) and try again.', fileErrorWrite: 'Could not save “{path}”: {error}', fileErrorMissing: 'Could not find “{path}”: the file is missing. Library check can re-link it.', fileErrorRead: 'Could not read “{path}”: {error}', makeSearchableBulkNoText: 'No text found, try another OCR language: {count}.',
@@ -1229,6 +1231,7 @@
       reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNotDuplicateLabel: 'Not a duplicate', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
+      gridUpgradePreviews: 'Recrear vistas previas antiguas ({count})', gridPreviewsUpgraded: 'Vistas previas recreadas: {recreated}. Ya nítidas: {kept}.', gridPreviewsUpgradedStopped: 'Detenido. Vistas previas recreadas: {recreated}. Ya nítidas: {kept}. Vuelve a hacer clic para continuar.',
       viewList: '☰ Lista', viewGrid: '▦ Cuadrícula', gridSizeTitle: 'Tamaño de la vista previa', gridNoPreview: 'Sin vista previa', gridPreviewMissing: 'Falta la vista previa', gridCreatePreviews: 'Crear vistas previas que faltan ({count})', gridCreatingPreviews: 'Creando vistas previas… {done} de {total} — haz clic para detener',
       navArchive: 'Archivo',
       fileErrorReadOnly: 'No se pudo guardar «{path}»: el archivo es de solo lectura. Quita su protección contra escritura (en un Mac: selecciónalo en el Finder, Archivo → Obtener información, desmarca «Bloqueado») y vuelve a intentarlo.', fileErrorWrite: 'No se pudo guardar «{path}»: {error}', fileErrorMissing: 'No se encontró «{path}»: falta el archivo. La revisión de la biblioteca puede volver a vincularlo.', fileErrorRead: 'No se pudo leer «{path}»: {error}', makeSearchableBulkNoText: 'Sin texto encontrado, prueba otro idioma de OCR: {count}.',
@@ -1438,6 +1441,7 @@
       reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNotDuplicateLabel: 'No es un duplicado', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
+      gridUpgradePreviews: 'Recréer les anciens aperçus ({count})', gridPreviewsUpgraded: 'Aperçus recréés : {recreated}. Déjà nets : {kept}.', gridPreviewsUpgradedStopped: 'Arrêté. Aperçus recréés : {recreated}. Déjà nets : {kept}. Cliquez à nouveau pour continuer.',
       viewList: '☰ Liste', viewGrid: '▦ Grille', gridSizeTitle: 'Taille de l’aperçu', gridNoPreview: 'Pas d’aperçu', gridPreviewMissing: 'Aperçu manquant', gridCreatePreviews: 'Créer les aperçus manquants ({count})', gridCreatingPreviews: 'Création des aperçus… {done} sur {total} — cliquez pour arrêter',
       navArchive: 'Archives',
       fileErrorReadOnly: 'Impossible d’enregistrer « {path} » : le fichier est en lecture seule. Retirez sa protection en écriture (sur Mac : sélectionnez-le dans le Finder, Fichier → Lire les informations, décochez « Verrouillé ») puis réessayez.', fileErrorWrite: 'Impossible d’enregistrer « {path} » : {error}', fileErrorMissing: '« {path} » est introuvable : le fichier manque. La vérification de la bibliothèque peut le relier à nouveau.', fileErrorRead: 'Impossible de lire « {path} » : {error}', makeSearchableBulkNoText: 'Aucun texte trouvé, essayez une autre langue d’OCR : {count}.',
@@ -1647,6 +1651,7 @@
       reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNotDuplicateLabel: 'Pas un doublon', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
+      gridUpgradePreviews: 'Ältere Vorschauen neu erstellen ({count})', gridPreviewsUpgraded: 'Vorschauen neu erstellt: {recreated}. Bereits scharf: {kept}.', gridPreviewsUpgradedStopped: 'Angehalten. Vorschauen neu erstellt: {recreated}. Bereits scharf: {kept}. Erneut klicken, um fortzufahren.',
       viewList: '☰ Liste', viewGrid: '▦ Raster', gridSizeTitle: 'Vorschaugröße', gridNoPreview: 'Keine Vorschau', gridPreviewMissing: 'Vorschau fehlt', gridCreatePreviews: 'Fehlende Vorschauen erstellen ({count})', gridCreatingPreviews: 'Vorschauen werden erstellt… {done} von {total} — Klick zum Anhalten',
       navArchive: 'Archiv',
       fileErrorReadOnly: '„{path}“ konnte nicht gespeichert werden: Die Datei ist schreibgeschützt. Hebe den Schreibschutz auf (am Mac: im Finder auswählen, Ablage → Informationen, „Geschützt“ abwählen) und versuche es erneut.', fileErrorWrite: '„{path}“ konnte nicht gespeichert werden: {error}', fileErrorMissing: '„{path}“ wurde nicht gefunden: Die Datei fehlt. Die Bibliotheksprüfung kann sie neu verknüpfen.', fileErrorRead: '„{path}“ konnte nicht gelesen werden: {error}', makeSearchableBulkNoText: 'Kein Text gefunden, andere OCR-Sprache versuchen: {count}.',
@@ -1856,6 +1861,7 @@
       reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNotDuplicateLabel: 'Kein Duplikat', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
+      gridUpgradePreviews: '重新创建旧预览（{count}）', gridPreviewsUpgraded: '已重新创建预览：{recreated}。本已清晰：{kept}。', gridPreviewsUpgradedStopped: '已停止。已重新创建预览：{recreated}。本已清晰：{kept}。再次点击以继续。',
       viewList: '☰ 列表', viewGrid: '▦ 网格', gridSizeTitle: '预览大小', gridNoPreview: '无预览', gridPreviewMissing: '预览缺失', gridCreatePreviews: '创建缺失的预览（{count}）', gridCreatingPreviews: '正在创建预览… {done}/{total} — 点击停止',
       navArchive: '归档',
       fileErrorReadOnly: '无法保存“{path}”：该文件为只读。请解除写保护（在 Mac 上：在访达中选中它，文件 → 显示简介，取消勾选“已锁定”）后重试。', fileErrorWrite: '无法保存“{path}”：{error}', fileErrorMissing: '找不到“{path}”：文件缺失。资料库检查可以重新链接它。', fileErrorRead: '无法读取“{path}”：{error}', makeSearchableBulkNoText: '未找到文本，请尝试其他 OCR 语言：{count}。',
@@ -2065,6 +2071,7 @@
       reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNotDuplicateLabel: '不是重复项', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
+      gridUpgradePreviews: '重新創建舊預覽（{count}）', gridPreviewsUpgraded: '已重新創建預覽：{recreated}。本已清晰：{kept}。', gridPreviewsUpgradedStopped: '已停止。已重新創建預覽：{recreated}。本已清晰：{kept}。再次點擊以繼續。',
       viewList: '☰ 列表', viewGrid: '▦ 網格', gridSizeTitle: '預覽大小', gridNoPreview: '無預覽', gridPreviewMissing: '預覽缺失', gridCreatePreviews: '創建缺失的預覽（{count}）', gridCreatingPreviews: '正在創建預覽… {done}/{total} — 點擊停止',
       navArchive: '歸檔',
       fileErrorReadOnly: '無法保存「{path}」：該文件為只讀。請解除寫保護（在 Mac 上：在訪達中選中它，文件 → 顯示簡介，取消勾選「已鎖定」）後重試。', fileErrorWrite: '無法保存「{path}」：{error}', fileErrorMissing: '找不到「{path}」：文件缺失。資料庫檢查可以重新鏈接它。', fileErrorRead: '無法讀取「{path}」：{error}', makeSearchableBulkNoText: '未找到文本，請嘗試其他 OCR 語言：{count}。',
@@ -2546,7 +2553,7 @@
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
       archived INTEGER DEFAULT 0, needs_review INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0,
-      searchable_pdf_built INTEGER DEFAULT 0, file_hash TEXT, has_text_layer INTEGER DEFAULT 0, text_checked INTEGER DEFAULT 0
+      searchable_pdf_built INTEGER DEFAULT 0, file_hash TEXT, has_text_layer INTEGER DEFAULT 0, text_checked INTEGER DEFAULT 0, thumbnail_hd INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
     CREATE TABLE IF NOT EXISTS document_tags (
@@ -2611,6 +2618,7 @@
     'ALTER TABLE documents ADD COLUMN has_text_layer INTEGER DEFAULT 0',
     // The PDF has been opened to look for a text layer (has_text_layer holds the answer).
     'ALTER TABLE documents ADD COLUMN text_checked INTEGER DEFAULT 0',
+    'ALTER TABLE documents ADD COLUMN thumbnail_hd INTEGER DEFAULT 0',
     'ALTER TABLE reminder_snoozes ADD COLUMN dismissed INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN file_hash TEXT',
   ];
@@ -3236,12 +3244,21 @@
   // throwing -- a missing preview is a normal, expected state, not an error.
   const THUMB_MAX_DIM = 640; // sharp enough for the grid view's largest tiles
 
-  function canvasToPngBytes(canvas){
+  // Previews are JPEG: a 640px PNG of a scanned page can be several hundred
+  // KB, the same JPEG 40-80 KB. Drawn onto white first, since JPEG has no
+  // transparency (a transparent PNG would otherwise turn black).
+  function canvasToThumbBytes(canvas){
+    const flat = document.createElement('canvas');
+    flat.width = canvas.width; flat.height = canvas.height;
+    const ctx = flat.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, flat.width, flat.height);
+    ctx.drawImage(canvas, 0, 0);
     return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
+      flat.toBlob((blob) => {
         if(!blob){ reject(new Error('Could not encode thumbnail')); return; }
         blob.arrayBuffer().then((buf) => resolve(new Uint8Array(buf)));
-      }, 'image/png');
+      }, 'image/jpeg', 0.82);
     });
   }
 
@@ -3263,7 +3280,7 @@
         el.onerror = () => reject(new Error('Could not read image'));
         el.src = dataUrl;
       });
-      return canvasToPngBytes(scaledCanvasFromImage(img));
+      return canvasToThumbBytes(scaledCanvasFromImage(img));
     }
     if(file.type === 'application/pdf'){
       const pdfjsLib = await ensurePdfJs();
@@ -3277,19 +3294,27 @@
       canvas.width = Math.max(1, Math.round(viewport.width));
       canvas.height = Math.max(1, Math.round(viewport.height));
       await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-      return canvasToPngBytes(canvas);
+      return canvasToThumbBytes(canvas);
     }
     return null; // unsupported format -- not an error, just nothing to generate from
   }
 
-  async function writeThumbnail(id, pngBytes){
+  // Writes a preview made by generateThumbnail() and marks the document's
+  // preview as made at full size (thumbnail_hd), so the grid's "Recreate older
+  // previews" no longer counts it. For a document not inserted yet the UPDATE
+  // finds no row; its INSERT sets thumbnail_hd itself.
+  async function writeThumbnail(id, bytes){
     const thumbsDir = await rootDirHandle.getDirectoryHandle('thumbnails', { create: true });
-    clearThumbCache(`thumbnails/${id}.png`);
-    const handle = await thumbsDir.getFileHandle(`${id}.png`, { create: true });
+    const path = `thumbnails/${id}.jpg`;
+    clearThumbCache(path);
+    const handle = await thumbsDir.getFileHandle(`${id}.jpg`, { create: true });
     const writable = await handle.createWritable();
-    await writable.write(pngBytes);
+    await writable.write(bytes);
     await writable.close();
-    return `thumbnails/${id}.png`;
+    db.run('UPDATE documents SET thumbnail_hd = 1 WHERE id = ?', [id]);
+    const d = allDocs.find(x => x.id === id);
+    if(d) d.thumbnail_hd = true;
+    return path;
   }
 
   // Tesseract's {blocks:true} output is a nested blocks -> paragraphs -> lines -> words
@@ -3739,7 +3764,7 @@
     // live in customFields (via document_field_values) like any other custom field.
     const { columns, rows } = queryAll(`
       SELECT id, title, category, subcategory, document_type, date, import_date, notes,
-             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived, needs_review, deleted, file_hash, searchable_pdf_built, has_text_layer, text_checked
+             ocr_text, ocr_language, file_path, original_file_path, created_at, source, source_legacy_id, thumbnail_path, archived, needs_review, deleted, file_hash, searchable_pdf_built, has_text_layer, text_checked, thumbnail_hd
       FROM documents
     `);
     const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
@@ -3822,6 +3847,7 @@
         searchable_pdf_built: !!row[idx.searchable_pdf_built],
         has_text_layer: !!row[idx.has_text_layer],
         text_checked: !!row[idx.text_checked],
+        thumbnail_hd: !!row[idx.thumbnail_hd],
         customFields: fieldValuesByDocId[id] || {}, // { "Organization": "Dr. Schröter", "Paid": "1", ... }
         personFieldValues: personFieldValuesByDocId[id] || {}, // { "People": [...], "Author": [...], ... }
         tags: tagsByDocId[id] || [],
@@ -10466,9 +10492,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built, file_hash, has_text_layer)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?, ?)
-      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt, fileHashForDb, (pendingPdfHasText && pendingFile.type === 'application/pdf') ? 1 : 0]);
+                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built, file_hash, has_text_layer, thumbnail_hd)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?, ?, ?)
+      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt, fileHashForDb, (pendingPdfHasText && pendingFile.type === 'application/pdf') ? 1 : 0, thumbnailPathForDb ? 1 : 0]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -10528,7 +10554,7 @@
         import_date: importDate,
         notes, ocr_text: ocrText, ocr_language: ocrLanguage, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source: 'captured', source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, file_hash: fileHashForDb, customFields: customFieldsForDoc,
+        thumbnail_path: thumbnailPathForDb, thumbnail_hd: !!thumbnailPathForDb, file_hash: fileHashForDb, customFields: customFieldsForDoc,
         searchable_pdf_built: !!searchablePdfBuilt, has_text_layer: pendingPdfHasText && pendingFile.type === 'application/pdf',
         personFieldValues: personFieldValuesForDoc, tags: tagsForDoc, people: peopleForDoc,
       });
@@ -10898,7 +10924,8 @@
   // keeps its single-line height. Previews load lazily as tiles scroll into
   // view (IntersectionObserver), cached as object URLs per thumbnail path;
   // nothing is generated automatically -- "Create missing previews" is an
-  // explicit click, per the no-silent-writes convention.
+  // explicit click, per the no-silent-writes convention -- so is "Recreate
+  // older previews" (see runPreviewJob()).
   let viewMode = 'list';
   let gridTileSize = 200;
   const GRID_TILE_MIN = 140, GRID_TILE_MAX = 360;
@@ -10990,47 +11017,87 @@
   function docsMissingPreview(sorted){
     return sorted.filter(d => !d.deleted && !d.thumbnail_path && d.file_path && /\.(pdf|jpe?g|png)$/i.test(d.file_path));
   }
+  // Listed documents whose preview this app hasn't made at full size: ones
+  // migrated from Mariner, and its own older 320px PNGs (thumbnail_hd = 0).
+  function docsWithOlderPreview(sorted){
+    return sorted.filter(d => !d.deleted && d.thumbnail_path && !d.thumbnail_hd && d.file_path && /\.(pdf|jpe?g|png)$/i.test(d.file_path));
+  }
 
   function updatePreviewsButton(sorted){
-    const btn = el('create-previews-btn');
-    if(viewMode !== 'grid'){ btn.style.display = 'none'; return; }
+    const createBtn = el('create-previews-btn'), upgradeBtn = el('upgrade-previews-btn');
+    if(viewMode !== 'grid'){ createBtn.style.display = upgradeBtn.style.display = 'none'; return; }
     if(previewsRun){
-      btn.style.display = '';
-      btn.textContent = t('gridCreatingPreviews', {done: previewsRun.done, total: previewsRun.total});
+      const running = previewsRun.mode === 'upgrade' ? upgradeBtn : createBtn;
+      (running === createBtn ? upgradeBtn : createBtn).style.display = 'none';
+      running.style.display = '';
+      running.textContent = t('gridCreatingPreviews', {done: previewsRun.done, total: previewsRun.total});
       return;
     }
     const missing = docsMissingPreview(sorted).length;
-    btn.style.display = missing ? '' : 'none';
-    btn.textContent = t('gridCreatePreviews', {count: missing});
+    createBtn.style.display = missing ? '' : 'none';
+    createBtn.textContent = t('gridCreatePreviews', {count: missing});
+    const older = docsWithOlderPreview(sorted).length;
+    upgradeBtn.style.display = older ? '' : 'none';
+    upgradeBtn.textContent = t('gridUpgradePreviews', {count: older});
   }
 
-  // Explicit, stoppable: previews for the listed documents that have none,
-  // one at a time, saved every 25 so a closed tab keeps what's done.
-  async function createMissingPreviews(docs){
-    previewsRun = { stop: false, done: 0, total: docs.length };
+  // A preview at least this large (longest side, px) is kept as it is.
+  const THUMB_SHARP_MIN = 480;
+  async function previewLongestSide(path){
+    const bitmap = await createImageBitmap(await (await resolveFileHandle(path, false)).getFile());
+    const size = Math.max(bitmap.width, bitmap.height);
+    bitmap.close();
+    return size;
+  }
+
+  // Explicit and stoppable, one document at a time, saved every 25 so a
+  // closed tab keeps what's done. 'missing' makes previews for documents
+  // without one; 'upgrade' looks at each older preview first and only
+  // recreates it from the document's file when it's smaller than
+  // THUMB_SHARP_MIN -- a big enough one is just marked as fine, without
+  // reading the document. A preview is only replaced once the new one is
+  // written; an unreadable file keeps its old preview and is tried again
+  // next time. The previous preview file is left on disk (Storage stats
+  // shows it as untracked).
+  async function runPreviewJob(docs, mode){
+    previewsRun = { stop: false, done: 0, total: docs.length, mode };
     updatePreviewsButton([]);
-    let sinceSave = 0;
+    let sinceSave = 0, recreated = 0, kept = 0;
     for(const d of docs){
       if(previewsRun.stop) break;
       try{
+        if(mode === 'upgrade'){
+          let size = 0;
+          try{ size = await previewLongestSide(d.thumbnail_path); }catch(e){ /* missing or unreadable preview -- recreate it */ }
+          if(size >= THUMB_SHARP_MIN){
+            db.run('UPDATE documents SET thumbnail_hd = 1 WHERE id = ?', [d.id]);
+            d.thumbnail_hd = true;
+            kept++; sinceSave++;
+            previewsRun.done++;
+            updatePreviewsButton([]);
+            continue;
+          }
+        }
         const file = await (await resolveFileHandle(d.file_path, false)).getFile();
-        const png = await generateThumbnail(file);
-        if(png){
-          const path = await writeThumbnail(d.id, png);
+        const bytes = await generateThumbnail(file);
+        if(bytes){
+          const path = await writeThumbnail(d.id, bytes);
           db.run('UPDATE documents SET thumbnail_path = ? WHERE id = ?', [path, d.id]);
           d.thumbnail_path = path;
-          sinceSave++;
+          recreated++; sinceSave++;
           const node = document.querySelector(`#doc-grid .doc-tile[data-id="${d.id}"] .tile-thumb`);
           if(node){ node.className = 'tile-thumb'; node.dataset.thumb = path; loadTileThumb(node); }
         }
-      }catch(e){ /* unreadable file -- stays without a preview */ }
+      }catch(e){ /* unreadable file -- keeps what it had */ }
       previewsRun.done++;
       updatePreviewsButton([]);
       if(sinceSave >= 25){ await persistDb(); sinceSave = 0; }
     }
     await persistDb();
+    const stopped = previewsRun.stop;
     previewsRun = null;
     render();
+    if(mode === 'upgrade') setStatusT(stopped ? 'gridPreviewsUpgradedStopped' : 'gridPreviewsUpgraded', {recreated, kept}, 'ok');
   }
 
   // --- Page tools: edit pages, split, combine ---
@@ -11678,9 +11745,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash)
-        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0, ?)
-      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb, fileHashForDb]);
+                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash, thumbnail_hd)
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0, ?, ?)
+      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb, fileHashForDb, thumbnailPathForDb ? 1 : 0]);
 
       await writeSidecarFile(sidecarBaseName, buildSidecarText({ title, documentType, importDate: createdAt }));
       await persistDb();
@@ -11689,7 +11756,7 @@
         id, title, category: null, subcategory: null, document_type: documentType,
         date: null, import_date: createdAt, notes: null, ocr_text: null, ocr_language: null, file_path: filePathForDb,
         original_file_path: originalFilePathForDb, created_at: createdAt, source, source_legacy_id: null,
-        thumbnail_path: thumbnailPathForDb, file_hash: fileHashForDb, archived: false, needs_review: true, deleted: false,
+        thumbnail_path: thumbnailPathForDb, thumbnail_hd: !!thumbnailPathForDb, file_hash: fileHashForDb, archived: false, needs_review: true, deleted: false,
         customFields: {}, personFieldValues: {}, tags: [], people: [],
       });
 
@@ -12176,7 +12243,11 @@
   el('grid-size-range').addEventListener('change', async () => { writeSetting('grid_tile_size', gridTileSize); await persistDb(); });
   el('create-previews-btn').addEventListener('click', () => {
     if(previewsRun){ previewsRun.stop = true; return; }
-    createMissingPreviews(docsMissingPreview(sortDocs(applyFilters(allDocs))));
+    runPreviewJob(docsMissingPreview(sortDocs(applyFilters(allDocs))), 'missing');
+  });
+  el('upgrade-previews-btn').addEventListener('click', () => {
+    if(previewsRun){ previewsRun.stop = true; return; }
+    runPreviewJob(docsWithOlderPreview(sortDocs(applyFilters(allDocs))), 'upgrade');
   });
   el('detail-panel-toggle-btn').addEventListener('click', () => saveDetailPanelExpanded(!detailPanelExpanded));
   el('nav-collections-toggle').addEventListener('click', () => {

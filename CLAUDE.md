@@ -3802,9 +3802,26 @@ this repo's git tags.
   note under Document previews: **"Create missing previews (N)"** appears
   when listed documents lack one and makes them on click, one at a time,
   saving every 25 and stoppable by clicking again. `THUMB_MAX_DIM` went
-  from 320 to 640 so large tiles stay sharp; existing previews keep their
-  size. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot) is
-  unchanged.
+  from 320 to 640 so large tiles stay sharp, and **previews are JPEG now**
+  (`canvasToThumbBytes()`, quality 0.82, drawn onto white since JPEG has
+  no transparency; `writeThumbnail()` writes `thumbnails/<id>.jpg`): a
+  640px PNG of a scanned page ran to several hundred KB. **"Recreate older
+  previews (N)"** (`runPreviewJob(docs, 'upgrade')`, the same runner as
+  'missing') covers previews this app didn't make at full size --
+  Mariner's, and its own earlier 320px PNGs -- tracked by a new
+  `documents.thumbnail_hd` column (`SCHEMA_MIGRATIONS`), set by
+  `writeThumbnail()` (and by the capture/Inbox INSERTs, whose rows don't
+  exist yet when the preview is written). For each one it reads the
+  existing preview's size first (`createImageBitmap`, `THUMB_SHARP_MIN` =
+  480px longest side): a large enough one is only marked, without opening
+  the document -- which on iCloud Drive would mean downloading it -- and a
+  small or unreadable one is recreated from the document's file. The new
+  preview replaces the old path only once written; an unreadable document
+  keeps its old preview and stays counted for the next run. The old
+  preview file is left on disk (Storage stats lists it as untracked). The
+  status line reports "Previews recreated: N. Already sharp: M.", or that
+  it was stopped. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot)
+  is unchanged.
 - **Page tools** (`openPageToolsModal()`, `openCombineModal()`,
   `buildPdfFromPages()`, `replaceActiveFile()`, `refreshAfterPdfChange()`,
   `createSplitDocument()`) are built on **pdf-lib** (`ensurePdfLib()`,

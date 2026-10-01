@@ -35,6 +35,7 @@ SEED = {
         doc(4, "Tax notice"),                          # no preview yet
         doc(5, "Gone preview", thumbnail_path="thumbnails/5.png"),  # preview file missing
         doc(6, "In the bin", deleted=1),
+        doc(7, "Big old preview", thumbnail_path="thumbnails/7.png"),  # Mariner-sized, already large
     ],
     "tags": [], "document_tags": [],
 }
@@ -65,9 +66,12 @@ async def main():
                 const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true })).createWritable();
                 await w.write(data); await w.close();
             };
-            for(const i of [1, 2, 3, 4, 5, 6]) await put(`files/${i}_doc.pdf`, new TextEncoder().encode('%PDF-1.4 doc ' + i));
+            for(const i of [1, 2, 3, 4, 5, 6, 7]) await put(`files/${i}_doc.pdf`, new TextEncoder().encode('%PDF-1.4 doc ' + i));
             await put('thumbnails/1.png', bytes);
             await put('thumbnails/2.png', bytes);
+            const big = document.createElement('canvas'); big.width = 600; big.height = 800;
+            big.getContext('2d').fillRect(0, 0, 600, 800);
+            await put('thumbnails/7.png', new Uint8Array(await (await new Promise(r => big.toBlob(r, 'image/png'))).arrayBuffer()));
         }""", base64.b64encode(PNG).decode())
         await page.click("#open-btn")
         await page.wait_for_timeout(500)
@@ -83,12 +87,12 @@ async def main():
         print("List view by default, no tiles:", await page.locator('#doc-table').is_visible() and await tiles() == [])
         print("Switch shown with List pressed, size slider hidden:",
               await page.get_attribute('#view-list-btn', 'aria-pressed') == 'true' and not await page.locator('#grid-size-range').is_visible())
-        print("Count line text unchanged:", await page.inner_text('#count-line') == 'Showing 5 of 5 documents')
+        print("Count line text unchanged:", await page.inner_text('#count-line') == 'Showing 6 of 6 documents')
 
         # === Scenario 2: switching to Grid ===
         await page.click('#view-grid-btn')
         await page.wait_for_timeout(400)
-        print("Grid shows one tile per listed document, in the table's order, Waste bin excluded:", await tiles() == [5, 4, 3, 2, 1], await tiles())
+        print("Grid shows one tile per listed document, in the table's order, Waste bin excluded:", await tiles() == [7, 5, 4, 3, 2, 1], await tiles())
         print("The table is hidden:", not await page.locator('#doc-table').is_visible())
         print("Choice saved in the library:", settings(await state()).get('view_mode') == 'grid')
         line_h = (await page.locator('#count-line').bounding_box())['height']
@@ -130,21 +134,39 @@ async def main():
         print("Size saved:", settings(await state()).get('grid_tile_size') == '340')
 
         # === Scenario 5: creating missing previews ===
+        upgrade = page.locator('#upgrade-previews-btn')
+        print("While creating is offered, older previews are offered too:", await upgrade.is_visible() and '(4)' in await upgrade.inner_text(), await upgrade.inner_text())
         btn = page.locator('#create-previews-btn')
         print("Button offers the two documents without a preview:", await btn.is_visible() and '(2)' in await btn.inner_text(), await btn.inner_text())
         await btn.click()
         await page.wait_for_timeout(800)
         st = await state()
         paths = {d['id']: d['thumbnail_path'] for d in st['documents']}
-        print("Previews created and saved:", paths[3] == 'thumbnails/3.png' and paths[4] == 'thumbnails/4.png', paths)
+        print("Previews created and saved as JPEG:", paths[3] == 'thumbnails/3.jpg' and paths[4] == 'thumbnails/4.jpg', paths)
+        jpeg = await page.evaluate("async () => { const f = await (await (await window.__TEST_ROOT.getDirectoryHandle('thumbnails')).getFileHandle('3.jpg')).getFile(); const b = new Uint8Array(await f.arrayBuffer()); return b[0] === 0xFF && b[1] === 0xD8; }")
+        print("...really JPEG bytes:", jpeg)
+        print("...and marked as full size:", all(d['thumbnail_hd'] == 1 for d in st['documents'] if d['id'] in (3, 4)))
         print("...shown in their tiles:", await page.locator('#doc-grid .doc-tile[data-id="3"] .tile-thumb img').count() == 1)
         print("...and the button goes away:", not await btn.is_visible())
         print("The deleted document got none:", paths[6] is None)
 
+        # === Scenario 5b: recreating older previews ===
+        print("Older previews still offered (two tiny, one large, one missing file):", '(4)' in await upgrade.inner_text(), await upgrade.inner_text())
+        await upgrade.click()
+        await page.wait_for_timeout(1000)
+        st = await state()
+        by = {d['id']: d for d in st['documents']}
+        print("Small and missing previews recreated as JPEG:", [by[i]['thumbnail_path'] for i in (1, 2, 5)] == ['thumbnails/1.jpg', 'thumbnails/2.jpg', 'thumbnails/5.jpg'])
+        print("The large one kept as it was, without reading its document:", by[7]['thumbnail_path'] == 'thumbnails/7.png' and by[7]['thumbnail_hd'] == 1)
+        print("All marked as full size, so the button goes away:", all(by[i]['thumbnail_hd'] == 1 for i in (1, 2, 5, 7)) and not await upgrade.is_visible())
+        print("Status reports what happened:", 'Previews recreated: 3. Already sharp: 1.' in await page.inner_text('#status'), await page.inner_text('#status'))
+        old_left = await page.evaluate("async () => { try{ await (await window.__TEST_ROOT.getDirectoryHandle('thumbnails')).getFileHandle('1.png'); return true; }catch(e){ return false; } }")
+        print("The old preview file is left on disk:", old_left)
+
         # === Scenario 6: persistence, back to List, German ===
         await page.click('#reload-btn'); await page.click('#open-btn')
         await page.wait_for_timeout(500)
-        print("Reopening keeps the grid and size:", await tiles() == [5, 4, 3, 2, 1]
+        print("Reopening keeps the grid and size:", await tiles() == [7, 5, 4, 3, 2, 1]
               and await page.input_value('#grid-size-range') == '340')
         if SHOT:
             await page.evaluate("() => { const r = document.getElementById('grid-size-range'); r.value = 200; r.dispatchEvent(new Event('input')); }")

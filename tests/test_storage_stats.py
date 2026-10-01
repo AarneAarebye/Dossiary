@@ -141,12 +141,12 @@ async def main():
         # saveNewDocument() unconditionally attempts a thumbnail for every
         # capture (generateThumbnail() supports both image/* and
         # application/pdf, so both doc 1's PDF and doc 2's PNG get one) --
-        # thumbnails/1.png and thumbnails/2.png are real files here, per
-        # writeThumbnail()'s own fixed `thumbnails/${id}.png` naming. Both are
+        # thumbnails/1.jpg and thumbnails/2.jpg are real files here, per
+        # writeThumbnail()'s own fixed `thumbnails/${id}.jpg` naming. Both are
         # genuinely tracked (thumbnail_path is set on both documents), so they
         # belong in the 'active' thumbnails bucket, not 'untracked'.
-        doc1_thumb_size = await read_stub_file_size('thumbnails/1.png')
-        doc2_thumb_size = await read_stub_file_size('thumbnails/2.png')
+        doc1_thumb_size = await read_stub_file_size('thumbnails/1.jpg')
+        doc2_thumb_size = await read_stub_file_size('thumbnails/2.jpg')
 
         expected_files_active = doc1_active_size + doc2_active_size
         expected_files_original = doc1_original_size + doc2_original_size

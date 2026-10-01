@@ -80,7 +80,7 @@ async def main():
             (async () => {
                 try {
                     const thumbsDir = await window.__TEST_ROOT.getDirectoryHandle('thumbnails');
-                    const fh = await thumbsDir.getFileHandle('1.png');
+                    const fh = await thumbsDir.getFileHandle('1.jpg');
                     const f = await fh.getFile();
                     return { exists: true, size: f.size };
                 } catch(e) { return { exists: false, error: e.message }; }
@@ -169,7 +169,7 @@ async def main():
             (async () => {
                 try {
                     const thumbsDir = await window.__TEST_ROOT.getDirectoryHandle('thumbnails');
-                    const fh = await thumbsDir.getFileHandle('1.png');
+                    const fh = await thumbsDir.getFileHandle('1.jpg');
                     const f = await fh.getFile();
                     return { exists: true, size: f.size };
                 } catch(e) { return { exists: false, error: e.message }; }
