@@ -162,7 +162,7 @@ async def capture(browser, lang):
 
     await page.click('#doc-grid .doc-tile')
     await page.wait_for_timeout(1200)
-    await page.evaluate("() => { const s = document.getElementById('status'); if(s) s.textContent = ''; document.querySelector('.detail-actions, #detail-panel-body .modal-actions')?.scrollIntoView({block: 'end'}); window.scrollTo(0, 0); document.querySelectorAll('#main-layout, .table-detail-row').forEach(n => n.scrollTop = 0); }")
+    await page.evaluate("() => { const s = document.getElementById('status'); if(s) s.textContent = ''; document.querySelector('.detail-actions, #detail-panel-body .modal-actions')?.scrollIntoView({block: 'end'}); window.scrollTo(0, 0); document.querySelectorAll('#main-layout, .table-detail-row, #table-wrap').forEach(n => n.scrollTop = 0); }")
     await page.wait_for_timeout(400)
     await shot('review-detail')
 
