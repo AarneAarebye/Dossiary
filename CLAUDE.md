@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (95 scripts) + shared
+tests/                   Playwright regression suite (96 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -4143,6 +4143,21 @@ this repo's git tags.
   Checked against the real pdf-lib 1.17.1 once (properties read back,
   pages and Creator/Producer kept); the suite uses the stub's fake, whose
   `save()` records the properties as `props`.
+- **Share** (`openShareModal()`, `shareEmailHref()`, `#bulk-share-btn` in
+  the bulk More menu, the panel-only `'share'` action) is the closest a
+  browser gets to Mariner's Email: the Web Share API hands `File`s to the
+  system share sheet (Mail, Messages, AirDrop, …). Chrome on macOS supports
+  it (`navigator.canShare({files})` is true in Chrome 154 here);
+  Playwright's bundled Chromium doesn't, which is how the suite exercises
+  the fallback. `navigator.share()` needs a fresh click, and reading files
+  can outlast that on iCloud, so the dialog reads them first (named by
+  `exportFileName()`, numbered on a clash, PDFs passed through
+  `pdfWithDetails()`), then shows its own Share button. A dismissed sheet
+  (`AbortError`) is silent; any other error is shown. A file that can't be
+  read is listed and the rest still shared. Without file sharing (no
+  `canShare`, or `canShare` refusing the files) the dialog offers Export and
+  "Write an email" -- a `mailto:` with the titles as subject and
+  "date title" lines as body (at most 50), since mailto can't attach files.
 - **Storage stats** (`computeStorageStats()`, `formatBytes()`,
   `openStorageStatsModal()`) is a brand new, independent toolbar button (now
   an item in the "🛠 Tools" dropdown) and

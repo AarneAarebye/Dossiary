@@ -237,6 +237,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   das lässt sich abschalten, und ein PDF, das sich nicht öffnen lässt,
   wird unverändert kopiert. In der Bibliothek ändert sich nichts — nur die
   Kopien bekommen die Angaben.
+- **Teilen** — **Teilen…** (im Detailbereich eines Dokuments oder unter
+  Mehr ▾ für eine Auswahl) übergibt die Dateien an das Teilen-Menü des
+  Systems — Mail, Nachrichten, AirDrop oder jede andere App, die es
+  anbietet —, benannt wie exportierte Kopien und bei PDFs mit denselben
+  Angaben. Die Dateien werden zuerst gelesen, dann klicken Sie auf
+  **Teilen**. In einem Browser, der keine Dateien teilen kann, bietet der
+  Dialog stattdessen den Export und eine vorbereitete E-Mail mit der Liste
+  der Dokumente an, an die Sie die Dateien selbst anhängen.
 - **Tastenkürzel** — **?** zeigt die Liste. J/K (oder ↓/↑) wechseln
   zwischen Dokumenten, E bearbeitet, D markiert das aktuelle als fertig und
   springt zum nächsten, Enter öffnet die Datei; im Bearbeitungsformular
@@ -1025,7 +1033,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (95
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (96
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

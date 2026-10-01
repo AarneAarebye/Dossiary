@@ -183,6 +183,10 @@ kurz.
   dort, wo er hingehört, und der Kategoriefilter findet auch Dokumente, die
   nur teilweise dazugehören.
 
+- **Teilen** — **Teilen…** im Detailbereich eines Dokuments (oder unter
+  Mehr ▾ für mehrere ausgewählte Dokumente) sendet die Dateien per Mail,
+  Nachrichten, AirDrop oder jeder anderen App, die dein System anbietet.
+
 - **Sammlungen** — fasse eine Gruppe von Dokumenten zusammen, entweder von
   Hand (auswählen und hinzufügen, oder Dokumente auf den Namen der
   Sammlung in der Seitenleiste ziehen) oder als "Intelligente Sammlung", die

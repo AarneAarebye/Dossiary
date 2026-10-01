@@ -825,7 +825,13 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-details in exported PDFs (`test_export.py`'s later checks -- by default the
+Share (`test_share.py` -- in this Chromium, which can't share files: the
+fallback with Export and a prepared mailto listing the documents; with a
+fake `navigator.share`/`canShare`: files read before Share is offered, an
+unreadable one listed, nothing shared before the click, files named like
+exported copies with PDF details, the confirmation; the panel's Share…, a
+dismissed sheet staying quiet, a refused one reported, a single document
+shared with its title; German labels), details in exported PDFs (`test_export.py`'s later checks -- by default the
 copy carries title, subject and keywords with its pages untouched; with the
 option off the copy is byte-identical; a PDF pdf-lib can't open copied
 unchanged and reported), hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;

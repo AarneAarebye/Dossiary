@@ -177,6 +177,10 @@ necesaria para empezar, así que esta sección es intencionadamente breve.
   corresponde, y filtrar por una categoría también encuentra documentos
   que pertenecen a ella en parte.
 
+- **Compartir** — **Compartir…** en el panel de un documento (o en Más ▾
+  para varios documentos seleccionados) envía los archivos por Mail,
+  Mensajes, AirDrop o cualquier otra aplicación que ofrezca tu sistema.
+
 - **Colecciones** — guarda un grupo de documentos juntos, ya sea a mano
   (seleccionando y añadiendo, o arrastrando documentos sobre el nombre
   de la colección en la barra lateral) o como una "Colección inteligente" que se

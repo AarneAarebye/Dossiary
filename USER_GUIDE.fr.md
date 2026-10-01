@@ -187,6 +187,10 @@ brève.
   catégorie comptent alors chaque part au bon endroit, et filtrer par une
   catégorie trouve aussi les documents qui en relèvent en partie.
 
+- **Partager** — **Partager…** dans le panneau d'un document (ou sous
+  Plus ▾ pour plusieurs documents sélectionnés) envoie les fichiers par
+  Mail, Messages, AirDrop ou toute autre app proposée par votre système.
+
 - **Collections** — regroupez des documents ensemble, soit manuellement
   (sélection et ajout, ou en faisant glisser des documents sur le nom
   de la collection dans la barre latérale), soit sous forme de "Collection intelligente" qui

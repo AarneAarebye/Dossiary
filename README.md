@@ -202,6 +202,12 @@ working" problem that motivated this project in the first place.
   reader; this can be switched off, and a PDF that can't be opened is
   copied unchanged. Nothing in the library changes — only the copies get
   the details.
+- **Share** — **Share…** (in a document's panel, or More ▾ for a selection)
+  hands the files to your system's share sheet — Mail, Messages, AirDrop or
+  any other app that offers it — named like exported copies and, for PDFs,
+  with the same details. The files are read first, then you click
+  **Share**. In a browser that can't share files, the dialog offers Export
+  plus an email already listing the documents, to attach them yourself.
 - **Keyboard shortcuts** — press **?** for the list. J/K (or ↓/↑) move
   through the documents, E edits, D marks the current one Done and moves to
   the next, Enter opens its file; in the Edit form Ctrl/⌘+Enter saves and
