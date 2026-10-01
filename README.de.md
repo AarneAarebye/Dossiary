@@ -195,7 +195,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Dokumente (lässt sich anhalten). Neue Vorschauen sind doppelt so scharf
   wie bisher und werden als kompakte JPEGs gespeichert; **Ältere
   Vorschauen neu erstellen** ersetzt kleine (etwa aus Mariner übernommene)
-  durch scharfe und lässt bereits ausreichend große unverändert.
+  durch scharfe und lässt bereits ausreichend große unverändert. Die
+  Bibliotheksprüfung bietet danach an, die alten, von keinem Dokument mehr
+  verwendeten Vorschaudateien zu löschen.
 - **Seiten bearbeiten** — **Seiten bearbeiten…** im Detailbereich zeigt die
   Seiten eines PDFs: drehen, umsortieren, entfernen, Seiten aus einem
   anderen PDF oder einem Bild hinzufügen oder das Dokument mit ✂ in mehrere
@@ -977,7 +979,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (86
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (87
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

@@ -166,7 +166,8 @@ working" problem that motivated this project in the first place.
   are twice as sharp as before and stored as compact JPEGs; **Recreate
   older previews** replaces small ones (for example those migrated from
   Mariner) with sharp ones, leaving any that are already large enough
-  alone.
+  alone. Library check then offers to delete the old preview files no
+  document uses any more.
 - **Page tools** — **Edit pages…** in the detail panel shows a PDF's pages:
   rotate them, reorder them, remove them, add pages from another PDF or an
   image, or split the document with ✂ into several (each part becomes its
@@ -851,7 +852,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (86
+There's a real, runnable Playwright regression suite in `tests/` (87
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

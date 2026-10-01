@@ -45,7 +45,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (86 scripts) + shared
+tests/                   Playwright regression suite (87 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3818,7 +3818,15 @@ this repo's git tags.
   small or unreadable one is recreated from the document's file. The new
   preview replaces the old path only once written; an unreadable document
   keeps its old preview and stays counted for the next run. The old
-  preview file is left on disk (Storage stats lists it as untracked). The
+  preview file is left on disk (Storage stats lists it as untracked);
+  **Library check's "Unused preview files"** (`computeUnusedPreviewFiles()`,
+  `deleteUnusedPreviewFiles()`, `renderUnusedPreviewsSection()`) removes
+  them: every file under `thumbnails/`, subfolders included, that no
+  document's `thumbnail_path` names -- a Waste-bin document still counts as
+  using its preview -- listed as a count and total size, deleted after a
+  `confirm()`. Walked fresh on every check like the broken-links section;
+  `.DS_Store`/`._*` are ignored. Only files under `thumbnails/` are ever
+  considered, never documents. The
   status line reports "Previews recreated: N. Already sharp: M.", or that
   it was stopped. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot)
   is unchanged.

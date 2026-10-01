@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **86
-scripts covering most of the app's actual functionality** (84 of them
+There's a real, runnable Playwright regression suite in `tests/` — **87
+scripts covering most of the app's actual functionality** (85 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -815,7 +815,12 @@ vice versa; and the button and items translating with the UI language --
 every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
-scrollable mobile toolbar), the grid view (`test_grid_view.py` -- List
+scrollable mobile toolbar), Library check's unused preview files
+(`test_unused_previews.py` -- an old PNG and a preview in a subfolder
+listed with their total size, a Waste-bin document's preview and the
+current JPEG not listed, `.DS_Store` ignored; declining the confirmation
+deleting nothing, confirming deleting exactly the two, the result shown in
+place, and the next check finding nothing), the grid view (`test_grid_view.py` -- List
 by default with the count line's text unchanged; Grid showing one tile per
 listed document in the table's order (Waste bin excluded), the table
 hidden, the choice saved, and the count row still exactly as tall as the
