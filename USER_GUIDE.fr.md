@@ -181,7 +181,8 @@ brève.
   (sélection et ajout, ou en faisant glisser des documents sur le nom
   de la collection dans la barre latérale), soit sous forme de "Collection intelligente" qui
   se met automatiquement à jour selon votre recherche/filtre actuel à
-  mesure que de nouveaux documents arrivent.
+  mesure que de nouveaux documents arrivent. Des dossiers (dans Outils →
+  Gérer les collections) gardent une longue liste lisible.
 - **Archiver** — une marque signifiant "je n'ai plus besoin de voir ceci
   dans ma liste quotidienne, mais ne le supprime pas", indépendante de la
   Corbeille.

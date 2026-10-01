@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (91 scripts) + shared
+tests/                   Playwright regression suite (92 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -3577,6 +3577,21 @@ this repo's git tags.
   (`dragOpenedCollections`, restored without saving the setting). A
   `document`-level `dragend` also ends the drag, since a `render()` during
   the drop can replace the source row before its own `dragend` fires.
+  **Collection folders** (`collection_folders (id, name)`,
+  `collections.folder_id` via `SCHEMA_MIGRATIONS`, `collectionFolders`,
+  `toggleCollectionFolder()`, `renderManageFoldersList()`) only group
+  collections in the nav: each folder is a foldable `.nav-folder-header`
+  with its collections indented under it, then the unfiled collections.
+  Which folders are folded is the `collapsed_collection_folders` setting
+  (a JSON id list). Folders are created, renamed and deleted in Manage
+  collections, where every collection gets a folder `<select>` (only once a
+  folder exists); deleting a folder sets its collections' `folder_id` to
+  NULL rather than deleting anything, and a `folder_id` pointing at a
+  missing folder reads as unfiled. Dragging documents over a folded folder
+  opens it for the drag (`dragOpenedFolders`). "Copy the setup of" copies
+  the folders and each smart collection's `folder_id` -- checked with a
+  probe `SELECT folder_id`, since an older source library lacks the column
+  and a failing SELECT would otherwise skip every smart collection.
 - **Duplicate detection** (`documents.file_hash`, `computeFileHash()`,
   `openLibraryCheckModal()`) flags two kinds of likely-duplicate document:
   an exact match on the file's own bytes, and a heuristic match on

@@ -190,12 +190,12 @@ class FakeDatabase {
     if (bytes && bytes.length) {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(bytes));
-        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [], field_descriptions: parsed.field_descriptions || [], reminder_snoozes: parsed.reminder_snoozes || [], not_duplicate_groups: parsed.not_duplicate_groups || [] };
+        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [], field_descriptions: parsed.field_descriptions || [], reminder_snoozes: parsed.reminder_snoozes || [], not_duplicate_groups: parsed.not_duplicate_groups || [], collection_folders: parsed.collection_folders || [] };
       } catch (e) {
-        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [] };
+        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [], collection_folders: [] };
       }
     } else {
-      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [] };
+      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [], collection_folders: [] };
     }
     // The app opens a library that never chose a view in Grid; nearly every
     // test drives the table, so test libraries start in List unless a test
@@ -528,7 +528,7 @@ window.__makeSeededRoot = function(seed) {
     document_type_fields: seed.document_type_fields || [], fields: seed.fields || [],
     document_field_values: seed.document_field_values || [],
     collections: seed.collections || [], collection_documents: seed.collection_documents || [],
-    field_descriptions: seed.field_descriptions || [], reminder_snoozes: seed.reminder_snoozes || [], not_duplicate_groups: seed.not_duplicate_groups || [],
+    field_descriptions: seed.field_descriptions || [], reminder_snoozes: seed.reminder_snoozes || [], not_duplicate_groups: seed.not_duplicate_groups || [], collection_folders: seed.collection_folders || [],
   };
   const dbBytes = new TextEncoder().encode(JSON.stringify(full));
   root._children.set('library.sqlite', new FakeFileHandle('library.sqlite', dbBytes));

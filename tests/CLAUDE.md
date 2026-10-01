@@ -825,7 +825,14 @@ under that name; an existing `.DOSSIARY` ending not doubled; a picked
 `Prepared.dossiary` folder hiding the form and making "Use this folder as
 the library" the main action, which sets the library up in it; and the
 untouched default name and preview following a switch to German),
-dragging documents onto a collection (`test_drag_to_collection.py` --
+collection folders (`test_collection_folders.py` -- the plain list
+without folders and no folder picker yet; creating folders (button and
+Enter), the folder picker per collection, assignments saved, per-folder
+counts; the nav grouping collections under their folders with unfiled
+ones last; folding remembered across reopening; a folded folder opening
+while dragging over it, taking the drop, and folding again; renaming, and
+deleting a folder keeping its collections unfiled; a library copying this
+setup getting the folders; German labels), dragging documents onto a collection (`test_drag_to_collection.py` --
 real HTML5 drag-and-drop via Playwright: an unchecked row added alone, a
 checked row carrying the whole checked selection, a document already there
 reported and not added twice, a smart collection not taking the drop, no

@@ -170,7 +170,8 @@ necesaria para empezar, así que esta sección es intencionadamente breve.
   (seleccionando y añadiendo, o arrastrando documentos sobre el nombre
   de la colección en la barra lateral) o como una "Colección inteligente" que se
   mantiene automáticamente al día con tu búsqueda/filtro actual a medida
-  que llegan nuevos documentos.
+  que llegan nuevos documentos. Las carpetas (en Herramientas →
+  Gestionar colecciones) mantienen ordenada una lista larga.
 - **Archivar** — una marca de "ya no necesito ver esto en mi lista
   diaria, pero no lo borres", independiente de la Papelera.
 - **Papelera** — eliminar un documento no destruye nada en el disco; se

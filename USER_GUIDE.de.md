@@ -177,7 +177,8 @@ kurz.
   Hand (auswählen und hinzufügen, oder Dokumente auf den Namen der
   Sammlung in der Seitenleiste ziehen) oder als "Intelligente Sammlung", die
   automatisch mit deiner aktuellen Such-/Filtereinstellung mitwächst,
-  sobald neue Dokumente dazukommen.
+  sobald neue Dokumente dazukommen. Ordner (unter Werkzeuge → Sammlungen
+  verwalten) halten eine lange Liste übersichtlich.
 - **Archivieren** — eine Markierung für "brauche ich nicht mehr in meiner
   alltäglichen Liste zu sehen, aber nicht löschen", unabhängig vom
   Papierkorb.

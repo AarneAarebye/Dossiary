@@ -164,6 +164,7 @@ get started, so this section is intentionally brief.
   (select and add, or drag documents onto the collection's name in the
   sidebar) or as a "Smart Collection" that automatically
   keeps matching your current search/filter as new documents arrive.
+  Folders (in Tools → Manage collections) keep a long list tidy.
 
   ![The Manage Collections dialog](docs/user-guide/en/12-collections.png)
 
