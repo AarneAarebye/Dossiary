@@ -142,6 +142,11 @@ fit for Dossiary's status line.
   Dossiary versions.
 - Dossiary uses version 2 with a helper that reports `protocol: 2`, and
   version 1 otherwise.
+- **Version 1 has no pairing.** A helper serving both versions (scanix500)
+  therefore leaves the `Origin: null` hole open through its version 1
+  request. scanix500's version 2 (step 4) must require a paired token on
+  its version 1 request too once Dossiary pairs (step 2), or drop version 1.
+  scanix500's current bridge has this hole today.
 
 ### Ports
 
