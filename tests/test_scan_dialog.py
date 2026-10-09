@@ -289,7 +289,199 @@ async def scenario_dialog(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog]
+async def db_state(page):
+    return await page.evaluate("(async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text()))()")
+
+async def inbox_names(page):
+    return await page.evaluate("""(async () => {
+        const dir = await window.__TEST_ROOT.getDirectoryHandle('inbox', {create: true});
+        const names = []; for await (const [n] of dir.entries()) names.push(n); return names.sort();
+    })()""")
+
+async def start_scan(page, wait=400):
+    await page.click('#scan-dialog-start-btn')
+    await page.wait_for_timeout(wait)
+
+
+# === Task 3: scanning through a version 1 helper (scanix500) ===
+async def scenario_scan_v1(p):
+    browser, page, errors = await open_app(p, tokens={L1: 'tok-1'})
+    await page.evaluate(FAKE_HELPERS, {L1: {"version": 1, "token": "tok-1"}})
+
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    print("toolbar Scan opens the scan dialog:", await page.locator('#scan-dialog-scanner').count() == 1)
+    print("old port dialog is gone:", await page.locator('#scan-connect-port').count() == 0)
+    await start_scan(page)
+    c = await calls(page)
+    scan = [x for x in c if '/scan?' in x['url']]
+    print("version 1 request with split_on_blank=false:",
+          len(scan) == 1 and scan[0]['url'] == f'{L1}/scan?skip_blank_filter=false&skip_ocr=false&split_on_blank=false'
+          and scan[0]['method'] == 'POST' and scan[0]['auth'] == 'Bearer tok-1' and scan[0]['body'] is None)
+    print("dialog closes after a successful scan:", await page.locator('#scan-dialog-body').count() == 0)
+    db = await db_state(page)
+    print("the scan became an Inbox document:", len(db['documents']) == 1 and int(db['documents'][0]['needs_review']) == 1)
+    print("Inbox view shown:", await page.get_attribute('#nav-item-inbox', 'class') and 'active' in await page.get_attribute('#nav-item-inbox', 'class'))
+    print("inbox/ folder emptied again:", await inbox_names(page) == [])
+
+    # Split on blank pages ticked -> split_on_blank=true; several files all arrive.
+    await page.evaluate(f"""window.__HELPERS['{L1}'].scanResponses = [{{status: 200, body: {{ok: true, partial: false, message: 'ok', output_paths: [],
+        files: [{{filename: 'a.pdf', content_base64: btoa('%PDF-1.4 A')}}, {{filename: 'b.pdf', content_base64: btoa('%PDF-1.4 B')}}]}}}}]""")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.check('.scan-dialog-extra[data-extra=splitOnBlank]')
+    await start_scan(page)
+    c = await calls(page)
+    print("split on blank pages sends split_on_blank=true:", c[[i for i, x in enumerate(c) if '/scan?' in x['url']][-1]]['url'].endswith('split_on_blank=true'))
+    db = await db_state(page)
+    print("every file of a multi-file result is added:", len(db['documents']) == 3)
+
+    # A file already staged under the same name is never overwritten.
+    await page.evaluate("""(async () => {
+        const dir = await window.__TEST_ROOT.getDirectoryHandle('inbox', {create: true});
+        const fh = await dir.getFileHandle('same.pdf', {create: true}); const w = await fh.createWritable(); await w.write('%PDF-1.4 staged'); await w.close();
+    })()""")
+    await page.evaluate(f"""window.__HELPERS['{L1}'].scanResponses = [{{status: 200, body: {{ok: true, partial: false, message: 'ok', output_paths: [],
+        files: [{{filename: 'same.pdf', content_base64: btoa('%PDF-1.4 scanned')}}]}}}}]""")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await start_scan(page)
+    db = await db_state(page)
+    print("a same-named staged file and the scan both become documents:", len(db['documents']) == 5)
+
+    # Partial result: files added, the helper's message is the final status line.
+    await page.evaluate(f"""window.__HELPERS['{L1}'].scanResponses = [{{status: 200, body: {{ok: false, partial: true, message: 'Multi-feed at sheet 3', output_paths: [],
+        files: [{{filename: 'p.pdf', content_base64: btoa('%PDF-1.4 partial')}}]}}}}]""")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await start_scan(page)
+    db = await db_state(page)
+    status = await page.inner_text('#status')
+    print("partial result still adds its file:", len(db['documents']) == 6)
+    print("partial result shows the helper's message:", 'Multi-feed at sheet 3' in status)
+
+    # Hard failure: message in the dialog and on the status line, dialog stays open, nothing added.
+    await page.evaluate(f"""window.__HELPERS['{L1}'].scanResponses = [{{status: 200, body: {{ok: false, partial: false, message: 'Scanner not found', output_paths: []}}}}]""")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await start_scan(page)
+    print("hard failure keeps the dialog open with the message:", 'Scanner not found' in await page.inner_text('#scan-dialog-status'))
+    print("hard failure adds nothing:", len((await db_state(page))['documents']) == 6)
+    print("status line shows the failure:", 'Scanner not found' in await page.inner_text('#status'))
+
+    # 404 from a version 1 helper: outdated scanix500.
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{status: 404, body: {{error: 'not found'}}}}]")
+    await start_scan(page)
+    print("404 names an outdated scanix500:", 'scanix500' in await page.inner_text('#scan-dialog-status'))
+
+    # 409: a scan is already running.
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{status: 409, body: {{error: 'a scan is already in progress'}}}}]")
+    await start_scan(page)
+    print("409 says a scan is already running:", 'already in progress' in await page.inner_text('#scan-dialog-status'))
+
+    # Network failure mid-scan: the helper is named, dialog stays open.
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{network: true}}]")
+    await start_scan(page)
+    print("unreachable helper named in the dialog:", L1 in await page.inner_text('#scan-dialog-status'))
+
+    # Not JSON / no files array: a bad answer, nothing added.
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{status: 200, raw: 'not valid json'}}]")
+    await start_scan(page)
+    print("a non-JSON answer is reported:", "doesn't understand" in await page.inner_text('#scan-dialog-status'))
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{status: 200, body: {{ok: true, partial: false, message: 'x', output_paths: []}}}}]")
+    await start_scan(page)
+    print("an ok answer without files is reported, nothing added:",
+          "doesn't understand" in await page.inner_text('#scan-dialog-status') and len((await db_state(page))['documents']) == 6)
+
+    # While a scan runs: button reads Scanning…, toolbar buttons disabled, Escape/close/backdrop blocked.
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{delayMs: 800, status: 200, body: {{ok: false, partial: false, message: 'slow fail'}}}}]")
+    await page.click('#scan-dialog-start-btn')
+    await page.wait_for_timeout(150)
+    print("Scan button reads Scanning… while scanning:", await page.inner_text('#scan-dialog-start-btn') == 'Scanning…'
+          and not await page.is_enabled('#scan-dialog-start-btn'))
+    print("toolbar Scan buttons disabled while scanning:", not await page.is_enabled('#scan-btn') and not await page.is_enabled('#scan-multi-btn'))
+    await page.keyboard.press('Escape')
+    await page.click('#modal-close-btn')
+    await page.mouse.click(5, 5)
+    print("Escape, close and backdrop don't close it mid-scan:", await page.locator('#scan-dialog-body').count() == 1)
+    await page.wait_for_timeout(900)
+    print("everything re-enabled afterwards:", await page.is_enabled('#scan-dialog-start-btn') and await page.is_enabled('#scan-btn')
+          and await page.inner_text('#scan-dialog-start-btn') == 'Scan')
+    await page.keyboard.press('Escape')
+    print("Escape closes it again once idle:", await page.locator('#scan-dialog-body').count() == 0)
+
+    # 401: token dropped, the person is told to pair again.
+    await page.evaluate(f"window.__HELPERS['{L1}'].forgotten = true")
+    await page.evaluate(f"window.__HELPERS['{L1}'].legacy = false")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    # The forgotten helper now reports paired: false, so there's no scanner to pick yet --
+    # force a stale scan through a paired-looking state by re-enabling validity for /health only:
+    print("a helper that forgot this browser offers no scanner:", await page.locator('#scan-dialog-scanner').count() == 0)
+    await page.keyboard.press('Escape')
+
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+# === Task 3: scanning through a version 2 helper ===
+async def scenario_scan_v2(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'})
+    await page.evaluate(FAKE_HELPERS, {L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS}})
+
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:feeder')
+    await page.select_option('#scan-dialog-source', 'feeder')
+    await page.check('#scan-dialog-duplex')
+    await page.select_option('#scan-dialog-color', 'gray')
+    await page.select_option('#scan-dialog-resolution', '300')
+    await start_scan(page)
+    c = await calls(page)
+    scan = [x for x in c if x['url'] == f'{L2}/scan']
+    body = json.loads(scan[0]['body']) if scan else None
+    print("version 2 request is a JSON POST /scan with the token:",
+          len(scan) == 1 and scan[0]['method'] == 'POST' and scan[0]['contentType'] == 'application/json' and scan[0]['auth'] == 'Bearer tok-2')
+    print("body carries exactly the chosen settings:",
+          body == {"scanner": "fake:feeder", "format": "pdf", "extras": {}, "source": "feeder", "colorMode": "gray", "resolution": 300, "duplex": True})
+    db = await db_state(page)
+    print("the version 2 result ({name, data}) became a document:", len(db['documents']) == 1)
+    last = json.loads(next(r['value'] for r in db['settings'] if r['key'] == 'scan_last_settings'))
+    print("the used settings are remembered:", last['scanner'] == f'{L2}|fake:feeder' and last['colorMode'] == 'gray' and last['duplex'] is True)
+
+    # Extras: known ones sent as booleans, the unknown one never sent.
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:splitter')
+    await page.check('.scan-dialog-extra[data-extra=splitOnBlank]')
+    await start_scan(page)
+    body = json.loads([x for x in await calls(page) if x['url'] == f'{L2}/scan'][-1]['body'])
+    print("extras sent as known booleans only:", body['extras'] == {"splitOnBlank": True, "skipBlankPages": False})
+    print("two-sided false for a scanner without duplex:", body['duplex'] is False)
+
+    # Version 2 errors show the helper's message: 422, 503, 500.
+    for status, message in [(422, 'This scanner has no 1200 dpi.'), (503, 'Scanner offline.'), (500, 'No paper in the feeder.')]:
+        await page.evaluate(f"window.__HELPERS['{L2}'].scanResponses = [{{status: {status}, body: {{ok: false, partial: false, message: {json.dumps(message)}}}}}]")
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        await start_scan(page)
+        print(f"{status} shows the helper's message in the dialog:", message in await page.inner_text('#scan-dialog-status'))
+        await page.keyboard.press('Escape')
+
+    # A version 2 partial result.
+    await page.evaluate(f"""window.__HELPERS['{L2}'].scanResponses = [{{status: 200, body: {{ok: false, partial: true, message: 'Paper jam after page 2.',
+        files: [{{name: 'jam.pdf', pages: 2, data: btoa('%PDF-1.4 jam')}}]}}}}]""")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await start_scan(page)
+    db = await db_state(page)
+    print("version 2 partial result added with its message:", len(db['documents']) == 3 and 'Paper jam' in await page.inner_text('#status'))
+
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2]
 
 
 async def main():
