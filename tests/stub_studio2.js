@@ -562,3 +562,22 @@ window.__addInboxFile = function(root, name, bytes) {
   const inbox = root._children.get('inbox');
   inbox._children.set(name, new FakeFileHandle(name, bytes || new TextEncoder().encode('inbox-placeholder:' + name)));
 };
+
+// No test may reach a real scan helper on the developer's machine (scanix500
+// may well be running on :8765): a request to localhost/127.0.0.1 on another
+// origin than the page's own fails like an unreachable helper. Tests that
+// fake helpers replace window.fetch entirely, which removes this guard.
+// manual_scan_reference_helper.py sets window.__ALLOW_REAL_HELPERS to talk to
+// the real reference helper.
+(() => {
+  const realFetch = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    let target = null;
+    try{ target = new URL(url, location.href); }catch(e){ /* relative or odd -- let the real fetch decide */ }
+    if(!window.__ALLOW_REAL_HELPERS && target && /^(localhost|127\.0\.0\.1)$/i.test(target.hostname) && target.origin !== location.origin){
+      return Promise.reject(new TypeError('Failed to fetch'));
+    }
+    return realFetch(input, init);
+  };
+})();

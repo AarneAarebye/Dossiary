@@ -12938,6 +12938,106 @@
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  // ---- Scan helpers: discovery (scanner helper spec, section 2) ----
+  // Every helper speaks the bridge protocol (dossiary-scan-helper's
+  // PROTOCOL.md): scanix500 on 8765 (version 1, one fixed scanner), the
+  // system scanner helper on 8766 (version 2, any number of scanners), plus
+  // the manual address in Field Settings (scan_bridge_url) when it's another
+  // helper. A version 1 helper contributes V1_SCANNER, whose one extra is
+  // split on blank pages.
+  const SCAN_HELPER_PORTS = [8765, 8766];
+  const V1_SCANNER = Object.freeze({ id: 'scanix500', name: 'ScanSnap iX500', sources: [], duplex: false, colorModes: [], resolutions: [], extras: ['splitOnBlank'] });
+  const SCAN_EXTRA_LABEL_KEYS = { splitOnBlank: 'scanExtraSplitOnBlank', skipBlankPages: 'scanExtraSkipBlankPages' };
+
+  function normalizeHelperUrl(value){
+    const s = String(value || '').trim().replace(/\/+$/, '');
+    return /^https?:\/\/[^\s/?#]+$/i.test(s) ? s : null;
+  }
+  const sameHelperUrl = (a, b) => a.replace('//127.0.0.1', '//localhost') === b.replace('//127.0.0.1', '//localhost');
+  function scanHelperUrls(){
+    const urls = SCAN_HELPER_PORTS.map(port => `http://localhost:${port}`);
+    const manual = normalizeHelperUrl(scanBridgeUrl);
+    if(manual && !urls.some(u => sameHelperUrl(u, manual))) urls.push(manual);
+    return urls;
+  }
+
+  // GET <url>/health with a short timeout. Returns null when nothing (or
+  // something that isn't a scan helper) answers there.
+  async function probeScanHelper(url){
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SCAN_BRIDGE_HEALTH_TIMEOUT_MS);
+    try{
+      const response = await fetch(`${url}/health`, { method: 'GET', headers: scanAuthHeaders(url), signal: controller.signal });
+      if(!response.ok) return null;
+      const body = await response.json().catch(() => null);
+      if(!body || typeof body !== 'object') return null;
+      if(body.protocol === 2){
+        return { url, version: 2, paired: body.paired === true, label: typeof body.helper === 'string' && body.helper ? body.helper : url, scanners: [] };
+      }
+      if(body.service === 'scanix500-bridge'){
+        // No `paired` field: a bridge older than 0.3.0, which has no pairing.
+        return { url, version: 1, paired: body.paired !== false, label: 'scanix500', scanners: [] };
+      }
+      return null;
+    }catch(e){
+      return null;
+    }finally{
+      clearTimeout(timeoutId);
+    }
+  }
+
+  function validHelperScanner(s){
+    return !!s && typeof s.id === 'string' && !!s.id && typeof s.name === 'string'
+      && Array.isArray(s.sources) && Array.isArray(s.colorModes) && Array.isArray(s.resolutions);
+  }
+  async function loadHelperScanners(helper){
+    helper.scanners = [];
+    if(!helper.paired) return helper;
+    if(helper.version === 1){ helper.scanners = [V1_SCANNER]; return helper; }
+    try{
+      const response = await fetch(`${helper.url}/scanners`, { method: 'GET', headers: scanAuthHeaders(helper.url) });
+      if(response.status === 401){ helper.paired = false; return helper; }
+      const body = response.ok ? await response.json().catch(() => null) : null;
+      if(!body || !Array.isArray(body.scanners)) return helper;
+      helper.scanners = body.scanners.filter(validHelperScanner).map(s => ({
+        id: s.id,
+        name: s.name,
+        sources: s.sources.filter(x => x === 'flatbed' || x === 'feeder'),
+        duplex: s.duplex === true,
+        colorModes: s.colorModes.filter(x => x === 'color' || x === 'gray' || x === 'bw'),
+        resolutions: s.resolutions.filter(Number.isInteger),
+        extras: Array.isArray(s.extras) ? s.extras.filter(x => typeof x === 'string') : [],
+      }));
+    }catch(e){ /* unreachable mid-way: no scanners from it */ }
+    return helper;
+  }
+
+  async function discoverScanHelpers(){
+    const found = (await Promise.all(scanHelperUrls().map(probeScanHelper))).filter(Boolean);
+    await Promise.all(found.map(loadHelperScanners));
+    return found;
+  }
+
+  function scannerChoices(helpers){
+    const all = [];
+    for(const helper of helpers){
+      for(const scanner of helper.scanners) all.push({ key: `${helper.url}|${scanner.id}`, helper, scanner, label: scanner.name });
+    }
+    const counts = {};
+    for(const c of all) counts[c.scanner.name] = (counts[c.scanner.name] || 0) + 1;
+    for(const c of all) if(counts[c.scanner.name] > 1) c.label = `${c.scanner.name} (${c.helper.label})`;
+    return all;
+  }
+
+  window.__DEBUG_scanDiscovery = async () => {
+    const helpers = await discoverScanHelpers();
+    return {
+      helpers: helpers.map(h => ({ url: h.url, version: h.version, paired: h.paired, label: h.label, scannerIds: h.scanners.map(s => s.id) })),
+      choices: scannerChoices(helpers).map(c => ({ key: c.key, label: c.label })),
+    };
+  };
+  window.__DEBUG_setScanBridgeUrl = (value) => saveScanBridgeUrl(value);
+
   // Probes GET <url>/health with a short client-side timeout -- unlike
   // triggerScan()'s own deliberately-un-timed-out POST /scan
   // (see that function's own comment below), this is a pure reachability
