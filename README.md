@@ -850,7 +850,11 @@ separate genuinely distinct values.
   the bridge's default port and connects silently if it's found — no setup
   needed beyond having `scanix500`'s own menu bar app running. If it isn't
   found, a "Configure Scanner Connection" dialog opens with a Port field
-  and a link to get the companion app set up.
+  and a link to get the companion app set up. Since scanix500 0.3.0 the
+  browser has to be paired once: the first scan asks for the 6-digit code
+  that scanix500's "Pair a Browser…" menu item shows. That keeps other
+  websites from starting a scan and reading the document. The pairing is
+  remembered by this browser, for every library.
 - **Reconnecting a recent library still needs one click.** Browsers won't
   let a page silently regain filesystem access after a reload — even with
   a library remembered in the Recent libraries list (see Features above),
@@ -897,7 +901,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (96
+There's a real, runnable Playwright regression suite in `tests/` (97
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

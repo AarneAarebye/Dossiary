@@ -32,7 +32,9 @@ Decisions taken in brainstorming:
 
 Version 1 is today's scanix500 protocol: `GET /health`, then a scan request
 with `skip_blank_filter`, `skip_ocr` and `split_on_blank` query parameters,
-answered with `{ok, partial, message, files: [{name, data(base64)}]}`.
+answered with `{ok, partial, message, output_paths, files: [{filename,
+content_base64}]}` (see `PROTOCOL.md`'s version 1 section for the exact
+format).
 Version 2 adds scanner discovery and generic settings. It is written up as
 `PROTOCOL.md` in the new repo, generated from this section.
 
@@ -146,7 +148,9 @@ fit for Dossiary's status line.
   therefore leaves the `Origin: null` hole open through its version 1
   request. scanix500's version 2 (step 4) must require a paired token on
   its version 1 request too once Dossiary pairs (step 2), or drop version 1.
-  scanix500's current bridge has this hole today.
+  **Done early (2026-10-09):** scanix500 0.3.0 pairs browsers on its
+  version 1 request (403 for other origins, 401 without a token), and
+  Dossiary's existing Scan buttons pair before scanning, ahead of step 2.
 
 ### Ports
 

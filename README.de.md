@@ -972,11 +972,15 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   weiterhin bestehen. `scanix500` steuert einen bestimmten ScanSnap
   iX500-Scanner direkt an und stellt eine kleine lokale HTTP-Bridge
   bereit, die der Browser-Tab von Dossiary über `fetch()` aufrufen kann.
-  So wird es eingerichtet: `scanix500`s eigene Menüleisten-App installieren
-  und starten, dann deren Bridge-URL einmalig in Dossiarys
-  Feldeinstellungen (`scan_bridge_url`) eintragen. Ohne diese installierte,
-  laufende und konfigurierte Begleit-App zeigen beide Buttons einen klaren
-  Hinweis „nicht konfiguriert“ statt stillschweigend nichts zu tun.
+  Ein Klick auf einen der Buttons sucht die Bridge auf ihrem
+  Standard-Port und verbindet sich ohne Rückfrage, wenn sie läuft; sonst
+  öffnet sich ein Dialog „Configure Scanner Connection“ mit einem
+  Port-Feld und einem Link zur Begleit-App. Seit scanix500 0.3.0 muss der
+  Browser einmal gekoppelt werden: Der erste Scan fragt nach dem
+  6-stelligen Code, den der Menüpunkt „Pair a Browser…“ von scanix500
+  anzeigt. So können andere Websites keinen Scan auslösen und das
+  Dokument lesen. Die Kopplung merkt sich dieser Browser, für alle
+  Bibliotheken.
 - **Das erneute Verbinden mit einer zuletzt geöffneten Bibliothek braucht
   weiterhin einen Klick.** Browser lassen eine Seite nach einem Neuladen
   nicht stillschweigend wieder auf das Dateisystem zugreifen — selbst mit
@@ -1033,7 +1037,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (96
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (97
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

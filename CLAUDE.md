@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (96 scripts) + shared
+tests/                   Playwright regression suite (97 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2367,6 +2367,27 @@ this repo's git tags.
   handling, or to scanix500-menubar's own feature set. See
   `docs/superpowers/specs/2026-09-17-scan-helper-discoverability-design.md`
   for the full design.
+  **Pairing (scanix500 0.3.0)** (`openScanPairDialog()`,
+  `submitScanPairDialog()`, `getScanToken()`/`setScanToken()`,
+  `scanAuthHeaders()`): the bridge used to answer every origin with
+  `Access-Control-Allow-Origin: *`, so any website could start a scan and
+  read the document -- and even an origin allow-list can't tell this
+  `file://` page's `Origin: null` apart from a sandboxed iframe's. So the
+  browser pairs once: scanix500's "Pair a Browser…" shows a 6-digit code,
+  the pairing dialog sends it to `POST /pair` (`{code, client:
+  'Dossiary'}`, JSON, so a preflight) and stores the returned token in
+  `localStorage` (`dossiary_scan_tokens`, keyed by the bridge URL; per
+  browser, not per library, since pairing belongs to the browser; in
+  memory if storage is blocked). `/health` and `/scan` then carry
+  `Authorization: Bearer <token>` -- only when there is a token, because
+  that header forces a preflight a pre-0.3.0 bridge doesn't allow.
+  `probeScanBridgeHealth()` returns `null` (nothing there) or `{paired}`;
+  a bridge without a `paired` field is pre-0.3.0 and counts as paired, so
+  it still scans. An unpaired health probe opens the pairing dialog before
+  any scan request; a `401` from `/scan` (the helper forgot its browsers)
+  drops the stale token and opens it too. A successful pairing runs the
+  scan that was clicked. The same scheme as dossiary-scan-helper's
+  `PROTOCOL.md`; the spec's step 2 scan dialog will reuse it.
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default

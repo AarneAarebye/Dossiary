@@ -13,7 +13,7 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **96
+There's a real, runnable Playwright regression suite in `tests/` — **97
 scripts covering most of the app's actual functionality** (94 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
@@ -831,7 +831,18 @@ fake `navigator.share`/`canShare`: files read before Share is offered, an
 unreadable one listed, nothing shared before the click, files named like
 exported copies with PDF details, the confirmation; the panel's Share…, a
 dismissed sheet staying quiet, a refused one reported, a single document
-shared with its title; German labels), details in exported PDFs (`test_export.py`'s later checks -- by default the
+shared with its title; German labels), scan-helper pairing
+(`test_scan_pairing.py` -- a fake `fetch` playing a scanix500 0.3.0 bridge:
+an unpaired health probe opening the pairing dialog before any scan, with
+no Authorization header sent without a token; a malformed code refused
+locally, a wrong one showing "didn't work" with the dialog open; the right
+code typed with a space posting `{code, client}` as JSON, storing the token
+under the bridge URL and running the scan with it; later scans sending the
+token straight away; a 401 dropping the stale token and bringing the dialog
+back, with re-pairing finishing the scan; Cancel; a pre-0.3.0 bridge with
+no `paired` field scanning without a dialog or header; German title. Each
+fake scan returns different bytes, since duplicate detection would skip a
+repeat), details in exported PDFs (`test_export.py`'s later checks -- by default the
 copy carries title, subject and keywords with its pages untouched; with the
 option off the copy is byte-identical; a PDF pdf-lib can't open copied
 unchanged and reported), hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;
