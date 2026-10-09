@@ -174,7 +174,122 @@ async def scenario_discovery(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery]
+# === Task 2: the dialog, per-scanner settings, remembered settings, nothing found ===
+async def scenario_dialog(p):
+    browser, page, errors = await open_app(p, tokens={L1: 'tok-1', L2: 'tok-2'})
+    await page.evaluate(FAKE_HELPERS, {L1: {"version": 1, "token": "tok-1"},
+                                       L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS}})
+
+    await page.evaluate("window.__DEBUG_openScanDialog({})")
+    await page.wait_for_timeout(300)
+    options = await page.eval_on_selector_all('#scan-dialog-scanner option', 'els => els.map(e => e.textContent)')
+    print("dialog lists every found scanner:", options == ['ScanSnap iX500', 'Fake Flatbed', 'Fake Feeder', 'Fake Splitter'])
+    print("dialog title:", await page.inner_text('.modal h2') == 'Scan')
+
+    # The iX500 (version 1): no source/color/resolution choices, only split on blank pages.
+    print("iX500 shows no source, color or resolution choice:",
+          await page.locator('#scan-dialog-source').count() == 0 and await page.locator('#scan-dialog-color').count() == 0
+          and await page.locator('#scan-dialog-resolution').count() == 0)
+    extras = await page.eval_on_selector_all('.scan-dialog-extra', 'els => els.map(e => e.dataset.extra)')
+    print("iX500 offers split on blank pages, unticked:", extras == ['splitOnBlank']
+          and not await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]'))
+    print("iX500 hides two-sided:", not await page.is_visible('#scan-dialog-duplex-wrap'))
+
+    # Fake Feeder: two sources; two-sided only with the feeder.
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:feeder')
+    sources = await page.eval_on_selector_all('#scan-dialog-source option', 'els => els.map(e => e.textContent)')
+    print("feeder scanner lists its sources:", sources == ['Document feeder', 'Flatbed'])
+    print("two-sided shown with the feeder:", await page.is_visible('#scan-dialog-duplex-wrap'))
+    await page.check('#scan-dialog-duplex')
+    await page.select_option('#scan-dialog-source', 'flatbed')
+    print("two-sided hidden and cleared on the flatbed:",
+          not await page.is_visible('#scan-dialog-duplex-wrap') and not await page.is_checked('#scan-dialog-duplex'))
+    colors = await page.eval_on_selector_all('#scan-dialog-color option', 'els => els.map(e => e.textContent)')
+    print("color modes labelled:", colors == ['Color', 'Grayscale', 'Black & white'])
+    res = await page.eval_on_selector_all('#scan-dialog-resolution option', 'els => els.map(e => e.textContent)')
+    print("resolutions labelled in dpi:", res == ['150 dpi', '300 dpi', '600 dpi'])
+
+    # Fake Splitter: known extras only, the unknown one never shown.
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:splitter')
+    extras = await page.eval_on_selector_all('.scan-dialog-extra', 'els => els.map(e => e.dataset.extra)')
+    print("only known extras shown:", extras == ['splitOnBlank', 'skipBlankPages'])
+
+    # readScanDialogSettings() + saveLastScanSettings() round trip, then reopening restores them.
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:feeder')
+    await page.select_option('#scan-dialog-source', 'feeder')
+    await page.check('#scan-dialog-duplex')
+    await page.select_option('#scan-dialog-color', 'gray')
+    await page.select_option('#scan-dialog-resolution', '600')
+    saved = await page.evaluate("(async () => { const s = window.__DEBUG_readScanDialogSettings(); await window.__DEBUG_saveLastScanSettings(s); return s; })()")
+    print("settings read from the dialog:", saved == {"scanner": f"{L2}|fake:feeder", "source": "feeder", "duplex": True,
+                                                       "colorMode": "gray", "resolution": 600, "extras": {}})
+    db = await page.evaluate("(async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text()))()")
+    row = next((r for r in db['settings'] if r['key'] == 'scan_last_settings'), None)
+    print("last settings saved in the library:", row is not None and json.loads(row['value']) == saved)
+
+    await page.click('#scan-dialog-cancel-btn')
+    await page.evaluate("window.__DEBUG_openScanDialog({})")
+    await page.wait_for_timeout(300)
+    print("reopening selects the remembered scanner:", await page.eval_on_selector('#scan-dialog-scanner', 'e => e.value') == f'{L2}|fake:feeder')
+    print("...and its remembered settings:",
+          await page.eval_on_selector('#scan-dialog-source', 'e => e.value') == 'feeder'
+          and await page.is_checked('#scan-dialog-duplex')
+          and await page.eval_on_selector('#scan-dialog-color', 'e => e.value') == 'gray'
+          and await page.eval_on_selector('#scan-dialog-resolution', 'e => e.value') == '600')
+
+    # The splitOnBlank option ticks the extra (Scan Multi's shortcut, Task 5).
+    await page.click('#scan-dialog-cancel-btn')
+    await page.evaluate(f"window.__DEBUG_saveLastScanSettings({{scanner: '{L1}|scanix500', extras: {{}}}})")
+    await page.evaluate("window.__DEBUG_openScanDialog({splitOnBlank: true})")
+    await page.wait_for_timeout(300)
+    print("splitOnBlank option ticks split on blank pages:", await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]'))
+
+    # A remembered scanner that's gone falls back to the first.
+    await page.click('#scan-dialog-cancel-btn')
+    await page.evaluate(f"window.__DEBUG_saveLastScanSettings({{scanner: '{L2}|fake:gone', extras: {{}}}})")
+    await page.evaluate("window.__DEBUG_openScanDialog({})")
+    await page.wait_for_timeout(300)
+    print("a gone scanner falls back to the first:", await page.eval_on_selector('#scan-dialog-scanner', 'e => e.value') == f'{L1}|scanix500')
+    print("Scan button enabled with a scanner:", await page.is_enabled('#scan-dialog-start-btn'))
+
+    # Nothing found: links, address field, Look again with a new address.
+    await page.click('#scan-dialog-cancel-btn')
+    await page.evaluate(f"window.__HELPERS['{L1}'].down = true; window.__HELPERS['{L2}'].down = true;")
+    await page.evaluate("window.__DEBUG_openScanDialog({})")
+    await page.wait_for_timeout(300)
+    body = await page.inner_text('#scan-dialog-body')
+    print("nothing found explains a helper is needed:", 'No scan helper answered' in body)
+    print("links to dossiary-scan-helper releases and scanix500:",
+          await page.get_attribute('#scan-dialog-helper-link', 'href') == 'https://github.com/AarneAarebye/dossiary-scan-helper/releases'
+          and await page.get_attribute('#scan-dialog-scanix500-link', 'href') == 'https://github.com/AarneAarebye/iX500')
+    print("Scan button disabled with nothing found:", not await page.is_enabled('#scan-dialog-start-btn'))
+    await page.fill('#scan-dialog-address', 'not a url')
+    await page.click('#scan-dialog-retry-btn')
+    print("an invalid address is refused:", 'http://localhost:8766' in await page.inner_text('#scan-dialog-status'))
+    await page.evaluate("window.__HELPERS['http://localhost:9300'] = {version: 1, token: 'tok-3', legacy: true}")
+    await page.fill('#scan-dialog-address', 'http://localhost:9300/')
+    await page.click('#scan-dialog-retry-btn')
+    await page.wait_for_timeout(300)
+    print("Look again finds the helper at the new address:", await page.locator('#scan-dialog-scanner').count() == 1)
+    db = await page.evaluate("(async () => JSON.parse(await (await (await window.__TEST_ROOT.getFileHandle('library.sqlite')).getFile()).text()))()")
+    print("the new address is saved as scan_bridge_url:",
+          next(r['value'] for r in db['settings'] if r['key'] == 'scan_bridge_url') == 'http://localhost:9300')
+
+    print("no page errors:", errors == [])
+    await browser.close()
+
+    # German labels.
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, lang='de')
+    await page.evaluate(FAKE_HELPERS, {L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS}})
+    await page.evaluate("window.__DEBUG_openScanDialog({})")
+    await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:feeder')
+    print("German dialog title:", await page.inner_text('.modal h2') == 'Scannen')
+    print("German source label:", 'Dokumenteneinzug' in await page.inner_text('#scan-dialog-settings'))
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog]
 
 
 async def main():

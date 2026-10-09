@@ -162,6 +162,9 @@
   .manage-collection-folder-select{ background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:5px 6px; color:var(--text); font-family:var(--font-mono); font-size:11.5px; max-width:150px; }
   .manage-section-heading{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin:18px 0 4px; }
   .toolbar-hidden{ display:none !important; }
+  .scan-dialog-check{ display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; }
+  .scan-dialog-text{ font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 12px; }
+  .scan-dialog a{ color:var(--phosphor); font-weight:600; }
   .toolbar-buttons-list{ display:flex; flex-direction:column; gap:8px; margin:12px 0 4px; }
   .toolbar-buttons-list label{ display:flex; align-items:center; gap:10px; font-size:13.5px; cursor:pointer; }
   .nav-item.drop-target{ background:var(--phosphor-dim); color:var(--text); outline:1px dashed var(--phosphor); outline-offset:-2px; }
@@ -1104,6 +1107,7 @@
   const DATE_LOCALE = { en: 'en-US', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW' }; // grows alongside SUPPORTED_LANGS
   const STRINGS = {
     en: {
+      scanDialogTitle: "Scan", scanDialogSearching: "Looking for scanners…", scanDialogStart: "Scan", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Paper source", scanSourceFlatbed: "Flatbed", scanSourceFeeder: "Document feeder", scanDialogDuplex: "Both sides", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Grayscale", scanColorBw: "Black & white", scanDialogResolutionLabel: "Resolution", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "Split on blank pages (a blank sheet starts a new document)", scanExtraSkipBlankPages: "Skip blank pages", scanDialogNothingFound: "No scan helper answered. Scanning needs a small helper app on this computer: dossiary-scan-helper for most scanners, or scanix500 for a ScanSnap iX500. If yours runs at another address, enter it below.", scanDialogGetHelper: "Get dossiary-scan-helper", scanDialogGetScanix500: "Get scanix500", scanDialogAddressLabel: "Helper address (optional)", scanDialogRetry: "Look again", scanDialogAddressInvalid: "Enter an address like http://localhost:8766.",
       scanPairNeeded: "Pair with the scan helper first.", scanPairTitle: "Pair with the Scan Helper", scanPairInstructions: "Dossiary needs to be paired with the scan helper once. Choose “Pair a Browser…” in the scanix500 menu bar menu and enter the 6-digit code it shows.", scanPairCodeLabel: "Pairing code", scanPairSubmit: "Pair and scan", scanPairInvalidCode: "Enter the 6-digit code.", scanPairWrongCode: "That code didn't work. Choose “Pair a Browser…” again for a new code.",
       shareAction: 'Share…', shareModalTitle: 'Share', shareReading: 'Reading {done} of {total} files…', shareReady: 'Ready: {count} file(s). Share opens your system’s share sheet, to send them by email, message or another app.', shareButton: 'Share', shareDone: 'Handed over to the app you chose.', shareUnsupported: 'This browser can’t hand files to other apps. Export them to a folder, then attach them to an email yourself.', shareExportBtn: 'Export to a folder…', shareEmailBtn: 'Write an email', shareFailedRead: 'Could not read: {count}.', shareError: 'Sharing failed: {error}', shareNothing: 'None of these documents has a file to share.',
       exportWriteDetails: 'Write title, category, type and tags into exported PDFs', exportDetailsSkipped: '{count} PDF(s) copied without details (could not be opened as PDF).',
@@ -1324,6 +1328,7 @@
       reminderModalTitle: 'Reminders due', reminderSnoozeLabel: 'Snooze…', reminderSnooze1Week: '1 week', reminderSnooze1Month: '1 month', reminderSnooze3Months: '3 months', reminderSnoozeCustom: 'Custom date…', contextMenuAddReminder: 'Add reminder', contextMenuReminderSet: 'Reminder: {date}', defaultReminderToday: 'Today', defaultReminderTomorrow: 'Tomorrow', defaultReminderNextWeek: 'Next week', defaultReminderCustomDate: 'Custom date…', defaultReminderClear: 'Clear reminder', reminderDismissBtn: 'Dismiss', reminderDeleteBtn: 'Delete', reminderDismissedHint: 'Reminders are dismissed for this field.', reminderReenableBtn: 'Re-enable', libraryCheckModalTitle: 'Library check', duplicatesBackfillProgress: 'Checking {done} of {total} documents for duplicates…', duplicatesBackfillStopBtn: 'Stop', duplicatesBackfillStoppedNote: 'Stopped after checking {done} of {total} documents. Exact-duplicate results below are incomplete; run Library check again to continue where it left off.', duplicatesExactMatchLabel: 'Exact file match', duplicatesMetadataMatchLabel: 'Likely duplicate (title + date)', duplicatesNotDuplicateLabel: 'Not a duplicate', libraryCheckNoneFound: 'No issues found.', toolbarLibraryCheck: '🔍 Library check', libraryCheckBrokenLinksLabel: 'Broken file links', libraryCheckFileLabel: 'File', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Re-link…', libraryCheckRelinkFailed: 'Could not re-link: {error}', libraryCheckOrphanedTagsLabel: 'Orphaned tags', libraryCheckOrphanedPeopleLabel: 'Orphaned people', libraryCheckDeleteAllBtn: 'Delete all orphaned', libraryCheckUnusedFieldsLabel: 'Unused fields', libraryCheckDeleteAllUnusedBtn: 'Delete all unused', libraryCheckUnusedFieldSetUpFor: 'Set up for: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Only used by documents in the Waste bin', libraryCheckConfirmDeleteField: 'Delete the unused field "{name}" and everything about it? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsSingular: 'Delete this unused field? This can\'t be undone.', libraryCheckConfirmDeleteAllFieldsPlural: 'Delete these {count} unused fields? This can\'t be undone.', libraryCheckConfirmFieldSmartCollections: 'These Smart Collections will lose their filter on a deleted field: {names}', libraryCheckConfirmDeleteTag: 'Delete the unused tag "{name}"? This can\'t be undone.', libraryCheckConfirmDeletePerson: 'Delete the unused person "{name}"? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsSingular: 'Delete this unused tag? This can\'t be undone.', libraryCheckConfirmDeleteAllTagsPlural: 'Delete these {count} unused tags? This can\'t be undone.', libraryCheckConfirmDeleteAllPeopleSingular: 'Delete this unused person? This can\'t be undone.', libraryCheckConfirmDeleteAllPeoplePlural: 'Delete these {count} unused people? This can\'t be undone.', toolbarStorageStats: '💾 Storage stats', storageStatsModalTitle: 'Storage stats', storageStatsComputing: 'Computing storage usage…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Previews (thumbnails/)', storageStatsInboxLabel: 'Inbox (inbox/)', storageStatsDatabaseLabel: 'Database (library.sqlite)', storageStatsActiveLabel: 'Active', storageStatsOriginalsLabel: 'Originals', storageStatsUntrackedLabel: 'Untracked',
     },
     es: {
+      scanDialogTitle: "Escanear", scanDialogSearching: "Buscando escáneres…", scanDialogStart: "Escanear", scanDialogScannerLabel: "Escáner", scanDialogSourceLabel: "Origen del papel", scanSourceFlatbed: "Cama plana", scanSourceFeeder: "Alimentador de documentos", scanDialogDuplex: "Ambas caras", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Escala de grises", scanColorBw: "Blanco y negro", scanDialogResolutionLabel: "Resolución", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Separar en páginas en blanco (una hoja en blanco inicia un documento nuevo)", scanExtraSkipBlankPages: "Omitir páginas en blanco", scanDialogNothingFound: "Ningún asistente de escaneo respondió. Para escanear hace falta una pequeña aplicación auxiliar en este ordenador: dossiary-scan-helper para la mayoría de los escáneres, o scanix500 para un ScanSnap iX500. Si el suyo funciona en otra dirección, introdúzcala abajo.", scanDialogGetHelper: "Obtener dossiary-scan-helper", scanDialogGetScanix500: "Obtener scanix500", scanDialogAddressLabel: "Dirección del asistente (opcional)", scanDialogRetry: "Buscar de nuevo", scanDialogAddressInvalid: "Introduzca una dirección como http://localhost:8766.",
       scanPairNeeded: "Primero empareje Dossiary con el asistente de escaneo.", scanPairTitle: "Emparejar con el asistente de escaneo", scanPairInstructions: "Dossiary debe emparejarse una vez con el asistente de escaneo. Elija «Pair a Browser…» en el menú de scanix500 de la barra de menús e introduzca el código de 6 dígitos que muestra.", scanPairCodeLabel: "Código de emparejamiento", scanPairSubmit: "Emparejar y escanear", scanPairInvalidCode: "Introduzca el código de 6 dígitos.", scanPairWrongCode: "Ese código no funcionó. Elija «Pair a Browser…» de nuevo para obtener un código nuevo.",
       shareAction: 'Compartir…', shareModalTitle: 'Compartir', shareReading: 'Leyendo {done} de {total} archivos…', shareReady: 'Listo: {count} archivo(s). Compartir abre el menú para compartir del sistema, para enviarlos por correo, mensaje u otra aplicación.', shareButton: 'Compartir', shareDone: 'Entregado a la aplicación elegida.', shareUnsupported: 'Este navegador no puede pasar archivos a otras aplicaciones. Expórtalos a una carpeta y adjúntalos tú a un correo.', shareExportBtn: 'Exportar a una carpeta…', shareEmailBtn: 'Escribir un correo', shareFailedRead: 'No se pudieron leer: {count}.', shareError: 'No se pudo compartir: {error}', shareNothing: 'Ninguno de estos documentos tiene un archivo para compartir.',
       exportWriteDetails: 'Escribir título, categoría, tipo y etiquetas en los PDF exportados', exportDetailsSkipped: '{count} PDF copiados sin datos (no se pudieron abrir como PDF).',
@@ -1544,6 +1549,7 @@
       reminderModalTitle: 'Recordatorios pendientes', reminderSnoozeLabel: 'Posponer…', reminderSnooze1Week: '1 semana', reminderSnooze1Month: '1 mes', reminderSnooze3Months: '3 meses', reminderSnoozeCustom: 'Fecha personalizada…', contextMenuAddReminder: 'Añadir recordatorio', contextMenuReminderSet: 'Recordatorio: {date}', defaultReminderToday: 'Hoy', defaultReminderTomorrow: 'Mañana', defaultReminderNextWeek: 'Próxima semana', defaultReminderCustomDate: 'Fecha personalizada…', defaultReminderClear: 'Quitar recordatorio', reminderDismissBtn: 'Descartar', reminderDeleteBtn: 'Eliminar', reminderDismissedHint: 'Los recordatorios están desactivados para este campo.', reminderReenableBtn: 'Reactivar', libraryCheckModalTitle: 'Revisión de la biblioteca', duplicatesBackfillProgress: 'Comprobando {done} de {total} documentos en busca de duplicados…', duplicatesBackfillStopBtn: 'Detener', duplicatesBackfillStoppedNote: 'Se detuvo tras comprobar {done} de {total} documentos. Los resultados de duplicados exactos están incompletos; vuelve a ejecutar la revisión de la biblioteca para continuar donde se quedó.', duplicatesExactMatchLabel: 'Coincidencia exacta de archivo', duplicatesMetadataMatchLabel: 'Posible duplicado (título + fecha)', duplicatesNotDuplicateLabel: 'No es un duplicado', libraryCheckNoneFound: 'No se encontraron problemas.', toolbarLibraryCheck: '🔍 Revisión de la biblioteca', libraryCheckBrokenLinksLabel: 'Enlaces de archivo rotos', libraryCheckFileLabel: 'Archivo', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Volver a enlazar…', libraryCheckRelinkFailed: 'No se pudo volver a enlazar: {error}', libraryCheckOrphanedTagsLabel: 'Etiquetas sin usar', libraryCheckOrphanedPeopleLabel: 'Personas sin usar', libraryCheckDeleteAllBtn: 'Eliminar todas las no usadas', libraryCheckUnusedFieldsLabel: 'Campos sin usar', libraryCheckDeleteAllUnusedBtn: 'Eliminar todos los no usados', libraryCheckUnusedFieldSetUpFor: 'Configurado para: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Solo lo usan documentos de la papelera', libraryCheckConfirmDeleteField: '¿Eliminar el campo sin usar "{name}" y todo lo relacionado? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsSingular: '¿Eliminar este campo sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllFieldsPlural: '¿Eliminar estos {count} campos sin usar? Esto no se puede deshacer.', libraryCheckConfirmFieldSmartCollections: 'Estas colecciones inteligentes perderán su filtro por un campo eliminado: {names}', libraryCheckConfirmDeleteTag: '¿Eliminar la etiqueta sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeletePerson: '¿Eliminar la persona sin usar "{name}"? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsSingular: '¿Eliminar esta etiqueta sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllTagsPlural: '¿Eliminar estas {count} etiquetas sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeopleSingular: '¿Eliminar esta persona sin usar? Esto no se puede deshacer.', libraryCheckConfirmDeleteAllPeoplePlural: '¿Eliminar estas {count} personas sin usar? Esto no se puede deshacer.', toolbarStorageStats: '💾 Uso de almacenamiento', storageStatsModalTitle: 'Uso de almacenamiento', storageStatsComputing: 'Calculando el uso de almacenamiento…', storageStatsGrandTotal: 'Total: {size}', storageStatsFilesLabel: 'Documentos (files/)', storageStatsThumbnailsLabel: 'Vistas previas (thumbnails/)', storageStatsInboxLabel: 'Bandeja de entrada (inbox/)', storageStatsDatabaseLabel: 'Base de datos (library.sqlite)', storageStatsActiveLabel: 'Activos', storageStatsOriginalsLabel: 'Originales', storageStatsUntrackedLabel: 'Sin seguimiento',
     },
     fr: {
+      scanDialogTitle: "Numériser", scanDialogSearching: "Recherche de scanners…", scanDialogStart: "Numériser", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Source du papier", scanSourceFlatbed: "Vitre à plat", scanSourceFeeder: "Chargeur de documents", scanDialogDuplex: "Recto verso", scanDialogColorLabel: "Couleur", scanColorColor: "Couleur", scanColorGray: "Niveaux de gris", scanColorBw: "Noir et blanc", scanDialogResolutionLabel: "Résolution", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Séparer aux pages blanches (une feuille blanche commence un nouveau document)", scanExtraSkipBlankPages: "Ignorer les pages blanches", scanDialogNothingFound: "Aucun assistant de numérisation n'a répondu. La numérisation nécessite une petite application d'aide sur cet ordinateur : dossiary-scan-helper pour la plupart des scanners, ou scanix500 pour un ScanSnap iX500. Si le vôtre fonctionne à une autre adresse, saisissez-la ci-dessous.", scanDialogGetHelper: "Obtenir dossiary-scan-helper", scanDialogGetScanix500: "Obtenir scanix500", scanDialogAddressLabel: "Adresse de l'assistant (facultatif)", scanDialogRetry: "Chercher à nouveau", scanDialogAddressInvalid: "Saisissez une adresse comme http://localhost:8766.",
       scanPairNeeded: "Associez d'abord Dossiary à l'assistant de numérisation.", scanPairTitle: "Associer à l'assistant de numérisation", scanPairInstructions: "Dossiary doit être associé une fois à l'assistant de numérisation. Choisissez « Pair a Browser… » dans le menu de scanix500 de la barre des menus et saisissez le code à 6 chiffres affiché.", scanPairCodeLabel: "Code d'association", scanPairSubmit: "Associer et numériser", scanPairInvalidCode: "Saisissez le code à 6 chiffres.", scanPairWrongCode: "Ce code n'a pas fonctionné. Choisissez à nouveau « Pair a Browser… » pour obtenir un nouveau code.",
       shareAction: 'Partager…', shareModalTitle: 'Partager', shareReading: 'Lecture de {done} fichier(s) sur {total}…', shareReady: 'Prêt : {count} fichier(s). Partager ouvre le menu de partage du système, pour les envoyer par e-mail, message ou une autre app.', shareButton: 'Partager', shareDone: 'Transmis à l’app choisie.', shareUnsupported: 'Ce navigateur ne peut pas transmettre de fichiers à d’autres apps. Exportez-les dans un dossier, puis joignez-les vous-même à un e-mail.', shareExportBtn: 'Exporter dans un dossier…', shareEmailBtn: 'Écrire un e-mail', shareFailedRead: 'Lecture impossible : {count}.', shareError: 'Échec du partage : {error}', shareNothing: 'Aucun de ces documents n’a de fichier à partager.',
       exportWriteDetails: 'Écrire le titre, la catégorie, le type et les étiquettes dans les PDF exportés', exportDetailsSkipped: '{count} PDF copiés sans informations (impossible de les ouvrir comme PDF).',
@@ -1764,6 +1770,7 @@
       reminderModalTitle: 'Rappels à traiter', reminderSnoozeLabel: 'Reporter…', reminderSnooze1Week: '1 semaine', reminderSnooze1Month: '1 mois', reminderSnooze3Months: '3 mois', reminderSnoozeCustom: 'Date personnalisée…', contextMenuAddReminder: 'Ajouter un rappel', contextMenuReminderSet: 'Rappel : {date}', defaultReminderToday: 'Aujourd\'hui', defaultReminderTomorrow: 'Demain', defaultReminderNextWeek: 'Semaine prochaine', defaultReminderCustomDate: 'Date personnalisée…', defaultReminderClear: 'Supprimer le rappel', reminderDismissBtn: 'Ignorer', reminderDeleteBtn: 'Supprimer', reminderDismissedHint: 'Les rappels sont désactivés pour ce champ.', reminderReenableBtn: 'Réactiver', libraryCheckModalTitle: 'Vérification de la bibliothèque', duplicatesBackfillProgress: 'Vérification de {done} sur {total} documents pour les doublons…', duplicatesBackfillStopBtn: 'Arrêter', duplicatesBackfillStoppedNote: 'Arrêté après avoir vérifié {done} documents sur {total}. Les résultats des fichiers identiques sont incomplets ; relancez la vérification de la bibliothèque pour reprendre là où elle s\'est arrêtée.', duplicatesExactMatchLabel: 'Fichier identique', duplicatesMetadataMatchLabel: 'Doublon probable (titre + date)', duplicatesNotDuplicateLabel: 'Pas un doublon', libraryCheckNoneFound: 'Aucun problème détecté.', toolbarLibraryCheck: '🔍 Vérifier la bibliothèque', libraryCheckBrokenLinksLabel: 'Liens de fichiers rompus', libraryCheckFileLabel: 'Fichier', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Relier…', libraryCheckRelinkFailed: 'Impossible de relier le fichier : {error}', libraryCheckOrphanedTagsLabel: 'Étiquettes inutilisées', libraryCheckOrphanedPeopleLabel: 'Personnes inutilisées', libraryCheckDeleteAllBtn: 'Supprimer tout ce qui est inutilisé', libraryCheckUnusedFieldsLabel: 'Champs inutilisés', libraryCheckDeleteAllUnusedBtn: 'Supprimer tous les champs inutilisés', libraryCheckUnusedFieldSetUpFor: 'Configuré pour : {types}', libraryCheckUnusedFieldWasteBinOnly: 'Utilisé uniquement par des documents de la corbeille', libraryCheckConfirmDeleteField: 'Supprimer le champ inutilisé « {name} » et tout ce qui s\'y rapporte ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsSingular: 'Supprimer ce champ inutilisé ? Cette action est irréversible.', libraryCheckConfirmDeleteAllFieldsPlural: 'Supprimer ces {count} champs inutilisés ? Cette action est irréversible.', libraryCheckConfirmFieldSmartCollections: 'Ces collections intelligentes perdront leur filtre sur un champ supprimé : {names}', libraryCheckConfirmDeleteTag: 'Supprimer l\'étiquette inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeletePerson: 'Supprimer la personne inutilisée « {name} » ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsSingular: 'Supprimer cette étiquette inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllTagsPlural: 'Supprimer ces {count} étiquettes inutilisées ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeopleSingular: 'Supprimer cette personne inutilisée ? Cette action est irréversible.', libraryCheckConfirmDeleteAllPeoplePlural: 'Supprimer ces {count} personnes inutilisées ? Cette action est irréversible.', toolbarStorageStats: '💾 Utilisation du stockage', storageStatsModalTitle: 'Utilisation du stockage', storageStatsComputing: 'Calcul de l\'utilisation du stockage…', storageStatsGrandTotal: 'Total : {size}', storageStatsFilesLabel: 'Documents (files/)', storageStatsThumbnailsLabel: 'Aperçus (thumbnails/)', storageStatsInboxLabel: 'Boîte de réception (inbox/)', storageStatsDatabaseLabel: 'Base de données (library.sqlite)', storageStatsActiveLabel: 'Actifs', storageStatsOriginalsLabel: 'Originaux', storageStatsUntrackedLabel: 'Non suivis',
     },
     de: {
+      scanDialogTitle: "Scannen", scanDialogSearching: "Suche nach Scannern…", scanDialogStart: "Scannen", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Papierquelle", scanSourceFlatbed: "Flachbett", scanSourceFeeder: "Dokumenteneinzug", scanDialogDuplex: "Beidseitig", scanDialogColorLabel: "Farbe", scanColorColor: "Farbe", scanColorGray: "Graustufen", scanColorBw: "Schwarzweiß", scanDialogResolutionLabel: "Auflösung", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "An leeren Seiten trennen (ein leeres Blatt beginnt ein neues Dokument)", scanExtraSkipBlankPages: "Leere Seiten weglassen", scanDialogNothingFound: "Kein Scan-Helfer hat geantwortet. Zum Scannen braucht es eine kleine Hilfs-App auf diesem Computer: dossiary-scan-helper für die meisten Scanner oder scanix500 für einen ScanSnap iX500. Läuft deiner unter einer anderen Adresse, trag sie unten ein.", scanDialogGetHelper: "dossiary-scan-helper herunterladen", scanDialogGetScanix500: "scanix500 herunterladen", scanDialogAddressLabel: "Adresse des Helfers (optional)", scanDialogRetry: "Erneut suchen", scanDialogAddressInvalid: "Gib eine Adresse wie http://localhost:8766 ein.",
       scanPairNeeded: "Bitte Dossiary zuerst mit dem Scan-Helfer koppeln.", scanPairTitle: "Mit dem Scan-Helfer koppeln", scanPairInstructions: "Dossiary muss einmal mit dem Scan-Helfer gekoppelt werden. Wähle im Menüleisten-Menü von scanix500 „Pair a Browser…“ und gib den angezeigten 6-stelligen Code ein.", scanPairCodeLabel: "Kopplungscode", scanPairSubmit: "Koppeln und scannen", scanPairInvalidCode: "Bitte den 6-stelligen Code eingeben.", scanPairWrongCode: "Dieser Code hat nicht funktioniert. Wähle erneut „Pair a Browser…“ für einen neuen Code.",
       shareAction: 'Teilen…', shareModalTitle: 'Teilen', shareReading: 'Lese {done} von {total} Dateien…', shareReady: 'Bereit: {count} Datei(en). Teilen öffnet das Teilen-Menü des Systems, zum Senden per Mail, Nachricht oder in eine andere App.', shareButton: 'Teilen', shareDone: 'An die gewählte App übergeben.', shareUnsupported: 'Dieser Browser kann keine Dateien an andere Apps übergeben. Exportiere sie in einen Ordner und hänge sie selbst an eine E-Mail an.', shareExportBtn: 'In einen Ordner exportieren…', shareEmailBtn: 'E-Mail schreiben', shareFailedRead: 'Nicht lesbar: {count}.', shareError: 'Teilen fehlgeschlagen: {error}', shareNothing: 'Keines dieser Dokumente hat eine Datei zum Teilen.',
       exportWriteDetails: 'Titel, Kategorie, Typ und Tags in die exportierten PDFs schreiben', exportDetailsSkipped: '{count} PDF(s) ohne Angaben kopiert (ließen sich nicht als PDF öffnen).',
@@ -1984,6 +1991,7 @@
       reminderModalTitle: 'Fällige Erinnerungen', reminderSnoozeLabel: 'Zurückstellen…', reminderSnooze1Week: '1 Woche', reminderSnooze1Month: '1 Monat', reminderSnooze3Months: '3 Monate', reminderSnoozeCustom: 'Eigenes Datum…', contextMenuAddReminder: 'Erinnerung hinzufügen', contextMenuReminderSet: 'Erinnerung: {date}', defaultReminderToday: 'Heute', defaultReminderTomorrow: 'Morgen', defaultReminderNextWeek: 'Nächste Woche', defaultReminderCustomDate: 'Eigenes Datum…', defaultReminderClear: 'Erinnerung entfernen', reminderDismissBtn: 'Verwerfen', reminderDeleteBtn: 'Löschen', reminderDismissedHint: 'Erinnerungen sind für dieses Feld deaktiviert.', reminderReenableBtn: 'Wieder aktivieren', libraryCheckModalTitle: 'Bibliotheksprüfung', duplicatesBackfillProgress: 'Prüfe {done} von {total} Dokumenten auf Duplikate…', duplicatesBackfillStopBtn: 'Stopp', duplicatesBackfillStoppedNote: 'Angehalten nach {done} von {total} Dokumenten. Die Ergebnisse für exakte Duplikate sind unvollständig; starten Sie die Bibliotheksprüfung erneut, um dort weiterzumachen.', duplicatesExactMatchLabel: 'Exakte Dateiübereinstimmung', duplicatesMetadataMatchLabel: 'Wahrscheinliches Duplikat (Titel + Datum)', duplicatesNotDuplicateLabel: 'Kein Duplikat', libraryCheckNoneFound: 'Keine Probleme gefunden.', toolbarLibraryCheck: '🔍 Bibliothek prüfen', libraryCheckBrokenLinksLabel: 'Fehlende Dateiverknüpfungen', libraryCheckFileLabel: 'Datei', libraryCheckOriginalLabel: 'Original', libraryCheckRelinkBtn: 'Neu verknüpfen…', libraryCheckRelinkFailed: 'Datei konnte nicht neu verknüpft werden: {error}', libraryCheckOrphanedTagsLabel: 'Unbenutzte Tags', libraryCheckOrphanedPeopleLabel: 'Unbenutzte Personen', libraryCheckDeleteAllBtn: 'Alle unbenutzten löschen', libraryCheckUnusedFieldsLabel: 'Unbenutzte Felder', libraryCheckDeleteAllUnusedBtn: 'Alle unbenutzten Felder löschen', libraryCheckUnusedFieldSetUpFor: 'Eingerichtet für: {types}', libraryCheckUnusedFieldWasteBinOnly: 'Nur von Dokumenten im Papierkorb verwendet', libraryCheckConfirmDeleteField: 'Unbenutztes Feld "{name}" mit allem Zugehörigen löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsSingular: 'Dieses unbenutzte Feld löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllFieldsPlural: 'Diese {count} unbenutzten Felder löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmFieldSmartCollections: 'Diese intelligenten Sammlungen verlieren ihren Filter auf ein gelöschtes Feld: {names}', libraryCheckConfirmDeleteTag: 'Unbenutzten Tag "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeletePerson: 'Unbenutzte Person "{name}" löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsSingular: 'Diesen unbenutzten Tag löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllTagsPlural: 'Diese {count} unbenutzten Tags löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeopleSingular: 'Diese unbenutzte Person löschen? Dies kann nicht rückgängig gemacht werden.', libraryCheckConfirmDeleteAllPeoplePlural: 'Diese {count} unbenutzten Personen löschen? Dies kann nicht rückgängig gemacht werden.', toolbarStorageStats: '💾 Speichernutzung', storageStatsModalTitle: 'Speichernutzung', storageStatsComputing: 'Speichernutzung wird berechnet…', storageStatsGrandTotal: 'Gesamt: {size}', storageStatsFilesLabel: 'Dokumente (files/)', storageStatsThumbnailsLabel: 'Vorschaubilder (thumbnails/)', storageStatsInboxLabel: 'Posteingang (inbox/)', storageStatsDatabaseLabel: 'Datenbank (library.sqlite)', storageStatsActiveLabel: 'Aktiv', storageStatsOriginalsLabel: 'Originale', storageStatsUntrackedLabel: 'Nicht zugeordnet',
     },
     'zh-Hans': {
+      scanDialogTitle: "扫描", scanDialogSearching: "正在查找扫描仪…", scanDialogStart: "扫描", scanDialogScannerLabel: "扫描仪", scanDialogSourceLabel: "进纸方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自动进纸器", scanDialogDuplex: "双面", scanDialogColorLabel: "颜色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "按空白页分割（空白页开始新文档）", scanExtraSkipBlankPages: "跳过空白页", scanDialogNothingFound: "没有扫描助手响应。扫描需要在这台电脑上运行一个小型助手应用：大多数扫描仪使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手运行在其他地址，请在下方输入。", scanDialogGetHelper: "获取 dossiary-scan-helper", scanDialogGetScanix500: "获取 scanix500", scanDialogAddressLabel: "助手地址（可选）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "请输入类似 http://localhost:8766 的地址。",
       scanPairNeeded: "请先将 Dossiary 与扫描助手配对。", scanPairTitle: "与扫描助手配对", scanPairInstructions: "Dossiary 需要与扫描助手配对一次。请在菜单栏的 scanix500 菜单中选择“Pair a Browser…”，然后输入显示的 6 位代码。", scanPairCodeLabel: "配对代码", scanPairSubmit: "配对并扫描", scanPairInvalidCode: "请输入 6 位代码。", scanPairWrongCode: "该代码无效。请再次选择“Pair a Browser…”以获取新代码。",
       shareAction: '分享…', shareModalTitle: '分享', shareReading: '正在读取第 {done} 个文件，共 {total} 个…', shareReady: '已就绪：{count} 个文件。“分享”会打开系统的分享菜单，可通过邮件、消息或其他应用发送。', shareButton: '分享', shareDone: '已交给你选择的应用。', shareUnsupported: '此浏览器无法把文件交给其他应用。请先导出到文件夹，再自行作为邮件附件发送。', shareExportBtn: '导出到文件夹…', shareEmailBtn: '写邮件', shareFailedRead: '无法读取：{count} 个。', shareError: '分享失败：{error}', shareNothing: '这些文档都没有可分享的文件。',
       exportWriteDetails: '将标题、分类、类型和标签写入导出的 PDF', exportDetailsSkipped: '{count} 个 PDF 未写入信息即复制（无法作为 PDF 打开）。',
@@ -2204,6 +2212,7 @@
       reminderModalTitle: '到期提醒', reminderSnoozeLabel: '推迟…', reminderSnooze1Week: '1 周', reminderSnooze1Month: '1 个月', reminderSnooze3Months: '3 个月', reminderSnoozeCustom: '自定义日期…', contextMenuAddReminder: '添加提醒', contextMenuReminderSet: '提醒：{date}', defaultReminderToday: '今天', defaultReminderTomorrow: '明天', defaultReminderNextWeek: '下周', defaultReminderCustomDate: '自定义日期…', defaultReminderClear: '清除提醒', reminderDismissBtn: '忽略', reminderDeleteBtn: '删除', reminderDismissedHint: '此字段的提醒已停用。', reminderReenableBtn: '重新启用', libraryCheckModalTitle: '资料库检查', duplicatesBackfillProgress: '正在检查第 {done}/{total} 个文档是否重复……', duplicatesBackfillStopBtn: '停止', duplicatesBackfillStoppedNote: '已在检查 {done}/{total} 个文档后停止。完全匹配的重复结果不完整；再次运行资料库检查即可从中断处继续。', duplicatesExactMatchLabel: '文件完全匹配', duplicatesMetadataMatchLabel: '可能重复（标题+日期）', duplicatesNotDuplicateLabel: '不是重复项', libraryCheckNoneFound: '未发现问题。', toolbarLibraryCheck: '🔍 资料库检查', libraryCheckBrokenLinksLabel: '损坏的文件链接', libraryCheckFileLabel: '文件', libraryCheckOriginalLabel: '原件', libraryCheckRelinkBtn: '重新链接…', libraryCheckRelinkFailed: '无法重新链接：{error}', libraryCheckOrphanedTagsLabel: '未使用的标签', libraryCheckOrphanedPeopleLabel: '未使用的人员', libraryCheckDeleteAllBtn: '删除所有未使用项', libraryCheckUnusedFieldsLabel: '未使用的字段', libraryCheckDeleteAllUnusedBtn: '删除所有未使用的字段', libraryCheckUnusedFieldSetUpFor: '已用于：{types}', libraryCheckUnusedFieldWasteBinOnly: '仅被废纸篓中的文档使用', libraryCheckConfirmDeleteField: '删除未使用的字段"{name}"及其所有相关内容？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsSingular: '删除这个未使用的字段？此操作无法撤销。', libraryCheckConfirmDeleteAllFieldsPlural: '删除这 {count} 个未使用的字段？此操作无法撤销。', libraryCheckConfirmFieldSmartCollections: '以下智能收藏集将失去对已删除字段的筛选：{names}', libraryCheckConfirmDeleteTag: '删除未使用的标签"{name}"？此操作无法撤销。', libraryCheckConfirmDeletePerson: '删除未使用的人员"{name}"？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsSingular: '删除这个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllTagsPlural: '删除这 {count} 个未使用的标签？此操作无法撤销。', libraryCheckConfirmDeleteAllPeopleSingular: '删除这个未使用的人员？此操作无法撤销。', libraryCheckConfirmDeleteAllPeoplePlural: '删除这 {count} 个未使用的人员？此操作无法撤销。', toolbarStorageStats: '💾 存储统计', storageStatsModalTitle: '存储统计', storageStatsComputing: '正在计算存储占用……', storageStatsGrandTotal: '总计：{size}', storageStatsFilesLabel: '文档（files/）', storageStatsThumbnailsLabel: '预览图（thumbnails/）', storageStatsInboxLabel: '收件箱（inbox/）', storageStatsDatabaseLabel: '数据库（library.sqlite）', storageStatsActiveLabel: '当前使用', storageStatsOriginalsLabel: '原件', storageStatsUntrackedLabel: '未追踪',
     },
     'zh-Hant': {
+      scanDialogTitle: "掃描", scanDialogSearching: "正在查找掃描儀…", scanDialogStart: "掃描", scanDialogScannerLabel: "掃描儀", scanDialogSourceLabel: "進紙方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自動進紙器", scanDialogDuplex: "雙面", scanDialogColorLabel: "顏色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "按空白頁分割（空白頁開始新文檔）", scanExtraSkipBlankPages: "跳過空白頁", scanDialogNothingFound: "沒有掃描助手響應。掃描需要在這臺電腦上運行一個小型助手應用：大多數掃描儀使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手運行在其他地址，請在下方輸入。", scanDialogGetHelper: "獲取 dossiary-scan-helper", scanDialogGetScanix500: "獲取 scanix500", scanDialogAddressLabel: "助手地址（可選）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "請輸入類似 http://localhost:8766 的地址。",
       scanPairNeeded: "請先將 Dossiary 與掃描助手配對。", scanPairTitle: "與掃描助手配對", scanPairInstructions: "Dossiary 需要與掃描助手配對一次。請在選單列的 scanix500 選單中選擇「Pair a Browser…」，然後輸入顯示的 6 位代碼。", scanPairCodeLabel: "配對代碼", scanPairSubmit: "配對並掃描", scanPairInvalidCode: "請輸入 6 位代碼。", scanPairWrongCode: "該代碼無效。請再次選擇「Pair a Browser…」以獲取新代碼。",
       shareAction: '分享…', shareModalTitle: '分享', shareReading: '正在讀取第 {done} 個文件，共 {total} 個…', shareReady: '已就緒：{count} 個文件。「分享」會打開系統的分享菜單，可通過郵件、消息或其他應用發送。', shareButton: '分享', shareDone: '已交給你選擇的應用。', shareUnsupported: '此瀏覽器無法把文件交給其他應用。請先導出到文件夾，再自行作爲郵件附件發送。', shareExportBtn: '導出到文件夾…', shareEmailBtn: '寫郵件', shareFailedRead: '無法讀取：{count} 個。', shareError: '分享失敗：{error}', shareNothing: '這些文檔都沒有可分享的文件。',
       exportWriteDetails: '將標題、分類、類型和標籤寫入導出的 PDF', exportDetailsSkipped: '{count} 個 PDF 未寫入信息即複製（無法作爲 PDF 打開）。',
@@ -7401,7 +7410,7 @@
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
     if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
-  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !backupRunning && !pageToolsRunning) closeModal(); }
+  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !backupRunning && !pageToolsRunning && !scanDialogRunning) closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', useKey: 'librariesUseSqlJs' },
@@ -13037,6 +13046,171 @@
     };
   };
   window.__DEBUG_setScanBridgeUrl = (value) => saveScanBridgeUrl(value);
+
+  // ---- Scan dialog ----
+  // Lists every scanner the helpers report, with only the settings the
+  // chosen one supports. The last scanner and its settings are remembered
+  // per library (scan_last_settings).
+  let scanDialogRunning = false; // a scan request is in flight -- blocks closing the dialog
+  let scanDialogState = null;    // {helpers, choices, forceSplit} for the open dialog
+  const SCAN_HELPER_DOWNLOAD_URL = 'https://github.com/AarneAarebye/dossiary-scan-helper/releases';
+  const SCANIX500_URL = 'https://github.com/AarneAarebye/iX500';
+  const SCAN_SETTING_LABEL_KEYS = {
+    source: { flatbed: 'scanSourceFlatbed', feeder: 'scanSourceFeeder' },
+    colorMode: { color: 'scanColorColor', gray: 'scanColorGray', bw: 'scanColorBw' },
+  };
+
+  function readLastScanSettings(){
+    try{
+      const value = JSON.parse(readSetting('scan_last_settings') || 'null');
+      return value && typeof value === 'object' ? value : null;
+    }catch(e){ return null; }
+  }
+  async function saveLastScanSettings(settings){
+    writeSetting('scan_last_settings', JSON.stringify(settings));
+    await persistDb();
+  }
+
+  async function openScanDialog({ splitOnBlank = false } = {}){
+    if(scanDialogRunning) return;
+    scanDialogState = { helpers: [], choices: [], forceSplit: splitOnBlank };
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal scan-dialog" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('scanDialogTitle')}</h2>
+          <div id="scan-dialog-body"><p class="scan-dialog-text">${t('scanDialogSearching')}</p></div>
+          <div id="scan-dialog-status" class="doc-sub" style="margin-top:8px; min-height:1.2em;"></div>
+          <div class="modal-actions" style="margin-top:16px;">
+            <button id="scan-dialog-cancel-btn">${t('commonCancel')}</button>
+            <button id="scan-dialog-start-btn" disabled>${t('scanDialogStart')}</button>
+          </div>
+        </div>
+      </div>`;
+    const tryClose = () => { if(!scanDialogRunning) closeModal(); };
+    el('modal-close-btn').addEventListener('click', tryClose);
+    el('scan-dialog-cancel-btn').addEventListener('click', tryClose);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') tryClose(); });
+    document.addEventListener('keydown', onModalKeydown);
+    await refreshScanDialog();
+  }
+
+  // Discovers the helpers again and redraws the dialog, keeping the scanner
+  // and settings currently chosen (or, on first open, the remembered ones).
+  async function refreshScanDialog(){
+    const keep = el('scan-dialog-scanner') ? readScanDialogSettings() : readLastScanSettings();
+    const helpers = await discoverScanHelpers();
+    if(!el('scan-dialog-body')) return; // closed while looking
+    scanDialogState.helpers = helpers;
+    scanDialogState.choices = scannerChoices(helpers);
+    renderScanDialogBody(keep);
+  }
+
+  function renderScanDialogBody(keep){
+    const body = el('scan-dialog-body');
+    const startBtn = el('scan-dialog-start-btn');
+    const { choices } = scanDialogState;
+    if(!choices.length){
+      body.innerHTML = scanNothingFoundHtml();
+      wireScanNothingFound();
+      startBtn.disabled = true;
+      return;
+    }
+    const selectedKey = keep && choices.some(c => c.key === keep.scanner) ? keep.scanner : choices[0].key;
+    body.innerHTML = `
+      <div class="field">
+        <label for="scan-dialog-scanner">${t('scanDialogScannerLabel')}</label>
+        <select id="scan-dialog-scanner">${choices.map(c => `<option value="${escapeHtml(c.key)}" ${c.key === selectedKey ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}</select>
+      </div>
+      <div id="scan-dialog-settings"></div>`;
+    renderScanSettings(keep && keep.scanner === selectedKey ? keep : null);
+    el('scan-dialog-scanner').addEventListener('change', () => renderScanSettings(null));
+    startBtn.disabled = false;
+  }
+
+  function currentScanChoice(){
+    const select = el('scan-dialog-scanner');
+    return select && scanDialogState ? scanDialogState.choices.find(c => c.key === select.value) || null : null;
+  }
+
+  // Only what the chosen scanner supports: a choice with one value isn't
+  // shown (its value is sent), two-sided only for a duplex feeder, and only
+  // the extras Dossiary knows.
+  function renderScanSettings(keep){
+    const choice = currentScanChoice();
+    const box = el('scan-dialog-settings');
+    if(!choice || !box) return;
+    const s = choice.scanner;
+    const pick = (values, wanted) => values.includes(wanted) ? wanted : values[0];
+    const source = pick(s.sources, keep && keep.source);
+    const selectHtml = (id, labelKey, values, current, labelOf) => values.length > 1 ? `
+      <div class="field">
+        <label for="${id}">${t(labelKey)}</label>
+        <select id="${id}">${values.map(v => `<option value="${escapeHtml(String(v))}" ${v === current ? 'selected' : ''}>${escapeHtml(labelOf(v))}</option>`).join('')}</select>
+      </div>` : '';
+    const extras = s.extras.filter(x => SCAN_EXTRA_LABEL_KEYS[x]);
+    const extraOn = (x) => (x === 'splitOnBlank' && scanDialogState.forceSplit) || !!(keep && keep.extras && keep.extras[x]);
+    box.innerHTML = `
+      ${selectHtml('scan-dialog-source', 'scanDialogSourceLabel', s.sources, source, v => t(SCAN_SETTING_LABEL_KEYS.source[v]))}
+      <label class="scan-dialog-check" id="scan-dialog-duplex-wrap"><input type="checkbox" id="scan-dialog-duplex" ${keep && keep.duplex ? 'checked' : ''} /> ${t('scanDialogDuplex')}</label>
+      ${selectHtml('scan-dialog-color', 'scanDialogColorLabel', s.colorModes, pick(s.colorModes, keep && keep.colorMode), v => t(SCAN_SETTING_LABEL_KEYS.colorMode[v]))}
+      ${selectHtml('scan-dialog-resolution', 'scanDialogResolutionLabel', s.resolutions, pick(s.resolutions, keep && keep.resolution), v => t('scanDialogDpi', {dpi: v}))}
+      ${extras.map(x => `<label class="scan-dialog-check"><input type="checkbox" class="scan-dialog-extra" data-extra="${x}" ${extraOn(x) ? 'checked' : ''} /> ${t(SCAN_EXTRA_LABEL_KEYS[x])}</label>`).join('')}`;
+    const syncDuplex = () => {
+      const current = el('scan-dialog-source') ? el('scan-dialog-source').value : source;
+      const allowed = s.duplex && current === 'feeder';
+      el('scan-dialog-duplex-wrap').style.display = allowed ? '' : 'none';
+      if(!allowed) el('scan-dialog-duplex').checked = false;
+    };
+    if(el('scan-dialog-source')) el('scan-dialog-source').addEventListener('change', syncDuplex);
+    syncDuplex();
+  }
+
+  function readScanDialogSettings(){
+    const choice = currentScanChoice();
+    if(!choice) return null;
+    const s = choice.scanner;
+    const value = (id, fallback) => el(id) ? el(id).value : fallback;
+    const extras = {};
+    modalRoot.querySelectorAll('.scan-dialog-extra').forEach(cb => { extras[cb.dataset.extra] = cb.checked; });
+    return {
+      scanner: choice.key,
+      source: value('scan-dialog-source', s.sources[0]),
+      duplex: !!(el('scan-dialog-duplex') && el('scan-dialog-duplex').checked),
+      colorMode: value('scan-dialog-color', s.colorModes[0]),
+      resolution: el('scan-dialog-resolution') ? Number(el('scan-dialog-resolution').value) : s.resolutions[0],
+      extras,
+    };
+  }
+
+  function scanNothingFoundHtml(){
+    return `
+      <p class="scan-dialog-text">${t('scanDialogNothingFound')}</p>
+      <p class="scan-dialog-text">
+        <a href="${SCAN_HELPER_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer" id="scan-dialog-helper-link">${t('scanDialogGetHelper')}</a>
+        · <a href="${SCANIX500_URL}" target="_blank" rel="noopener noreferrer" id="scan-dialog-scanix500-link">${t('scanDialogGetScanix500')}</a>
+      </p>
+      <div class="field">
+        <label for="scan-dialog-address">${t('scanDialogAddressLabel')}</label>
+        <input type="text" id="scan-dialog-address" value="${escapeHtml(scanBridgeUrl || '')}" placeholder="http://localhost:8766" />
+      </div>
+      <button id="scan-dialog-retry-btn">${t('scanDialogRetry')}</button>`;
+  }
+  function wireScanNothingFound(){
+    el('scan-dialog-retry-btn').addEventListener('click', async () => {
+      const raw = el('scan-dialog-address').value.trim();
+      const address = normalizeHelperUrl(raw);
+      if(raw && !address){ el('scan-dialog-status').textContent = t('scanDialogAddressInvalid'); return; }
+      el('scan-dialog-status').textContent = '';
+      if((address || null) !== (normalizeHelperUrl(scanBridgeUrl) || null)) await saveScanBridgeUrl(address || '');
+      el('scan-dialog-body').innerHTML = `<p class="scan-dialog-text">${t('scanDialogSearching')}</p>`;
+      await refreshScanDialog();
+    });
+  }
+
+  window.__DEBUG_openScanDialog = (opts) => openScanDialog(opts || {});
+  window.__DEBUG_readScanDialogSettings = () => readScanDialogSettings();
+  window.__DEBUG_saveLastScanSettings = (s) => saveLastScanSettings(s);
 
   // Probes GET <url>/health with a short client-side timeout -- unlike
   // triggerScan()'s own deliberately-un-timed-out POST /scan
