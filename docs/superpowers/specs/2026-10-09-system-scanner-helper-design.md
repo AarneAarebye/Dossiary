@@ -87,10 +87,13 @@ unchanged:
 
 ```json
 { "ok": true, "partial": false, "message": "3 pages scanned.",
-  "files": [ { "name": "scan_20261009_1432.pdf", "data": "<base64>" } ] }
+  "files": [ { "name": "scan_20261009_1432.pdf", "pages": 3, "data": "<base64>" } ] }
 ```
 
 One PDF holding every page; with `splitOnBlank`, one PDF per document.
+Each file reports its own page count (`pages`), since a native PDF
+writer may compress its page objects and a client can't count them
+reliably from the bytes. Version 1 helpers don't send `pages`.
 `partial: true` means something went wrong but usable pages came back
 (for example a paper jam after page 3).
 
