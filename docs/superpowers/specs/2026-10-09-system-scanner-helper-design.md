@@ -39,10 +39,11 @@ Version 2 adds scanner discovery and generic settings. It is written up as
 ### `GET /health`
 
 ```json
-{ "ok": true, "helper": "dossiary-scan-helper-macos", "version": "1.0.0", "protocol": 2 }
+{ "ok": true, "helper": "dossiary-scan-helper-macos", "version": "1.0.0", "protocol": 2, "paired": false }
 ```
 
-A response without `protocol` is a version 1 helper.
+A response without `protocol` is a version 1 helper. `paired` says
+whether the request's `Authorization` token is valid (see Security).
 
 ### `GET /scanners`
 
@@ -114,10 +115,25 @@ fit for Dossiary's status line.
 
 - Helpers listen on `127.0.0.1` only.
 - CORS allows only the origins `null` (a `file://` page) and
-  `http://localhost:<any port>` / `http://127.0.0.1:<any port>`; any other
+  `http://localhost:<port>` / `http://127.0.0.1:<port>`; any other
   `Origin` gets 403. A request without an `Origin` header (curl, the
   conformance suite) is allowed.
-- Both rules are in `PROTOCOL.md` and tested by the conformance suite.
+- **Pairing (added after the final review of step 1).** The origin check
+  alone isn't enough: `Origin: null` also comes from any website's
+  sandboxed iframes, so a malicious page could otherwise start a scan and
+  read the result. Every helper therefore pairs with a browser once:
+  - The helper's menu offers "Pair a browser…", showing a 6-digit code
+    valid for 2 minutes and 5 attempts.
+  - `POST /pair` with `{"code": "123456", "client": "<description>"}`
+    answers `{"ok": true, "token": "<random, at least 128 bits>"}`; a wrong,
+    expired or exhausted code answers 403.
+  - `GET /scanners` and `POST /scan` require `Authorization: Bearer
+    <token>` and answer 401 without a valid one. `GET /health` stays open
+    and reports `"paired": true|false` for the token it was sent (if any).
+  - Tokens persist in the helper until "Forget paired browsers".
+  - In fake scanner mode the code is always `000000` (no expiry or attempt
+    limit), so the conformance suite can pair.
+- These rules are in `PROTOCOL.md` and tested by the conformance suite.
 
 ### Compatibility
 
@@ -148,6 +164,14 @@ fit for Dossiary's status line.
   Tools → Toolbar buttons….
 
 ### Scan dialog
+
+- **Pairing:** a version 2 helper whose `/health` says `"paired": false`
+  shows up in the dialog as "<helper> — not paired yet" with a code field.
+  The person opens "Pair a browser…" in the helper, types the code, and
+  Dossiary stores the returned token in `localStorage`, keyed by the
+  helper's address. That's per browser, not per library, since pairing
+  belongs to the browser. A 401 later (tokens forgotten in the helper)
+  brings the code field back.
 
 - On opening, Dossiary checks `localhost:8765`, `localhost:8766` and the
   stored manual address (`scan_bridge_url`) with `GET /health` (short
