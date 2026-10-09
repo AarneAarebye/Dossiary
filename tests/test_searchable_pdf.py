@@ -168,6 +168,9 @@ async def main():
         addpage_calls = [c for c in jspdf_calls_multipage if c['type'] == 'addPage']
         print("jsPDF got one addImage call per page (3):", len(addimage_calls) == 3)
         print("jsPDF got one addPage call per page after the first (2):", len(addpage_calls) == 2)
+        # Rendered PDF pages go in as JPEG: a large lossless PNG page made jsPDF write a
+        # predictor-compressed image that Chrome's PDF viewer showed as coloured noise.
+        print("every rendered PDF page is added as JPEG:", all(c['args'][1] == 'JPEG' for c in addimage_calls))
 
         db_state_3 = await page.evaluate("""
             (async () => {

@@ -2433,7 +2433,12 @@ this repo's git tags.
   uses) and OCR'd individually with `{blocks: true}` — unlike
   `runOcrForEdit()`'s own PDF path, which only needs plain text, capture-time
   OCR also needs each page's word-position data, since it feeds the
-  searchable-PDF rebuild at Save. `buildSearchablePdf()` itself was
+  searchable-PDF rebuild at Save. **Rendered pages go to jsPDF as JPEG
+  (quality 0.9), never PNG** (`ocrPdfPagesWithWords()`, shared with "Make
+  searchable"): jsPDF stores a PNG as a predictor-compressed image, and
+  Chrome's PDF viewer showed a large one -- a 72-ppi Image Capture scan
+  rendered at scale 2 to 4288x6282 -- as coloured noise, though other
+  readers decoded it fine; it was also ~6x the size. `buildSearchablePdf()` itself was
   generalized from a single-page function to `buildSearchablePdf(pages)`,
   taking an array of `{dataUrl, imageFormat, dims, words}` entries and
   looping `addPage()` for entries after the first — every existing

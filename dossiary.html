@@ -10752,9 +10752,12 @@
       const canvas = await renderPdfPageToCanvas(pdf, pageNum, 2);
       const { data } = await worker.recognize(canvas, {}, { blocks: true });
       pageTexts.push(data.text || '');
+      // JPEG, not PNG: jsPDF stores a PNG as a predictor-compressed image, which Chrome's
+      // PDF viewer showed as coloured noise for a large page (a 4288x6282 render), and
+      // it was ~6x the size. pdf.js paints the page on white, so there's no alpha to lose.
       pages.push({
-        dataUrl: canvas.toDataURL('image/png'),
-        imageFormat: 'PNG',
+        dataUrl: canvas.toDataURL('image/jpeg', 0.9),
+        imageFormat: 'JPEG',
         dims: { width: canvas.width, height: canvas.height },
         words: flattenOcrWords(data),
       });
