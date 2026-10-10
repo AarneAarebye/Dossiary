@@ -90,12 +90,20 @@ working" problem that motivated this project in the first place.
   scan it first — Image Capture or Preview on macOS, the Windows Scan app
   on Windows, detected automatically — since a browser has no way to drive
   scanner hardware directly — see Limitations below.
-- **Scan / Scan Multi** — two toolbar buttons ("📷 Scan" and "📸 Scan
-  Multi") that *do* trigger a real scan, by talking to
-  [`scanix500`](https://github.com/AarneAarebye/iX500), a separate,
-  optional companion app that drives a specific scanner directly and
-  exposes a small local HTTP bridge Dossiary can call — see Limitations
-  below for what this requires and how it's configured.
+- **Scanning** — 📷 **Scan** opens a dialog listing every scanner a scan
+  helper on this computer offers, with only the settings that scanner
+  supports (paper source, both sides, color, resolution, and for the
+  ScanSnap iX500 "split on blank pages"). Two helpers are supported:
+  [dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
+  for most scanners (macOS and Windows), and
+  [scanix500](https://github.com/AarneAarebye/iX500) for a ScanSnap iX500.
+  Dossiary finds them by itself on ports 8766 and 8765; a helper on another
+  port can be entered in the dialog or in Field Settings. Each browser pairs
+  with a helper once: the helper's "Pair a Browser…" shows a 6-digit code to
+  type into the dialog. Scanned pages land in the Inbox. 📸 **Scan Multi**
+  opens the same dialog with "split on blank pages" ticked and only shows
+  while a scanner that can do that is available. Dossiary remembers the last
+  scanner and settings per library.
 - **Inbox** — a lightweight amber banner appears on opening a library if its
   `inbox/` folder (at the library root, alongside `library.sqlite` and
   `files/`, and created automatically the same way `files/` is — no manual
@@ -840,21 +848,11 @@ separate genuinely distinct values.
   as a document, by design.
 
   The toolbar's "📷 Scan"/"📸 Scan Multi" buttons (see Features above) are
-  the one way Dossiary *does* trigger a real scan — but only by talking to
-  a separate, optional companion app,
-  [`scanix500`](https://github.com/AarneAarebye/iX500), not by gaining any
+  the one way Dossiary *does* trigger a real scan -- but only by talking to
+  a separate helper app on the same computer, not by gaining any
   scanner-hardware access itself; the underlying platform limitation above
-  is still real and unchanged. `scanix500` drives a specific ScanSnap iX500
-  scanner directly and runs a small local HTTP bridge that Dossiary's
-  browser tab can call over `fetch()`. Clicking either button auto-probes
-  the bridge's default port and connects silently if it's found — no setup
-  needed beyond having `scanix500`'s own menu bar app running. If it isn't
-  found, a "Configure Scanner Connection" dialog opens with a Port field
-  and a link to get the companion app set up. Since scanix500 0.3.0 the
-  browser has to be paired once: the first scan asks for the 6-digit code
-  that scanix500's "Pair a Browser…" menu item shows. That keeps other
-  websites from starting a scan and reading the document. The pairing is
-  remembered by this browser, for every library.
+  is still real and unchanged. See the Scanning feature above for the two
+  supported helpers, discovery and one-time pairing.
 - **Reconnecting a recent library still needs one click.** Browsers won't
   let a page silently regain filesystem access after a reload — even with
   a library remembered in the Recent libraries list (see Features above),
@@ -901,7 +899,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (97
+There's a real, runnable Playwright regression suite in `tests/` (96
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how

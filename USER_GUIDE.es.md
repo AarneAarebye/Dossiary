@@ -154,6 +154,25 @@ trabajando la cola de revisión cuando tengas unos minutos libres, en
 lugar de tener que rellenar cuidadosamente un formulario por cada hoja de
 papel que escanees.
 
+## Escanear directamente en Dossiary
+
+Si tienes un escáner, Dossiary puede escanear directamente en la Bandeja de
+entrada. Para ello necesita una pequeña aplicación auxiliar en tu ordenador:
+[dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
+para la mayoría de los escáneres, o [scanix500](https://github.com/AarneAarebye/iX500)
+para un ScanSnap iX500.
+
+1. Inicia el asistente.
+2. Haz clic en **📷 Escanear**. La primera vez, el cuadro de diálogo pide un
+   código de emparejamiento: elige **Pair a Browser…** en el menú del
+   asistente e introduce el código de 6 dígitos que muestra.
+3. Elige tu escáner y los ajustes, y haz clic en **Escanear**. Las páginas
+   llegan a la Bandeja de entrada, listas para revisar.
+
+Dossiary recuerda tu escáner y tus ajustes para la próxima vez. Con un
+escáner que puede separar una pila en las hojas en blanco, **📸 Escaneo
+múltiple** convierte una pila en varios documentos.
+
 ## Un breve recorrido por todo lo demás
 
 Una vez que te sientas cómodo con lo básico de arriba, hay más cosas que

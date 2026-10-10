@@ -163,6 +163,26 @@ traitez la file de révision dès que vous avez quelques minutes de libre,
 plutôt que de devoir remplir soigneusement un formulaire pour chaque
 feuille de papier numérisée.
 
+## Numériser directement dans Dossiary
+
+Si vous avez un scanner, Dossiary peut numériser directement dans la Boîte de
+réception. Il lui faut pour cela une petite application auxiliaire sur votre
+ordinateur : [dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
+pour la plupart des scanners, ou [scanix500](https://github.com/AarneAarebye/iX500)
+pour un ScanSnap iX500.
+
+1. Lancez l'assistant.
+2. Cliquez sur **📷 Numériser**. La première fois, la boîte de dialogue
+   demande un code d'association : choisissez **Pair a Browser…** dans le
+   menu de l'assistant et saisissez le code à 6 chiffres affiché.
+3. Choisissez votre scanner et les réglages, puis cliquez sur **Numériser**.
+   Les pages arrivent dans la Boîte de réception, prêtes à être vérifiées.
+
+Dossiary se souvient de votre scanner et de vos réglages pour la fois
+suivante. Avec un scanner capable de séparer une pile sur les feuilles
+blanches, **📸 Numérisation multiple** transforme une pile en plusieurs
+documents.
+
 ## Un rapide tour de tout le reste
 
 Une fois à l'aise avec les bases ci-dessus, il y a d'autres éléments qui

@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (97 scripts) + shared
+tests/                   Playwright regression suite (96 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2226,168 +2226,54 @@ this repo's git tags.
   never stage anything, since every fresh process starts with an empty dict
   and therefore always treats every file as newly-seen on its first (and
   only) pass.
-- **Scan / Scan Multi toolbar buttons** (`#scan-btn`/`#scan-multi-btn`,
-  `triggerScan()`) let a
-  person trigger a real scan on a physical scanner directly from Dossiary's
-  toolbar, via a separate companion app: `scanix500` (a sibling repo,
-  `AarneAarebye/iX500`) drives a specific ScanSnap iX500 directly via SANE
-  and embeds a small local HTTP bridge in its own macOS menu bar app
-  (`scanix500-menubar`). Dossiary has no direct scanner integration itself
-  — see the "No direct scanner integration in the app itself" note above,
-  which still holds; this feature works *around* that boundary by talking
-  to a companion native app over `fetch()`, the same way `scan_watch.py`
-  works around it by watching a folder, not by Dossiary itself gaining
-  hardware access.
-  **`scan_bridge_url`** (a `settings` row, `loadScanBridgeUrl()`/
-  `saveScanBridgeUrl()`) is the bridge's base URL. As of the 2026-09-16
-  auto-connect amendment (see
-  `docs/superpowers/specs/2026-09-16-scan-bridge-auto-connect-design.md`
-  and `docs/superpowers/plans/2026-09-16-scan-bridge-auto-connect.md`),
-  it's no longer purely manual — see the auto-connect paragraph below for
-  how it gets set without typing anything, in the common case. The Field
-  Settings text field (`#fs-scan-bridge-url`) still exists as a manual
-  override/escape hatch, unchanged.
-  **As of the 2026-09-16 parameterized-scan amendment, there is no more
-  profile at all — Dossiary sends its scan settings directly as query
-  parameters on the request** (`?skip_blank_filter=false&skip_ocr=false&split_on_blank=<isMulti>`,
-  built via `URLSearchParams` in `triggerScan()`). The person no longer
-  needs to manually create anything in scanix500's own menu bar app before
-  either button works — see
-  `docs/superpowers/specs/2026-09-16-scan-bridge-parameterized-scan-design.md`
-  and `docs/superpowers/plans/2026-09-16-scan-bridge-parameterized-scan.md`
-  for the full two-repo design; scanix500's own `route_scan_request()`
-  builds an ephemeral, never-persisted `Profile` from these same three
-  parameters rather than looking one up. `skip_blank_filter`/`skip_ocr`
-  are always sent `false` — Dossiary doesn't expose them as
-  user-configurable settings, matching the old profiles' own unedited
-  defaults — only `split_on_blank` varies between the two buttons.
-  **Scan Multi is not "duplex" or "multi-page" in the legacy Mariner
-  Paperless sense** (that app's original Scan/Scan Multi distinction was
-  simplex vs. duplex, and scanix500 has no simplex mode — it always does
-  ADF duplex capture with automatic blank-page filtering) — this feature
-  deliberately repurposes the two-button layout for scanix500's own
-  genuinely distinct capability instead: `split-on-blank`, letting several
-  physical documents be fed in one ADF load and come back as separate
-  PDFs. **This was a breaking, non-backward-compatible wire change** — a
-  `404` from the bridge no longer means "unknown profile" (there's no more
-  profile to be unknown); it means the bridge doesn't recognize this
-  request shape at all, most likely because it predates this amendment.
-  Dossiary and scanix500 must be updated together; see scanix500's own
-  README for the exact coordination note from its side.
-  **`triggerScan(isMulti)` still routes every scan through the
-  existing Inbox pipeline, never a separate ingestion path — but see the
-  auto-connect paragraph below for a real change to how the file gets
-  there.** As of the 2026-09-16 amendment, Dossiary itself decodes the
-  response's `files` field and writes the bytes into the library's own
-  `inbox/` folder (scanix500 no longer needs to write to a location
-  Dossiary can read at all), and only *then* calls the same
-  `checkInbox()`/`addAllInboxFilesAndShowStatus()` pair as before — so a
-  scan still always lands exactly like any other Inbox-staged file, just
-  via a different placement mechanism now. A partial result
-  (`ok: false, partial: true` — e.g. a multi-feed jam that still produced a
-  usable file) still runs that same pipeline, since a real file was
-  written, but shows the bridge's own message afterward rather than the
-  Inbox pipeline's own "Added N document(s)" report — the jam warning is
-  more important information and deliberately becomes the final status
-  line. A hard failure (`ok: false, partial: false`) shows the bridge's
-  message and does not touch the Inbox at all. Both buttons are disabled
-  for the duration of a request and always re-enabled via `try/finally`,
-  regardless of which outcome (success, 400, 404, 409, network failure,
-  malformed response) actually occurred — never left stuck disabled.
-  **No polling, no progress bar** — the request simply blocks until
-  scanix500's own bridge resolves it (which itself blocks until the real
-  scan finishes), matching the "single explicit click, wait for the real
-  result" pattern `checkInbox()`'s own button already established.
-  **`triggerScan()` sets no request timeout and uses no `AbortController`**
-  — a deliberate consequence of that same "block until the real result"
-  design, not an oversight: a large Scan Multi batch can legitimately take
-  several minutes on real hardware, so an arbitrary client-side timeout
-  would just mean the button re-enables while scanix500 is still mid-scan.
-  The accepted tradeoff is that a bridge that hangs forever (crashed
-  mid-request, stuck talking to the scanner, etc.) leaves both buttons
-  disabled for the rest of the session — `finally{}` only ever runs once
-  `fetch()` itself settles, one way or the other — and the only recovery
-  is reloading the page. **`checkInbox()`/`addAllInboxFilesAndShowStatus()`
-  run inside `triggerScan()`'s own `try{}` block**, alongside the `fetch()`
-  call itself — both already swallow their own internal errors today, so
-  in practice neither one throws, but if either ever did, that throw would
-  be caught by the same `catch` that handles a genuinely unreachable
-  bridge, and reported via the same `scanBridgeUnreachable` status message
-  rather than as a distinct post-scan ingestion failure. Worth stating
-  explicitly rather than leaving a future reader to assume the shared
-  `try{}` is a deliberate error-unification design; it's just where the
-  boundary happens to fall given that a successful scan's own follow-up
-  work has nowhere else convenient to run.
-  **Auto-connect (2026-09-16 amendment)**: the "must manually type
-  `scan_bridge_url` before either button works" gate is gone. Clicking
-  Scan or Scan Multi with no stored `scan_bridge_url` now probes
-  `GET http://localhost:8765/health` first (`probeScanBridgeHealth()`, a
-  short client-side `AbortController` timeout — unlike `triggerScan()`'s
-  own deliberately un-timed-out POST) — a reachable default port is
-  adopted silently, no dialog shown, and the originally-clicked scan
-  proceeds immediately. An unreachable default port opens a small
-  "Configure Scanner Connection" dialog (`openScanConnectDialog()`/
-  `submitScanConnectDialog()`) with one Port field; a later scan against
-  an already-configured URL that fails at the network level (not a 400/404/409
-  from a reachable bridge) reopens the same dialog rather than just
-  showing an unreachable-bridge status with no recovery path. The
-  pre-existing Field Settings `scan_bridge_url` text field is untouched
-  and still works as a manual override. **The scanned file itself now
-  travels over the connection, not the filesystem**: `triggerScan()`
-  decodes every entry in the response's `files` array (base64) and writes
-  it into the library's own `inbox/` via `writeScanFilesToInbox()`, with
-  `uniqueInboxFilename()` guarding against overwriting an unrelated
-  same-named file already staged there, before running the unchanged
-  `checkInbox()`/`addAllInboxFilesAndShowStatus()` pipeline. A
-  missing/malformed `files` array on an otherwise-`ok` response (an older
-  bridge that predates this change) is a hard failure, not a silent
-  no-op — it falls into the same `scanBridgeUnreachable`-style catch a
-  malformed JSON response already used. One consequence worth stating
-  plainly: a scanix500 profile's `destination` folder no longer needs to
-  point at any specific Dossiary library's `inbox/` — it's now purely a
-  local safety-net copy on the scanix500 side (see that repo's own
-  README). Per-library scanix500 profiles were considered during this
-  amendment's design and explicitly rejected for the same reason: once the
-  file arrives over the connection, scanix500 never needs to know which
-  library it's serving.
-  **Scan helper discoverability (2026-09-17 amendment)**: installing
-  scanix500-menubar was previously undiscoverable from within Dossiary
-  itself — nothing named it, explained it, or linked to it. Field
-  Settings now has a "Scanner Integration" section (`.fs-scanner-integration`,
-  next to the `scan_bridge_url` manual-override field) explaining what's
-  needed and linking directly to scanix500-menubar's latest GitHub
-  release, and the "Configure Scanner Connection" dialog
-  (`openScanConnectDialog()`) shows a persistent "Don't have the scan
-  helper installed?" download link alongside its existing Port field,
-  every time it opens — not conditionally, since a browser `fetch()`
-  failure can't distinguish "nothing installed" from "installed on a
-  different port" from "blocked by a firewall"; all three surface as the
-  same generic network error. This is purely additive UI — no change to
-  the bridge's wire contract, to `triggerScan()`'s own request/response
-  handling, or to scanix500-menubar's own feature set. See
-  `docs/superpowers/specs/2026-09-17-scan-helper-discoverability-design.md`
-  for the full design.
-  **Pairing (scanix500 0.3.0)** (`openScanPairDialog()`,
-  `submitScanPairDialog()`, `getScanToken()`/`setScanToken()`,
-  `scanAuthHeaders()`): the bridge used to answer every origin with
-  `Access-Control-Allow-Origin: *`, so any website could start a scan and
-  read the document -- and even an origin allow-list can't tell this
-  `file://` page's `Origin: null` apart from a sandboxed iframe's. So the
-  browser pairs once: scanix500's "Pair a Browser…" shows a 6-digit code,
-  the pairing dialog sends it to `POST /pair` (`{code, client:
-  'Dossiary'}`, JSON, so a preflight) and stores the returned token in
-  `localStorage` (`dossiary_scan_tokens`, keyed by the bridge URL; per
-  browser, not per library, since pairing belongs to the browser; in
-  memory if storage is blocked). `/health` and `/scan` then carry
-  `Authorization: Bearer <token>` -- only when there is a token, because
-  that header forces a preflight a pre-0.3.0 bridge doesn't allow.
-  `probeScanBridgeHealth()` returns `null` (nothing there) or `{paired}`;
-  a bridge without a `paired` field is pre-0.3.0 and counts as paired, so
-  it still scans. An unpaired health probe opens the pairing dialog before
-  any scan request; a `401` from `/scan` (the helper forgot its browsers)
-  drops the stale token and opens it too. A successful pairing runs the
-  scan that was clicked. The same scheme as dossiary-scan-helper's
-  `PROTOCOL.md`; the spec's step 2 scan dialog will reuse it.
+- **Scanning: the scan dialog and its helpers** (`openScanDialog()`,
+  `discoverScanHelpers()`, `startScanFromDialog()`; spec
+  `docs/superpowers/specs/2026-10-09-system-scanner-helper-design.md`,
+  section 2; wire format in dossiary-scan-helper's `PROTOCOL.md`). A browser
+  can't reach a scanner (see "No direct scanner integration" above), so a
+  small helper app on the computer does the scanning and Dossiary talks to
+  it over `fetch()`: scanix500 on `localhost:8765` (version 1 of the
+  protocol, one fixed "ScanSnap iX500" entry, `V1_SCANNER`) and
+  dossiary-scan-helper on `localhost:8766` (version 2: `GET /scanners`,
+  JSON `POST /scan`). The Field Settings address (`scan_bridge_url`) is
+  probed too, for a helper on another port. **Discovery**
+  (`probeScanHelper()`, `loadHelperScanners()`) uses a 3 s `/health`
+  timeout; a health with `protocol: 2` is version 2, one with
+  `service: 'scanix500-bridge'` version 1, anything else is ignored.
+  **📷 Scan opens the dialog**: every found scanner (a duplicated name gets
+  its helper in brackets), and only the settings the chosen one supports --
+  source, two-sided (only a duplex feeder), color, resolution, and the
+  extras Dossiary knows (`splitOnBlank`, `skipBlankPages`; unknown ones are
+  never shown or sent). The last scanner and settings are remembered per
+  library (`scan_last_settings`); a gone scanner falls back to the first.
+  **The scan request has no timeout** (a feeder batch can take minutes);
+  while it runs the dialog's button reads "Scanning…" and Escape, backdrop
+  and close are blocked (`scanDialogRunning`). Results, in either wire
+  format (`decodeScanFiles()`), go through `writeScanFilesToInbox()` →
+  `checkInbox()` → `addAllInboxFilesAndShowStatus()`, like any staged file;
+  a `partial` result does the same, then shows the helper's message. A
+  failure keeps the dialog open with the helper's message. **Pairing**:
+  `Origin: null` can't tell this `file://` page from a sandboxed iframe on
+  any website, so each browser pairs once per helper: a helper whose
+  `/health` says `paired: false` shows a code field in the dialog
+  (`submitInlinePairing()`, `POST /pair` `{code, client: 'Dossiary'}`), and
+  the token is kept in `localStorage` (`dossiary_scan_tokens`, keyed by the
+  helper's address -- per browser, not per library). `Authorization:
+  Bearer <token>` is only sent when there is a token: a pre-0.3.0
+  scanix500 (no `paired` field, counts as paired) rejects the preflight for
+  that header. A 401 drops the token and brings the code field back.
+  **📸 Scan Multi** opens the same dialog with split on blank pages ticked,
+  and is shown only while a found scanner offers `splitOnBlank` or a
+  scanix500 waits to be paired (`updateScanMultiAvailability()`,
+  `.scan-unavailable`, kept apart from the person's own `.toolbar-hidden`).
+  Dossiary checks when a library opens (read-only requests to localhost)
+  and whenever the dialog opens. **Nothing found** explains what to
+  install, links dossiary-scan-helper's releases and scanix500, and offers
+  the address field with "Look again". **Tests**: the shared stub fails
+  every request to another localhost origin, so no test reaches a real
+  helper on the machine; `tests/test_scan_dialog.py` fakes helpers per
+  scenario, and `tests/manual_scan_reference_helper.py` checks against the
+  real reference helper by hand.
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default

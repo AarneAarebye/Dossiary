@@ -148,6 +148,24 @@ queue whenever you have a few spare minutes, instead of having to
 carefully fill in a form for every single sheet of paper the moment you
 scan it.
 
+## Scanning straight into Dossiary
+
+If you have a scanner, Dossiary can scan into the Inbox for you. It needs a
+small helper app on your computer: [dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
+for most scanners, or [scanix500](https://github.com/AarneAarebye/iX500) for
+a ScanSnap iX500.
+
+1. Start the helper.
+2. Click **📷 Scan**. The first time, the dialog asks for a pairing code:
+   choose **Pair a Browser…** in the helper's menu and type the 6-digit
+   code it shows.
+3. Pick your scanner and settings, then click **Scan**. The pages arrive in
+   the Inbox, ready to review.
+
+Dossiary remembers your scanner and settings for next time. With a scanner
+that can split a stack on blank sheets, **📸 Scan Multi** turns one stack
+into several documents.
+
 ## A quick tour of everything else
 
 Once you're comfortable with the basics above, there's more worth

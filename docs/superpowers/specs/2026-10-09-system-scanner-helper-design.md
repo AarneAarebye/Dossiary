@@ -286,7 +286,7 @@ repo it changes.
    repo needs the owner's OK at the start of this step.
 2. **Dossiary**: the scan dialog, discovery on both ports, version 1
    fallback, Scan Multi as shortcut. Tested against the stub and the
-   reference helper; released before any real helper exists.
+   reference helper; released before any real helper exists. **Done (2026-10-09):** plan docs/superpowers/plans/2026-10-09-scan-dialog.md.
 3. **macOS helper.**
 4. **scanix500 version 2.**
 5. **Windows helper** (needs a Windows machine or VM with a scanner for

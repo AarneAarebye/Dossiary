@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **97
-scripts covering most of the app's actual functionality** (94 of them
+There's a real, runnable Playwright regression suite in `tests/` — **96
+scripts covering most of the app's actual functionality** (93 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -831,18 +831,7 @@ fake `navigator.share`/`canShare`: files read before Share is offered, an
 unreadable one listed, nothing shared before the click, files named like
 exported copies with PDF details, the confirmation; the panel's Share…, a
 dismissed sheet staying quiet, a refused one reported, a single document
-shared with its title; German labels), scan-helper pairing
-(`test_scan_pairing.py` -- a fake `fetch` playing a scanix500 0.3.0 bridge:
-an unpaired health probe opening the pairing dialog before any scan, with
-no Authorization header sent without a token; a malformed code refused
-locally, a wrong one showing "didn't work" with the dialog open; the right
-code typed with a space posting `{code, client}` as JSON, storing the token
-under the bridge URL and running the scan with it; later scans sending the
-token straight away; a 401 dropping the stale token and bringing the dialog
-back, with re-pairing finishing the scan; Cancel; a pre-0.3.0 bridge with
-no `paired` field scanning without a dialog or header; German title. Each
-fake scan returns different bytes, since duplicate detection would skip a
-repeat), details in exported PDFs (`test_export.py`'s later checks -- by default the
+shared with its title; German labels), details in exported PDFs (`test_export.py`'s later checks -- by default the
 copy carries title, subject and keywords with its pages untouched; with the
 option off the copy is byte-identical; a PDF pdf-lib can't open copied
 unchanged and reported), hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;
@@ -1076,86 +1065,31 @@ every name as a pill; the filter lists each name once and matches "includes
 this name", with "— Not set —" matching no names; a Smart Collection saved
 from that filter matches the same documents; sorting by the joined names;
 and Reports offering the field as a breakdown), the
-Scan/Scan Multi toolbar buttons (`test_scan_bridge.py` —
-`scan_bridge_url` defaulting empty on a fresh library and persisting
-across a reopen once configured; the auto-connect flow from the
-2026-09-16 amendment — an unconfigured `scan_bridge_url` probing the
-default port's `/health` endpoint and adopting it silently on success
-with no dialog shown at all (Scenario 2); the "Configure Scanner
-Connection" dialog opening on a default-port failure, pre-filled with
-`8765`, rejecting a non-numeric port without attempting to connect,
-staying open with an inline error naming the attempted port when a
-manually-entered port also fails, closing and saving + proceeding with
-the original scan once one succeeds, and Cancel dismissing it with no
-scan ever attempted (Scenario 2b/2c) — plus Cancel clicked while a port
-probe is still in-flight, confirming that in-flight probe can't silently
-save a URL or start a scan once it later resolves, even successfully
-(Scenario 2d); a network failure against an *already-configured* URL
-reopening that same dialog instead of just showing a static
-unreachable-bridge status (Scenario 9); Scan vs. Scan Multi POSTing with
-distinct query strings — `split_on_blank=false` and `split_on_blank=true`
-respectively, with `skip_blank_filter`/`skip_ocr` always `false` — rather
-than to any profile-name path, from the 2026-09-16 parameterized-scan
-amendment that removed profiles from the bridge contract entirely
-(Scenario 3/4, updated); a successful scan response's `files` field
-(base64-encoded file bytes) being decoded and written directly into
-`inbox/` by `triggerScan()` itself, with no manual pre-staging, then
-picked up by the existing `checkInbox()` pipeline and surfaced via the
-Inbox nav view (Scenario 3); a partial scan result (`ok: false, partial:
-true`, e.g. a multi-feed jam) still writing and ingesting its `files`
-entry, but surfacing the bridge's own error message on the status line
-instead of the "Added N document(s)" report — the jam warning is more
-important (Scenario 5); a hard failure (`ok: false, partial: false`,
-verified against a library with a real file staged in `inbox/` first, so
-the "no document was added" assertion could actually fail if the Inbox
-pipeline wrongly ran) showing only the bridge's error message with no
-document added at all (Scenario 6, unchanged); an HTTP `404` — which, as
-of the parameterized-scan amendment, means the bridge doesn't recognize
-this request shape at all (most likely an outdated scanix500-menubar)
-rather than "unknown profile" — showing a status naming
-`scanix500-menubar` as what needs updating (Scenario 7, updated); an HTTP
-`400` (malformed/missing scan parameters — should never happen from
-Dossiary's own correctly-built request, but handled defensively) showing
-the bridge's own error message (Scenario 7b, new); distinct, legible
-status messages for 409/network-failure/malformed-JSON outcomes
-(Scenarios 8, 9, 11, unchanged) — the malformed-JSON scenario feeds a
-non-JSON response body through the same `try/catch` a genuinely malformed
-`files` array now also hits, confirming `triggerScan()` treats both as
-"the bridge answered, but not correctly" rather than "reconfigure
-the port"; a missing/malformed `files` field on an otherwise-`ok` response
-(an older bridge that predates this field) being a hard failure, not a
-silent no-op, with no document added (Scenario 12, unchanged); a file
-already staged in `inbox/` under the same name a bridge-delivered file
-would use NOT being silently overwritten — both end up as separate
-documents, proving the collision-avoidance logic actually renames rather
-than clobbers (Scenario 13, unchanged); a multi-file result (Scan Multi /
-split-on-blank producing several PDFs) writing and ingesting every file
-in `files`, not just the first (Scenario 14, unchanged); a `/health`
-responder that doesn't identify itself as the scanix500 bridge NOT being
-silently adopted (Scenario 15, unchanged); both buttons staying
-correctly disabled throughout a request and always re-enabled via
-`try/finally`, regardless of outcome, never stuck disabled (Scenario 10,
-unchanged), plus a re-entrancy guard against a second click starting a
-second concurrent probe (Scenario 16, unchanged); Field Settings' own
-"Scanner Integration" section rendering a heading and a link to
-scanix500-menubar's latest release (Scenario 17, new, from the
-2026-09-17 scan-helper-discoverability amendment); and the Configure
-Scanner Connection dialog always showing a persistent download link
-alongside its Port field, regardless of why the probe failed — not
-conditionally, since a `fetch()` failure alone can't distinguish "not
-installed" from "wrong port" (Scenario 18, new). This coverage is
-spread across eighteen numbered scenarios (2b/2c/2d sub-parts of Scenario
-2's own auto-connect matrix, 7b a sub-part of Scenario 7's own
-status-handling matrix), not one — settings persistence first (Scenario
-1), then the full auto-connect matrix (Scenarios 2/2b/2c/2d), then one
-scenario apiece for the button/`triggerScan()` outcome matrix, so
-end-to-end confidence in the whole flow comes from that matrix as a set,
-not from any single scenario. **By design, `window.fetch` is overridden
-per-scenario directly in `test_scan_bridge.py` itself** rather than added
-to the shared `stub_studio2.js`, since `dossiary.html` calls `fetch()` in
-exactly this one feature and no other test file's app code ever touches
-it — keeping the stub lightweight and focused on
-database/filesystem/Dialog stubbing, not HTTP).
+the scan dialog (`test_scan_dialog.py` -- a fake `fetch` defined in the
+test plays any number of helpers by base URL (`FAKE_HELPERS`, version 1,
+version 2, legacy, unreachable, or not a helper), each request logged in
+`window.__CALLS`: discovery across both default ports and the manual
+address (127.0.0.1 not probed twice, a non-helper `/health` ignored,
+invalid scanner entries dropped, a 401 from `/scanners` meaning not
+paired, no Authorization header without a token); the dialog's scanner
+list with the helper in brackets for a duplicated name, only the settings
+each scanner supports (two-sided only for a duplex feeder, known extras
+only), remembered settings per library and the fallback for a gone
+scanner; "nothing found" with its links and Look again saving a new
+address; version 1 scans (query string, split on blank pages, multi-file,
+an already-staged same name kept, partial, hard failure keeping the
+dialog open, 404 outdated, 409, unreachable, non-JSON, missing files) and
+version 2 scans (the exact JSON body, extras as known booleans, 422/503/500
+messages, partial); the running state (button text, toolbar disabled,
+Escape/close/backdrop blocked); inline pairing for both versions (local
+code check, wrong code, `{code, client}` JSON, token per helper, a 401
+dropping it, a legacy bridge scanning without a header); and Scan Multi
+shown only while a scanner can split, opening the dialog with split
+ticked, respecting Toolbar buttons…, reset on a library switch. The shared
+stub fails every request to another localhost origin unless
+`window.__ALLOW_REAL_HELPERS` is set, which only
+`manual_scan_reference_helper.py` (a manual check against the real
+reference helper, not part of the suite) does).
 This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description

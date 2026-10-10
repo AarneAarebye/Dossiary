@@ -105,13 +105,22 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   macOS' Digitale Bilder (Image Capture) oder Vorschau scannen können, da
   ein Browser keine Möglichkeit hat, Scanner-Hardware direkt anzusteuern
   — siehe Einschränkungen unten.
-- **Scan / Scan Multi** — zwei Werkzeugleisten-Buttons („📷 Scan" und „📸
-  Scan Multi"), die tatsächlich einen echten Scan auslösen, indem sie mit
-  [`scanix500`](https://github.com/AarneAarebye/iX500) sprechen, einer
-  separaten, optionalen Begleit-App, die einen bestimmten Scanner direkt
-  ansteuert und dafür eine kleine lokale HTTP-Bridge bereitstellt, die
-  Dossiary aufrufen kann — siehe Einschränkungen unten für die Voraussetzungen
-  und die Einrichtung.
+- **Scannen** — 📷 **Scannen** öffnet einen Dialog mit allen Scannern, die
+  ein Scan-Helfer auf diesem Computer anbietet, und nur den Einstellungen,
+  die der jeweilige Scanner kann (Papierquelle, beidseitig, Farbe,
+  Auflösung, beim ScanSnap iX500 „An leeren Seiten trennen“). Zwei Helfer
+  werden unterstützt:
+  [dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
+  für die meisten Scanner (macOS und Windows) und
+  [scanix500](https://github.com/AarneAarebye/iX500) für einen ScanSnap
+  iX500. Dossiary findet sie selbst auf den Ports 8766 und 8765; ein Helfer
+  auf einem anderen Port lässt sich im Dialog oder in den Feldeinstellungen
+  eintragen. Jeder Browser wird einmal mit einem Helfer gekoppelt: „Pair a
+  Browser…“ im Helfer zeigt einen 6-stelligen Code, der im Dialog
+  eingegeben wird. Gescannte Seiten landen im Posteingang. 📸 **Mehrfach
+  scannen** öffnet denselben Dialog mit „An leeren Seiten trennen“
+  angehakt und erscheint nur, solange ein Scanner das kann. Dossiary merkt
+  sich den letzten Scanner und seine Einstellungen pro Bibliothek.
 - **Inbox** — ein dezentes gelbes Banner erscheint beim Öffnen einer
   Bibliothek, wenn deren `inbox/`-Ordner (im Bibliotheks-Wurzelverzeichnis,
   neben `library.sqlite` und `files/`, und automatisch angelegt, genau wie
@@ -965,22 +974,12 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
 
   Die Werkzeugleisten-Buttons „📷 Scan"/„📸 Scan Multi" (siehe Funktionen
   oben) sind der eine Weg, auf dem Dossiary tatsächlich einen echten Scan
-  auslöst — aber nur, indem sie mit einer separaten, optionalen
-  Begleit-App sprechen, [`scanix500`](https://github.com/AarneAarebye/iX500),
-  nicht dadurch, dass Dossiary selbst Zugriff auf Scanner-Hardware erhält;
-  die oben beschriebene grundlegende Plattform-Einschränkung bleibt
-  weiterhin bestehen. `scanix500` steuert einen bestimmten ScanSnap
-  iX500-Scanner direkt an und stellt eine kleine lokale HTTP-Bridge
-  bereit, die der Browser-Tab von Dossiary über `fetch()` aufrufen kann.
-  Ein Klick auf einen der Buttons sucht die Bridge auf ihrem
-  Standard-Port und verbindet sich ohne Rückfrage, wenn sie läuft; sonst
-  öffnet sich ein Dialog „Configure Scanner Connection“ mit einem
-  Port-Feld und einem Link zur Begleit-App. Seit scanix500 0.3.0 muss der
-  Browser einmal gekoppelt werden: Der erste Scan fragt nach dem
-  6-stelligen Code, den der Menüpunkt „Pair a Browser…“ von scanix500
-  anzeigt. So können andere Websites keinen Scan auslösen und das
-  Dokument lesen. Die Kopplung merkt sich dieser Browser, für alle
-  Bibliotheken.
+  auslöst -- aber nur, indem sie mit einer separaten Hilfs-App auf
+  demselben Computer sprechen, nicht dadurch, dass Dossiary selbst Zugriff
+  auf Scanner-Hardware erhält; die oben beschriebene grundlegende
+  Plattform-Einschränkung bleibt bestehen. Die beiden unterstützten
+  Helfer, die Erkennung und die einmalige Kopplung stehen oben unter
+  „Scannen“.
 - **Das erneute Verbinden mit einer zuletzt geöffneten Bibliothek braucht
   weiterhin einen Klick.** Browser lassen eine Seite nach einem Neuladen
   nicht stillschweigend wieder auf das Dateisystem zugreifen — selbst mit
@@ -1037,7 +1036,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (97
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (96
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

@@ -160,6 +160,25 @@ dann die Prüfwarteschlange abarbeiten, wann immer du ein paar freie
 Minuten hast — statt für jedes einzelne gescannte Blatt sofort ein
 Formular sorgfältig ausfüllen zu müssen.
 
+## Direkt in Dossiary scannen
+
+Mit einem Scanner kann Dossiary direkt in den Posteingang scannen. Dafür
+braucht es eine kleine Hilfs-App auf deinem Computer:
+[dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
+für die meisten Scanner oder [scanix500](https://github.com/AarneAarebye/iX500)
+für einen ScanSnap iX500.
+
+1. Starte den Helfer.
+2. Klicke auf **📷 Scannen**. Beim ersten Mal fragt der Dialog nach einem
+   Kopplungscode: Wähle **Pair a Browser…** im Menü des Helfers und gib den
+   6-stelligen Code ein, den er anzeigt.
+3. Wähle Scanner und Einstellungen und klicke auf **Scannen**. Die Seiten
+   landen im Posteingang und warten auf die Prüfung.
+
+Dossiary merkt sich Scanner und Einstellungen für das nächste Mal. Mit einem
+Scanner, der einen Stapel an leeren Blättern trennen kann, macht
+**📸 Mehrfach scannen** aus einem Stapel mehrere Dokumente.
+
 ## Ein kurzer Rundgang durch alles Weitere
 
 Sobald du mit den Grundlagen oben vertraut bist, gibt es noch mehr, das
