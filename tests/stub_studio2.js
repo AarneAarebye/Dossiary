@@ -36,7 +36,12 @@ class FakeDirHandle {
       if (h.kind !== 'file') throw new Error('Not a file: ' + name);
       return h;
     }
-    if (opts && opts.create) { const h = new FakeFileHandle(name); this._children.set(name, h); return h; }
+    if (opts && opts.create) {
+      // A test can mark a folder read-only (dirHandle.readOnly = true): creating
+      // a file in it then fails the way Chrome fails for a locked folder.
+      if (this.readOnly) throw new DOMException("Failed to execute 'getFileHandle' on 'FileSystemDirectoryHandle': The folder is read-only.", 'NoModificationAllowedError');
+      const h = new FakeFileHandle(name); this._children.set(name, h); return h;
+    }
     const err = new Error('File not found: ' + name); err.name = 'NotFoundError'; throw err;
   }
   async getDirectoryHandle(name, opts) {

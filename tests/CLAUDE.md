@@ -227,7 +227,14 @@ calibration across all four combinations of nav style × bulk-action-bar
 visibility (Scenarios 29a-29c — no checkboxes in Reports view; nav badge
 counts updating after bulk actions; bulk delete from Collection view
 preserving collection membership on restore; Scenario 30 measures calibration
-constants, at 1440x720 since the Storage stats button's recalibration), replacing an earlier version of this same check that used only
+constants, at 1440x720 since the Storage stats button's recalibration;
+Scenario 31 checks the tabs nav's Collections dropdown at 1280x720 with four
+collections -- closed by default, nothing covering `#tools-btn`
+(`elementFromPoint`) and a real click opening the Tools menu, a collection
+chosen from it, closing after that, on Escape and on an outside click,
+without touching `collections_nav_expanded` -- and the sidebar nav's inline,
+persisted collapse unchanged; earlier scenarios in tabs mode open the
+dropdown first via `click_collection()`), replacing an earlier version of this same check that used only
 3-4 seeded documents — too few to ever make the `max-height` constraint
 actually binding, so it could report success regardless of whether the CSS
 constants were actually correct; the current version explicitly asserts
@@ -1071,19 +1078,26 @@ version 2, legacy, unreachable, or not a helper), each request logged in
 `window.__CALLS`: discovery across both default ports and the manual
 address (127.0.0.1 not probed twice, a non-helper `/health` ignored,
 invalid scanner entries dropped, a 401 from `/scanners` meaning not
-paired, no Authorization header without a token); the dialog's scanner
+paired, no Authorization header without a token, only loopback addresses
+probed -- not one on another machine, https, or a port out of range, but
+`http://[::1]`); the dialog's scanner
 list with the helper in brackets for a duplicated name, only the settings
 each scanner supports (two-sided only for a duplex feeder, known extras
 only), remembered settings per library and the fallback for a gone
 scanner; "nothing found" with its links and Look again saving a new
-address; version 1 scans (query string, split on blank pages, multi-file,
+address (and refusing one on another machine); version 1 scans (query string, split on blank pages, multi-file,
 an already-staged same name kept, partial, hard failure keeping the
 dialog open, 404 outdated, 409, unreachable, non-JSON, missing files) and
 version 2 scans (the exact JSON body, extras as known booleans, 422/503/500
-messages, partial); the running state (button text, toolbar disabled,
+messages, partial, an unwritable `inbox/` -- the stub's
+`dirHandle.readOnly = true` -- keeping the dialog open with the file and
+reason and adding nothing, a read-only `library.sqlite` not stopping the
+scan or leaving the status on "Scanning…"); the running state (button text, toolbar disabled,
 Escape/close/backdrop blocked); inline pairing for both versions (local
 code check, wrong code, `{code, client}` JSON, token per helper, a 401
-dropping it, a legacy bridge scanning without a header); and Scan Multi
+dropping it, two helpers paired at once with the first `/pair` answer held
+back (`pairDelayMs`) still storing both tokens, a legacy bridge scanning
+without a header); and Scan Multi
 shown only while a scanner can split, opening the dialog with split
 ticked, respecting Toolbar buttons…, reset on a library switch. The shared
 stub fails every request to another localhost origin unless

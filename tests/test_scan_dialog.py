@@ -11,6 +11,7 @@ from playwright.async_api import async_playwright
 # config: { '<base url>': { version: 1 | 2 | 'other', token, helper, scanners,
 #            legacy (v1 without pairing), forgotten (tokens revoked), down
 #            (unreachable), code (pairing code, default '123456'),
+#            pairDelayMs (the /pair answer is held back that long),
 #            scanResponses: [{status, body} | {network: true}] (consumed one per scan) } }
 # Every request is logged in window.__CALLS.
 FAKE_HELPERS = """
@@ -35,6 +36,7 @@ FAKE_HELPERS = """
             return json(200, H.legacy ? { service: 'scanix500-bridge' } : { service: 'scanix500-bridge', paired: valid });
         }
         if(path === '/pair'){
+            if(H.pairDelayMs) await new Promise(r => setTimeout(r, H.pairDelayMs));
             const body = JSON.parse(opts.body || '{}');
             if(body.code !== (H.code || '123456')) return H.version === 2 ? v2err(403, 'Choose Pair a browser… and try the new code.') : json(403, { error: "That code isn't right." });
             H.forgotten = false;
@@ -170,6 +172,24 @@ async def scenario_discovery(p):
     print("a /health that isn't a scan helper is probed but ignored:",
           probed and 'http://localhost:9100' not in [h['url'] for h in d['helpers']])
 
+    # Helpers must be on this computer: an address on another machine is never
+    # probed, even with something answering there; [::1] counts as this computer.
+    await page.evaluate("window.__HELPERS['http://192.168.1.5:8766'] = {version: 2, token: 'tok-lan', scanners: []}")
+    await page.evaluate("window.__HELPERS['http://[::1]:9400'] = {version: 2, token: 'tok-v6', scanners: []}")
+    await page.evaluate("window.__DEBUG_setScanBridgeUrl('http://192.168.1.5:8766')")
+    d = await page.evaluate("window.__DEBUG_scanDiscovery()")
+    print("a manual address on another machine is not probed:",
+          not any('192.168.1.5' in x['url'] for x in await calls(page))
+          and 'http://192.168.1.5:8766' not in [h['url'] for h in d['helpers']])
+    for addr in ['https://localhost:8766', 'http://localhost:0', 'http://localhost:70000', 'http://localhost.example.com:8766']:
+        await page.evaluate(f"window.__CALLS = []; window.__DEBUG_setScanBridgeUrl({json.dumps(addr)})")
+        await page.evaluate("window.__DEBUG_scanDiscovery()")
+        urls = [x['url'] for x in await calls(page)]
+        print(f"not a loopback http address, not probed ({addr}):", all(u.startswith(L1) or u.startswith(L2) for u in urls))
+    await page.evaluate("window.__DEBUG_setScanBridgeUrl('http://[::1]:9400')")
+    d = await page.evaluate("window.__DEBUG_scanDiscovery()")
+    print("an http://[::1] address is probed:", any(x['url'] == 'http://[::1]:9400/health' for x in await calls(page)))
+
     print("no page errors:", errors == [])
     await browser.close()
 
@@ -266,6 +286,12 @@ async def scenario_dialog(p):
     await page.fill('#scan-dialog-address', 'not a url')
     await page.click('#scan-dialog-retry-btn')
     print("an invalid address is refused:", 'http://localhost:8766' in await page.inner_text('#scan-dialog-status'))
+    await page.evaluate("window.__HELPERS['http://192.168.1.5:8766'] = {version: 2, token: 'tok-lan', scanners: []}")
+    await page.fill('#scan-dialog-address', 'http://192.168.1.5:8766')
+    await page.click('#scan-dialog-retry-btn')
+    await page.wait_for_timeout(300)
+    print("Look again refuses an address on another machine:", 'http://localhost:8766' in await page.inner_text('#scan-dialog-status')
+          and not any('192.168.1.5' in x['url'] for x in await calls(page)))
     await page.evaluate("window.__HELPERS['http://localhost:9300'] = {version: 1, token: 'tok-3', legacy: true}")
     await page.fill('#scan-dialog-address', 'http://localhost:9300/')
     await page.click('#scan-dialog-retry-btn')
@@ -467,6 +493,39 @@ async def scenario_scan_v2(p):
     db = await db_state(page)
     print("version 2 partial result added with its message:", len(db['documents']) == 3 and 'Paper jam' in await page.inner_text('#status'))
 
+    # The inbox can't be written: the dialog stays open and says which file and
+    # why; nothing is added. Once writable again, the next scan goes through.
+    await page.evaluate(f"""window.__HELPERS['{L2}'].scanResponses = [{{status: 200, body: {{ok: true, partial: false, message: '1 page scanned.',
+        files: [{{name: 'locked.pdf', pages: 1, data: btoa('%PDF-1.4 locked')}}]}}}}]""")
+    await page.evaluate("(async () => { (await window.__TEST_ROOT.getDirectoryHandle('inbox', {create: true})).readOnly = true; })()")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await start_scan(page)
+    dialog_msg = await page.inner_text('#scan-dialog-status') if await page.locator('#scan-dialog-status').count() else ''
+    print("unwritable inbox: the dialog stays open:", await page.locator('#scan-dialog-body').count() == 1)
+    print("unwritable inbox: the message names the file and the reason:",
+          'TestLib/inbox/locked.pdf' in dialog_msg and 'read-only' in dialog_msg)
+    print("unwritable inbox: the status line says the same:", 'TestLib/inbox/locked.pdf' in await page.inner_text('#status'))
+    print("unwritable inbox: no document added:", len((await db_state(page))['documents']) == 3)
+    await page.evaluate("(async () => { (await window.__TEST_ROOT.getDirectoryHandle('inbox')).readOnly = false; })()")
+    await start_scan(page)
+    print("writable again: the next scan is added and the dialog closes:",
+          len((await db_state(page))['documents']) == 4 and await page.locator('#scan-dialog-body').count() == 0)
+
+    # library.sqlite can't be written: remembering the settings fails, but the
+    # scan still runs and the status line doesn't stay on "Scanning…".
+    await page.evaluate("(async () => { (await window.__TEST_ROOT.getFileHandle('library.sqlite')).readOnly = true; })()")
+    before = len([x for x in await calls(page) if x['url'] == f'{L2}/scan'])
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await start_scan(page, wait=600)
+    after = len([x for x in await calls(page) if x['url'] == f'{L2}/scan'])
+    print("read-only library.sqlite: the scan still happens:", after == before + 1)
+    status = await page.inner_text('#status')
+    print("read-only library.sqlite: status not stuck on Scanning…:", 'Scanning' not in status and status.strip() != '')
+    print("read-only library.sqlite: the Scan buttons are enabled again:", await page.is_enabled('#scan-btn'))
+    await page.evaluate("(async () => { (await window.__TEST_ROOT.getFileHandle('library.sqlite')).readOnly = false; })()")
+
     print("no page errors:", errors == [])
     await browser.close()
 
@@ -546,6 +605,27 @@ async def scenario_pairing(p):
     print("a 401 drops the stale token:", L1 not in tokens)
     print("...and says to pair again:", 'Pair it again' in await page.inner_text('#scan-dialog-status'))
     await page.keyboard.press('Escape')
+
+    # Two helpers paired "at once": the first /pair answer is held back, the
+    # second pairing finishes first and redraws the dialog -- the first token
+    # must still be stored, and its scanner appear.
+    await browser.close()
+    browser, page, errors = await open_app(p)
+    await page.evaluate(FAKE_HELPERS, {L1: {"version": 1, "token": "tok-1", "pairDelayMs": 800},
+                                       L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS}})
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.fill(f'{row1} .scan-pair-code', '123456')
+    await page.click(f'{row1} .scan-pair-btn')
+    await page.fill(f'{row2} .scan-pair-code', '123456')
+    await page.click(f'{row2} .scan-pair-btn')
+    await page.wait_for_timeout(1400)
+    tokens = await page.evaluate("JSON.parse(localStorage.getItem('dossiary_scan_tokens'))")
+    print("pairing two helpers at once stores both tokens:", tokens.get(L1) == 'tok-1' and tokens.get(L2) == 'tok-2')
+    opts = await page.eval_on_selector_all('#scan-dialog-scanner option', 'els => els.map(e => e.value)')
+    print("...and both helpers' scanners are listed, no pair rows left:",
+          f'{L1}|scanix500' in opts and len(opts) == 4 and await page.locator('.scan-pair-row').count() == 0)
+    print("no page errors:", errors == [])
 
     # A pre-0.3.0 scanix500 (no `paired` field) scans without any pairing or header.
     await browser.close()

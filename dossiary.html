@@ -2858,6 +2858,10 @@
                                 // MAX(id)+1 on library open, incremented locally, explicit id passed
                                 // into each INSERT (this app assigns ids in JS, never via AUTOINCREMENT)
   let collectionsNavExpanded = true;
+  // Tabs nav only: whether the Collections dropdown is open. Session-only and
+  // closed by default -- an always-open overlay hung over .toolbar and hid its
+  // controls (Tools included). The sidebar nav keeps using collectionsNavExpanded.
+  let collectionsTabsOpen = false;
   let selectedDocIds = new Set();
   // Which single row is shown in the persistent detail panel (independent of
   // selectedDocIds, the multi-select Set used for bulk actions). null means
@@ -4039,7 +4043,7 @@
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
     defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null; el('scan-multi-btn').classList.add('scan-unavailable');
-    collections = []; collectionFolders = []; collapsedCollectionFolders = new Set(); collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
+    collections = []; collectionFolders = []; collapsedCollectionFolders = new Set(); collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; collectionsTabsOpen = false; selectedDocIds = new Set();
     reminderSnoozes = {}; notDuplicateKeys = new Set();
     reportDrilldownIds = new Set(); reportDrilldownLabel = ''; reportDrilldownReturnTo = 'reports';
     selectedDocId = null;
@@ -4346,6 +4350,9 @@
     mainLayout.classList.toggle('nav-style-sidebar', navStyle === 'sidebar');
     const toggleBtn = el('nav-style-toggle');
     if(toggleBtn) toggleBtn.title = navStyle === 'sidebar' ? 'Switch to top-tab navigation' : 'Switch to sidebar navigation';
+    // The tabs-mode Collections dropdown always starts closed after a style switch.
+    collectionsTabsOpen = false;
+    applyCollectionsNavExpanded();
   }
 
   // Mirrors loadNavStyle()/saveNavStyle()/applyNavStyle() exactly, except the
@@ -4392,9 +4399,22 @@
     await persistDb();
   }
 
+  // Sidebar nav: the list is inline, open or folded per the persisted
+  // collections_nav_expanded setting. Tabs nav: the list is a dropdown over
+  // the toolbar, so it is open only while the person has it open
+  // (collectionsTabsOpen) -- closed by default, by an outside click, by Escape,
+  // and after choosing a collection, like the Columns/Tools menus.
   function applyCollectionsNavExpanded(){
     const section = el('nav-collections-section');
-    if(section) section.classList.toggle('collapsed', !collectionsNavExpanded);
+    if(!section) return;
+    const open = navStyle === 'sidebar' ? collectionsNavExpanded : collectionsTabsOpen;
+    section.classList.toggle('collapsed', !open);
+    const toggle = el('nav-collections-toggle');
+    if(toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  function setCollectionsTabsOpen(open){
+    collectionsTabsOpen = !!open;
+    applyCollectionsNavExpanded();
   }
 
   // Document types worth managing in the Field Settings dialog: ones actually
@@ -6218,7 +6238,10 @@
         });
       });
       collectionsList.querySelectorAll('.nav-item[data-view]').forEach(btn => {
-        btn.addEventListener('click', () => setView(btn.dataset.view));
+        btn.addEventListener('click', () => {
+          if(navStyle !== 'sidebar') setCollectionsTabsOpen(false);
+          setView(btn.dataset.view);
+        });
       });
       // Manual collections take documents dragged from the table or grid
       // (see startDocDrag()); smart ones don't, their rules decide membership.
@@ -12896,9 +12919,20 @@
   const V1_SCANNER = Object.freeze({ id: 'scanix500', name: 'ScanSnap iX500', sources: [], duplex: false, colorModes: [], resolutions: [], extras: ['splitOnBlank'] });
   const SCAN_EXTRA_LABEL_KEYS = { splitOnBlank: 'scanExtraSplitOnBlank', skipBlankPages: 'scanExtraSkipBlankPages' };
 
+  // Helpers listen on this computer only (dossiary-scan-helper's PROTOCOL.md:
+  // 127.0.0.1), and a pairing token and the scanned pages go over plain
+  // HTTP -- so only a loopback address counts: http://localhost,
+  // http://127.0.0.1 or http://[::1], with an optional port 1-65535.
+  // Anything else is null, so discovery never contacts another machine, even
+  // when Field Settings (or a copied setup) holds such an address.
   function normalizeHelperUrl(value){
     const s = String(value || '').trim().replace(/\/+$/, '');
-    return /^https?:\/\/[^\s/?#]+$/i.test(s) ? s : null;
+    const m = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::(\d{1,5}))?$/i.exec(s);
+    if(!m) return null;
+    const host = m[1].toLowerCase();
+    if(m[2] === undefined) return `http://${host}`;
+    const port = Number(m[2]);
+    return port >= 1 && port <= 65535 ? `http://${host}:${port}` : null;
   }
   const sameHelperUrl = (a, b) => a.replace('//127.0.0.1', '//localhost') === b.replace('//127.0.0.1', '//localhost');
   function scanHelperUrls(){
@@ -13126,15 +13160,23 @@
         body: JSON.stringify({ code, client: 'Dossiary' }),
       });
     }catch(e){ response = null; }
-    if(!row.isConnected) return; // dialog closed or redrawn meanwhile
+    const body = response ? await response.json().catch(() => null) : null;
+    const token = response && response.ok && body && typeof body.token === 'string' && body.token ? body.token : null;
+    // Store the token before anything else: the code is used up now, and the
+    // dialog may have been redrawn meanwhile (another helper's pairing, a
+    // 401) -- the token must survive that.
+    if(token) setScanToken(url, token);
+    if(!row.isConnected){
+      // Redrawn while pairing: the new body may still ask for this code.
+      if(token && el('scan-dialog-body') && !scanDialogRunning) await refreshScanDialog();
+      return;
+    }
     btn.disabled = false;
     if(!response){ status.textContent = t('scanHelperUnreachable', { url }); return; }
-    const body = await response.json().catch(() => null);
-    if(!response.ok || !body || typeof body.token !== 'string' || !body.token){
+    if(!token){
       status.textContent = response.status === 403 || response.status === 400 ? t('scanPairWrongCode') : t('scanHelperUnreachable', { url });
       return;
     }
-    setScanToken(url, body.token);
     await refreshScanDialog();
   }
 
@@ -13248,16 +13290,19 @@
 
   // Writes decoded scan files (see decodeScanFiles()) into the library's own
   // inbox/ folder, so the existing checkInbox()/addAllInboxFilesAndShowStatus()
-  // pipeline picks them up like any other staged file.
+  // pipeline picks them up like any other staged file. Failures carry the
+  // file's path (withFileOp()), so fileErrorText() can name it.
   async function writeScanFilesToInbox(files){
-    const dirHandle = await rootDirHandle.getDirectoryHandle('inbox', { create: true });
+    const dirHandle = await withFileOp('write', 'inbox/', () => rootDirHandle.getDirectoryHandle('inbox', { create: true }));
     for(const file of files){
       const name = safeFilename(file.name, 'scan.pdf');
       const uniqueName = await uniqueInboxFilename(dirHandle, name);
-      const fileHandle = await dirHandle.getFileHandle(uniqueName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(file.bytes);
-      await writable.close();
+      await withFileOp('write', `inbox/${uniqueName}`, async () => {
+        const fileHandle = await dirHandle.getFileHandle(uniqueName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file.bytes);
+        await writable.close();
+      });
     }
   }
 
@@ -13298,8 +13343,9 @@
 
   // Sends the scan (no timeout: a feeder batch can take minutes) and handles
   // the answer. {done: true}: files reached the Inbox and the dialog is
-  // closed. {needsPairing: true}: a 401, token dropped. {key, params}: a
-  // message for the dialog and the status line; the dialog stays open.
+  // closed. {needsPairing: true}: a 401, token dropped. {key, params}, or
+  // {build} (a message builder): a message for the dialog and the status
+  // line; the dialog stays open.
   async function performScanRequest(choice, request){
     const helperUrl = choice.helper.url;
     let response;
@@ -13316,13 +13362,15 @@
     let files;
     try{ files = decodeScanFiles(body.files); }
     catch(e){ return { key: 'scanHelperBadAnswer', params: { url: helperUrl } }; }
-    closeModal();
+    // Write first, close after: a version 2 helper keeps no copy, so if the
+    // inbox can't be written the dialog stays open, says which file and why,
+    // and the person can fix it and scan again.
     try{
       await writeScanFilesToInbox(files);
     }catch(e){
-      setStatusT('scanFailedMessage', { message: e.message || String(e) }, 'err');
-      return { done: true };
+      return { build: () => fileErrorText(e, 'fileErrorWrite') };
     }
+    closeModal();
     await checkInbox();
     await addAllInboxFilesAndShowStatus();
     // A partial scan (a jam, a multi-feed) still delivered usable pages; the
@@ -13345,8 +13393,12 @@
     setStatusT('scanScanning', null, 'busy');
     let outcome;
     try{
-      await saveLastScanSettings(settings);
+      // Remembering the settings is a convenience: a library.sqlite that
+      // can't be written (locked, read-only) must not stop the scan.
+      try{ await saveLastScanSettings(settings); }catch(e){ /* scan anyway */ }
       outcome = await performScanRequest(choice, buildScanRequest(choice, settings));
+    }catch(e){
+      outcome = { key: 'scanFailedMessage', params: { message: e.message || String(e) } };
     }finally{
       scanDialogRunning = false;
       el('scan-btn').disabled = false;
@@ -13356,15 +13408,16 @@
         el('scan-dialog-start-btn').textContent = t('scanDialogStart');
       }
     }
-    if(outcome.done) return;
+    if(!outcome || outcome.done) return;
     if(outcome.needsPairing){
       await refreshScanDialog();
       if(el('scan-dialog-status')) el('scan-dialog-status').textContent = t('scanNeedsPairing');
       setStatusT('scanNeedsPairing', null, 'err');
       return;
     }
-    if(el('scan-dialog-status')) el('scan-dialog-status').textContent = t(outcome.key, outcome.params);
-    setStatusT(outcome.key, outcome.params, 'err');
+    const build = outcome.build || (() => t(outcome.key, outcome.params));
+    if(el('scan-dialog-status')) el('scan-dialog-status').textContent = build();
+    setStatusLive(build, 'err');
   }
 
   el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
@@ -13505,7 +13558,20 @@
   });
   el('detail-panel-toggle-btn').addEventListener('click', () => saveDetailPanelExpanded(!detailPanelExpanded));
   el('nav-collections-toggle').addEventListener('click', () => {
+    if(navStyle !== 'sidebar'){ setCollectionsTabsOpen(!collectionsTabsOpen); return; }
     saveCollectionsNavExpanded(!collectionsNavExpanded);
+  });
+  // Tabs nav: close the Collections dropdown on a click outside it or on
+  // Escape. composedPath() rather than contains(): folding a folder rebuilds
+  // the list before the click reaches the document, detaching its target.
+  document.addEventListener('click', (e) => {
+    if(!collectionsTabsOpen || navStyle === 'sidebar') return;
+    if(!e.composedPath().includes(el('nav-collections-section'))) setCollectionsTabsOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key !== 'Escape' || !collectionsTabsOpen || navStyle === 'sidebar') return;
+    setCollectionsTabsOpen(false);
+    el('nav-collections-toggle').focus();
   });
 
   el('save-smart-collection-btn').addEventListener('click', () => {

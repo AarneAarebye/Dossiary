@@ -1570,7 +1570,18 @@ this repo's git tags.
   `saveCollectionsNavExpanded()`), defaulting to **expanded**
   (`collectionsNavExpanded = true` unconditionally at startup and in `resetAll()`)
   and staying expanded until the user explicitly collapses it, with that choice
-  then persisted via the `collections_nav_expanded` setting; the list itself
+  then persisted via the `collections_nav_expanded` setting. **That setting
+  is the sidebar nav's only.** In the tabs nav the list is an absolutely
+  positioned dropdown hanging over `.toolbar`, and left open it covered
+  toolbar controls (🛠 Tools included, at 1280x720 with four collections),
+  so there it's a real dropdown: closed by default and after every nav-style
+  switch (`collectionsTabsOpen`, session-only), opened by the Collections
+  toggle, and closed again by an outside click, Escape, or choosing a
+  collection (`setCollectionsTabsOpen()`; `applyCollectionsNavExpanded()`
+  picks the right flag for the current style). Closed, it adds no height, so
+  `.table-wrap`'s calibration is untouched. Tests that pick a collection in
+  tabs mode open the dropdown first (`test_collections.py`'s
+  `click_collection()`); the list itself
   (`#nav-collections-list`) is rebuilt on **every `render()` call** (it lives
   inside `renderNav()`, called from `render()`'s "always call this first" slot —
   see the Top-level navigation note above), not just when a collection is
@@ -2236,7 +2247,13 @@ this repo's git tags.
   protocol, one fixed "ScanSnap iX500" entry, `V1_SCANNER`) and
   dossiary-scan-helper on `localhost:8766` (version 2: `GET /scanners`,
   JSON `POST /scan`). The Field Settings address (`scan_bridge_url`) is
-  probed too, for a helper on another port. **Discovery**
+  probed too, for a helper on another port. **Only loopback addresses
+  count** (`normalizeHelperUrl()`: `http://localhost`, `http://127.0.0.1` or
+  `http://[::1]`, optional port 1-65535; anything else is `null`): helpers
+  listen on 127.0.0.1 only, and a pairing token and scanned pages travel
+  over plain HTTP, so an address on another machine -- typed in Field
+  Settings, or copied with a library's setup -- is never contacted, and the
+  dialog's "Look again" refuses it. **Discovery**
   (`probeScanHelper()`, `loadHelperScanners()`) uses a 3 s `/health`
   timeout; a health with `protocol: 2` is version 2, one with
   `service: 'scanix500-bridge'` version 1, anything else is ignored.
@@ -2252,7 +2269,17 @@ this repo's git tags.
   format (`decodeScanFiles()`), go through `writeScanFilesToInbox()` →
   `checkInbox()` → `addAllInboxFilesAndShowStatus()`, like any staged file;
   a `partial` result does the same, then shows the helper's message. A
-  failure keeps the dialog open with the helper's message. **Pairing**:
+  failure keeps the dialog open with the helper's message. **The files are
+  written before the dialog closes**: a version 2 helper keeps no copy, so
+  if `inbox/` can't be written the dialog stays open with
+  `fileErrorText()`'s message naming the file and the reason, and nothing
+  is lost that a second scan can't redo. Remembering the settings
+  (`saveLastScanSettings()`) is best-effort -- a read-only `library.sqlite`
+  doesn't stop the scan -- and any other error ends as a "Scan failed"
+  message, never a status line stuck on "Scanning…". A pairing token is
+  stored as soon as `/pair` answers, even if the dialog was redrawn
+  meanwhile (another helper's pairing, a 401), since the code is used up by
+  then. **Pairing**:
   `Origin: null` can't tell this `file://` page from a sandboxed iframe on
   any website, so each browser pairs once per helper: a helper whose
   `/health` says `paired: false` shows a code field in the dialog
@@ -3556,8 +3583,8 @@ this repo's git tags.
   naturally, since it only ever backfills documents whose `file_hash` is
   still unset. The modal's own close control, backdrop-click, and Escape
   key stay gated on the in-progress backfill flag -- the same "disable,
-  only re-enable on completion" treatment `triggerScan()` already uses for
-  the Scan/Scan Multi buttons -- so Stop is the one sanctioned way out
+  only re-enable on completion" treatment the scan dialog uses while a scan
+  runs (`scanDialogRunning`, set by `startScanFromDialog()`) -- so Stop is the one sanctioned way out
   mid-pass. A failed mid-pass save sets the same stop flag, so the other
   workers don't keep hashing after the error has already propagated.
   **The capture form warns, non-blocking, the moment a file is picked**

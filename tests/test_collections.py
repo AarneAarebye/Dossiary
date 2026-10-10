@@ -70,6 +70,19 @@ async def route_stub(page):
     stub_js = open('stub_studio2.js').read()
     await page.add_init_script(stub_js)
 
+# In the tabs nav the Collections list is a dropdown, closed until its toggle is
+# clicked (it used to stay open over the toolbar); in the sidebar it's inline.
+# Opens the dropdown when needed, then clicks the collection.
+async def click_collection(page, target):
+    is_collection = not isinstance(target, str) or target.startswith('#nav-item-collection-')
+    if is_collection and await page.evaluate("""() => !document.getElementById('main-layout').classList.contains('nav-style-sidebar')
+        && document.getElementById('nav-collections-section').classList.contains('collapsed')"""):
+        await page.click('#nav-collections-toggle')
+    if isinstance(target, str):
+        await page.click(target)
+    else:
+        await target.click()
+
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -94,14 +107,14 @@ async def main():
 
         # === Scenario 2: clicking the manual collection shows only its member
         # documents (doc 3 and doc 4), regardless of category ===
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         manual_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("Manual collection shows docs 3 and 4:", sorted(manual_row_ids))
 
         # === Scenario 3: clicking the smart collection live-filters by its saved
         # criteria (Category = Travel) -- docs 1 and 3, not doc 2 ===
-        await page.click('#nav-item-collection-2')
+        await click_collection(page, '#nav-item-collection-2')
         await page.wait_for_timeout(150)
         smart_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("Smart collection shows docs 1 and 3 (Category=Travel), not doc 2:", smart_row_ids)
@@ -151,13 +164,13 @@ async def main():
             await page.click('#nav-collections-toggle')
             await page.wait_for_timeout(150)
 
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         count_line_text = await page.locator('#count-line').text_content()
         print("countLine for manual collection has valid denominator (not 'undefined'):", 'undefined' not in (count_line_text or ''))
         print("countLine text for manual collection:", count_line_text)
 
-        await page.click('#nav-item-collection-2')
+        await click_collection(page, '#nav-item-collection-2')
         await page.wait_for_timeout(150)
         count_line_text_smart = await page.locator('#count-line').text_content()
         print("countLine for smart collection has valid denominator (not 'undefined'):", 'undefined' not in (count_line_text_smart or ''))
@@ -192,7 +205,7 @@ async def main():
             ('#nav-item-trash', 'Waste bin'),
             ('#nav-item-reports', 'Reports'),
         ]:
-            await page.click(view_selector)
+            await click_collection(page, view_selector)
             await page.wait_for_timeout(150)
             visible = await page.locator('#save-smart-collection-btn').is_visible()
             print(f"Save-as-Smart-Collection button hidden inside {view_label}:", not visible)
@@ -215,7 +228,7 @@ async def main():
         print("New Smart Collection appears in the nav:", 'Food Category' in new_collection_labels)
 
         new_smart_nav_btn = page.locator('.nav-item[data-view^="collection-"]', has_text='Food Category')
-        await new_smart_nav_btn.click()
+        await click_collection(page, new_smart_nav_btn)
         await page.wait_for_timeout(150)
         new_smart_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("New Smart Collection shows only doc 2 (Category=Food):", new_smart_row_ids)
@@ -247,7 +260,7 @@ async def main():
         selection_cleared = await page.locator('#bulk-action-bar').is_visible()
         print("Selection cleared (bulk bar hidden) after adding:", not selection_cleared)
 
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         manual_row_ids_after = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("Manual collection now has docs 1, 2, 3, and 4:", sorted(manual_row_ids_after))
@@ -257,7 +270,7 @@ async def main():
         # === Scenario 13: selection clears when switching views ===
         await page.check('tr[data-id="1"] .row-select-checkbox')
         await page.wait_for_timeout(150)
-        await page.click('#nav-item-collection-2')
+        await click_collection(page, '#nav-item-collection-2')
         await page.wait_for_timeout(150)
         await page.click('#nav-item-all')
         await page.wait_for_timeout(150)
@@ -283,7 +296,7 @@ async def main():
 
         # Click into the new collection and verify it has docs 2 and 3
         new_coll_nav_btn = page.locator('.nav-item[data-view^="collection-"]', has_text='My New Collection')
-        await new_coll_nav_btn.click()
+        await click_collection(page, new_coll_nav_btn)
         await page.wait_for_timeout(150)
         new_coll_row_ids = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("New collection contains docs 2 and 3:", sorted(new_coll_row_ids))
@@ -328,7 +341,7 @@ async def main():
         await page.click('.modal-collection-option[data-collection-id="1"]')
         await page.wait_for_timeout(200)
 
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         manual_after_modal_add = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("Manual collection includes doc 2 after adding from its detail view:", sorted(manual_after_modal_add))
@@ -359,7 +372,7 @@ async def main():
         # === Scenario 18: Remove-from-collection hidden when viewing from inside a
         # smart collection's view, even though doc 3 is a member of a manual collection
         # (doc 3 matches the smart "Travel Category" collection's criteria) ===
-        await page.click('#nav-item-collection-2')
+        await click_collection(page, '#nav-item-collection-2')
         await page.wait_for_timeout(150)
         await page.click('tr[data-id="3"]')
         await page.wait_for_timeout(200)
@@ -368,7 +381,7 @@ async def main():
 
         # === Scenario 19: Manage Collections modal lists every collection with the
         # right kind and document count ===
-        await page.dispatch_event('#tools-btn', 'click'); await page.click('#manage-collections-btn')
+        await page.click('#tools-btn'); await page.click('#manage-collections-btn')
         await page.wait_for_timeout(150)
         collection_rows = await page.locator('.manage-collection-row').count()
         print("Manage Collections modal lists all collections:", collection_rows)
@@ -419,7 +432,7 @@ async def main():
         # collection views include archived/needs-review documents, unlike the
         # 'all' view's default behavior. Doc 4 (archived=1) is a member of the
         # manual "Trip Docs" collection per the SEED. ===
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         manual_row_ids_with_archived = await page.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)')
         print("Archived doc 4 still shows up inside its manual collection:", '4' in manual_row_ids_with_archived)
@@ -430,9 +443,9 @@ async def main():
 
         # === Scenario 24: deleting the collection currently being viewed falls back
         # to All Documents instead of leaving a phantom view with nothing selected ===
-        await page.click('#nav-item-collection-2')  # "Travel Category" smart collection
+        await click_collection(page, '#nav-item-collection-2')  # "Travel Category" smart collection
         await page.wait_for_timeout(150)
-        await page.dispatch_event('#tools-btn', 'click'); await page.click('#manage-collections-btn')
+        await page.click('#tools-btn'); await page.click('#manage-collections-btn')
         await page.wait_for_timeout(150)
         await page.locator('.manage-collection-row', has_text='Travel Category').locator('.manage-collection-delete-btn').click()
         await page.wait_for_timeout(200)
@@ -461,7 +474,7 @@ async def main():
         # selection -- doc 3 (not archived) and doc 4 (already archived, from SEED)
         # are both members of the "Manual Trip Folder" collection, so selecting both
         # there and clicking Archive should leave BOTH archived, not just doc 3 ===
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         await page.check('tr[data-id="3"] .row-select-checkbox')
         await page.check('tr[data-id="4"] .row-select-checkbox')
@@ -624,7 +637,7 @@ async def main():
         # back into the collection, matching the existing single-document delete's
         # behavior exactly, since bulkSetDeleted() only ever touches documents.deleted,
         # never collection_documents ===
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         await page.check('tr[data-id="3"] .row-select-checkbox')
         await page.check('tr[data-id="4"] .row-select-checkbox')
@@ -656,7 +669,7 @@ async def main():
         await page.click('#bulk-restore-btn')
         await page.wait_for_timeout(200)
 
-        await page.click('#nav-item-collection-1')
+        await click_collection(page, '#nav-item-collection-1')
         await page.wait_for_timeout(150)
         docs_back_in_collection = await page.locator('tr[data-id="3"], tr[data-id="4"]').count()
         print("both restored docs are back in the collection (membership was preserved):", docs_back_in_collection)
@@ -765,5 +778,105 @@ async def main():
 
         print("JS ERRORS (calibration page):", errors2)
         await browser2.close()
+
+    # === Scenario 31: tabs nav -- the Collections list is a dropdown that's
+    # closed by default, so it never sits over the toolbar (it used to cover
+    # #tools-btn at 1280x720 with a few collections, and a real click on Tools
+    # timed out). It opens from its toggle, a collection can be chosen from it,
+    # and it closes after choosing, on Escape, and on an outside click. The
+    # sidebar nav keeps its inline, persisted expand/collapse. ===
+    async with async_playwright() as p:
+        browser3 = await p.chromium.launch()
+        page3 = await browser3.new_page(viewport={'width': 1280, 'height': 720})
+        errors3 = []
+        page3.on("pageerror", lambda exc: errors3.append(str(exc)))
+        await route_stub(page3)
+        await page3.goto(f"file://{APP_PATH}")
+        await page3.wait_for_timeout(200)
+        TABS_SEED = dict(SEED)
+        TABS_SEED["collections"] = [
+            {"id": 1, "name": "Manual Trip Folder", "kind": "manual", "criteria": None},
+            {"id": 2, "name": "Travel Category", "kind": "smart", "criteria": json.dumps({"q": "", "category": "Travel", "type": "", "person": "", "dynamic": []})},
+            {"id": 3, "name": "Taxes", "kind": "manual", "criteria": None},
+            {"id": 4, "name": "Warranties", "kind": "manual", "criteria": None},
+        ]
+        TABS_SEED["settings"] = [{"key": "nav_style", "value": "tabs"}]
+        await page3.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(TABS_SEED)});")
+        await page3.click("#open-btn")
+        await page3.wait_for_timeout(400)
+
+        async def tools_btn_on_top():
+            return await page3.evaluate("""() => {
+                const b = document.getElementById('tools-btn');
+                const r = b.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                return !!hit && (hit === b || b.contains(hit));
+            }""")
+        list_visible = lambda: page3.locator('#nav-collections-list').is_visible()
+
+        print("Tabs nav: Collections dropdown closed by default:", not await list_visible())
+        print("Tabs nav: nothing covers #tools-btn (elementFromPoint at its centre):", await tools_btn_on_top())
+        await page3.click('#tools-btn', timeout=3000)
+        await page3.wait_for_timeout(100)
+        print("Tabs nav: a real click on Tools opens the Tools menu:", await page3.locator('#tools-menu').is_visible())
+        await page3.keyboard.press('Escape')
+        await page3.wait_for_timeout(100)
+
+        await page3.click('#nav-collections-toggle')
+        await page3.wait_for_timeout(100)
+        print("Tabs nav: the toggle opens the dropdown:", await list_visible())
+        print("Tabs nav: toggle reports aria-expanded=true while open:",
+              await page3.get_attribute('#nav-collections-toggle', 'aria-expanded') == 'true')
+        await page3.click('#nav-item-collection-1')
+        await page3.wait_for_timeout(200)
+        ids = sorted(await page3.locator('#doc-tbody tr').evaluate_all('els => els.map(e => e.dataset.id)'))
+        print("Tabs nav: choosing a collection from the dropdown opens it (docs 3, 4):", ids == ['3', '4'])
+        print("Tabs nav: the dropdown closes after choosing a collection:", not await list_visible())
+        print("Tabs nav: the chosen collection is highlighted:",
+              'active' in (await page3.get_attribute('#nav-item-collection-1', 'class') or ''))
+
+        await page3.click('#nav-collections-toggle')
+        await page3.wait_for_timeout(100)
+        await page3.keyboard.press('Escape')
+        await page3.wait_for_timeout(100)
+        print("Tabs nav: Escape closes the dropdown:", not await list_visible())
+
+        await page3.click('#nav-collections-toggle')
+        await page3.wait_for_timeout(100)
+        await page3.click('#count-line')
+        await page3.wait_for_timeout(100)
+        print("Tabs nav: an outside click closes the dropdown:", not await list_visible())
+        print("Tabs nav: #tools-btn uncovered again after closing:", await tools_btn_on_top())
+
+        settings3 = await page3.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                return JSON.parse(await (await fh.getFile()).text()).settings;
+            })()
+        """)
+        persisted = next((x['value'] for x in settings3 if x['key'] == 'collections_nav_expanded'), None)
+        print("Tabs nav: opening/closing the dropdown doesn't touch the sidebar's saved setting:", persisted in (None, '1'))
+
+        # Sidebar nav: unchanged -- inline list, expanded by default, the
+        # toggle still folds it and persists that.
+        await page3.click('#nav-style-toggle')
+        await page3.wait_for_timeout(200)
+        print("Sidebar nav: Collections list shown by default:", await list_visible())
+        await page3.click('#nav-item-collection-2')
+        await page3.wait_for_timeout(150)
+        print("Sidebar nav: the list stays open after choosing a collection:", await list_visible())
+        await page3.click('#nav-collections-toggle')
+        await page3.wait_for_timeout(150)
+        print("Sidebar nav: the toggle still folds the list:", not await list_visible())
+        settings4 = await page3.evaluate("""
+            (async () => {
+                const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite');
+                return JSON.parse(await (await fh.getFile()).text()).settings;
+            })()
+        """)
+        print("Sidebar nav: folding is still persisted as '0':",
+              next((x['value'] for x in settings4 if x['key'] == 'collections_nav_expanded'), None) == '0')
+        print("JS ERRORS (tabs dropdown page):", errors3)
+        await browser3.close()
 
 asyncio.run(main())
