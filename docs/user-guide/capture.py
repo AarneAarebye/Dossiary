@@ -12,7 +12,7 @@ receipt and inbox scan) -- never capture from a real library.
 Usage: python3 docs/user-guide/capture.py [all|en,de,...] [output-dir]
 Needs Playwright for Python and network access for the CDN libraries.
 """
-import asyncio, os, sys, subprocess, time, base64
+import asyncio, os, re, sys, subprocess, time, base64
 from playwright.async_api import async_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -58,6 +58,9 @@ async def capture(browser, lang):
     ctx = await browser.new_context(viewport={'width': 1440, 'height': 770}, device_scale_factor=1,
         locale={'en': 'en-US', 'de': 'de-DE', 'es': 'es-ES', 'fr': 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW'}[lang])
     page = await ctx.new_page()
+    # No scan helper exists for the shots, whatever runs on this machine (a
+    # real scanix500 on 8765 would bring up Scan Multi in the toolbar).
+    await page.route(re.compile(r'^https?://(localhost|127\.0\.0\.1|\[::1\]):(8765|8766)/'), lambda route: route.abort())
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     await page.add_init_script(f"try{{ localStorage.setItem('dossiary_lang', '{lang}'); }}catch(e){{}}" + INIT)
@@ -195,7 +198,9 @@ async def capture(browser, lang):
     await ctx.close()
 
 async def main():
-    server = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT)], cwd=REPO,
+    # Loopback only: a server on every interface had its connections silently
+    # dropped (macOS firewall), and the repo needn't be visible on the network.
+    server = subprocess.Popen([sys.executable, '-m', 'http.server', str(PORT), '--bind', '127.0.0.1'], cwd=REPO,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(1)
     try:

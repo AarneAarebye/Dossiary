@@ -125,7 +125,10 @@ English's.
 
 **Since v1.37 the capture is a script: `docs/user-guide/capture.py`**
 (Playwright for Python, headless, no browser extension and no person
-clicking a picker). It serves the repo on `localhost:8833` and replaces
+clicking a picker). It serves the repo on `localhost:8833` (bound to
+127.0.0.1 only: on all interfaces the macOS firewall silently dropped the
+connections), blocks the scan-helper ports 8765/8766 so a scanix500
+running on the machine can't change the toolbar in the shots, and replaces
 only `showDirectoryPicker()`, which returns a `Documents` folder in the
 origin-private file system (OPFS) -- a real `FileSystemDirectoryHandle`,
 so the real app code runs unchanged against real sql.js, Tesseract.js and
