@@ -21,3 +21,7 @@ app expects, so a large version skew between the two is worth noticing,
 though the two repos don't currently enforce or check compatibility by
 version number — only by the schema itself matching).
 
+Also bump the expected version in `tests/test_scan_watch_version.py` (it
+asserts the exact `scan_watch.py --version` output); v1.43.0 shipped with
+it still expecting 1.42.0, so that test failed until the next branch.
+
