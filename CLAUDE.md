@@ -139,7 +139,7 @@ new-library form, adds Amount/Currency to the three demo types via
 `__DEBUG_dbRun()` and reopens the library, captures the three fabricated
 demo documents from `docs/user-guide/demo/` with real OCR, stages the
 inbox scan by writing into OPFS, and saves every shot under that guide's
-own filenames. `python3 docs/user-guide/capture.py all` rewrites all 66
+own filenames. `python3 docs/user-guide/capture.py all` rewrites all 57
 images; pass `en,de` to limit languages, or an output folder to review
 first. Bump `APP_VERSION` before capturing for a release, since the
 footer shows it.
