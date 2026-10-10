@@ -46,8 +46,12 @@ async def main():
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
+        await page.evaluate("""() => { window.fetch = async (url) => {
+            if(url === 'http://localhost:8765/health') return new Response(JSON.stringify({service: 'scanix500-bridge'}), {status: 200});
+            throw new TypeError('Failed to fetch'); }; }""")
         await page.click("#open-btn")
         await page.wait_for_timeout(400)
+        await page.wait_for_timeout(200)
 
         async def visible(i): return await page.locator(f'#{i}').is_visible()
         async def menu_open(): return await page.locator('#tools-menu').is_visible()

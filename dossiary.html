@@ -162,6 +162,7 @@
   .manage-collection-folder-select{ background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:5px 6px; color:var(--text); font-family:var(--font-mono); font-size:11.5px; max-width:150px; }
   .manage-section-heading{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin:18px 0 4px; }
   .toolbar-hidden{ display:none !important; }
+  .scan-unavailable{ display:none !important; } /* Scan Multi while no found scanner can split on blank pages */
   .scan-dialog-check{ display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; }
   .scan-dialog-text{ font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 12px; }
   .scan-dialog a{ color:var(--phosphor); font-weight:600; }
@@ -886,7 +887,7 @@
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
         <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
         <button id="scan-btn" data-i18n="toolbarScan">📷 Scan</button>
-        <button id="scan-multi-btn" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
+        <button id="scan-multi-btn" class="scan-unavailable" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
         <button id="detail-panel-toggle-btn" data-i18n="toolbarDetailsToggle">☰ Details</button>
         <div class="columns-menu-wrap">
@@ -4024,6 +4025,10 @@
     // synchronously right here rather than needing its own fire-and-forget treatment.
     const dueOnOpen = checkReminders();
     if(dueOnOpen.length) openRemindersModal(dueOnOpen);
+    // Read-only requests to localhost: is there a scanner that can split on
+    // blank pages (Scan Multi)? Ignored if another library opened meanwhile.
+    const scanCheckRoot = rootDirHandle;
+    discoverScanHelpers().then(helpers => { if(rootDirHandle === scanCheckRoot) updateScanMultiAvailability(helpers); });
   }
 
   function resetAll(){
@@ -4033,7 +4038,7 @@
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
-    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null;
+    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null; el('scan-multi-btn').classList.add('scan-unavailable');
     collections = []; collectionFolders = []; collapsedCollectionFolders = new Set(); collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; selectedDocIds = new Set();
     reminderSnoozes = {}; notDuplicateKeys = new Set();
     reportDrilldownIds = new Set(); reportDrilldownLabel = ''; reportDrilldownReturnTo = 'reports';
@@ -12970,6 +12975,16 @@
     return all;
   }
 
+  // Scan Multi is a shortcut to the dialog with "Split on blank pages"
+  // ticked, so it's shown only while some helper can do that: a scanner
+  // offering splitOnBlank, or a scanix500 not paired yet (its one scanner,
+  // the iX500, can -- pairing happens in the dialog). Kept apart from
+  // .toolbar-hidden, which is the person's own choice in Toolbar buttons….
+  function updateScanMultiAvailability(helpers){
+    const available = helpers.some(h => (h.version === 1 && !h.paired) || h.scanners.some(s => s.extras.includes('splitOnBlank')));
+    el('scan-multi-btn').classList.toggle('scan-unavailable', !available);
+  }
+
   window.__DEBUG_scanDiscovery = async () => {
     const helpers = await discoverScanHelpers();
     return {
@@ -13033,6 +13048,7 @@
   async function refreshScanDialog(){
     const keep = el('scan-dialog-scanner') ? readScanDialogSettings() : readLastScanSettings();
     const helpers = await discoverScanHelpers();
+    updateScanMultiAvailability(helpers);
     if(!el('scan-dialog-body')) return; // closed while looking
     scanDialogState.helpers = helpers;
     scanDialogState.choices = scannerChoices(helpers);

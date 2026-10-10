@@ -570,7 +570,59 @@ async def scenario_pairing(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing]
+# === Task 5: Scan Multi only while a scanner can split on blank pages ===
+async def scenario_scan_multi(p):
+    async def visible(page, sel):
+        return await page.is_visible(sel)
+
+    browser, page, errors = await open_app(p)
+    await page.wait_for_timeout(200)
+    print("no helper: Scan Multi hidden, Scan shown:", not await visible(page, '#scan-multi-btn') and await visible(page, '#scan-btn'))
+    await browser.close()
+
+    browser, page, errors = await open_app(p, helpers={L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS[:2]}}, tokens={L2: 'tok-2'})
+    await page.wait_for_timeout(300)
+    print("version 2 scanners without splitOnBlank: Scan Multi hidden:", not await visible(page, '#scan-multi-btn'))
+    await page.evaluate(f"window.__HELPERS['{L2}'].scanners = {json.dumps(V2_SCANNERS)}")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.keyboard.press('Escape')
+    print("opening the dialog re-checks: a splitter appears, Scan Multi shown:", await visible(page, '#scan-multi-btn'))
+    await browser.close()
+
+    browser, page, errors = await open_app(p, helpers={L1: {"version": 1, "token": "tok-1"}})
+    await page.wait_for_timeout(300)
+    print("unpaired scanix500 on library open: Scan Multi shown:", await visible(page, '#scan-multi-btn'))
+    await page.click('#scan-multi-btn')
+    await page.wait_for_timeout(300)
+    await page.fill('.scan-pair-code', '123456')
+    await page.click('.scan-pair-btn')
+    await page.wait_for_timeout(400)
+    print("Scan Multi opens the dialog with split on blank pages ticked:", await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]'))
+    await start_scan(page)
+    scan = [x for x in await calls(page) if '/scan?' in x['url']][-1]
+    print("...and scans with split_on_blank=true:", scan['url'].endswith('split_on_blank=true'))
+
+    # Hidden by the person (Toolbar buttons…) stays hidden even when available.
+    await page.click('#tools-btn')
+    await page.click('#toolbar-buttons-btn')
+    await page.uncheck('.toolbar-buttons-list input[data-key=scan-multi]')
+    await page.click('#toolbar-buttons-done-btn')
+    print("hidden via Toolbar buttons stays hidden:", not await visible(page, '#scan-multi-btn'))
+
+    # Switching library resets it until the new library's check finishes.
+    await page.evaluate(f"window.__HELPERS['{L1}'].down = true")
+    await page.click('#reload-btn')
+    await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot({}); window.__TEST_ROOT.name = 'Other';")
+    await page.click('#open-btn')
+    await page.wait_for_timeout(400)
+    print("another library without a reachable helper: Scan Multi hidden:",
+          await page.eval_on_selector('#scan-multi-btn', 'e => e.classList.contains("scan-unavailable")'))
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_scan_multi]
 
 
 async def main():

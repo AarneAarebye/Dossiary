@@ -33,8 +33,12 @@ async def main():
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
+        await page.evaluate("""() => { window.fetch = async (url) => {
+            if(url === 'http://localhost:8765/health') return new Response(JSON.stringify({service: 'scanix500-bridge'}), {status: 200});
+            throw new TypeError('Failed to fetch'); }; }""")
         await page.click('#open-btn')
         await page.wait_for_timeout(500)
+        await page.wait_for_timeout(200)
 
         visible = lambda sel: page.locator(sel).is_visible()
         async def open_dialog():
