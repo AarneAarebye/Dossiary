@@ -410,16 +410,6 @@ async def scenario_scan_v1(p):
     await page.keyboard.press('Escape')
     print("Escape closes it again once idle:", await page.locator('#scan-dialog-body').count() == 0)
 
-    # 401: token dropped, the person is told to pair again.
-    await page.evaluate(f"window.__HELPERS['{L1}'].forgotten = true")
-    await page.evaluate(f"window.__HELPERS['{L1}'].legacy = false")
-    await page.click('#scan-btn')
-    await page.wait_for_timeout(300)
-    # The forgotten helper now reports paired: false, so there's no scanner to pick yet --
-    # force a stale scan through a paired-looking state by re-enabling validity for /health only:
-    print("a helper that forgot this browser offers no scanner:", await page.locator('#scan-dialog-scanner').count() == 0)
-    await page.keyboard.press('Escape')
-
     print("no page errors:", errors == [])
     await browser.close()
 
@@ -481,7 +471,106 @@ async def scenario_scan_v2(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2]
+# === Task 4: pairing inside the dialog (both protocol versions) ===
+async def scenario_pairing(p):
+    browser, page, errors = await open_app(p)
+    await page.evaluate(FAKE_HELPERS, {L1: {"version": 1, "token": "tok-1"},
+                                       L2: {"version": 2, "token": "tok-2", "helper": "dossiary-scan-helper-macos", "scanners": V2_SCANNERS}})
+
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    rows = await page.eval_on_selector_all('.scan-pair-row', 'els => els.map(e => e.dataset.url)')
+    print("both unpaired helpers get a pair row:", rows == [L1, L2])
+    names = await page.inner_text('#scan-dialog-body')
+    print("rows name the helpers:", 'scanix500: not paired yet' in names and 'dossiary-scan-helper-macos: not paired yet' in names)
+    print("pairing instructions shown:", 'Pair a Browser' in await page.inner_text('#scan-pair-hint'))
+    print("no scanner yet, Scan disabled:", await page.locator('#scan-dialog-scanner').count() == 0 and not await page.is_enabled('#scan-dialog-start-btn'))
+    print("no scan request sent:", not any('/scan' in x['url'] and '/scanners' not in x['url'] for x in await calls(page)))
+
+    row1 = f'.scan-pair-row[data-url="{L1}"]'
+    await page.fill(f'{row1} .scan-pair-code', '12a')
+    await page.click(f'{row1} .scan-pair-btn')
+    await page.wait_for_timeout(150)
+    print("malformed code refused without asking the helper:",
+          'Enter the 6-digit code' in await page.inner_text(f'{row1} .scan-pair-status')
+          and not any(x['url'].endswith('/pair') for x in await calls(page)))
+    await page.fill(f'{row1} .scan-pair-code', '999999')
+    await page.click(f'{row1} .scan-pair-btn')
+    await page.wait_for_timeout(200)
+    print("wrong code says it didn't work:", "didn't work" in await page.inner_text(f'{row1} .scan-pair-status'))
+
+    await page.fill(f'{row1} .scan-pair-code', '123 456')
+    await page.press(f'{row1} .scan-pair-code', 'Enter')
+    await page.wait_for_timeout(400)
+    pair = [x for x in await calls(page) if x['url'] == f'{L1}/pair'][-1]
+    print("right code posted as JSON {code, client}:",
+          json.loads(pair['body']) == {"code": "123456", "client": "Dossiary"} and pair['contentType'] == 'application/json' and pair['auth'] is None)
+    tokens = await page.evaluate("JSON.parse(localStorage.getItem('dossiary_scan_tokens'))")
+    print("token stored under the helper's address:", tokens.get(L1) == 'tok-1')
+    print("paired helper's scanner appears, the other row stays:",
+          await page.eval_on_selector_all('#scan-dialog-scanner option', 'els => els.map(e => e.value)') == [f'{L1}|scanix500']
+          and await page.eval_on_selector_all('.scan-pair-row', 'els => els.map(e => e.dataset.url)') == [L2])
+    print("Scan enabled once a scanner is there:", await page.is_enabled('#scan-dialog-start-btn'))
+
+    # Pair the version 2 helper too; its scanners join the list.
+    row2 = f'.scan-pair-row[data-url="{L2}"]'
+    await page.fill(f'{row2} .scan-pair-code', '123456')
+    await page.click(f'{row2} .scan-pair-btn')
+    await page.wait_for_timeout(400)
+    opts = await page.eval_on_selector_all('#scan-dialog-scanner option', 'els => els.map(e => e.value)')
+    print("version 2 pairing adds its scanners, keeps the selection:",
+          len(opts) == 4 and await page.eval_on_selector('#scan-dialog-scanner', 'e => e.value') == f'{L1}|scanix500'
+          and await page.locator('.scan-pair-row').count() == 0)
+
+    await start_scan(page)
+    scan = [x for x in await calls(page) if '/scan?' in x['url']][-1]
+    print("scan carries the new token:", scan['auth'] == 'Bearer tok-1')
+
+    # The helper forgets its browsers: the scan answers 401, the token is dropped
+    # and the pair row comes back; pairing again lets the next scan through.
+    await page.evaluate(f"window.__HELPERS['{L1}'].forgotten = true")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    # /health already says not paired, so the row is there before any scan:
+    print("a forgotten browser shows the pair row on opening:", await page.locator(row1).count() == 1)
+    await page.keyboard.press('Escape')
+    # Make /health still look paired so the stale token reaches /scan and gets a 401.
+    await page.evaluate(f"""(() => {{ const f = window.fetch; window.fetch = async (url, opts = {{}}) => {{
+        if(url === '{L1}/health') return new Response(JSON.stringify({{service: 'scanix500-bridge', paired: true}}), {{status: 200}});
+        return f(url, opts); }}; }})()""")
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L1}|scanix500')
+    await start_scan(page)
+    tokens = await page.evaluate("JSON.parse(localStorage.getItem('dossiary_scan_tokens'))")
+    print("a 401 drops the stale token:", L1 not in tokens)
+    print("...and says to pair again:", 'Pair it again' in await page.inner_text('#scan-dialog-status'))
+    await page.keyboard.press('Escape')
+
+    # A pre-0.3.0 scanix500 (no `paired` field) scans without any pairing or header.
+    await browser.close()
+    browser, page, errors = await open_app(p)
+    await page.evaluate(FAKE_HELPERS, {L1: {"version": 1, "token": "x", "legacy": True}})
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    print("legacy bridge: no pair row:", await page.locator('.scan-pair-row').count() == 0)
+    await start_scan(page)
+    scan = [x for x in await calls(page) if '/scan?' in x['url']]
+    print("legacy bridge scans without an Authorization header:", len(scan) == 1 and scan[0]['auth'] is None)
+    print("no page errors:", errors == [])
+    await browser.close()
+
+    # German.
+    browser, page, errors = await open_app(p, lang='de')
+    await page.evaluate(FAKE_HELPERS, {L1: {"version": 1, "token": "tok-1"}})
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    print("German pair row:", 'noch nicht gekoppelt' in await page.inner_text('#scan-dialog-body')
+          and await page.inner_text('.scan-pair-btn') == 'Koppeln')
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing]
 
 
 async def main():

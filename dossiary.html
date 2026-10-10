@@ -1108,6 +1108,7 @@
   const STRINGS = {
     en: {
       scanHelperUnreachable: "Couldn't reach the scan helper at {url}. Is it running?", scanHelperBadAnswer: "The scan helper at {url} sent an answer Dossiary doesn't understand. Updating the helper should fix this.", scanNeedsPairing: "The scan helper doesn't know this browser any more. Pair it again.",
+      scanPairHelperNotPaired: "{helper}: not paired yet", scanPairButton: "Pair", scanPairHint: "Pair this browser once: choose “Pair a Browser…” in the helper's menu and type the 6-digit code it shows.", scanPairPairing: "Pairing…",
       scanDialogTitle: "Scan", scanDialogSearching: "Looking for scanners…", scanDialogStart: "Scan", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Paper source", scanSourceFlatbed: "Flatbed", scanSourceFeeder: "Document feeder", scanDialogDuplex: "Both sides", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Grayscale", scanColorBw: "Black & white", scanDialogResolutionLabel: "Resolution", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "Split on blank pages (a blank sheet starts a new document)", scanExtraSkipBlankPages: "Skip blank pages", scanDialogNothingFound: "No scan helper answered. Scanning needs a small helper app on this computer: dossiary-scan-helper for most scanners, or scanix500 for a ScanSnap iX500. If yours runs at another address, enter it below.", scanDialogGetHelper: "Get dossiary-scan-helper", scanDialogGetScanix500: "Get scanix500", scanDialogAddressLabel: "Helper address (optional)", scanDialogRetry: "Look again", scanDialogAddressInvalid: "Enter an address like http://localhost:8766.",
       scanPairCodeLabel: "Pairing code", scanPairInvalidCode: "Enter the 6-digit code.", scanPairWrongCode: "That code didn't work. Choose “Pair a Browser…” again for a new code.",
       shareAction: 'Share…', shareModalTitle: 'Share', shareReading: 'Reading {done} of {total} files…', shareReady: 'Ready: {count} file(s). Share opens your system’s share sheet, to send them by email, message or another app.', shareButton: 'Share', shareDone: 'Handed over to the app you chose.', shareUnsupported: 'This browser can’t hand files to other apps. Export them to a folder, then attach them to an email yourself.', shareExportBtn: 'Export to a folder…', shareEmailBtn: 'Write an email', shareFailedRead: 'Could not read: {count}.', shareError: 'Sharing failed: {error}', shareNothing: 'None of these documents has a file to share.',
@@ -1317,6 +1318,7 @@
     },
     es: {
       scanHelperUnreachable: "No se pudo contactar con el asistente de escaneo en {url}. ¿Está en marcha?", scanHelperBadAnswer: "El asistente de escaneo en {url} envió una respuesta que Dossiary no entiende. Actualizar el asistente debería solucionarlo.", scanNeedsPairing: "El asistente de escaneo ya no reconoce este navegador. Vuelva a emparejarlo.",
+      scanPairHelperNotPaired: "{helper}: aún sin emparejar", scanPairButton: "Emparejar", scanPairHint: "Empareje este navegador una vez: elija «Pair a Browser…» en el menú del asistente e introduzca el código de 6 dígitos que muestra.", scanPairPairing: "Emparejando…",
       scanDialogTitle: "Escanear", scanDialogSearching: "Buscando escáneres…", scanDialogStart: "Escanear", scanDialogScannerLabel: "Escáner", scanDialogSourceLabel: "Origen del papel", scanSourceFlatbed: "Cama plana", scanSourceFeeder: "Alimentador de documentos", scanDialogDuplex: "Ambas caras", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Escala de grises", scanColorBw: "Blanco y negro", scanDialogResolutionLabel: "Resolución", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Separar en páginas en blanco (una hoja en blanco inicia un documento nuevo)", scanExtraSkipBlankPages: "Omitir páginas en blanco", scanDialogNothingFound: "Ningún asistente de escaneo respondió. Para escanear hace falta una pequeña aplicación auxiliar en este ordenador: dossiary-scan-helper para la mayoría de los escáneres, o scanix500 para un ScanSnap iX500. Si el suyo funciona en otra dirección, introdúzcala abajo.", scanDialogGetHelper: "Obtener dossiary-scan-helper", scanDialogGetScanix500: "Obtener scanix500", scanDialogAddressLabel: "Dirección del asistente (opcional)", scanDialogRetry: "Buscar de nuevo", scanDialogAddressInvalid: "Introduzca una dirección como http://localhost:8766.",
       scanPairCodeLabel: "Código de emparejamiento", scanPairInvalidCode: "Introduzca el código de 6 dígitos.", scanPairWrongCode: "Ese código no funcionó. Elija «Pair a Browser…» de nuevo para obtener un código nuevo.",
       shareAction: 'Compartir…', shareModalTitle: 'Compartir', shareReading: 'Leyendo {done} de {total} archivos…', shareReady: 'Listo: {count} archivo(s). Compartir abre el menú para compartir del sistema, para enviarlos por correo, mensaje u otra aplicación.', shareButton: 'Compartir', shareDone: 'Entregado a la aplicación elegida.', shareUnsupported: 'Este navegador no puede pasar archivos a otras aplicaciones. Expórtalos a una carpeta y adjúntalos tú a un correo.', shareExportBtn: 'Exportar a una carpeta…', shareEmailBtn: 'Escribir un correo', shareFailedRead: 'No se pudieron leer: {count}.', shareError: 'No se pudo compartir: {error}', shareNothing: 'Ninguno de estos documentos tiene un archivo para compartir.',
@@ -1526,6 +1528,7 @@
     },
     fr: {
       scanHelperUnreachable: "Impossible de joindre l'assistant de numérisation à {url}. Est-il lancé ?", scanHelperBadAnswer: "L'assistant de numérisation à {url} a envoyé une réponse que Dossiary ne comprend pas. Mettre à jour l'assistant devrait résoudre le problème.", scanNeedsPairing: "L'assistant de numérisation ne reconnaît plus ce navigateur. Associez-le à nouveau.",
+      scanPairHelperNotPaired: "{helper} : pas encore associé", scanPairButton: "Associer", scanPairHint: "Associez ce navigateur une fois : choisissez « Pair a Browser… » dans le menu de l'assistant et saisissez le code à 6 chiffres affiché.", scanPairPairing: "Association…",
       scanDialogTitle: "Numériser", scanDialogSearching: "Recherche de scanners…", scanDialogStart: "Numériser", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Source du papier", scanSourceFlatbed: "Vitre à plat", scanSourceFeeder: "Chargeur de documents", scanDialogDuplex: "Recto verso", scanDialogColorLabel: "Couleur", scanColorColor: "Couleur", scanColorGray: "Niveaux de gris", scanColorBw: "Noir et blanc", scanDialogResolutionLabel: "Résolution", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Séparer aux pages blanches (une feuille blanche commence un nouveau document)", scanExtraSkipBlankPages: "Ignorer les pages blanches", scanDialogNothingFound: "Aucun assistant de numérisation n'a répondu. La numérisation nécessite une petite application d'aide sur cet ordinateur : dossiary-scan-helper pour la plupart des scanners, ou scanix500 pour un ScanSnap iX500. Si le vôtre fonctionne à une autre adresse, saisissez-la ci-dessous.", scanDialogGetHelper: "Obtenir dossiary-scan-helper", scanDialogGetScanix500: "Obtenir scanix500", scanDialogAddressLabel: "Adresse de l'assistant (facultatif)", scanDialogRetry: "Chercher à nouveau", scanDialogAddressInvalid: "Saisissez une adresse comme http://localhost:8766.",
       scanPairCodeLabel: "Code d'association", scanPairInvalidCode: "Saisissez le code à 6 chiffres.", scanPairWrongCode: "Ce code n'a pas fonctionné. Choisissez à nouveau « Pair a Browser… » pour obtenir un nouveau code.",
       shareAction: 'Partager…', shareModalTitle: 'Partager', shareReading: 'Lecture de {done} fichier(s) sur {total}…', shareReady: 'Prêt : {count} fichier(s). Partager ouvre le menu de partage du système, pour les envoyer par e-mail, message ou une autre app.', shareButton: 'Partager', shareDone: 'Transmis à l’app choisie.', shareUnsupported: 'Ce navigateur ne peut pas transmettre de fichiers à d’autres apps. Exportez-les dans un dossier, puis joignez-les vous-même à un e-mail.', shareExportBtn: 'Exporter dans un dossier…', shareEmailBtn: 'Écrire un e-mail', shareFailedRead: 'Lecture impossible : {count}.', shareError: 'Échec du partage : {error}', shareNothing: 'Aucun de ces documents n’a de fichier à partager.',
@@ -1735,6 +1738,7 @@
     },
     de: {
       scanHelperUnreachable: "Der Scan-Helfer unter {url} ist nicht erreichbar. Läuft er?", scanHelperBadAnswer: "Der Scan-Helfer unter {url} hat eine Antwort geschickt, die Dossiary nicht versteht. Ein Update des Helfers sollte das beheben.", scanNeedsPairing: "Der Scan-Helfer kennt diesen Browser nicht mehr. Bitte erneut koppeln.",
+      scanPairHelperNotPaired: "{helper}: noch nicht gekoppelt", scanPairButton: "Koppeln", scanPairHint: "Diesen Browser einmal koppeln: Im Menü des Helfers „Pair a Browser…“ wählen und den 6-stelligen Code eingeben, den er anzeigt.", scanPairPairing: "Kopple…",
       scanDialogTitle: "Scannen", scanDialogSearching: "Suche nach Scannern…", scanDialogStart: "Scannen", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Papierquelle", scanSourceFlatbed: "Flachbett", scanSourceFeeder: "Dokumenteneinzug", scanDialogDuplex: "Beidseitig", scanDialogColorLabel: "Farbe", scanColorColor: "Farbe", scanColorGray: "Graustufen", scanColorBw: "Schwarzweiß", scanDialogResolutionLabel: "Auflösung", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "An leeren Seiten trennen (ein leeres Blatt beginnt ein neues Dokument)", scanExtraSkipBlankPages: "Leere Seiten weglassen", scanDialogNothingFound: "Kein Scan-Helfer hat geantwortet. Zum Scannen braucht es eine kleine Hilfs-App auf diesem Computer: dossiary-scan-helper für die meisten Scanner oder scanix500 für einen ScanSnap iX500. Läuft deiner unter einer anderen Adresse, trag sie unten ein.", scanDialogGetHelper: "dossiary-scan-helper herunterladen", scanDialogGetScanix500: "scanix500 herunterladen", scanDialogAddressLabel: "Adresse des Helfers (optional)", scanDialogRetry: "Erneut suchen", scanDialogAddressInvalid: "Gib eine Adresse wie http://localhost:8766 ein.",
       scanPairCodeLabel: "Kopplungscode", scanPairInvalidCode: "Bitte den 6-stelligen Code eingeben.", scanPairWrongCode: "Dieser Code hat nicht funktioniert. Wähle erneut „Pair a Browser…“ für einen neuen Code.",
       shareAction: 'Teilen…', shareModalTitle: 'Teilen', shareReading: 'Lese {done} von {total} Dateien…', shareReady: 'Bereit: {count} Datei(en). Teilen öffnet das Teilen-Menü des Systems, zum Senden per Mail, Nachricht oder in eine andere App.', shareButton: 'Teilen', shareDone: 'An die gewählte App übergeben.', shareUnsupported: 'Dieser Browser kann keine Dateien an andere Apps übergeben. Exportiere sie in einen Ordner und hänge sie selbst an eine E-Mail an.', shareExportBtn: 'In einen Ordner exportieren…', shareEmailBtn: 'E-Mail schreiben', shareFailedRead: 'Nicht lesbar: {count}.', shareError: 'Teilen fehlgeschlagen: {error}', shareNothing: 'Keines dieser Dokumente hat eine Datei zum Teilen.',
@@ -1944,6 +1948,7 @@
     },
     'zh-Hans': {
       scanHelperUnreachable: "无法连接到位于 {url} 的扫描助手。它在运行吗？", scanHelperBadAnswer: "位于 {url} 的扫描助手返回了 Dossiary 无法理解的答复。更新该助手应可解决。", scanNeedsPairing: "扫描助手已不认识此浏览器。请重新配对。",
+      scanPairHelperNotPaired: "{helper}：尚未配对", scanPairButton: "配对", scanPairHint: "请将此浏览器配对一次：在助手的菜单中选择“Pair a Browser…”，然后输入它显示的 6 位代码。", scanPairPairing: "正在配对…",
       scanDialogTitle: "扫描", scanDialogSearching: "正在查找扫描仪…", scanDialogStart: "扫描", scanDialogScannerLabel: "扫描仪", scanDialogSourceLabel: "进纸方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自动进纸器", scanDialogDuplex: "双面", scanDialogColorLabel: "颜色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "按空白页分割（空白页开始新文档）", scanExtraSkipBlankPages: "跳过空白页", scanDialogNothingFound: "没有扫描助手响应。扫描需要在这台电脑上运行一个小型助手应用：大多数扫描仪使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手运行在其他地址，请在下方输入。", scanDialogGetHelper: "获取 dossiary-scan-helper", scanDialogGetScanix500: "获取 scanix500", scanDialogAddressLabel: "助手地址（可选）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "请输入类似 http://localhost:8766 的地址。",
       scanPairCodeLabel: "配对代码", scanPairInvalidCode: "请输入 6 位代码。", scanPairWrongCode: "该代码无效。请再次选择“Pair a Browser…”以获取新代码。",
       shareAction: '分享…', shareModalTitle: '分享', shareReading: '正在读取第 {done} 个文件，共 {total} 个…', shareReady: '已就绪：{count} 个文件。“分享”会打开系统的分享菜单，可通过邮件、消息或其他应用发送。', shareButton: '分享', shareDone: '已交给你选择的应用。', shareUnsupported: '此浏览器无法把文件交给其他应用。请先导出到文件夹，再自行作为邮件附件发送。', shareExportBtn: '导出到文件夹…', shareEmailBtn: '写邮件', shareFailedRead: '无法读取：{count} 个。', shareError: '分享失败：{error}', shareNothing: '这些文档都没有可分享的文件。',
@@ -2153,6 +2158,7 @@
     },
     'zh-Hant': {
       scanHelperUnreachable: "無法連接到位於 {url} 的掃描助手。它在運行嗎？", scanHelperBadAnswer: "位於 {url} 的掃描助手返回了 Dossiary 無法理解的答覆。更新該助手應可解決。", scanNeedsPairing: "掃描助手已不認識此瀏覽器。請重新配對。",
+      scanPairHelperNotPaired: "{helper}：尚未配對", scanPairButton: "配對", scanPairHint: "請將此瀏覽器配對一次：在助手的菜單中選擇“Pair a Browser…”，然後輸入它顯示的 6 位代碼。", scanPairPairing: "正在配對…",
       scanDialogTitle: "掃描", scanDialogSearching: "正在查找掃描儀…", scanDialogStart: "掃描", scanDialogScannerLabel: "掃描儀", scanDialogSourceLabel: "進紙方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自動進紙器", scanDialogDuplex: "雙面", scanDialogColorLabel: "顏色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "按空白頁分割（空白頁開始新文檔）", scanExtraSkipBlankPages: "跳過空白頁", scanDialogNothingFound: "沒有掃描助手響應。掃描需要在這臺電腦上運行一個小型助手應用：大多數掃描儀使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手運行在其他地址，請在下方輸入。", scanDialogGetHelper: "獲取 dossiary-scan-helper", scanDialogGetScanix500: "獲取 scanix500", scanDialogAddressLabel: "助手地址（可選）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "請輸入類似 http://localhost:8766 的地址。",
       scanPairCodeLabel: "配對代碼", scanPairInvalidCode: "請輸入 6 位代碼。", scanPairWrongCode: "該代碼無效。請再次選擇「Pair a Browser…」以獲取新代碼。",
       shareAction: '分享…', shareModalTitle: '分享', shareReading: '正在讀取第 {done} 個文件，共 {total} 個…', shareReady: '已就緒：{count} 個文件。「分享」會打開系統的分享菜單，可通過郵件、消息或其他應用發送。', shareButton: '分享', shareDone: '已交給你選擇的應用。', shareUnsupported: '此瀏覽器無法把文件交給其他應用。請先導出到文件夾，再自行作爲郵件附件發送。', shareExportBtn: '導出到文件夾…', shareEmailBtn: '寫郵件', shareFailedRead: '無法讀取：{count} 個。', shareError: '分享失敗：{error}', shareNothing: '這些文檔都沒有可分享的文件。',
@@ -13036,23 +13042,83 @@
   function renderScanDialogBody(keep){
     const body = el('scan-dialog-body');
     const startBtn = el('scan-dialog-start-btn');
-    const { choices } = scanDialogState;
-    if(!choices.length){
+    const { helpers, choices } = scanDialogState;
+    if(!helpers.length){
       body.innerHTML = scanNothingFoundHtml();
       wireScanNothingFound();
       startBtn.disabled = true;
       return;
     }
+    // A helper that doesn't know this browser yet: a code field per helper.
+    const unpaired = helpers.filter(h => !h.paired);
+    const pairHtml = unpaired.length ? `
+      <p class="scan-dialog-text" id="scan-pair-hint">${t('scanPairHint')}</p>
+      ${unpaired.map(h => `
+        <div class="scan-pair-row" data-url="${escapeHtml(h.url)}">
+          <div class="scan-dialog-text" style="margin:0 0 4px;">${escapeHtml(t('scanPairHelperNotPaired', { helper: h.label }))}</div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="text" class="scan-pair-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" aria-label="${t('scanPairCodeLabel')}" style="width:9em;" />
+            <button class="scan-pair-btn">${t('scanPairButton')}</button>
+          </div>
+          <div class="scan-pair-status doc-sub" style="min-height:1.2em; margin:4px 0 12px;"></div>
+        </div>`).join('')}` : '';
+    if(!choices.length){
+      body.innerHTML = pairHtml;
+      wireScanPairRows();
+      startBtn.disabled = true;
+      return;
+    }
     const selectedKey = keep && choices.some(c => c.key === keep.scanner) ? keep.scanner : choices[0].key;
     body.innerHTML = `
+      ${pairHtml}
       <div class="field">
         <label for="scan-dialog-scanner">${t('scanDialogScannerLabel')}</label>
         <select id="scan-dialog-scanner">${choices.map(c => `<option value="${escapeHtml(c.key)}" ${c.key === selectedKey ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('')}</select>
       </div>
       <div id="scan-dialog-settings"></div>`;
+    wireScanPairRows();
     renderScanSettings(keep && keep.scanner === selectedKey ? keep : null);
     el('scan-dialog-scanner').addEventListener('change', () => renderScanSettings(null));
     startBtn.disabled = false;
+  }
+
+  function wireScanPairRows(){
+    modalRoot.querySelectorAll('.scan-pair-row').forEach(row => {
+      row.querySelector('.scan-pair-btn').addEventListener('click', () => submitInlinePairing(row));
+      row.querySelector('.scan-pair-code').addEventListener('keydown', (e) => { if(e.key === 'Enter') submitInlinePairing(row); });
+    });
+  }
+
+  // Swaps the code the helper shows for a token (POST /pair, JSON, so a
+  // preflight), stores it under the helper's address, and redraws the
+  // dialog with that helper's scanners.
+  async function submitInlinePairing(row){
+    const url = row.dataset.url;
+    const status = row.querySelector('.scan-pair-status');
+    const btn = row.querySelector('.scan-pair-btn');
+    if(btn.disabled) return;
+    const code = row.querySelector('.scan-pair-code').value.replace(/\s+/g, '');
+    if(!/^\d{6}$/.test(code)){ status.textContent = t('scanPairInvalidCode'); return; }
+    btn.disabled = true;
+    status.textContent = t('scanPairPairing');
+    let response = null;
+    try{
+      response = await fetch(`${url}/pair`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, client: 'Dossiary' }),
+      });
+    }catch(e){ response = null; }
+    if(!row.isConnected) return; // dialog closed or redrawn meanwhile
+    btn.disabled = false;
+    if(!response){ status.textContent = t('scanHelperUnreachable', { url }); return; }
+    const body = await response.json().catch(() => null);
+    if(!response.ok || !body || typeof body.token !== 'string' || !body.token){
+      status.textContent = response.status === 403 || response.status === 400 ? t('scanPairWrongCode') : t('scanHelperUnreachable', { url });
+      return;
+    }
+    setScanToken(url, body.token);
+    await refreshScanDialog();
   }
 
   function currentScanChoice(){
