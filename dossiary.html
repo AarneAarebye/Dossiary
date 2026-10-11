@@ -10979,6 +10979,7 @@
       if(stale) return { status: 'stale' };
       if(hasText){
         await persistDb();
+        if(isStale && isStale()) return { status: 'stale' };
         if(textAdded){ try{ await writeSidecarForDoc(d); }catch(e){} }
         return { status: 'already-text' };
       }
@@ -11052,9 +11053,12 @@
     try{
       const newBase = sidecarBaseNameFromFilePath(newPath);
       const oldBase = sidecarBaseNameFromFilePath(oldPath);
+      if(isStale && isStale()) return { status: 'stale' };
       await writeSidecarForDoc(d);
+      if(isStale && isStale()) return { status: 'stale' };
       if(oldBase !== newBase) await filesDirHandle.removeEntry(`${oldBase}.txt`).catch(() => {});
     }catch(e){ /* no sidecar refresh -- not fatal */ }
+    if(isStale && isStale()) return { status: 'stale' };
 
     await persistDb();
     return { status: 'built' };
