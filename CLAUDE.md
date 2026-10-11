@@ -2246,10 +2246,11 @@ this repo's git tags.
   section 2; wire format in dossiary-scan-helper's `PROTOCOL.md`). A browser
   can't reach a scanner (see "No direct scanner integration" above), so a
   small helper app on the computer does the scanning and Dossiary talks to
-  it over `fetch()`: scanix500 on `localhost:8765` (version 1 of the
-  protocol, one fixed "ScanSnap iX500" entry, `V1_SCANNER`) and
-  dossiary-scan-helper on `localhost:8766` (version 2: `GET /scanners`,
-  JSON `POST /scan`). The Field Settings address (`scan_bridge_url`) is
+  it over `fetch()`: scanix500 on `localhost:8765` (version 2 since
+  scanix500 0.4.0, its iX500 listed as `sane:ix500` with its real settings;
+  a scanix500 before 0.4.0 speaks version 1 and gets one fixed "ScanSnap
+  iX500" entry, `V1_SCANNER`) and dossiary-scan-helper on `localhost:8766`
+  (version 2: `GET /scanners`, JSON `POST /scan`). The Field Settings address (`scan_bridge_url`) is
   probed too, for a helper on another port. **Only loopback addresses
   count** (`normalizeHelperUrl()`: `http://localhost`, `http://127.0.0.1` or
   `http://[::1]`, optional port 1-65535; anything else is `null`): helpers
@@ -2264,7 +2265,10 @@ this repo's git tags.
   its helper in brackets), and only the settings the chosen one supports --
   source, two-sided (only a duplex feeder), color, resolution, and the
   extras Dossiary knows (`splitOnBlank`, `skipBlankPages`; unknown ones are
-  never shown or sent). The last scanner and settings are remembered per
+  never shown or sent). Without remembered settings for the chosen scanner,
+  two-sided and skip blank pages start ticked where offered -- what
+  scanix500 always did before the dialog (the protocol's own defaults are
+  both off). The last scanner and settings are remembered per
   library (`scan_last_settings`); a gone scanner falls back to the first.
   **The scan request has no timeout** (a feeder batch can take minutes);
   while it runs the dialog's button reads "Scanning…" and Escape, backdrop
@@ -2294,7 +2298,8 @@ this repo's git tags.
   that header. A 401 drops the token and brings the code field back.
   **📸 Scan Multi** opens the same dialog with split on blank pages ticked,
   and is shown only while a found scanner offers `splitOnBlank` or a
-  scanix500 waits to be paired (`updateScanMultiAvailability()`,
+  scanix500 waits to be paired (an unpaired helper lists no scanners, so
+  scanix500 is recognized by its version 1 health or its `helper` name) (`updateScanMultiAvailability()`,
   `.scan-unavailable`, kept apart from the person's own `.toolbar-hidden`).
   Dossiary checks when a library opens (read-only requests to localhost)
   and whenever the dialog opens. **Nothing found** explains what to

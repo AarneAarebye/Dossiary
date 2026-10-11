@@ -12910,11 +12910,11 @@
 
   // ---- Scan helpers: discovery (scanner helper spec, section 2) ----
   // Every helper speaks the bridge protocol (dossiary-scan-helper's
-  // PROTOCOL.md): scanix500 on 8765 (version 1, one fixed scanner), the
-  // system scanner helper on 8766 (version 2, any number of scanners), plus
+  // PROTOCOL.md): scanix500 on 8765 (version 2 since scanix500 0.4.0,
+  // version 1 before), the system scanner helper on 8766 (version 2), plus
   // the manual address in Field Settings (scan_bridge_url) when it's another
-  // helper. A version 1 helper contributes V1_SCANNER, whose one extra is
-  // split on blank pages.
+  // helper. A version 1 helper (scanix500 before 0.4.0) contributes
+  // V1_SCANNER, whose one extra is split on blank pages.
   const SCAN_HELPER_PORTS = [8765, 8766];
   const V1_SCANNER = Object.freeze({ id: 'scanix500', name: 'ScanSnap iX500', sources: [], duplex: false, colorModes: [], resolutions: [], extras: ['splitOnBlank'] });
   const SCAN_EXTRA_LABEL_KEYS = { splitOnBlank: 'scanExtraSplitOnBlank', skipBlankPages: 'scanExtraSkipBlankPages' };
@@ -13012,11 +13012,14 @@
 
   // Scan Multi is a shortcut to the dialog with "Split on blank pages"
   // ticked, so it's shown only while some helper can do that: a scanner
-  // offering splitOnBlank, or a scanix500 not paired yet (its one scanner,
-  // the iX500, can -- pairing happens in the dialog). Kept apart from
-  // .toolbar-hidden, which is the person's own choice in Toolbar buttons….
+  // offering splitOnBlank, or a scanix500 not paired yet (its scanner, the
+  // iX500, can -- pairing happens in the dialog; an unpaired helper lists no
+  // scanners, so scanix500 is recognized by its version 1 health or, from
+  // 0.4.0, its helper name). Kept apart from .toolbar-hidden, which is the
+  // person's own choice in Toolbar buttons….
   function updateScanMultiAvailability(helpers){
-    const available = helpers.some(h => (h.version === 1 && !h.paired) || h.scanners.some(s => s.extras.includes('splitOnBlank')));
+    const unpairedScanix500 = (h) => !h.paired && (h.version === 1 || h.label === 'scanix500');
+    const available = helpers.some(h => unpairedScanix500(h) || h.scanners.some(s => s.extras.includes('splitOnBlank')));
     el('scan-multi-btn').classList.toggle('scan-unavailable', !available);
   }
 
@@ -13187,7 +13190,9 @@
 
   // Only what the chosen scanner supports: a choice with one value isn't
   // shown (its value is sent), two-sided only for a duplex feeder, and only
-  // the extras Dossiary knows.
+  // the extras Dossiary knows. Without remembered settings for this scanner,
+  // both sides and skip blank pages start ticked where offered -- what
+  // scanix500 always did before the dialog.
   function renderScanSettings(keep){
     const choice = currentScanChoice();
     const box = el('scan-dialog-settings');
@@ -13201,10 +13206,11 @@
         <select id="${id}">${values.map(v => `<option value="${escapeHtml(String(v))}" ${v === current ? 'selected' : ''}>${escapeHtml(labelOf(v))}</option>`).join('')}</select>
       </div>` : '';
     const extras = s.extras.filter(x => SCAN_EXTRA_LABEL_KEYS[x]);
-    const extraOn = (x) => (x === 'splitOnBlank' && scanDialogState.forceSplit) || !!(keep && keep.extras && keep.extras[x]);
+    const extraOn = (x) => (x === 'splitOnBlank' && scanDialogState.forceSplit) || (keep ? !!(keep.extras && keep.extras[x]) : x === 'skipBlankPages');
+    const duplexOn = keep ? !!keep.duplex : s.duplex;
     box.innerHTML = `
       ${selectHtml('scan-dialog-source', 'scanDialogSourceLabel', s.sources, source, v => t(SCAN_SETTING_LABEL_KEYS.source[v]))}
-      <label class="scan-dialog-check" id="scan-dialog-duplex-wrap"><input type="checkbox" id="scan-dialog-duplex" ${keep && keep.duplex ? 'checked' : ''} /> ${t('scanDialogDuplex')}</label>
+      <label class="scan-dialog-check" id="scan-dialog-duplex-wrap"><input type="checkbox" id="scan-dialog-duplex" ${duplexOn ? 'checked' : ''} /> ${t('scanDialogDuplex')}</label>
       ${selectHtml('scan-dialog-color', 'scanDialogColorLabel', s.colorModes, pick(s.colorModes, keep && keep.colorMode), v => t(SCAN_SETTING_LABEL_KEYS.colorMode[v]))}
       ${selectHtml('scan-dialog-resolution', 'scanDialogResolutionLabel', s.resolutions, pick(s.resolutions, keep && keep.resolution), v => t('scanDialogDpi', {dpi: v}))}
       ${extras.map(x => `<label class="scan-dialog-check"><input type="checkbox" class="scan-dialog-extra" data-extra="${x}" ${extraOn(x) ? 'checked' : ''} /> ${t(SCAN_EXTRA_LABEL_KEYS[x])}</label>`).join('')}`;

@@ -220,7 +220,7 @@ async def scenario_dialog(p):
     sources = await page.eval_on_selector_all('#scan-dialog-source option', 'els => els.map(e => e.textContent)')
     print("feeder scanner lists its sources:", sources == ['Document feeder', 'Flatbed'])
     print("two-sided shown with the feeder:", await page.is_visible('#scan-dialog-duplex-wrap'))
-    await page.check('#scan-dialog-duplex')
+    print("two-sided ticked by default (nothing remembered for this scanner):", await page.is_checked('#scan-dialog-duplex'))
     await page.select_option('#scan-dialog-source', 'flatbed')
     print("two-sided hidden and cleared on the flatbed:",
           not await page.is_visible('#scan-dialog-duplex-wrap') and not await page.is_checked('#scan-dialog-duplex'))
@@ -233,6 +233,9 @@ async def scenario_dialog(p):
     await page.select_option('#scan-dialog-scanner', f'{L2}|fake:splitter')
     extras = await page.eval_on_selector_all('.scan-dialog-extra', 'els => els.map(e => e.dataset.extra)')
     print("only known extras shown:", extras == ['splitOnBlank', 'skipBlankPages'])
+    print("skip blank pages ticked by default, split on blank pages not:",
+          await page.is_checked('.scan-dialog-extra[data-extra=skipBlankPages]')
+          and not await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]'))
 
     # readScanDialogSettings() + saveLastScanSettings() round trip, then reopening restores them.
     await page.select_option('#scan-dialog-scanner', f'{L2}|fake:feeder')
@@ -472,7 +475,7 @@ async def scenario_scan_v2(p):
     await page.check('.scan-dialog-extra[data-extra=splitOnBlank]')
     await start_scan(page)
     body = json.loads([x for x in await calls(page) if x['url'] == f'{L2}/scan'][-1]['body'])
-    print("extras sent as known booleans only:", body['extras'] == {"splitOnBlank": True, "skipBlankPages": False})
+    print("extras sent as known booleans only:", body['extras'] == {"splitOnBlank": True, "skipBlankPages": True})
     print("two-sided false for a scanner without duplex:", body['duplex'] is False)
 
     # Version 2 errors show the helper's message: 422, 503, 500.
@@ -673,6 +676,12 @@ async def scenario_scan_multi(p):
     browser, page, errors = await open_app(p, helpers={L1: {"version": 1, "token": "tok-1"}})
     await page.wait_for_timeout(300)
     print("unpaired scanix500 on library open: Scan Multi shown:", await visible(page, '#scan-multi-btn'))
+    page_v1 = page
+    browser_v2, page_v2, _ = await open_app(p, helpers={L1: {"version": 2, "token": "tok-1", "helper": "scanix500", "scanners": []}})
+    await page_v2.wait_for_timeout(300)
+    print("unpaired scanix500 0.4.0 (protocol 2): Scan Multi shown:", await visible(page_v2, '#scan-multi-btn'))
+    await browser_v2.close()
+    page = page_v1
     await page.click('#scan-multi-btn')
     await page.wait_for_timeout(300)
     await page.fill('.scan-pair-code', '123456')
