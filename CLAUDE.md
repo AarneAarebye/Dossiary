@@ -2335,7 +2335,25 @@ this repo's git tags.
   is dropped (panel/bulk Delete, and by a pass for raw updates like
   Combine's). Every await checks `rootDirHandle` is still the starting
   library, and the fallback passes `isStale` into `makeDocumentSearchable()`
-  so a library switch writes nothing. Spec
+  so a library switch writes nothing. **Why this doesn't break "every write
+  is an explicit action"**: the work starts from an explicit Scan or Make
+  searchable click, the scan part is governed by a setting, it only touches
+  files that scan created or the document that was clicked, the original is
+  always kept, and a queued Edit job resumes after reopening the library.
+  A helper swap leaves `searchable_pdf_built` 0 on purpose (that flag means
+  Dossiary built the file); `has_text_layer` marks it searchable. **Guards**:
+  `performScanRequest()` remembers the library root before its awaits and
+  neither queues nor continues if it changed (`queueScanOcr()` takes the root
+  too and returns 0 on a mismatch, since the ids belong to the old library);
+  `canEditPages()`, `canCombine()` and `canMakeSearchable()` refuse a
+  document with an active `ocr_jobs` row (`isOcrPendingDoc()`, which also
+  consults the table, since the in-memory set can lag a freshly queued row),
+  because the job's later result would rebuild from the old pages and undo
+  the edit -- the fallback itself uses `canMakeSearchableBase()`;
+  `saveEditedDocument()` with the OCR box locked leaves `ocr_text` out of the
+  UPDATE and the in-memory copy, so a job finishing during Save's awaits
+  isn't overwritten; the fallback's `persistDb()` is try/catch'd (read-only
+  `library.sqlite`). Spec
   `docs/superpowers/specs/2026-10-11-background-scan-ocr-design.md`, wire
   format in dossiary-scan-helper's `PROTOCOL.md`. **Pairing**:
   `Origin: null` can't tell this `file://` page from a sandboxed iframe on

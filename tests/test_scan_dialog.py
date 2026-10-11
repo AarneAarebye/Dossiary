@@ -900,6 +900,9 @@ async def scenario_ocr_jobs(p):
     print("swap-in: original still the plain scan:", original.startswith('%PDF-1.4 fake v2') and '%TEXTLAYER' not in original)
     print("swap-in: ocr_text filled:", bool(d['ocr_text']))
     print("swap-in: pill gone:", 'Making searchable…' not in await page.inner_text(f'tr[data-id="{doc_id}"]'))
+    await page.click(f'tr[data-id="{doc_id}"]')
+    await page.wait_for_timeout(300)
+    print("swap-in: once finished, the panel offers Edit pages again:", 'Edit pages' in await page.inner_text('#detail-panel-body'))
     print("swap-in: status line:", (await page.inner_text('#status')).strip() == f"Text added to “{d['title']}”.")
 
     # 2. Resume after closing and reopening the library.
@@ -945,6 +948,13 @@ async def scenario_ocr_jobs(p):
     await run_pass(page)
     print("setting back on: the fallback runs:", await wait_fallback_done(page, d['id']) and (await doc_row(page, d['id']))['searchable_pdf_built'] == 1)
 
+    # Library switched between the scan answer and queueScanOcr: nothing is queued.
+    jobS, dS = await ocr_scan(page, [ACCEPT])
+    await page.evaluate("(id) => window.__DEBUG_rawDelete(id)", dS['id'])
+    await run_pass(page)
+    stale = await page.evaluate("(id) => window.__DEBUG_queueScanOcr('http://localhost:8766', [{ocrJob: 'job-x'}], ['n.pdf'], {'n.pdf': id}, {})", dS['id'])
+    print("stale root: queueScanOcr returns 0 and adds no row:", stale == 0 and await ocr_rows(page) == [])
+
     # 6. Changed pages: the helper's result is discarded.
     job, d = await ocr_scan(page, [ACCEPT])
     await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
@@ -971,6 +981,17 @@ async def scenario_ocr_jobs(p):
     await page.click(f'tr[data-id="{dA["id"]}"]')
     await page.wait_for_timeout(300)
     print("pending pill shown in the detail panel:", 'Making searchable…' in await page.inner_text('#detail-panel-body'))
+    pb = await page.inner_text('#detail-panel-body')
+    print("pending document: panel offers no Edit pages / Make searchable:", 'Edit pages' not in pb and 'Make searchable' not in pb)
+    await page.check(f'tr[data-id="{dA["id"]}"] .row-select-checkbox')
+    await page.check(f'tr[data-id="{dB["id"]}"] .row-select-checkbox')
+    await page.wait_for_timeout(200)
+    print("pending documents: bulk Combine and Make searchable hidden:",
+          await page.evaluate("document.getElementById('bulk-combine-btn').style.display") == 'none'
+          and await page.evaluate("document.getElementById('bulk-make-searchable-btn').style.display") == 'none')
+    await page.uncheck(f'tr[data-id="{dA["id"]}"] .row-select-checkbox')
+    await page.uncheck(f'tr[data-id="{dB["id"]}"] .row-select-checkbox')
+    await page.wait_for_timeout(200)
     await page.click('#view-grid-btn')
     await page.wait_for_timeout(300)
     print("pending pill shown on the grid tile:", 'Making searchable…' in await page.inner_text(f'.doc-tile[data-id="{dA["id"]}"], [data-id="{dA["id"]}"].tile'))

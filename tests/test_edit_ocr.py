@@ -246,6 +246,29 @@ async def main():
         persisted = await page.evaluate("""(async () => { const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite'); return JSON.parse(await (await fh.getFile()).text()); })()""")
         print("save with an inactive scan row stores the typed text:", [d for d in persisted['documents'] if d['id'] == 6][0]['ocr_text'] == 'typed by hand')
 
+        # === Doc 7: the job finishes while Save is awaiting its writes (locked box) ===
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        with open('editocr_pdf7.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 editocr 7")
+        await page.set_input_files('#file-input', 'editocr_pdf7.pdf')
+        await page.wait_for_timeout(100)
+        await page.fill('#f-title', 'Racing Doc')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+        await page.click('tr[data-id="7"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        await page.click('#e-run-ocr-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("window.__STUB_ON_DB_WRITE = async () => { window.__DEBUG_setDocOcrText(7, 'job text'); }")
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(500)
+        st = await page.evaluate("window.__DEBUG_docOcrText(7)")
+        print("job finishing during Save: memory keeps the recognized text:", st['mem'] == 'job text')
+        print("job finishing during Save: database keeps it too:", st['rowsHaveText'])
+
         # The capture form's button carries the new name too (English and German).
         await page.click('#add-btn')
         await page.wait_for_timeout(100)

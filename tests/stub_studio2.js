@@ -16,6 +16,8 @@ class FakeFileHandle {
     if (this.readOnly) throw new DOMException("Failed to execute 'createWritable' on 'FileSystemFileHandle': Cannot write to a read-only file.", 'NoModificationAllowedError');
     const self = this;
     let buf = new Uint8Array(0);
+    // A test can hook the database write (window.__STUB_ON_DB_WRITE) to act while Save is awaiting it.
+    if (this.name === 'library.sqlite' && window.__STUB_ON_DB_WRITE) { const f = window.__STUB_ON_DB_WRITE; window.__STUB_ON_DB_WRITE = null; await f(); }
     return {
       write: async (data) => {
         if (data instanceof ArrayBuffer) buf = new Uint8Array(data);
