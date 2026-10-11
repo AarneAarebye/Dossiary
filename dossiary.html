@@ -215,7 +215,18 @@
   .tools-menu-item{ display:block; width:100%; text-align:left; border:none; padding:8px 10px; white-space:nowrap; }
   .tools-menu-item:hover:not(:disabled){ background:var(--ink-2); }
   .fs-columns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:6px; }
-  .fs-col h3, .fs-descriptions h3, .fs-scanner-integration h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
+  .fs-settings{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px 28px; margin:4px 0 18px; }
+  .fs-group{ min-width:0; }
+  .fs-group-scan{ grid-column:1 / -1; }
+  .fs-group-fields{ display:flex; flex-wrap:wrap; gap:12px 20px; }
+  .fs-group-fields .field{ flex:1 1 220px; min-width:0; margin:0; }
+  .fs-group-fields .field select, .fs-group-fields .field input[type=text], .fs-group-fields .field input[type=number]{ width:100%; box-sizing:border-box; }
+  .fs-settings .fs-group > h3{ color:var(--phosphor); border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:12px; }
+  .fs-group-check{ display:block; margin:0 0 12px; }
+  .fs-group-text{ font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 4px; }
+  .fs-group-links{ margin:0 0 12px; }
+  .fs-group-link{ color:var(--phosphor); font-weight:600; font-size:13px; }
+  .fs-group h3, .fs-col h3, .fs-descriptions h3, .fs-scanner-integration h3{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-dim); margin:0 0 8px; font-weight:500; }
   .fs-list{ border:1px solid var(--line); border-radius:var(--radius); max-height:280px; overflow-y:auto; background:var(--ink-2); }
   .fs-list-item{ padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid rgba(217,210,189,0.06); display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .fs-list-item:last-child{ border-bottom:none; }
@@ -1258,10 +1269,10 @@
       editOcrPdfDoneSingular: 'Done — {count} page recognized.', editOcrPdfDonePlural: 'Done — {count} pages recognized.',
       editOcrUnsupportedType: "Can't run OCR on this file type ({type}).",
       fieldSettingsTitle: 'Field settings',
-      fieldSettingsDefaultDocTypeLabel: 'Default document type (pre-fills "Add document")',
-      fieldSettingsDefaultCurrencyLabel: 'Default currency (guessed on new captures, e.g. EUR)',
-      fieldSettingsReminderLookaheadLabel: 'Reminder lookahead (days)',
-      fieldSettingsScanBridgeUrlLabel: "Scan helper address (only if not on port 8765 or 8766)",
+      fieldSettingsDefaultDocTypeLabel: "Default document type",
+      fieldSettingsDefaultCurrencyLabel: "Default currency",
+      fieldSettingsReminderLookaheadLabel: "Days ahead",
+      fieldSettingsScanBridgeUrlLabel: "Scan helper address",
       fieldSettingsScanAutoOcrLabel: "Make scans searchable automatically",
       ocrPendingPill: "Making searchable…",
       ocrJobsWaitingSingular: "Making searchable: {count} document left…",
@@ -1270,8 +1281,8 @@
       ocrJobTextAdded: "Text added to “{title}”.",
       ocrJobNoText: "No text found in “{title}”.",
       ocrJobFailed: "Couldn’t make “{title}” searchable: {error}",
-      fieldSettingsScanOcrLanguageLabel: "Text recognition language for scans",
-      fieldSettingsScannerIntegrationHeading: 'Scanner Integration',
+      fieldSettingsScanOcrLanguageLabel: "Text recognition language",
+      fieldSettingsScannerIntegrationHeading: "Scanning", fieldSettingsGroupNewDocuments: "New documents", fieldSettingsGroupReminders: "Reminders", fieldSettingsDefaultDocTypeHint: "Pre-filled when adding a document.", fieldSettingsDefaultCurrencyHint: "Suggested on new documents, e.g. EUR.", fieldSettingsReminderLookaheadHint: "Reminders due within this many days are shown.", fieldSettingsScanBridgeUrlHint: "Only for a helper not on port 8765 or 8766.",
       fieldSettingsScannerIntegrationText: "Scanning from the toolbar needs a small helper app running on this computer: dossiary-scan-helper for most scanners, or scanix500 for a ScanSnap iX500. Dossiary finds either one by itself; the address below is only for a helper on another port.",
       fieldSettingsScannerIntegrationLink: "Get dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "Get scanix500 (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
@@ -1478,10 +1489,10 @@
       editOcrPdfDoneSingular: 'Listo — {count} página reconocida.', editOcrPdfDonePlural: 'Listo — {count} páginas reconocidas.',
       editOcrUnsupportedType: 'No se puede ejecutar OCR en este tipo de archivo ({type}).',
       fieldSettingsTitle: 'Configuración de campos',
-      fieldSettingsDefaultDocTypeLabel: 'Tipo de documento predeterminado (precompleta "Añadir documento")',
-      fieldSettingsDefaultCurrencyLabel: 'Moneda predeterminada (se sugiere en nuevas capturas, p. ej., EUR)',
-      fieldSettingsReminderLookaheadLabel: 'Antelación de recordatorios (días)',
-      fieldSettingsScanBridgeUrlLabel: "Dirección del asistente de escaneo (solo si no está en el puerto 8765 o 8766)",
+      fieldSettingsDefaultDocTypeLabel: "Tipo de documento predeterminado",
+      fieldSettingsDefaultCurrencyLabel: "Moneda predeterminada",
+      fieldSettingsReminderLookaheadLabel: "Días de antelación",
+      fieldSettingsScanBridgeUrlLabel: "Dirección del asistente de escaneo",
       fieldSettingsScanAutoOcrLabel: "Hacer que los escaneos se puedan buscar automáticamente",
       ocrPendingPill: "Haciendo buscable…",
       ocrJobsWaitingSingular: "Haciendo buscable: queda {count} documento…",
@@ -1490,8 +1501,8 @@
       ocrJobTextAdded: "Texto añadido a «{title}».",
       ocrJobNoText: "No se encontró texto en «{title}».",
       ocrJobFailed: "No se pudo hacer buscable «{title}»: {error}",
-      fieldSettingsScanOcrLanguageLabel: "Idioma del reconocimiento de texto para escaneos",
-      fieldSettingsScannerIntegrationHeading: 'Integración del escáner',
+      fieldSettingsScanOcrLanguageLabel: "Idioma del reconocimiento de texto",
+      fieldSettingsScannerIntegrationHeading: "Escaneo", fieldSettingsGroupNewDocuments: "Documentos nuevos", fieldSettingsGroupReminders: "Recordatorios", fieldSettingsDefaultDocTypeHint: "Se rellena al añadir un documento.", fieldSettingsDefaultCurrencyHint: "Se sugiere en documentos nuevos, p. ej., EUR.", fieldSettingsReminderLookaheadHint: "Se muestran los recordatorios que vencen en estos días.", fieldSettingsScanBridgeUrlHint: "Solo para un asistente que no esté en el puerto 8765 o 8766.",
       fieldSettingsScannerIntegrationText: "Escanear desde la barra de herramientas requiere una pequeña aplicación auxiliar en este equipo: dossiary-scan-helper para la mayoría de los escáneres, o scanix500 para un ScanSnap iX500. Dossiary encuentra cualquiera de las dos por sí mismo; la dirección de abajo solo hace falta para un asistente en otro puerto.",
       fieldSettingsScannerIntegrationLink: "Obtener dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "Obtener scanix500 (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Tipos de documento', fieldSettingsColFields: 'Campos', fieldSettingsColDisplayFields: 'Campos mostrados',
@@ -1698,10 +1709,10 @@
       editOcrPdfDoneSingular: 'Terminé — {count} page reconnue.', editOcrPdfDonePlural: 'Terminé — {count} pages reconnues.',
       editOcrUnsupportedType: "Impossible d'exécuter l'OCR sur ce type de fichier ({type}).",
       fieldSettingsTitle: 'Paramètres des champs',
-      fieldSettingsDefaultDocTypeLabel: 'Type de document par défaut (préremplit « Ajouter un document »)',
-      fieldSettingsDefaultCurrencyLabel: 'Devise par défaut (suggérée pour les nouvelles captures, p. ex. EUR)',
-      fieldSettingsReminderLookaheadLabel: 'Anticipation des rappels (jours)',
-      fieldSettingsScanBridgeUrlLabel: "Adresse de l'assistant de numérisation (seulement s'il n'est pas sur le port 8765 ou 8766)",
+      fieldSettingsDefaultDocTypeLabel: "Type de document par défaut",
+      fieldSettingsDefaultCurrencyLabel: "Devise par défaut",
+      fieldSettingsReminderLookaheadLabel: "Jours d'anticipation",
+      fieldSettingsScanBridgeUrlLabel: "Adresse de l'assistant de numérisation",
       fieldSettingsScanAutoOcrLabel: "Rendre les numérisations interrogeables automatiquement",
       ocrPendingPill: "Conversion en PDF interrogeable…",
       ocrJobsWaitingSingular: "Conversion en PDF interrogeable : encore {count} document…",
@@ -1710,8 +1721,8 @@
       ocrJobTextAdded: "Texte ajouté à « {title} ».",
       ocrJobNoText: "Aucun texte trouvé dans « {title} ».",
       ocrJobFailed: "Impossible de rendre « {title} » consultable : {error}",
-      fieldSettingsScanOcrLanguageLabel: "Langue de reconnaissance du texte pour les numérisations",
-      fieldSettingsScannerIntegrationHeading: 'Intégration du scanner',
+      fieldSettingsScanOcrLanguageLabel: "Langue de reconnaissance du texte",
+      fieldSettingsScannerIntegrationHeading: "Numérisation", fieldSettingsGroupNewDocuments: "Nouveaux documents", fieldSettingsGroupReminders: "Rappels", fieldSettingsDefaultDocTypeHint: "Prérempli lors de l'ajout d'un document.", fieldSettingsDefaultCurrencyHint: "Suggérée pour les nouveaux documents, p. ex. EUR.", fieldSettingsReminderLookaheadHint: "Les rappels qui arrivent à échéance dans ce délai sont affichés.", fieldSettingsScanBridgeUrlHint: "Seulement pour un assistant qui n'est pas sur le port 8765 ou 8766.",
       fieldSettingsScannerIntegrationText: "Numériser depuis la barre d'outils nécessite une petite application auxiliaire sur cet ordinateur : dossiary-scan-helper pour la plupart des scanners, ou scanix500 pour un ScanSnap iX500. Dossiary trouve l'une ou l'autre tout seul ; l'adresse ci-dessous n'est utile que pour un assistant sur un autre port.",
       fieldSettingsScannerIntegrationLink: "Obtenir dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "Obtenir scanix500 (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Types de document', fieldSettingsColFields: 'Champs', fieldSettingsColDisplayFields: 'Champs affichés',
@@ -1918,10 +1929,10 @@
       editOcrPdfDoneSingular: 'Fertig — {count} Seite erkannt.', editOcrPdfDonePlural: 'Fertig — {count} Seiten erkannt.',
       editOcrUnsupportedType: 'OCR ist für diesen Dateityp ({type}) nicht möglich.',
       fieldSettingsTitle: 'Feldeinstellungen',
-      fieldSettingsDefaultDocTypeLabel: 'Standard-Dokumenttyp (füllt "Dokument hinzufügen" vor)',
-      fieldSettingsDefaultCurrencyLabel: 'Standardwährung (wird bei neuen Erfassungen vorgeschlagen, z. B. EUR)',
-      fieldSettingsReminderLookaheadLabel: 'Erinnerungsvorlauf (Tage)',
-      fieldSettingsScanBridgeUrlLabel: "Adresse des Scan-Helfers (nur wenn nicht auf Port 8765 oder 8766)",
+      fieldSettingsDefaultDocTypeLabel: "Standard-Dokumenttyp",
+      fieldSettingsDefaultCurrencyLabel: "Standardwährung",
+      fieldSettingsReminderLookaheadLabel: "Tage im Voraus",
+      fieldSettingsScanBridgeUrlLabel: "Adresse des Scan-Helfers",
       fieldSettingsScanAutoOcrLabel: "Scans automatisch durchsuchbar machen",
       ocrPendingPill: "Wird durchsuchbar gemacht…",
       ocrJobsWaitingSingular: "Wird durchsuchbar gemacht: noch {count} Dokument…",
@@ -1930,8 +1941,8 @@
       ocrJobTextAdded: "Text zu „{title}“ hinzugefügt.",
       ocrJobNoText: "Kein Text in „{title}“ gefunden.",
       ocrJobFailed: "„{title}“ konnte nicht durchsuchbar gemacht werden: {error}",
-      fieldSettingsScanOcrLanguageLabel: "Sprache der Texterkennung für Scans",
-      fieldSettingsScannerIntegrationHeading: 'Scanner-Integration',
+      fieldSettingsScanOcrLanguageLabel: "Sprache der Texterkennung",
+      fieldSettingsScannerIntegrationHeading: "Scannen", fieldSettingsGroupNewDocuments: "Neue Dokumente", fieldSettingsGroupReminders: "Erinnerungen", fieldSettingsDefaultDocTypeHint: "Wird beim Hinzufügen eines Dokuments vorausgefüllt.", fieldSettingsDefaultCurrencyHint: "Wird bei neuen Dokumenten vorgeschlagen, z. B. EUR.", fieldSettingsReminderLookaheadHint: "Erinnerungen, die in so vielen Tagen fällig sind, werden angezeigt.", fieldSettingsScanBridgeUrlHint: "Nur für einen Helfer, der nicht auf Port 8765 oder 8766 läuft.",
       fieldSettingsScannerIntegrationText: "Zum Scannen aus der Werkzeugleiste braucht es eine kleine Hilfs-App auf diesem Computer: dossiary-scan-helper für die meisten Scanner oder scanix500 für einen ScanSnap iX500. Dossiary findet beide von selbst; die Adresse unten ist nur für einen Helfer auf einem anderen Port nötig.",
       fieldSettingsScannerIntegrationLink: "dossiary-scan-helper herunterladen", fieldSettingsScannerIntegrationLinkScanix500: "scanix500 herunterladen (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
@@ -2138,10 +2149,10 @@
       editOcrPdfDoneSingular: '完成——已识别 {count} 页。', editOcrPdfDonePlural: '完成——已识别 {count} 页。',
       editOcrUnsupportedType: '无法对此文件类型（{type}）运行 OCR。',
       fieldSettingsTitle: '字段设置',
-      fieldSettingsDefaultDocTypeLabel: '默认文档类型（预填入"添加文档"）',
-      fieldSettingsDefaultCurrencyLabel: '默认货币（新录入时自动猜测，例如 EUR）',
-      fieldSettingsReminderLookaheadLabel: '提醒提前天数',
-      fieldSettingsScanBridgeUrlLabel: "扫描助手地址（仅当不在 8765 或 8766 端口时）",
+      fieldSettingsDefaultDocTypeLabel: "默认文档类型",
+      fieldSettingsDefaultCurrencyLabel: "默认货币",
+      fieldSettingsReminderLookaheadLabel: "提前天数",
+      fieldSettingsScanBridgeUrlLabel: "扫描助手地址",
       fieldSettingsScanAutoOcrLabel: "自动使扫描件可搜索",
       ocrPendingPill: "正在设为可搜索…",
       ocrJobsWaitingSingular: "正在设为可搜索：还剩 {count} 个文档…",
@@ -2150,8 +2161,8 @@
       ocrJobTextAdded: "已为“{title}”添加文字。",
       ocrJobNoText: "在“{title}”中未找到文字。",
       ocrJobFailed: "无法使“{title}”可搜索：{error}",
-      fieldSettingsScanOcrLanguageLabel: "扫描件的文字识别语言",
-      fieldSettingsScannerIntegrationHeading: '扫描仪集成',
+      fieldSettingsScanOcrLanguageLabel: "文字识别语言",
+      fieldSettingsScannerIntegrationHeading: "扫描", fieldSettingsGroupNewDocuments: "新文档", fieldSettingsGroupReminders: "提醒", fieldSettingsDefaultDocTypeHint: "添加文档时预先填入。", fieldSettingsDefaultCurrencyHint: "新文档时自动建议，例如 EUR。", fieldSettingsReminderLookaheadHint: "显示在这么多天内到期的提醒。", fieldSettingsScanBridgeUrlHint: "仅用于不在 8765 或 8766 端口的助手。",
       fieldSettingsScannerIntegrationText: "从工具栏扫描需要在这台电脑上运行一个小型助手应用：大多数扫描仪使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。Dossiary 会自动找到它们；下面的地址仅用于运行在其他端口的助手。",
       fieldSettingsScannerIntegrationLink: "获取 dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "获取 scanix500（ScanSnap iX500）",
       fieldSettingsColDocTypes: '文档类型', fieldSettingsColFields: '字段', fieldSettingsColDisplayFields: '显示字段',
@@ -2467,10 +2478,10 @@
       editOcrPdfDonePlural: '完成——已識別 {count} 頁。',
       editOcrUnsupportedType: '無法對此文件類型（{type}）運行 OCR。',
       fieldSettingsTitle: '字段設置',
-      fieldSettingsDefaultDocTypeLabel: '默認文檔類型（預填入"添加文檔"）',
-      fieldSettingsDefaultCurrencyLabel: '默認貨幣（新錄入時自動猜測，例如 EUR）',
-      fieldSettingsReminderLookaheadLabel: '提醒提前天數',
-      fieldSettingsScanBridgeUrlLabel: "掃描助手地址（僅當不在 8765 或 8766 端口時）",
+      fieldSettingsDefaultDocTypeLabel: "默認文檔類型",
+      fieldSettingsDefaultCurrencyLabel: "默認貨幣",
+      fieldSettingsReminderLookaheadLabel: "提前天數",
+      fieldSettingsScanBridgeUrlLabel: "掃描助手地址",
       fieldSettingsScanAutoOcrLabel: "自動使掃描件可搜索",
       ocrPendingPill: "正在設為可搜索…",
       ocrJobsWaitingSingular: "正在設為可搜索：還剩 {count} 個文檔…",
@@ -2479,8 +2490,8 @@
       ocrJobTextAdded: "已為「{title}」添加文字。",
       ocrJobNoText: "在「{title}」中未找到文字。",
       ocrJobFailed: "無法使「{title}」可搜索：{error}",
-      fieldSettingsScanOcrLanguageLabel: "掃描件的文字識別語言",
-      fieldSettingsScannerIntegrationHeading: '掃描儀集成',
+      fieldSettingsScanOcrLanguageLabel: "文字識別語言",
+      fieldSettingsScannerIntegrationHeading: "掃描", fieldSettingsGroupNewDocuments: "新文檔", fieldSettingsGroupReminders: "提醒", fieldSettingsDefaultDocTypeHint: "添加文檔時預先填入。", fieldSettingsDefaultCurrencyHint: "新文檔時自動建議，例如 EUR。", fieldSettingsReminderLookaheadHint: "顯示在這麼多天內到期的提醒。", fieldSettingsScanBridgeUrlHint: "僅用於不在 8765 或 8766 端口的助手。",
       fieldSettingsScannerIntegrationText: "從工具欄掃描需要在這臺電腦上運行一個小型助手應用：大多數掃描儀使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。Dossiary 會自動找到它們；下面的地址僅用於運行在其他端口的助手。",
       fieldSettingsScannerIntegrationLink: "獲取 dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "獲取 scanix500（ScanSnap iX500）",
       fieldSettingsColDocTypes: '文檔類型',
@@ -10183,41 +10194,53 @@
         <div class="modal wide" role="dialog" aria-modal="true">
           <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('fieldSettingsTitle')}</h2>
-          <div class="field-row">
-            <div class="field">
-              <label for="fs-default-type">${t('fieldSettingsDefaultDocTypeLabel')}</label>
-              <select id="fs-default-type">
-                <option value="">${t('commonNone')}</option>
-                ${usedTypes.map(t => `<option value="${escapeHtml(t)}" ${t === defaultDocumentType ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field">
-              <label for="fs-default-currency">${t('fieldSettingsDefaultCurrencyLabel')}</label>
-              <input type="text" id="fs-default-currency" list="currency-list" value="${escapeHtml(defaultCurrency || '')}" placeholder="${t('commonNone')}" />
-            </div>
-            <div class="field">
-              <label for="fs-reminder-lookahead">${t('fieldSettingsReminderLookaheadLabel')}</label>
-              <input type="number" id="fs-reminder-lookahead" min="0" step="1" value="${reminderLookaheadDays}" />
-            </div>
-            <div class="field">
-              <label for="fs-scan-bridge-url">${t('fieldSettingsScanBridgeUrlLabel')}</label>
-              <input type="text" id="fs-scan-bridge-url" value="${escapeHtml(scanBridgeUrl || '')}" placeholder="http://127.0.0.1:8765" />
-            </div>
-            <div class="field">
-              <label class="scan-dialog-check"><input type="checkbox" id="fs-scan-auto-ocr" ${scanAutoOcr ? 'checked' : ''} /> ${t('fieldSettingsScanAutoOcrLabel')}</label>
-            </div>
-            <div class="field">
-              <label for="fs-scan-ocr-lang">${t('fieldSettingsScanOcrLanguageLabel')}</label>
-              <select id="fs-scan-ocr-lang">${ocrLanguageOptionsHtml(scanOcrLanguage)}</select>
-            </div>
-          </div>
-          <div class="fs-scanner-integration" style="margin-top:16px;">
-            <h3>${t('fieldSettingsScannerIntegrationHeading')}</h3>
-            <p style="font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 8px;">
-              ${t('fieldSettingsScannerIntegrationText')}
-            </p>
-            <a href="https://github.com/AarneAarebye/dossiary-scan-helper/releases" target="_blank" rel="noopener noreferrer" style="color:var(--phosphor); font-weight:600; font-size:13px;">${t('fieldSettingsScannerIntegrationLink')}</a>
-            · <a href="https://github.com/AarneAarebye/iX500" target="_blank" rel="noopener noreferrer" style="color:var(--phosphor); font-weight:600; font-size:13px;">${t('fieldSettingsScannerIntegrationLinkScanix500')}</a>
+          <div class="fs-settings">
+            <section class="fs-group">
+              <h3>${t('fieldSettingsGroupNewDocuments')}</h3>
+              <div class="fs-group-fields">
+                <div class="field">
+                  <label for="fs-default-type">${t('fieldSettingsDefaultDocTypeLabel')}</label>
+                  <select id="fs-default-type">
+                    <option value="">${t('commonNone')}</option>
+                    ${usedTypes.map(t => `<option value="${escapeHtml(t)}" ${t === defaultDocumentType ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
+                  </select>
+                  <div class="field-hint">${t('fieldSettingsDefaultDocTypeHint')}</div>
+                </div>
+                <div class="field">
+                  <label for="fs-default-currency">${t('fieldSettingsDefaultCurrencyLabel')}</label>
+                  <input type="text" id="fs-default-currency" list="currency-list" value="${escapeHtml(defaultCurrency || '')}" placeholder="${t('commonNone')}" />
+                  <div class="field-hint">${t('fieldSettingsDefaultCurrencyHint')}</div>
+                </div>
+              </div>
+            </section>
+            <section class="fs-group">
+              <h3>${t('fieldSettingsGroupReminders')}</h3>
+              <div class="fs-group-fields">
+                <div class="field">
+                  <label for="fs-reminder-lookahead">${t('fieldSettingsReminderLookaheadLabel')}</label>
+                  <input type="number" id="fs-reminder-lookahead" min="0" step="1" value="${reminderLookaheadDays}" />
+                  <div class="field-hint">${t('fieldSettingsReminderLookaheadHint')}</div>
+                </div>
+              </div>
+            </section>
+            <section class="fs-group fs-group-scan fs-scanner-integration">
+              <h3>${t('fieldSettingsScannerIntegrationHeading')}</h3>
+              <p class="fs-group-text">${t('fieldSettingsScannerIntegrationText')}</p>
+              <p class="fs-group-links"><a href="https://github.com/AarneAarebye/dossiary-scan-helper/releases" target="_blank" rel="noopener noreferrer" class="fs-group-link">${t('fieldSettingsScannerIntegrationLink')}</a>
+              · <a href="https://github.com/AarneAarebye/iX500" target="_blank" rel="noopener noreferrer" class="fs-group-link">${t('fieldSettingsScannerIntegrationLinkScanix500')}</a></p>
+              <label class="scan-dialog-check fs-group-check"><input type="checkbox" id="fs-scan-auto-ocr" ${scanAutoOcr ? 'checked' : ''} /> ${t('fieldSettingsScanAutoOcrLabel')}</label>
+              <div class="fs-group-fields">
+                <div class="field">
+                  <label for="fs-scan-ocr-lang">${t('fieldSettingsScanOcrLanguageLabel')}</label>
+                  <select id="fs-scan-ocr-lang">${ocrLanguageOptionsHtml(scanOcrLanguage)}</select>
+                </div>
+                <div class="field">
+                  <label for="fs-scan-bridge-url">${t('fieldSettingsScanBridgeUrlLabel')}</label>
+                  <input type="text" id="fs-scan-bridge-url" value="${escapeHtml(scanBridgeUrl || '')}" placeholder="http://127.0.0.1:8765" />
+                  <div class="field-hint">${t('fieldSettingsScanBridgeUrlHint')}</div>
+                </div>
+              </div>
+            </section>
           </div>
           <div class="fs-columns">
             <div class="fs-col">
