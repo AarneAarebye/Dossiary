@@ -69,7 +69,7 @@ async def main():
         await page.click('#edit-doc-btn')
         await page.wait_for_timeout(200)
         run_ocr_visible = await page.locator('#e-run-ocr-btn').is_visible()
-        print("Run OCR button visible in edit form:", run_ocr_visible)
+        print("Make searchable button visible in edit form:", run_ocr_visible)
 
         await page.click('#e-run-ocr-btn')
         await page.wait_for_timeout(400)
@@ -200,6 +200,51 @@ async def main():
         persisted = await page.evaluate("""(async () => { const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite'); return JSON.parse(await (await fh.getFile()).text()); })()""")
         doc4 = [d for d in persisted['documents'] if d['id'] == 4][0]
         print("pass made it searchable and removed the row:", doc4['searchable_pdf_built'] == 1 and await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0)
+
+        # === Doc 5/6: the job finishing while the Edit form stays open; an inactive scan row ===
+        for n, title in ((5, 'Open Form Doc'), (6, 'Scan Row Doc')):
+            await page.click('#add-btn')
+            await page.wait_for_timeout(100)
+            with open(f'editocr_pdf{n}.pdf', 'wb') as f:
+                f.write(f"%PDF-1.4 editocr {n}".encode())
+            await page.set_input_files('#file-input', f'editocr_pdf{n}.pdf')
+            await page.wait_for_timeout(100)
+            await page.fill('#f-title', title)
+            await page.click('#save-doc-btn')
+            await page.wait_for_timeout(300)
+        await page.click('tr[data-id="5"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        await page.click('#e-run-ocr-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("window.__DEBUG_runOcrJobPass()")
+        for _ in range(40):
+            await page.wait_for_timeout(100)
+            if await page.evaluate("window.__DEBUG_ocrFallbackIdle()") and not await page.evaluate("window.__DEBUG_ocrJobRows().length"):
+                break
+        await page.wait_for_timeout(200)
+        box = page.locator('#e-ocr-text')
+        print("finished while open: box shows the recognized text:", (await box.input_value()).startswith('Hello World'))
+        print("finished while open: box and button enabled, note cleared:", await box.is_enabled() and await page.locator('#e-run-ocr-btn').is_enabled() and (await page.inner_text('#e-ocr-status')).strip() == '')
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(300)
+        persisted = await page.evaluate("""(async () => { const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite'); return JSON.parse(await (await fh.getFile()).text()); })()""")
+        doc5 = [d for d in persisted['documents'] if d['id'] == 5][0]
+        print("save after the job finished keeps the recognized text:", (doc5['ocr_text'] or '').startswith('Hello World'))
+
+        # A scan fallback row with the setting off is not active: no lock.
+        await page.evaluate("window.__DEBUG_dbRun('INSERT OR REPLACE INTO ocr_jobs (document_id, helper_url, job_id, file_hash, created_at, ocr_language, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)', [6, null, null, null, 'x', null, 'scan'])")
+        await page.click('tr[data-id="6"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        print("inactive scan row does not lock the box:", await page.locator('#e-ocr-text').is_enabled() and await page.locator('#e-run-ocr-btn').is_enabled())
+        await page.fill('#e-ocr-text', 'typed by hand')
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(300)
+        persisted = await page.evaluate("""(async () => { const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite'); return JSON.parse(await (await fh.getFile()).text()); })()""")
+        print("save with an inactive scan row stores the typed text:", [d for d in persisted['documents'] if d['id'] == 6][0]['ocr_text'] == 'typed by hand')
 
         # The capture form's button carries the new name too (English and German).
         await page.click('#add-btn')

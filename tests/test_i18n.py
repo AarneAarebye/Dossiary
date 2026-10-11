@@ -294,7 +294,7 @@ async def main():
         add_field_toggle_text = await page3.locator('#e-add-field-toggle').inner_text()
         print("Scenario 12 -- edit add-field toggle (static markup) translated:", add_field_toggle_text == "+ Benutzerdefiniertes Feld hinzufügen")
         run_ocr_text = await page3.locator('#e-run-ocr-btn').inner_text()
-        print("Scenario 12 -- edit Run OCR button (reused capture key) translated:", run_ocr_text == "Durchsuchbar machen")
+        print("Scenario 12 -- edit Make searchable button (reused capture key) translated:", run_ocr_text == "Durchsuchbar machen")
         # This seeded doc's file_path has no backing file in the fake
         # filesystem (__makeSeededRoot only creates library.sqlite + an empty
         # files/ dir), so clicking Run OCR here would only exercise the
