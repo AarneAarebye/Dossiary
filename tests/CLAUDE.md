@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **96
-scripts covering most of the app's actual functionality** (93 of them
+There's a real, runnable Playwright regression suite in `tests/` — **97
+scripts covering most of the app's actual functionality** (94 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -134,7 +134,11 @@ Currency saved gets guessed and flagged once a default currency is
 configured; a document with no Amount, or Amount explicitly `0`, does
 not; the guess is dismissed on touch same as everywhere else; and once
 accepted and saved, the real value is never re-flagged as a guess on
-reopen), `inbox/` actually getting created (for a brand new library, and
+reopen), a PDF added through the Inbox getting its own text layer as OCR text
+(`test_inbox_text_layer.py` -- the stub's `__STUB_PDF_HAS_REAL_TEXT`: the
+text copied into `ocr_text` and the sidecar with `text_checked`/
+`has_text_layer` set, and a PDF without text checked and left without OCR
+text), `inbox/` actually getting created (for a brand new library, and
 for an existing library that predates this fix, with the inbox banner
 correctly staying hidden for the freshly-created, still-empty folder),
 the scan-hint text's OS-specific wording (macOS, Windows, Linux, and the

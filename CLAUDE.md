@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (96 scripts) + shared
+tests/                   Playwright regression suite (97 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2173,7 +2173,14 @@ this repo's git tags.
   notes are all left `NULL` rather than guessed, and no OCR runs
   automatically (that stays an explicit action from the Edit dialog's
   existing `runOcrForEdit()`, so a bulk add doesn't silently kick off a
-  slow OCR pass per file). This mirrors `saveNewDocument()`'s file-copy/
+  slow OCR pass per file). **A PDF's own text layer is read, though**:
+  `createReviewDocumentFromFile()` opens an added PDF with pdf.js from the
+  bytes already in hand and runs `recordPdfTextLayer()`, so a scan a helper
+  already OCR'd (scanix500 runs ocrmypdf) or a digital PDF arrives with its
+  `ocr_text` filled and `text_checked`/`has_text_layer` set -- searchable
+  and in its sidecar at once. Before this, every scanned PDF landed with
+  empty OCR text until Library check's "Check for text" ran. Best-effort:
+  a PDF pdf.js can't open is left unchecked. This mirrors `saveNewDocument()`'s file-copy/
   thumbnail/sidecar logic closely but isn't a shared function with it,
   since the two have different inputs (a form's DOM fields vs. nothing but
   a filename) and different defaults for nearly every column. The folder
