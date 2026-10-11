@@ -2278,8 +2278,12 @@ this repo's git tags.
   both off). The last scanner and settings are remembered per
   library (`scan_last_settings`); a gone scanner falls back to the first.
   **The scan request has no timeout** (a feeder batch can take minutes);
-  while it runs the dialog's button reads "Scanning…" and Escape, backdrop
-  and close are blocked (`scanDialogRunning`). Results, in either wire
+  while it runs the dialog's button reads "Scanning…", the dialog and the
+  status line count the time up ("Scanning… 1:12", with a note that big
+  batches and OCR take minutes -- the request gives no progress, so this is
+  what keeps a long scan from looking stuck; real step-by-step progress would
+  need a protocol endpoint), and Escape, backdrop and close are blocked
+  (`scanDialogRunning`). Results, in either wire
   format (`decodeScanFiles()`), go through `writeScanFilesToInbox()` →
   `checkInbox()` → `addAllInboxFilesAndShowStatus()`, like any staged file;
   a `partial` result does the same, then shows the helper's message. A

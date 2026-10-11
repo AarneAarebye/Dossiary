@@ -423,9 +423,16 @@ async def scenario_scan_v1(p):
           "doesn't understand" in await page.inner_text('#scan-dialog-status') and len((await db_state(page))['documents']) == 6)
 
     # While a scan runs: button reads Scanning…, toolbar buttons disabled, Escape/close/backdrop blocked.
-    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{delayMs: 800, status: 200, body: {{ok: false, partial: false, message: 'slow fail'}}}}]")
+    await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{delayMs: 2300, status: 200, body: {{ok: false, partial: false, message: 'slow fail'}}}}]")
     await page.click('#scan-dialog-start-btn')
     await page.wait_for_timeout(150)
+    dialog_status = await page.inner_text('#scan-dialog-status')
+    print("the dialog counts the scan time from 0:00, with a hint:",
+          dialog_status.startswith('Scanning… 0:00') and 'few minutes' in dialog_status)
+    await page.wait_for_timeout(1200)
+    print("...counting up every second, on the status line too:",
+          (await page.inner_text('#scan-dialog-status')).startswith('Scanning… 0:01')
+          and (await page.inner_text('#status')).strip().startswith('Scanning… 0:01'))
     print("Scan button reads Scanning… while scanning:", await page.inner_text('#scan-dialog-start-btn') == 'Scanning…'
           and not await page.is_enabled('#scan-dialog-start-btn'))
     print("toolbar Scan buttons disabled while scanning:", not await page.is_enabled('#scan-btn') and not await page.is_enabled('#scan-multi-btn'))
@@ -433,7 +440,9 @@ async def scenario_scan_v1(p):
     await page.click('#modal-close-btn')
     await page.mouse.click(5, 5)
     print("Escape, close and backdrop don't close it mid-scan:", await page.locator('#scan-dialog-body').count() == 1)
-    await page.wait_for_timeout(900)
+    await page.wait_for_timeout(1200)
+    print("the timer stops and the helper's message replaces it:", await page.inner_text('#scan-dialog-status') != ''
+          and 'Scanning' not in await page.inner_text('#scan-dialog-status'))
     print("everything re-enabled afterwards:", await page.is_enabled('#scan-dialog-start-btn') and await page.is_enabled('#scan-btn')
           and await page.inner_text('#scan-dialog-start-btn') == 'Scan')
     await page.keyboard.press('Escape')

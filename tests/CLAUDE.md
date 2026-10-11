@@ -1096,7 +1096,8 @@ version 2 scans (the exact JSON body, extras as known booleans, 422/503/500
 messages, partial, an unwritable `inbox/` -- the stub's
 `dirHandle.readOnly = true` -- keeping the dialog open with the file and
 reason and adding nothing, a read-only `library.sqlite` not stopping the
-scan or leaving the status on "Scanning…"); the running state (button text, toolbar disabled,
+scan or leaving the status on "Scanning…"); the running state (button text, the elapsed-time counter in the dialog
+and on the status line, stopped and replaced by the result, toolbar disabled,
 Escape/close/backdrop blocked); inline pairing for both versions (local
 code check, wrong code, `{code, client}` JSON, token per helper, a 401
 dropping it, two helpers paired at once with the first `/pair` answer held
