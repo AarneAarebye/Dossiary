@@ -13550,7 +13550,7 @@
     setStatusLive(build, 'err');
   }
 
-  el('inbox-add-all-btn').addEventListener('click', addAllInboxFilesAndShowStatus);
+  el('inbox-add-all-btn').addEventListener('click', () => addAllInboxFilesAndShowStatus());
   // "← Back to Reports" in the drill-down banner -- setView() itself handles the
   // "already on this view" no-op case, so this needs no guard of its own.
   el('report-drilldown-back-btn').addEventListener('click', () => {
