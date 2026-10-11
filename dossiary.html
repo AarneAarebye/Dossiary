@@ -9179,8 +9179,9 @@
     if(!d) return;
     d.deleted = !d.deleted;
     db.run('UPDATE documents SET deleted = ? WHERE id = ?', [d.deleted ? 1 : 0, id]);
-    if(d.deleted){ deleteOcrJob(id); ocrPendingDocIds.delete(id); }
+    if(d.deleted) deleteOcrJob(id);
     await persistDb();
+    if(d.deleted) refreshOcrPending(activeOcrRows());
     render(); // render()'s own renderNav() call refreshes badge counts/active view
   }
 
@@ -9206,8 +9207,9 @@
   async function bulkSetDeleted(ids, value){
     ids.forEach(id => db.run('UPDATE documents SET deleted = ? WHERE id = ?', [value ? 1 : 0, id]));
     ids.forEach(id => { const d = allDocs.find(x => x.id === id); if(d) d.deleted = value; });
-    if(value) ids.forEach(id => { deleteOcrJob(id); ocrPendingDocIds.delete(id); });
+    if(value) ids.forEach(deleteOcrJob);
     await persistDb();
+    if(value) refreshOcrPending(activeOcrRows());
     selectedDocIds = new Set();
     render();
   }
@@ -10213,7 +10215,7 @@
     el('fs-default-currency').addEventListener('change', (e) => saveDefaultCurrency(e.target.value));
     el('fs-reminder-lookahead').addEventListener('change', (e) => saveReminderLookaheadDays(e.target.value));
     el('fs-scan-bridge-url').addEventListener('change', (e) => saveScanBridgeUrl(e.target.value));
-    el('fs-scan-auto-ocr').addEventListener('change', async (e) => { scanAutoOcr = e.target.checked; writeSetting('scan_auto_ocr', scanAutoOcr ? '1' : '0'); await persistDb(); });
+    el('fs-scan-auto-ocr').addEventListener('change', async (e) => { scanAutoOcr = e.target.checked; writeSetting('scan_auto_ocr', scanAutoOcr ? '1' : '0'); await persistDb(); if(scanAutoOcr && ocrJobRows().length) startOcrJobRunner(); });
     el('fs-scan-ocr-lang').addEventListener('change', async (e) => { scanOcrLanguage = e.target.value; writeSetting('scan_ocr_language', scanOcrLanguage); await persistDb(); });
 
     renderFieldSettingsTypeList();
@@ -10771,15 +10773,17 @@
   // Existing ocr_text is never replaced. Doesn't persist; the caller does.
   // Returns {hasText, textAdded}; on textAdded the caller should refresh the
   // sidecar (writeSidecarForDoc).
-  async function recordPdfTextLayer(d, pdf){
+  async function recordPdfTextLayer(d, pdf, isStale){
     const hasText = await pdfHasRealText(pdf);
     let textAdded = false;
+    if(isStale && isStale()) return { hasText, textAdded, stale: true };
     db.run('UPDATE documents SET text_checked = 1, has_text_layer = ? WHERE id = ?', [hasText ? 1 : 0, d.id]);
     d.text_checked = true;
     d.has_text_layer = hasText;
     if(hasText && !(d.ocr_text && d.ocr_text.trim())){
       let text = '';
       try{ text = await pdfExtractText(pdf); }catch(e){ /* keep the flags, skip the text */ }
+      if(isStale && isStale()) return { hasText, textAdded, stale: true };
       if(text){
         db.run('UPDATE documents SET ocr_text = ? WHERE id = ?', [text, d.id]);
         d.ocr_text = text;
@@ -10971,7 +10975,8 @@
       // Records the check either way: with text it stops being offered (and
       // its text becomes searchable); without, it belongs in "needs OCR" even
       // if OCR below fails.
-      const { hasText, textAdded } = await recordPdfTextLayer(d, pdf);
+      const { hasText, textAdded, stale } = await recordPdfTextLayer(d, pdf, isStale);
+      if(stale) return { status: 'stale' };
       if(hasText){
         await persistDb();
         if(textAdded){ try{ await writeSidecarForDoc(d); }catch(e){} }
@@ -11008,6 +11013,7 @@
       try{ await (await resolveFileHandle(d.original_file_path, false)).getFile(); }
       catch(e){ hasSeparateOriginal = false; } // missing original -- never overwrite the only copy
     }
+    if(isStale && isStale()) return { status: 'stale' };
     const dir = oldPath.slice(0, oldPath.lastIndexOf('/') + 1);
     const stem = oldPath.slice(dir.length).replace(/\.[^.]+$/, '');
     const newOriginal = hasSeparateOriginal ? d.original_file_path : oldPath;
@@ -11021,9 +11027,11 @@
       await writable.close();
     });
 
+    if(isStale && isStale()) return { status: 'stale' };
     if(hasSeparateOriginal && newPath !== oldPath && d.file_hash){
       try{
         if(await computeFileHash(file) === d.file_hash){
+          if(isStale && isStale()) return { status: 'stale' };
           const parentPath = oldPath.split('/').slice(0, -1);
           let parent = rootDirHandle;
           for(const part of parentPath) parent = await parent.getDirectoryHandle(part);
@@ -11032,6 +11040,7 @@
       }catch(e){ /* the superseded copy stays on disk -- harmless */ }
     }
 
+    if(isStale && isStale()) return { status: 'stale' };
     const ocrText = (d.ocr_text && d.ocr_text.trim()) ? d.ocr_text : (text || null);
     const ocrLanguage = ocrText === d.ocr_text ? d.ocr_language : lang;
     db.run('UPDATE documents SET file_path = ?, original_file_path = ?, searchable_pdf_built = 1, ocr_text = ?, ocr_language = ? WHERE id = ?',
@@ -12135,13 +12144,17 @@
   // copy removed only when it hash-matches the original); without one, the
   // current file becomes the original and the new PDF goes next to it as
   // <stem><suffix>.pdf. Updates the row and `d`; the caller persists.
-  async function replaceActiveFile(d, bytes, suffix){
+  // isStale (optional): checked after every await before a write; true means
+  // another library is open now, and the call throws instead of writing.
+  async function replaceActiveFile(d, bytes, suffix, isStale){
+    const stale = () => { if(isStale && isStale()) throw new Error('library changed'); };
     const oldPath = d.file_path;
     let hasSeparateOriginal = !!d.original_file_path && d.original_file_path !== oldPath;
     if(hasSeparateOriginal){
       try{ await (await resolveFileHandle(d.original_file_path, false)).getFile(); }
       catch(e){ hasSeparateOriginal = false; } // missing original -- never overwrite the only copy
     }
+    stale();
     const oldIsPdf = PAGE_TOOLS_PATH_RE.test(oldPath);
     const dir = oldPath.slice(0, oldPath.lastIndexOf('/') + 1);
     const stem = oldPath.slice(dir.length).replace(/\.[^.]+$/, '');
@@ -12151,11 +12164,13 @@
     if(hasSeparateOriginal && newPath !== oldPath && d.file_hash){
       try{ oldBytesHash = await computeFileHash(await (await resolveFileHandle(oldPath, false)).getFile()); }catch(e){}
     }
+    stale();
     await withFileOp('write', newPath, async () => {
       const writable = await (await resolveFileHandle(newPath, true)).createWritable();
       await writable.write(bytes);
       await writable.close();
     });
+    stale();
     if(oldBytesHash && oldBytesHash === d.file_hash){
       try{
         let parent = rootDirHandle;
@@ -12163,21 +12178,26 @@
         await parent.removeEntry(oldPath.split('/').pop());
       }catch(e){ /* the superseded copy stays on disk -- harmless */ }
     }
+    stale();
     db.run('UPDATE documents SET file_path = ?, original_file_path = ? WHERE id = ?', [newPath, newOriginal, d.id]);
     const oldBase = sidecarBaseNameFromFilePath(oldPath);
     Object.assign(d, { file_path: newPath, original_file_path: newOriginal });
+    stale();
     if(sidecarBaseNameFromFilePath(newPath) !== oldBase) await filesDirHandle.removeEntry(`${oldBase}.txt`).catch(() => {});
   }
 
   // After a document's PDF changed: fresh preview, fresh text-layer check
   // (copying text into empty OCR text, as everywhere), fresh sidecar. All
   // best-effort -- none of them may undo the saved file.
-  async function refreshAfterPdfChange(d, bytes){
+  async function refreshAfterPdfChange(d, bytes, isStale){
+    const stale = () => !!(isStale && isStale());
     const file = new File([bytes], 'document.pdf', { type: 'application/pdf' });
     try{
       const thumb = await generateThumbnail(file);
+      if(stale()) return;
       if(thumb){
         const thumbPath = await writeThumbnail(d.id, thumb);
+        if(stale()) return;
         db.run('UPDATE documents SET thumbnail_path = ? WHERE id = ?', [thumbPath, d.id]);
         d.thumbnail_path = thumbPath;
       }
@@ -12185,8 +12205,11 @@
     try{
       const pdfjsLib = await ensurePdfJs();
       const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(bytes).slice() }).promise;
-      await recordPdfTextLayer(d, pdf);
+      if(stale()) return;
+      const rec = await recordPdfTextLayer(d, pdf, isStale);
+      if(rec.stale) return;
     }catch(e){}
+    if(stale()) return;
     try{ await writeSidecarForDoc(d); }catch(e){}
   }
 
@@ -13010,9 +13033,13 @@
   let ocrJobTimer = null;
   let ocrJobPassRunning = false;
   let ocrFallbackRunning = false;
+  let ocrPassMessage = false;            // a completion/failure message was set; don't cover it with the count
+  let ocrWaitingBuild = null;            // the "... left" status builder, to clear it when the last row ends
   let ocrRunnerHeld = false;             // test hook: while held, only the debug pass runs (not the timer)
   let ocrPendingDocIds = new Set();      // documents still waiting for text (pill in table/grid/panel)
   let ocrUnreachableSince = {};          // helper URL -> Date.now() of its first failed poll in a row
+
+  function activeOcrRows(){ return ocrJobRows().filter(r => r.job_id || scanAutoOcr); }
 
   function startOcrJobRunner(){
     if(!ocrJobTimer) ocrJobTimer = setInterval(runOcrJobPass, OCR_JOB_POLL_MS);
@@ -13031,22 +13058,33 @@
     render();
     if(selectedDocId != null) openDetail(selectedDocId);
     if(ids.size){
-      setStatusLive(() => ids.size === 1 ? t('ocrJobsWaitingSingular', {count: 1}) : t('ocrJobsWaitingPlural', {count: ids.size}), 'busy');
+      if(!ocrPassMessage){
+        ocrWaitingBuild = () => ids.size === 1 ? t('ocrJobsWaitingSingular', {count: 1}) : t('ocrJobsWaitingPlural', {count: ids.size});
+        setStatusLive(ocrWaitingBuild, 'busy');
+      }
+    }else if(ocrWaitingBuild && lastStatusBuild === ocrWaitingBuild){
+      ocrWaitingBuild = null;
+      setStatus('');
     }
   }
 
   // Back to Dossiary's own OCR for this document.
   async function switchToFallback(docId){
+    if(!db) return;
     db.run('UPDATE ocr_jobs SET job_id = ?, helper_url = ? WHERE document_id = ?', [null, null, docId]);
     await persistDb();
   }
 
   async function pollOcrJob(row, root){
+    if(!db || rootDirHandle !== root) return;
     const d = allDocs.find(x => x.id === row.document_id);
     if(!d || d.deleted){ deleteOcrJob(row.document_id); await persistDb(); return; }
+    // Only a loopback helper is ever contacted; anything else counts as unreachable for good.
+    const helperUrl = normalizeHelperUrl(row.helper_url);
+    if(!helperUrl){ await switchToFallback(d.id); return; }
     let response = null;
     try{
-      response = await fetch(`${row.helper_url}/ocr/${encodeURIComponent(row.job_id)}`, { headers: scanAuthHeaders(row.helper_url) });
+      response = await fetch(`${helperUrl}/ocr/${encodeURIComponent(row.job_id)}`, { headers: scanAuthHeaders(helperUrl) });
     }catch(e){ response = null; }
     if(rootDirHandle !== root) return;
     if(!response || response.status === 401){
@@ -13058,6 +13096,7 @@
     if(response.status === 202) return;
     if(response.status !== 200){ await switchToFallback(d.id); return; } // 404 (gone/expired) or 500 (failed, final)
     const body = await response.json().catch(() => null);
+    if(rootDirHandle !== root || !db) return;
     let bytes = null;
     try{ bytes = decodeScanFiles(body && body.files)[0].bytes; }catch(e){ bytes = null; }
     if(!bytes){ await switchToFallback(d.id); return; }
@@ -13068,8 +13107,9 @@
     if(rootDirHandle !== root) return;
     if(!currentHash || currentHash !== row.file_hash){ await switchToFallback(d.id); return; }
     try{
-      await replaceActiveFile(d, bytes, '_searchable');
-      await refreshAfterPdfChange(d, bytes);
+      const stale = () => rootDirHandle !== root;
+      await replaceActiveFile(d, bytes, '_searchable', stale);
+      await refreshAfterPdfChange(d, bytes, stale);
     }catch(e){
       if(rootDirHandle === root) await switchToFallback(d.id);
       return;
@@ -13077,6 +13117,7 @@
     if(rootDirHandle !== root) return;
     deleteOcrJob(d.id);
     await persistDb();
+    ocrPassMessage = true;
     setStatusT('ocrJobTextAdded', { title: d.title || t('commonDocumentFallback', {id: d.id}) }, 'ok');
   }
 
@@ -13094,10 +13135,11 @@
     deleteOcrJob(docId);
     await persistDb();
     const title = d ? (d.title || t('commonDocumentFallback', {id: d.id})) : '';
+    ocrPassMessage = true;
     if(error) setStatusT('ocrJobFailed', { title, error: fileErrorText(error, 'fileErrorWrite') }, 'err');
     else if(outcome && outcome.status === 'no-words') setStatusT('ocrJobNoText', { title }, 'ok');
     else if(outcome && outcome.status === 'built') setStatusT('ocrJobTextAdded', { title }, 'ok');
-    const left = ocrJobRows();
+    const left = ocrJobRows().filter(r => r.job_id || scanAutoOcr);
     refreshOcrPending(left);
     if(!left.length) stopOcrJobRunner();
   }
@@ -13105,17 +13147,30 @@
   async function runOcrJobPass(force){
     if(!db || ocrJobPassRunning || (ocrRunnerHeld && force !== true)) return;
     ocrJobPassRunning = true;
+    ocrPassMessage = false;
     const root = rootDirHandle;
     try{
+      // Rows of deleted documents go whatever the setting is (Combine, for one, deletes with a raw UPDATE).
+      let dropped = false;
+      for(const row of ocrJobRows()){
+        const d = allDocs.find(x => x.id === row.document_id);
+        if(!d || d.deleted){ deleteOcrJob(row.document_id); dropped = true; }
+      }
+      if(dropped) await persistDb();
+      if(rootDirHandle !== root || !db) return;
       for(const row of ocrJobRows().filter(r => r.job_id)){
         await pollOcrJob(row, root);
-        if(rootDirHandle !== root) return;
+        if(rootDirHandle !== root || !db) return;
       }
       const rows = ocrJobRows();
-      refreshOcrPending(rows);
-      if(!rows.length){ stopOcrJobRunner(); return; }
-      const next = rows.find(r => !r.job_id);
-      if(next && scanAutoOcr && !ocrFallbackRunning) runOcrFallback(next.document_id, root); // not awaited: polling goes on meanwhile
+      // With the setting off a fallback row waits quietly: no pill, no count.
+      const active = rows.filter(r => r.job_id || scanAutoOcr);
+      refreshOcrPending(active);
+      if(!active.length){ stopOcrJobRunner(); return; }
+      const next = active.find(r => !r.job_id);
+      if(next && !ocrFallbackRunning) runOcrFallback(next.document_id, root); // not awaited: polling goes on meanwhile
+    }catch(e){
+      /* a failed pass is retried by the next tick; never an unhandled rejection */
     }finally{
       ocrJobPassRunning = false;
     }
