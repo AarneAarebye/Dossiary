@@ -46,15 +46,25 @@ FAKE_HELPERS = """
             if(!valid) return v2err(401, 'Pair this browser first.');
             return json(200, { scanners: H.scanners || [] });
         }
+        if(path.startsWith('/ocr/') && H.version === 2){
+            if(!valid) return v2err(401, 'Pair this browser first.');
+            const jid = decodeURIComponent(path.slice('/ocr/'.length));
+            const queue = (H.ocrResponses || {})[jid];
+            const next = queue && queue.length ? queue.shift() : null;
+            if(next && next.network) throw new TypeError('Failed to fetch');
+            if(next) return json(next.status, next.body);
+            return json(200, { ok: true, files: [{ name: 'scan.pdf', pages: 1, data: btoa('%PDF-1.4 searchable %TEXTLAYER ' + jid) }] });
+        }
         if(path === '/scan' || path.startsWith('/scan?')){
             if(!H.legacy && !valid) return H.version === 2 ? v2err(401, 'Pair this browser first.') : json(401, { error: 'not paired' });
+            const req = JSON.parse(opts.body || '{}');
             const next = (H.scanResponses || []).shift();
             if(next && next.network) throw new TypeError('Failed to fetch');
             if(next && next.delayMs) await new Promise(r => setTimeout(r, next.delayMs));
             if(next && next.status) return next.raw ? new Response(next.raw, { status: next.status }) : json(next.status, next.body);
             const n = window.__CALLS.length;
             if(H.version === 2) return json(200, { ok: true, partial: false, message: '1 page scanned.',
-                                                   files: [{ name: `scan_${n}.pdf`, pages: 1, data: btoa('%PDF-1.4 fake v2 ' + n) }] });
+                                                   files: [{ name: `scan_${n}.pdf`, pages: 1, data: btoa('%PDF-1.4 fake v2 ' + n), ...(req.ocr ? { ocrJob: 'job-' + n } : {}) }] });
             return json(200, { ok: true, partial: false, message: 'ok', output_paths: [],
                                files: [{ filename: `scan_${n}.pdf`, content_base64: btoa('%PDF-1.4 fake v1 ' + n) }] });
         }
@@ -73,11 +83,14 @@ V2_SCANNERS = [
      "extras": ["splitOnBlank", "skipBlankPages", "futureThing"]},
 ]
 
+V2_OCR_SCANNER = {"id": "fake:ocr", "name": "Fake OCR Scanner", "sources": ["flatbed"], "duplex": False,
+                  "colorModes": ["color"], "resolutions": [300], "extras": [], "ocr": {"languages": ["deu", "eng"]}}
+
 L1 = 'http://localhost:8765'
 L2 = 'http://localhost:8766'
 
 
-async def open_app(p, tokens=None, lang=None, helpers=None):
+async def open_app(p, tokens=None, lang=None, helpers=None, keep_auto_ocr=False):
     """Opens the app on a fresh seeded library. `tokens` seeds stored pairing
     tokens, `lang` the UI language, `helpers` installs FAKE_HELPERS before the
     library opens (otherwise call it yourself afterwards)."""
@@ -96,6 +109,8 @@ async def open_app(p, tokens=None, lang=None, helpers=None):
     await page.route('**/*', route_handler)
     if lang:
         await page.add_init_script(f"localStorage.setItem('dossiary_lang', '{lang}')")
+    if keep_auto_ocr:
+        await page.add_init_script("window.__STUB_KEEP_SCAN_AUTO_OCR = true")
     await page.add_init_script(open('stub_studio2.js').read())
     await page.goto(f"file://{APP_PATH}")
     await page.wait_for_timeout(200)
@@ -720,7 +735,92 @@ async def scenario_scan_multi(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_scan_multi]
+
+# === Background OCR for scans, task 1: settings, request, job rows ===
+async def scenario_ocr_request(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, keep_auto_ocr=True)
+    await page.evaluate(FAKE_HELPERS, {L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS + [V2_OCR_SCANNER]}})
+
+    async def scan_with(scanner_id):
+        await page.click('#scan-btn')
+        await page.wait_for_timeout(300)
+        await page.select_option('#scan-dialog-scanner', f'{L2}|{scanner_id}')
+        await start_scan(page, wait=600)
+        return json.loads([x for x in await calls(page) if x['url'] == f'{L2}/scan'][-1]['body'])
+
+    async def set_setting(select_id_or_none, value=None, untick=False):
+        await page.click('#tools-btn')
+        await page.click('#manage-fields-btn')
+        await page.wait_for_timeout(200)
+        if untick:
+            await page.uncheck('#fs-scan-auto-ocr')
+        else:
+            await page.select_option(select_id_or_none, value)
+        await page.wait_for_timeout(200)
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+
+    # 1. Field Settings shows the defaults.
+    await page.click('#tools-btn')
+    await page.click('#manage-fields-btn')
+    await page.wait_for_timeout(200)
+    print("Field Settings: auto OCR ticked by default:", await page.is_checked('#fs-scan-auto-ocr'))
+    print("Field Settings: OCR language is Auto (eng+deu):", await page.input_value('#fs-scan-ocr-lang') == 'eng+deu')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+
+    # 2 + 3. An OCR scanner: ocr requested, languages in setting order, job row.
+    body = await scan_with('fake:ocr')
+    print("OCR scanner: request has ocr true:", body.get('ocr') is True)
+    print("OCR scanner: request has ocrLanguages eng, deu:", body.get('ocrLanguages') == ['eng', 'deu'])
+    db = await db_state(page)
+    rows = await page.evaluate("window.__DEBUG_ocrJobRows()")
+    doc = db['documents'][-1]
+    print("one job row after the OCR scan:", len(rows) == 1)
+    print("job row: document, helper, job id:", len(rows) == 1 and rows[0]['document_id'] == doc['id'] and rows[0]['helper_url'] == L2 and rows[0]['job_id'].startswith('job-'))
+    print("job row: file_hash is the document's:", len(rows) == 1 and rows[0]['file_hash'] == doc['file_hash'] and bool(doc['file_hash']))
+
+    # 4. A scanner without ocr: no fields sent, fallback row (job_id null).
+    body = await scan_with('fake:flatbed')
+    print("non-OCR scanner: no ocr field:", 'ocr' not in body)
+    print("non-OCR scanner: no ocrLanguages field:", 'ocrLanguages' not in body)
+    rows = await page.evaluate("window.__DEBUG_ocrJobRows()")
+    db = await db_state(page)
+    doc = db['documents'][-1]
+    fallback = [r for r in rows if r['document_id'] == doc['id']]
+    print("non-OCR scan: fallback row with null job_id:", len(fallback) == 1 and fallback[0]['job_id'] is None and fallback[0]['helper_url'] is None)
+
+    # 5. Language setting.
+    await set_setting('#fs-scan-ocr-lang', 'deu')
+    body = await scan_with('fake:ocr')
+    print("language deu: ocrLanguages is [deu]:", body.get('ocrLanguages') == ['deu'])
+    await set_setting('#fs-scan-ocr-lang', 'fra')
+    body = await scan_with('fake:ocr')
+    print("language fra (not offered): no ocrLanguages:", 'ocrLanguages' not in body and body.get('ocr') is True)
+
+    # 6. Switched off.
+    await set_setting(None, untick=True)
+    db = await db_state(page)
+    print("unticking saves scan_auto_ocr 0:", next(r['value'] for r in db['settings'] if r['key'] == 'scan_auto_ocr') == '0')
+    before = len(await page.evaluate("window.__DEBUG_ocrJobRows()"))
+    body = await scan_with('fake:ocr')
+    print("off: no ocr field:", 'ocr' not in body and 'ocrLanguages' not in body)
+    print("off: no new job rows:", len(await page.evaluate("window.__DEBUG_ocrJobRows()")) == before)
+
+    print("no page errors:", errors == [])
+    await browser.close()
+
+    # 7. Stub default: scan_auto_ocr '0'.
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'})
+    await page.evaluate(FAKE_HELPERS, {L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS + [V2_OCR_SCANNER]}})
+    body = await scan_with('fake:ocr')
+    print("stub default: no ocr field:", 'ocr' not in body)
+    print("stub default: no job rows:", await page.evaluate("window.__DEBUG_ocrJobRows()") == [])
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_scan_multi, scenario_ocr_request]
 
 
 async def main():

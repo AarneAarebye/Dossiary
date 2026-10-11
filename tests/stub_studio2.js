@@ -195,16 +195,17 @@ class FakeDatabase {
     if (bytes && bytes.length) {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(bytes));
-        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [], field_descriptions: parsed.field_descriptions || [], reminder_snoozes: parsed.reminder_snoozes || [], not_duplicate_groups: parsed.not_duplicate_groups || [], collection_folders: parsed.collection_folders || [], document_splits: parsed.document_splits || [] };
+        this.tables = { documents: parsed.documents || [], tags: parsed.tags || [], document_tags: parsed.document_tags || [], people: parsed.people || [], document_people: parsed.document_people || [], document_field_people: parsed.document_field_people || [], settings: parsed.settings || [], document_type_fields: parsed.document_type_fields || [], fields: parsed.fields || [], document_field_values: parsed.document_field_values || [], collections: parsed.collections || [], collection_documents: parsed.collection_documents || [], field_descriptions: parsed.field_descriptions || [], reminder_snoozes: parsed.reminder_snoozes || [], not_duplicate_groups: parsed.not_duplicate_groups || [], ocr_jobs: parsed.ocr_jobs || [], collection_folders: parsed.collection_folders || [], document_splits: parsed.document_splits || [] };
       } catch (e) {
-        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [], collection_folders: [], document_splits: [] };
+        this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [], ocr_jobs: [], collection_folders: [], document_splits: [] };
       }
     } else {
-      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [], collection_folders: [], document_splits: [] };
+      this.tables = { documents: [], tags: [], document_tags: [], people: [], document_people: [], document_field_people: [], settings: [], document_type_fields: [], fields: [], document_field_values: [], collections: [], collection_documents: [], field_descriptions: [], reminder_snoozes: [], not_duplicate_groups: [], ocr_jobs: [], collection_folders: [], document_splits: [] };
     }
     // The app opens a library that never chose a view in Grid; nearly every
     // test drives the table, so test libraries start in List unless a test
     // sets window.__STUB_KEEP_DEFAULT_VIEW to check the real default.
+    if (!window.__STUB_KEEP_SCAN_AUTO_OCR && !this.tables.settings.some(r => r.key === 'scan_auto_ocr')) { this.tables.settings.push({ key: 'scan_auto_ocr', value: '0' }); }
     if (!window.__STUB_KEEP_DEFAULT_VIEW && !this.tables.settings.some(r => r.key === 'view_mode')) {
       this.tables.settings.push({ key: 'view_mode', value: 'list' });
     }
@@ -317,6 +318,7 @@ class FakeDatabase {
     if (table === 'field_descriptions' && isReplace) {
       this.tables.field_descriptions = this.tables.field_descriptions.filter(r => r.field_name !== row.field_name);
     }
+    if (table === 'ocr_jobs' && isReplace) { this.tables.ocr_jobs = this.tables.ocr_jobs.filter(r => r.document_id !== row.document_id); }
     if (table === 'not_duplicate_groups' && isReplace) {
       this.tables.not_duplicate_groups = this.tables.not_duplicate_groups.filter(r => r.group_key !== row.group_key);
     }
@@ -537,7 +539,7 @@ window.__makeSeededRoot = function(seed) {
     document_type_fields: seed.document_type_fields || [], fields: seed.fields || [],
     document_field_values: seed.document_field_values || [],
     collections: seed.collections || [], collection_documents: seed.collection_documents || [],
-    field_descriptions: seed.field_descriptions || [], reminder_snoozes: seed.reminder_snoozes || [], not_duplicate_groups: seed.not_duplicate_groups || [], collection_folders: seed.collection_folders || [], document_splits: seed.document_splits || [],
+    field_descriptions: seed.field_descriptions || [], reminder_snoozes: seed.reminder_snoozes || [], not_duplicate_groups: seed.not_duplicate_groups || [], ocr_jobs: seed.ocr_jobs || [], collection_folders: seed.collection_folders || [], document_splits: seed.document_splits || [],
   };
   const dbBytes = new TextEncoder().encode(JSON.stringify(full));
   root._children.set('library.sqlite', new FakeFileHandle('library.sqlite', dbBytes));
