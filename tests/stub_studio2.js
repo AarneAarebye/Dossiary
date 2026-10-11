@@ -205,10 +205,12 @@ class FakeDatabase {
     // The app opens a library that never chose a view in Grid; nearly every
     // test drives the table, so test libraries start in List unless a test
     // sets window.__STUB_KEEP_DEFAULT_VIEW to check the real default.
-    if (!window.__STUB_KEEP_SCAN_AUTO_OCR && !this.tables.settings.some(r => r.key === 'scan_auto_ocr')) { this.tables.settings.push({ key: 'scan_auto_ocr', value: '0' }); }
     if (!window.__STUB_KEEP_DEFAULT_VIEW && !this.tables.settings.some(r => r.key === 'view_mode')) {
       this.tables.settings.push({ key: 'view_mode', value: 'list' });
     }
+    // Scans ask the helper for OCR by default; tests start with it off unless
+    // they set window.__STUB_KEEP_SCAN_AUTO_OCR.
+    if (!window.__STUB_KEEP_SCAN_AUTO_OCR && !this.tables.settings.some(r => r.key === 'scan_auto_ocr')) { this.tables.settings.push({ key: 'scan_auto_ocr', value: '0' }); }
   }
   run(sql, params) {
     params = params || [];

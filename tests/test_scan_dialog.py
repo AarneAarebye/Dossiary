@@ -53,6 +53,7 @@ FAKE_HELPERS = """
             const next = queue && queue.length ? queue.shift() : null;
             if(next && next.network) throw new TypeError('Failed to fetch');
             if(next) return json(next.status, next.body);
+            if(H.ocrHold) return json(202, { ok: true, state: 'running', position: 0 });
             return json(200, { ok: true, files: [{ name: 'scan.pdf', pages: 1, data: btoa('%PDF-1.4 searchable %TEXTLAYER ' + jid) }] });
         }
         if(path === '/scan' || path.startsWith('/scan?')){
@@ -740,6 +741,7 @@ async def scenario_scan_multi(p):
 async def scenario_ocr_request(p):
     browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, keep_auto_ocr=True)
     await page.evaluate(FAKE_HELPERS, {L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS + [V2_OCR_SCANNER]}})
+    await page.evaluate("window.__DEBUG_holdOcrJobs(true)")  # these checks look at the rows as queued
 
     async def scan_with(scanner_id):
         await page.click('#scan-btn')
@@ -820,7 +822,205 @@ async def scenario_ocr_request(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_scan_multi, scenario_ocr_request]
+# === Background OCR for scans, task 2: the job runner ===
+READ_FILE_JS = """async (path) => {
+    let dir = window.__TEST_ROOT;
+    const parts = path.split('/');
+    for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
+    return await (await (await dir.getFileHandle(parts[parts.length - 1])).getFile()).text();
+}"""
+WRITE_FILE_JS = """async ([path, text]) => {
+    let dir = window.__TEST_ROOT;
+    const parts = path.split('/');
+    for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
+    const w = await (await dir.getFileHandle(parts[parts.length - 1])).createWritable();
+    await w.write(new TextEncoder().encode(text)); await w.close();
+}"""
+OCR_HELPERS = {L2: {"version": 2, "token": "tok-2", "scanners": [V2_OCR_SCANNER]}}
+
+
+async def ocr_scan(page, queue=None, prestage=False):
+    """Scans with the OCR scanner; `queue` (a list of /ocr answers) is set for
+    the job this scan will get ('job-<n>', n = requests so far + 1)."""
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    n = len(await calls(page)) + 1
+    job = f'job-{n}'
+    if queue is not None:
+        await page.evaluate("([j, q]) => { window.__HELPERS['%s'].ocrResponses = Object.assign(window.__HELPERS['%s'].ocrResponses || {}, {[j]: q}); }" % (L2, L2), [job, queue])
+    if prestage:
+        await page.evaluate("(name) => window.__addInboxFile(window.__TEST_ROOT, name)", f'scan_{n}.pdf')
+    await start_scan(page, wait=700)
+    await run_pass(page)  # the runner is held: this is the pass right after the scan
+    db = await db_state(page)
+    return job, db['documents'][-1]
+
+
+async def doc_row(page, doc_id):
+    db = await db_state(page)
+    return next(d for d in db['documents'] if d['id'] == doc_id)
+
+
+async def ocr_rows(page):
+    return await page.evaluate("window.__DEBUG_ocrJobRows()")
+
+
+async def wait_fallback_done(page, doc_id, tries=40):
+    for _ in range(tries):
+        await page.wait_for_timeout(100)
+        if await page.evaluate("window.__DEBUG_ocrFallbackIdle()") and not any(r['document_id'] == doc_id for r in await ocr_rows(page)):
+            return True
+    return False
+
+
+async def run_pass(page):
+    await page.evaluate("window.__DEBUG_runOcrJobPass()")
+    await page.wait_for_timeout(150)
+
+
+async def scenario_ocr_jobs(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, keep_auto_ocr=True)
+    await page.evaluate(FAKE_HELPERS, OCR_HELPERS)
+    await page.evaluate("window.__DEBUG_holdOcrJobs(true)")  # no timer: every pass is explicit
+    ACCEPT = {"status": 202, "body": {"ok": True, "state": "running", "position": 0}}
+
+    # 1. A job answering 202 once, then the searchable PDF.
+    job, d = await ocr_scan(page, [ACCEPT])
+    doc_id = d['id']
+    rows = await ocr_rows(page)
+    print("202: row still there after the first pass:", len(rows) == 1 and rows[0]['job_id'] == job)
+    print("202: pending pill shown in the table row:", 'reading text…' in await page.inner_text(f'tr[data-id="{doc_id}"]'))
+    await run_pass(page)
+    rows = await ocr_rows(page)
+    d = await doc_row(page, doc_id)
+    active = await page.evaluate(READ_FILE_JS, d['file_path'])
+    original = await page.evaluate(READ_FILE_JS, d['original_file_path'])
+    print("202 then 200: row gone:", rows == [])
+    print("swap-in: active file has the text layer:", '%TEXTLAYER' in active and job in active)
+    print("swap-in: original still the plain scan:", original.startswith('%PDF-1.4 fake v2') and '%TEXTLAYER' not in original)
+    print("swap-in: ocr_text filled:", bool(d['ocr_text']))
+    print("swap-in: pill gone:", 'reading text…' not in await page.inner_text(f'tr[data-id="{doc_id}"]'))
+    print("swap-in: status line:", (await page.inner_text('#status')).strip() == f"Text added to “{d['title']}”.")
+
+    # 2. Resume after closing and reopening the library.
+    job2, d2 = await ocr_scan(page, [ACCEPT])
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    await page.click('#open-btn')
+    await page.wait_for_timeout(500)
+    print("resume: row survived the reopen:", any(r['document_id'] == d2['id'] for r in await ocr_rows(page)))
+    await run_pass(page)
+    active = await page.evaluate(READ_FILE_JS, (await doc_row(page, d2['id']))['file_path'])
+    print("resume: result swapped in after reopening:", '%TEXTLAYER' in active and job2 in active and (await ocr_rows(page)) == [])
+
+    # 3 + 4. 404 and 500: Dossiary's own OCR takes over.
+    for label, answer in (("404", {"status": 404, "body": {"ok": False, "partial": False, "message": "gone"}}),
+                          ("500", {"status": 500, "body": {"ok": False, "partial": False, "message": "failed"}})):
+        job, d = await ocr_scan(page, [answer])
+        done = await wait_fallback_done(page, d['id'])
+        d = await doc_row(page, d['id'])
+        print(f"{label}: fallback finished, row gone:", done)
+        print(f"{label}: document searchable_pdf_built 1 (own OCR):", d['searchable_pdf_built'] == 1)
+
+    # 5. Unreachable: a single failure keeps the row; give-up turns it into a fallback row.
+    job, d = await ocr_scan(page, [{"network": True}, {"network": True}])
+    rows = await ocr_rows(page)
+    print("unreachable (10 min default): row kept as is:", len(rows) == 1 and rows[0]['job_id'] == job)
+    # Turn the setting off so the fallback row stays visible.
+    await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
+    await page.uncheck('#fs-scan-auto-ocr'); await page.wait_for_timeout(200)
+    await page.keyboard.press('Escape'); await page.wait_for_timeout(100)
+    await page.evaluate("window.__DEBUG_setOcrGiveUpMs(0)")
+    await run_pass(page)
+    rows = await ocr_rows(page)
+    print("unreachable (give-up 0): row became a fallback row:", len(rows) == 1 and rows[0]['job_id'] is None and rows[0]['helper_url'] is None)
+    # 8. Setting off: no fallback runs, the document is unchanged.
+    await run_pass(page); await run_pass(page)
+    dd = await doc_row(page, d['id'])
+    print("setting off: fallback row stays, document unchanged:", len(await ocr_rows(page)) == 1 and str(dd['searchable_pdf_built']) == '0')
+    await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
+    await page.check('#fs-scan-auto-ocr'); await page.wait_for_timeout(200)
+    await page.keyboard.press('Escape'); await page.wait_for_timeout(100)
+    await page.evaluate("window.__DEBUG_setOcrGiveUpMs(600000)")
+    await run_pass(page)
+    print("setting back on: the fallback runs:", await wait_fallback_done(page, d['id']) and (await doc_row(page, d['id']))['searchable_pdf_built'] == 1)
+
+    # 6. Changed pages: the helper's result is discarded.
+    job, d = await ocr_scan(page, [ACCEPT])
+    await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
+    await page.uncheck('#fs-scan-auto-ocr'); await page.wait_for_timeout(200)
+    await page.keyboard.press('Escape'); await page.wait_for_timeout(100)
+    await page.evaluate(WRITE_FILE_JS, [d['file_path'], '%PDF-1.4 edited'])
+    await run_pass(page)
+    rows = await ocr_rows(page)
+    active = await page.evaluate(READ_FILE_JS, d['file_path'])
+    print("changed pages: helper result not swapped in:", job not in active and active.startswith('%PDF-1.4 edited'))
+    print("changed pages: row turned into a fallback row:", len(rows) == 1 and rows[0]['job_id'] is None)
+    await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
+    await page.check('#fs-scan-auto-ocr'); await page.wait_for_timeout(200)
+    await page.keyboard.press('Escape'); await page.wait_for_timeout(100)
+    await run_pass(page)
+    await wait_fallback_done(page, d['id'])
+
+    # 7. Waste bin: panel Delete and bulk Delete drop the rows.
+    await page.evaluate("(u) => { window.__HELPERS[u].ocrHold = true; }", L2)
+    jobA, dA = await ocr_scan(page)
+    jobB, dB = await ocr_scan(page)
+    print("two pending rows before deleting:", len(await ocr_rows(page)) == 2)
+    await page.click(f'tr[data-id="{dA["id"]}"]')
+    await page.wait_for_timeout(300)
+    await page.click('#delete-toggle-btn')
+    await page.wait_for_timeout(300)
+    print("panel Delete drops the row:", [r['document_id'] for r in await ocr_rows(page)] == [dB['id']])
+    await page.check(f'tr[data-id="{dB["id"]}"] .row-select-checkbox')
+    await page.click('#bulk-delete-btn')
+    await page.wait_for_timeout(300)
+    print("bulk Delete drops the row:", await ocr_rows(page) == [])
+    await page.evaluate("(u) => { window.__HELPERS[u].ocrHold = false; }", L2)
+
+    # Combine-style deletion (raw UPDATE, row remains): a pass drops it.
+    jobC, dC = await ocr_scan(page, [ACCEPT])
+    await page.evaluate("(id) => window.__DEBUG_rawDelete(id)", dC['id'])
+    await run_pass(page)
+    print("deleted document's job row is dropped by a pass:", await ocr_rows(page) == [])
+
+    # 9. The stale guard writes nothing.
+    jobD, dD = await ocr_scan(page, [ACCEPT])
+    await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
+    await page.uncheck('#fs-scan-auto-ocr'); await page.wait_for_timeout(200)
+    await page.keyboard.press('Escape'); await page.wait_for_timeout(100)
+    before = await page.evaluate(READ_FILE_JS, dD['file_path'])
+    res = await page.evaluate("(id) => window.__DEBUG_makeDocumentSearchable ? window.__DEBUG_makeDocumentSearchable(id, 'eng', () => {}, () => true) : null", dD['id'])
+    after = await page.evaluate(READ_FILE_JS, dD['file_path'])
+    if res is None:
+        print("stale guard: hook missing (checked via file untouched only):", before == after)
+    else:
+        print("stale guard: returns stale and writes nothing:", res.get('status') == 'stale' and before == after)
+
+    print("no page errors:", errors == [])
+    await browser.close()
+
+    # Renamed by the inbox (name already staged): the job still lands on the right document.
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, keep_auto_ocr=True)
+    await page.evaluate(FAKE_HELPERS, OCR_HELPERS)
+    await page.evaluate("window.__DEBUG_holdOcrJobs(true)")
+    job, _last = await ocr_scan(page, [ACCEPT], prestage=True)
+    db = await db_state(page)
+    d = None
+    for cand in db['documents']:
+        if 'fake v2' in await page.evaluate(READ_FILE_JS, cand['original_file_path']):
+            d = cand
+    rows = await ocr_rows(page)
+    print("renamed by the inbox: two documents (placeholder and scan):", len(db['documents']) == 2)
+    print("renamed by the inbox: job row on the scanned document:", d is not None and len(rows) == 1 and rows[0]['document_id'] == d['id'] and rows[0]['job_id'] == job)
+    await run_pass(page)
+    active = await page.evaluate(READ_FILE_JS, (await doc_row(page, d['id']))['file_path'])
+    print("renamed by the inbox: result swapped into the same document:", job in active)
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_scan_multi, scenario_ocr_request, scenario_ocr_jobs]
 
 
 async def main():

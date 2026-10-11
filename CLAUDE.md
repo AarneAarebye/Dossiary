@@ -2297,7 +2297,33 @@ this repo's git tags.
   message, never a status line stuck on "Scanning…". A pairing token is
   stored as soon as `/pair` answers, even if the dialog was redrawn
   meanwhile (another helper's pairing, a 401), since the code is used up by
-  then. **Pairing**:
+  then. **Background OCR (2026-10-11)**: when `scan_auto_ocr` is on (default;
+  Field Settings, with `scan_ocr_language`, default Auto = eng+deu), a scan
+  asks a helper that offers `ocr` to make the pages searchable
+  (`ocr: true`, `ocrLanguages` the setting's codes the scanner supports) and
+  returns at once; each file's `ocrJob` goes into `ocr_jobs (document_id,
+  helper_url, job_id, file_hash, created_at)` by `queueScanOcr()`. `job_id`
+  NULL means "waiting for Dossiary's own OCR": a scan with no `ocrJob` and no
+  text layer of its own. The runner (`startOcrJobRunner()`, a 3 s timer, one
+  `runOcrJobPass()` at a time, one fallback OCR at a time) starts after a
+  scan and when a library opens with rows, and stops in `resetAll()` or when
+  the last row goes. A pass polls `GET /ocr/<job>`: 202 keeps waiting; 200
+  swaps the searchable PDF in through `replaceActiveFile()` (the original is
+  kept) -- but only if the active file still has the job's `file_hash`,
+  otherwise "Edit pages…"/"Combine…" changed it and the result is discarded
+  for the fallback. Fallback triggers: 404/500, a bad answer, a failed swap,
+  and a helper unreachable (network error or 401) for 10 minutes
+  (`ocrUnreachableSince` is in memory, so polling never rewrites
+  `library.sqlite`; that is why there is no `last_reached_at` column). The
+  fallback is `makeDocumentSearchable()` with the setting's language, run
+  only while the setting is on; the pill "reading text…" (`ocrPendingDocIds`)
+  marks pending documents in table, grid and panel. A deleted document's row
+  is dropped (panel/bulk Delete, and by a pass for raw updates like
+  Combine's). Every await checks `rootDirHandle` is still the starting
+  library, and the fallback passes `isStale` into `makeDocumentSearchable()`
+  so a library switch writes nothing. Spec
+  `docs/superpowers/specs/2026-10-11-background-scan-ocr-design.md`, wire
+  format in dossiary-scan-helper's `PROTOCOL.md`. **Pairing**:
   `Origin: null` can't tell this `file://` page from a sandboxed iframe on
   any website, so each browser pairs once per helper: a helper whose
   `/health` says `paired: false` shows a code field in the dialog

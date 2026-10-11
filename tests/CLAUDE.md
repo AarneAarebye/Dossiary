@@ -1096,7 +1096,18 @@ version 2 scans (the exact JSON body, extras as known booleans, 422/503/500
 messages, partial, an unwritable `inbox/` -- the stub's
 `dirHandle.readOnly = true` -- keeping the dialog open with the file and
 reason and adding nothing, a read-only `library.sqlite` not stopping the
-scan or leaving the status on "Scanning…"); the running state (button text, the elapsed-time counter in the dialog
+scan or leaving the status on "Scanning…"); the OCR scenarios
+(`scenario_ocr_request`: settings, the `ocr`/`ocrLanguages` request fields,
+job rows; `scenario_ocr_jobs`: the runner -- 202 then 200 swap-in with the
+original kept, resume after reopening, 404/500/unreachable/changed-pages
+fallbacks, the setting off, Waste bin deletion, the stale guard, and a scan
+renamed by the inbox keeping its job on the right document). The fake
+helper answers `/ocr/<job>` from `H.ocrResponses` (default 200 with a
+`%TEXTLAYER` PDF, or 202 while `H.ocrHold`); the scenarios hold the timer
+with `window.__DEBUG_holdOcrJobs(true)` and drive every pass with
+`__DEBUG_runOcrJobPass()`. The stub starts libraries with `scan_auto_ocr`
+`'0'` unless `window.__STUB_KEEP_SCAN_AUTO_OCR` is set, like the
+`view_mode` note above; the running state (button text, the elapsed-time counter in the dialog
 and on the status line, stopped and replaced by the result, toolbar disabled,
 Escape/close/backdrop blocked); inline pairing for both versions (local
 code check, wrong code, `{code, client}` JSON, token per helper, a 401
