@@ -71,7 +71,7 @@ Haz clic en **+ Añadir documento**. Esto abre el formulario de captura:
    foto o escaneo de tu documento (JPEG/PNG), o un PDF. (Si aún no lo has
    escaneado, el enlace "¿Necesitas escanear primero un documento en
    papel?" te da indicaciones rápidas según tu sistema operativo.)
-2. Una vez elegido el archivo, haz clic en **Ejecutar OCR**. Esto extrae
+2. Una vez elegido el archivo, haz clic en **Hacer buscable**. Esto extrae
    el texto de la imagen para que luego sea buscable — por defecto,
    Dossiary reconoce inglés y alemán (español y otros idiomas también
    están disponibles, seleccionándolos en el desplegable). Espera unos

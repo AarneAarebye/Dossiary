@@ -77,7 +77,7 @@ capture :
    ne l'avez pas encore numérisé, le lien "Besoin de numériser d'abord un
    document papier ?" vous donne des indications rapides selon votre
    système d'exploitation.)
-2. Une fois le fichier choisi, cliquez sur **Lancer l'OCR**. Cela extrait
+2. Une fois le fichier choisi, cliquez sur **Rendre interrogeable**. Cela extrait
    le texte de l'image pour qu'il devienne ensuite consultable — par
    défaut, Dossiary reconnaît l'anglais et l'allemand (le français et
    d'autres langues sont aussi disponibles en les sélectionnant dans le

@@ -889,7 +889,7 @@ async def scenario_ocr_jobs(p):
     doc_id = d['id']
     rows = await ocr_rows(page)
     print("202: row still there after the first pass:", len(rows) == 1 and rows[0]['job_id'] == job)
-    print("202: pending pill shown in the table row:", 'reading text…' in await page.inner_text(f'tr[data-id="{doc_id}"]'))
+    print("202: pending pill shown in the table row:", 'Making searchable…' in await page.inner_text(f'tr[data-id="{doc_id}"]'))
     await run_pass(page)
     rows = await ocr_rows(page)
     d = await doc_row(page, doc_id)
@@ -899,7 +899,7 @@ async def scenario_ocr_jobs(p):
     print("swap-in: active file has the text layer:", '%TEXTLAYER' in active and job in active)
     print("swap-in: original still the plain scan:", original.startswith('%PDF-1.4 fake v2') and '%TEXTLAYER' not in original)
     print("swap-in: ocr_text filled:", bool(d['ocr_text']))
-    print("swap-in: pill gone:", 'reading text…' not in await page.inner_text(f'tr[data-id="{doc_id}"]'))
+    print("swap-in: pill gone:", 'Making searchable…' not in await page.inner_text(f'tr[data-id="{doc_id}"]'))
     print("swap-in: status line:", (await page.inner_text('#status')).strip() == f"Text added to “{d['title']}”.")
 
     # 2. Resume after closing and reopening the library.
@@ -970,10 +970,10 @@ async def scenario_ocr_jobs(p):
     print("status counts the waiting documents:", 'left' in await page.inner_text('#status'))
     await page.click(f'tr[data-id="{dA["id"]}"]')
     await page.wait_for_timeout(300)
-    print("pending pill shown in the detail panel:", 'reading text…' in await page.inner_text('#detail-panel-body'))
+    print("pending pill shown in the detail panel:", 'Making searchable…' in await page.inner_text('#detail-panel-body'))
     await page.click('#view-grid-btn')
     await page.wait_for_timeout(300)
-    print("pending pill shown on the grid tile:", 'reading text…' in await page.inner_text(f'.doc-tile[data-id="{dA["id"]}"], [data-id="{dA["id"]}"].tile'))
+    print("pending pill shown on the grid tile:", 'Making searchable…' in await page.inner_text(f'.doc-tile[data-id="{dA["id"]}"], [data-id="{dA["id"]}"].tile'))
     await page.click('#view-list-btn')
     await page.wait_for_timeout(300)
     await page.click(f'tr[data-id="{dA["id"]}"]')
@@ -1014,14 +1014,14 @@ async def scenario_ocr_jobs(p):
 
     # Rows of a deleted document go with the setting off; fallback rows (setting off) show no pill.
     jobE, dE = await ocr_scan(page, [ACCEPT, {"status": 404, "body": {"ok": False, "partial": False, "message": "gone"}}])
-    print("pill shown while the helper still works on it:", 'reading text…' in await page.inner_text(f'tr[data-id="{dE["id"]}"]'))
+    print("pill shown while the helper still works on it:", 'Making searchable…' in await page.inner_text(f'tr[data-id="{dE["id"]}"]'))
     await page.click('#tools-btn'); await page.click('#manage-fields-btn'); await page.wait_for_timeout(200)
     await page.uncheck('#fs-scan-auto-ocr'); await page.wait_for_timeout(200)
     await page.keyboard.press('Escape'); await page.wait_for_timeout(100)
     await run_pass(page)
     rows = await ocr_rows(page)
     print("setting off: fallback row exists but no pill:", any(r['document_id'] == dE['id'] and r['job_id'] is None for r in rows)
-          and 'reading text…' not in await page.inner_text(f'tr[data-id="{dE["id"]}"]'))
+          and 'Making searchable…' not in await page.inner_text(f'tr[data-id="{dE["id"]}"]'))
     await page.evaluate("(id) => window.__DEBUG_rawDelete(id)", dE['id'])
     await run_pass(page)
     print("setting off: the deleted document's fallback row is dropped:", not any(r['document_id'] == dE['id'] for r in await ocr_rows(page)))

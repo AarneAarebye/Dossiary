@@ -450,12 +450,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   vollständige Liste vorhandener Werte wieder auf, statt weiter auf das
   bereits Eingetippte gefiltert zu bleiben, praktisch, wenn Sie einen
   anderen Wert aus der Liste wählen statt neu tippen möchten.
-- **OCR für ein bestehendes Dokument erneut ausführen** — der
-  Bearbeiten-Dialog hat einen eigenen „Run OCR“-Button, der nur das
-  OCR-Textfeld anhand der tatsächlich gespeicherten Datei des Dokuments
-  aktualisiert. Das funktioniert bei Bildern wie bei PDFs, wobei jede
-  PDF-Seite zunächst in ein Bild gerendert wird; anders als beim Erfassen
-  wird nur der Text aktualisiert, die Datei selbst nie neu aufgebaut.
+- **Ein bestehendes Dokument durchsuchbar machen** — der
+  Bearbeiten-Dialog hat einen eigenen „Durchsuchbar machen“-Button. Bei
+  einem noch nicht durchsuchbaren Dokument stellt er Dossiarys eigene OCR
+  im Hintergrund in die Warteschlange (wie der Ausweg bei Scans; Text und
+  durchsuchbares PDF erscheinen im Dokument, sobald sie fertig sind, bis
+  dahin ist das OCR-Textfeld gesperrt). Bei einem Dokument, das schon eine
+  Textebene hat, liest er den Text einfach aus der gespeicherten Datei in
+  das OCR-Textfeld, wobei jede PDF-Seite zunächst in ein Bild gerendert wird.
 - **Der Dokumenttyp ist auffällig platziert, nahe am Anfang beider
   Formulare** — da er das eine Feld ist, das bestimmt, ob Organisation,
   Personen oder überhaupt benutzerdefinierte Felder erscheinen (siehe

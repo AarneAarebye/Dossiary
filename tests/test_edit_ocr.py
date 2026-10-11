@@ -57,6 +57,12 @@ async def main():
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
+        # These three are "already searchable" (a text layer found): the Edit form's
+        # button keeps reading their text on the spot, via runOcrForEdit().
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET has_text_layer = 1 WHERE id = ?', [1]); window.__DEBUG_dbRun('UPDATE documents SET has_text_layer = 1 WHERE id = ?', [2]);")
+        await page.evaluate("window.__DEBUG_loadDocumentsFromDb()")
+        await page.wait_for_timeout(200)
+
         # --- Edit doc 1 (image), run OCR ---
         await page.click('tr[data-id="1"]')
         await page.wait_for_timeout(200)
@@ -115,6 +121,8 @@ async def main():
         await page.click('#save-doc-btn')
         await page.wait_for_timeout(300)
 
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET has_text_layer = 1 WHERE id = ?', [3]); window.__DEBUG_loadDocumentsFromDb()")
+        await page.wait_for_timeout(200)
         await page.evaluate("window.__STUB_PDF_NUM_PAGES = 3;")
         await page.evaluate("window.__STUB_LOG.length = 0;")
         await page.click('tr[data-id="3"]')
@@ -132,6 +140,78 @@ async def main():
         assert ocr_text_3 == 'Hello World\n\nHello World\n\nHello World', f"expected text from all 3 pages, got {ocr_text_3!r}"
         assert recognize_calls == 3, f"expected recognize() to run once per page (3), got {recognize_calls}"
         assert '3 page' in ocr_status_3, f"expected status to mention 3 pages, got {ocr_status_3!r}"
+
+        print("already-searchable docs added no ocr_jobs row:", await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0)
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        # === Doc 4: a scanned PDF without text -- the button now queues background OCR.
+        # scan_auto_ocr is off here (the stub's default): the button must work anyway. ===
+        await page.evaluate("window.__DEBUG_holdOcrJobs(true)")
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        with open('editocr_pdf4.pdf', 'wb') as f:
+            f.write(b"%PDF-1.4 editocr scanned")
+        await page.set_input_files('#file-input', 'editocr_pdf4.pdf')
+        await page.wait_for_timeout(100)
+        await page.fill('#f-title', 'Scanned Doc')
+        await page.click('#save-doc-btn')
+        await page.wait_for_timeout(300)
+        await page.click('tr[data-id="4"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        print("edit button reads 'Make searchable':", (await page.inner_text('#e-run-ocr-btn')).strip() == 'Make searchable')
+        await page.select_option('#e-ocr-lang', 'deu')
+        await page.click('#e-run-ocr-btn')
+        await page.wait_for_timeout(300)
+        rows = await page.evaluate("window.__DEBUG_ocrJobRows()")
+        print("queued one edit row:", len(rows) == 1 and rows[0]['document_id'] == 4 and rows[0]['job_id'] is None and rows[0]['requested_by'] == 'edit')
+        print("row carries the form's language:", rows[0]['ocr_language'] == 'deu')
+        print("OCR text box disabled:", await page.locator('#e-ocr-text').is_disabled())
+        print("queued note shown:", 'Being made searchable in the background' in await page.inner_text('#e-ocr-status'))
+        print("table row shows the pending pill:", 'Making searchable…' in await page.inner_text('tr[data-id="4"]'))
+
+        # Saving with the row pending keeps ocr_text and saves the other fields.
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET ocr_text = ? WHERE id = ?', ['typed earlier', 4]); window.__DEBUG_loadDocumentsFromDb()")
+        await page.wait_for_timeout(100)
+        await page.fill('#e-title', 'Scanned Doc renamed')
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(300)
+        persisted = await page.evaluate("""(async () => { const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite'); return JSON.parse(await (await fh.getFile()).text()); })()""")
+        doc4 = [d for d in persisted['documents'] if d['id'] == 4][0]
+        print("save kept ocr_text and saved the title:", doc4['ocr_text'] == 'typed earlier' and doc4['title'] == 'Scanned Doc renamed')
+
+        # Reopening the form while the row is pending shows the box locked.
+        await page.click('tr[data-id="4"]')
+        await page.wait_for_timeout(200)
+        await page.click('#edit-doc-btn')
+        await page.wait_for_timeout(200)
+        print("reopened: box disabled with the note:", await page.locator('#e-ocr-text').is_disabled() and 'Being made searchable' in await page.inner_text('#e-ocr-status'))
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(150)
+
+        # A pass makes it searchable, with the setting off.
+        await page.evaluate("window.__DEBUG_runOcrJobPass()")
+        for _ in range(40):
+            await page.wait_for_timeout(100)
+            if await page.evaluate("window.__DEBUG_ocrFallbackIdle()") and not await page.evaluate("window.__DEBUG_ocrJobRows().length"):
+                break
+        persisted = await page.evaluate("""(async () => { const fh = await window.__TEST_ROOT.getFileHandle('library.sqlite'); return JSON.parse(await (await fh.getFile()).text()); })()""")
+        doc4 = [d for d in persisted['documents'] if d['id'] == 4][0]
+        print("pass made it searchable and removed the row:", doc4['searchable_pdf_built'] == 1 and await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0)
+
+        # The capture form's button carries the new name too (English and German).
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        print("capture button reads 'Make searchable':", (await page.inner_text('#run-ocr-btn')).strip() == 'Make searchable')
+        await page.click('#modal-close-btn')
+        await page.wait_for_timeout(100)
+        await page.select_option('#lang-select', 'de')
+        await page.wait_for_timeout(200)
+        await page.click('#add-btn')
+        await page.wait_for_timeout(100)
+        print("capture button reads 'Durchsuchbar machen' in German:", (await page.inner_text('#run-ocr-btn')).strip() == 'Durchsuchbar machen')
 
         print("JS ERRORS:", errors)
         await browser.close()

@@ -1128,7 +1128,9 @@ this repo's git tags.
   `pendingFile`, a not-yet-saved in-memory File, and requests
   `{blocks:true}` output because its result may get baked into a
   searchable PDF on save (see `buildSearchablePdf()`). `runOcrForEdit()`
-  operates on a document's actual saved file (resolved fresh via
+  (now reached from the Edit form's "Make searchable" only for a document that
+  is already searchable; otherwise the button queues background OCR, see the
+  Background OCR note) operates on a document's actual saved file (resolved fresh via
   `resolveFileHandle(d.file_path)`), only refreshes `e-ocr-text`, and
   deliberately does **not** request word-position data or touch
   `file_path`/rebuild any PDF — consistent with editing being
@@ -2315,9 +2317,21 @@ this repo's git tags.
   and a helper unreachable (network error or 401) for 10 minutes
   (`ocrUnreachableSince` is in memory, so polling never rewrites
   `library.sqlite`; that is why there is no `last_reached_at` column). The
-  fallback is `makeDocumentSearchable()` with the setting's language, run
-  only while the setting is on; the pill "reading text…" (`ocrPendingDocIds`)
-  marks pending documents in table, grid and panel. A deleted document's row
+  fallback is `makeDocumentSearchable()` with the row's `ocr_language` (else
+  the setting's language), run only while the setting is on -- for scan rows;
+  the pill "Making searchable…" (`ocrPendingDocIds`) marks pending documents
+  in table, grid and panel. **The Edit form's "Make searchable" button
+  (`#e-run-ocr-btn`, formerly "Run OCR") queues a row too**
+  (`queueEditOcr()`: `job_id` NULL, `requested_by = 'edit'`, `ocr_language`
+  = the form's language; `ocr_jobs` gained both columns, with
+  `SCHEMA_MIGRATIONS` entries; scan rows are `requested_by = 'scan'`).
+  `isActiveOcrRow()`: an `'edit'` row runs and shows whatever the scan
+  setting says, since it was asked for; the setting governs scans only.
+  The form locks the OCR text box with `editOcrQueuedNote` (also when
+  reopened while a row exists) and `saveEditedDocument()` keeps the saved
+  `ocr_text` while a row is pending, so the stale box can't erase what the
+  job writes. A document that is already searchable (`canMakeSearchable()`
+  false) keeps the instant `runOcrForEdit()` read. A deleted document's row
   is dropped (panel/bulk Delete, and by a pass for raw updates like
   Combine's). Every await checks `rootDirHandle` is still the starting
   library, and the fallback passes `isStale` into `makeDocumentSearchable()`
@@ -2377,7 +2391,7 @@ this repo's git tags.
     `migrate_to_new_library.py` produces for migrated documents and that
     Mariner Paperless itself used. See "Preserving an original file on
     ingestion" below for what happens when a searchable PDF *isn't* built.
-  **PDF capture OCR (2026-09-22 amendment)**: the capture form's "Run OCR"
+  **PDF capture OCR (2026-09-22 amendment)**: the capture form's "Make searchable" (formerly "Run OCR")
   button and language selector, previously hard-disabled for any non-image
   upload, now also work for PDFs — an opt-in click before Save, at parity
   with images, not an automatic zero-click process. Clicking it on a PDF

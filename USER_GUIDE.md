@@ -71,7 +71,7 @@ Click **+ Add document**. This opens the capture form:
    your document (JPEG/PNG), or a PDF. (If you haven't scanned it yet, the
    "Need to scan a paper document first?" link gives quick pointers for
    your operating system's built-in scanning tools.)
-2. Once a file is chosen, click **Run OCR**. This reads the text out of
+2. Once a file is chosen, click **Make searchable**. This reads the text out of
    the image so it becomes searchable later — Dossiary recognizes both
    English and German by default (other languages are selectable too).
    Give it a few seconds; the extracted text appears in the box below,

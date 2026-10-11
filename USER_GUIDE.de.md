@@ -77,7 +77,7 @@ Klicke auf **+ Dokument hinzufügen**. Das öffnet das Erfassungsformular:
    du es noch nicht gescannt hast, gibt dir der Link "Musst du zuerst ein
    Papierdokument scannen?" kurze Hinweise für die integrierten
    Scan-Werkzeuge deines Betriebssystems.)
-2. Sobald eine Datei ausgewählt ist, klicke auf **OCR ausführen**. Das
+2. Sobald eine Datei ausgewählt ist, klicke auf **Durchsuchbar machen**. Das
    liest den Text aus dem Bild heraus, damit er später durchsuchbar ist —
    Dossiary erkennt standardmäßig sowohl Deutsch als auch Englisch
    (weitere Sprachen sind ebenfalls auswählbar). Das dauert nur ein paar

@@ -1213,7 +1213,7 @@
       captureTitle: 'Add document', captureFileDropLabel: 'Click to choose a file (PDF or image)',
       captureScanToggle: 'Need to scan a paper document first?',
       captureOcrTextLabel: 'Extracted / notes text (editable)', captureOcrTextPlaceholder: 'Runs after OCR, or type/paste manually',
-      captureRunOcr: 'Run OCR', captureDocTypeLabel: 'Document type',
+      captureRunOcr: "Make searchable", captureDocTypeLabel: 'Document type',
       captureDocTypePlaceholder: 'Pick this first — it determines which fields show below',
       captureDocTypeHint: "Not in the list? Type a new one — it'll be created.",
       captureTitleLabel: 'Title', captureDateLabel: 'Date',
@@ -1263,9 +1263,10 @@
       fieldSettingsReminderLookaheadLabel: 'Reminder lookahead (days)',
       fieldSettingsScanBridgeUrlLabel: "Scan helper address (only if not on port 8765 or 8766)",
       fieldSettingsScanAutoOcrLabel: "Make scans searchable automatically",
-      ocrPendingPill: "reading text…",
-      ocrJobsWaitingSingular: "Reading text: {count} document left…",
-      ocrJobsWaitingPlural: "Reading text: {count} documents left…",
+      ocrPendingPill: "Making searchable…",
+      ocrJobsWaitingSingular: "Making searchable: {count} document left…",
+      ocrJobsWaitingPlural: "Making searchable: {count} documents left…",
+      editOcrQueuedNote: "Being made searchable in the background; the text appears in the document when it's done.",
       ocrJobTextAdded: "Text added to “{title}”.",
       ocrJobNoText: "No text found in “{title}”.",
       ocrJobFailed: "Couldn’t make “{title}” searchable: {error}",
@@ -1432,7 +1433,7 @@
       captureTitle: 'Añadir documento', captureFileDropLabel: 'Haz clic para elegir un archivo (PDF o imagen)',
       captureScanToggle: '¿Necesitas escanear primero un documento en papel?',
       captureOcrTextLabel: 'Texto extraído / notas (editable)', captureOcrTextPlaceholder: 'Se completa tras el OCR, o escribe/pega manualmente',
-      captureRunOcr: 'Ejecutar OCR', captureDocTypeLabel: 'Tipo de documento',
+      captureRunOcr: "Hacer buscable", captureDocTypeLabel: 'Tipo de documento',
       captureDocTypePlaceholder: 'Elige esto primero — determina qué campos se muestran abajo',
       captureDocTypeHint: '¿No está en la lista? Escribe uno nuevo — se creará.',
       captureTitleLabel: 'Título', captureDateLabel: 'Fecha',
@@ -1482,9 +1483,10 @@
       fieldSettingsReminderLookaheadLabel: 'Antelación de recordatorios (días)',
       fieldSettingsScanBridgeUrlLabel: "Dirección del asistente de escaneo (solo si no está en el puerto 8765 o 8766)",
       fieldSettingsScanAutoOcrLabel: "Hacer que los escaneos se puedan buscar automáticamente",
-      ocrPendingPill: "leyendo el texto…",
-      ocrJobsWaitingSingular: "Leyendo texto: queda {count} documento…",
-      ocrJobsWaitingPlural: "Leyendo texto: quedan {count} documentos…",
+      ocrPendingPill: "Haciendo buscable…",
+      ocrJobsWaitingSingular: "Haciendo buscable: queda {count} documento…",
+      ocrJobsWaitingPlural: "Haciendo buscable: quedan {count} documentos…",
+      editOcrQueuedNote: "Se está haciendo buscable en segundo plano; el texto aparecerá en el documento cuando termine.",
       ocrJobTextAdded: "Texto añadido a «{title}».",
       ocrJobNoText: "No se encontró texto en «{title}».",
       ocrJobFailed: "No se pudo hacer buscable «{title}»: {error}",
@@ -1651,7 +1653,7 @@
       captureTitle: 'Ajouter un document', captureFileDropLabel: 'Cliquez pour choisir un fichier (PDF ou image)',
       captureScanToggle: "Besoin de numériser d'abord un document papier ?",
       captureOcrTextLabel: 'Texte extrait / notes (modifiable)', captureOcrTextPlaceholder: "S'exécute après l'OCR, ou saisissez/collez manuellement",
-      captureRunOcr: "Lancer l'OCR", captureDocTypeLabel: 'Type de document',
+      captureRunOcr: "Rendre interrogeable", captureDocTypeLabel: 'Type de document',
       captureDocTypePlaceholder: 'Choisissez ceci en premier — cela détermine les champs affichés ci-dessous',
       captureDocTypeHint: "Absent de la liste ? Saisissez-en un nouveau — il sera créé.",
       captureTitleLabel: 'Titre', captureDateLabel: 'Date',
@@ -1701,9 +1703,10 @@
       fieldSettingsReminderLookaheadLabel: 'Anticipation des rappels (jours)',
       fieldSettingsScanBridgeUrlLabel: "Adresse de l'assistant de numérisation (seulement s'il n'est pas sur le port 8765 ou 8766)",
       fieldSettingsScanAutoOcrLabel: "Reconnaître automatiquement le texte des numérisations",
-      ocrPendingPill: "lecture du texte…",
-      ocrJobsWaitingSingular: "Lecture du texte : encore {count} document…",
-      ocrJobsWaitingPlural: "Lecture du texte : encore {count} documents…",
+      ocrPendingPill: "Conversion en PDF interrogeable…",
+      ocrJobsWaitingSingular: "Conversion en PDF interrogeable : encore {count} document…",
+      ocrJobsWaitingPlural: "Conversion en PDF interrogeable : encore {count} documents…",
+      editOcrQueuedNote: "Conversion en PDF interrogeable en arrière-plan ; le texte apparaîtra dans le document une fois terminé.",
       ocrJobTextAdded: "Texte ajouté à « {title} ».",
       ocrJobNoText: "Aucun texte trouvé dans « {title} ».",
       ocrJobFailed: "Impossible de rendre « {title} » consultable : {error}",
@@ -1870,7 +1873,7 @@
       captureTitle: 'Dokument hinzufügen', captureFileDropLabel: 'Klicken, um eine Datei auszuwählen (PDF oder Bild)',
       captureScanToggle: 'Musst du zuerst ein Papierdokument scannen?',
       captureOcrTextLabel: 'Erkannter Text / Notizen (bearbeitbar)', captureOcrTextPlaceholder: 'Wird nach OCR ausgefüllt, oder manuell eintippen/einfügen',
-      captureRunOcr: 'OCR ausführen', captureDocTypeLabel: 'Dokumenttyp',
+      captureRunOcr: "Durchsuchbar machen", captureDocTypeLabel: 'Dokumenttyp',
       captureDocTypePlaceholder: 'Zuerst auswählen — bestimmt, welche Felder unten angezeigt werden',
       captureDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.',
       captureTitleLabel: 'Titel', captureDateLabel: 'Datum',
@@ -1920,9 +1923,10 @@
       fieldSettingsReminderLookaheadLabel: 'Erinnerungsvorlauf (Tage)',
       fieldSettingsScanBridgeUrlLabel: "Adresse des Scan-Helfers (nur wenn nicht auf Port 8765 oder 8766)",
       fieldSettingsScanAutoOcrLabel: "Scans automatisch durchsuchbar machen",
-      ocrPendingPill: "Text wird erkannt…",
-      ocrJobsWaitingSingular: "Texterkennung: noch {count} Dokument…",
-      ocrJobsWaitingPlural: "Texterkennung: noch {count} Dokumente…",
+      ocrPendingPill: "Wird durchsuchbar gemacht…",
+      ocrJobsWaitingSingular: "Wird durchsuchbar gemacht: noch {count} Dokument…",
+      ocrJobsWaitingPlural: "Wird durchsuchbar gemacht: noch {count} Dokumente…",
+      editOcrQueuedNote: "Wird im Hintergrund durchsuchbar gemacht; der Text erscheint im Dokument, sobald es fertig ist.",
       ocrJobTextAdded: "Text zu „{title}“ hinzugefügt.",
       ocrJobNoText: "Kein Text in „{title}“ gefunden.",
       ocrJobFailed: "„{title}“ konnte nicht durchsuchbar gemacht werden: {error}",
@@ -2089,7 +2093,7 @@
       captureTitle: '添加文档', captureFileDropLabel: '点击选择文件（PDF 或图片）',
       captureScanToggle: '需要先扫描纸质文档吗？',
       captureOcrTextLabel: '提取的文本 / 备注（可编辑）', captureOcrTextPlaceholder: 'OCR 完成后自动填入，也可手动输入或粘贴',
-      captureRunOcr: '运行 OCR', captureDocTypeLabel: '文档类型',
+      captureRunOcr: "设为可搜索", captureDocTypeLabel: '文档类型',
       captureDocTypePlaceholder: '请先选择——它决定下方显示哪些字段',
       captureDocTypeHint: '不在列表中？输入一个新类型即可自动创建。',
       captureTitleLabel: '标题', captureDateLabel: '日期',
@@ -2139,9 +2143,10 @@
       fieldSettingsReminderLookaheadLabel: '提醒提前天数',
       fieldSettingsScanBridgeUrlLabel: "扫描助手地址（仅当不在 8765 或 8766 端口时）",
       fieldSettingsScanAutoOcrLabel: "自动使扫描件可搜索",
-      ocrPendingPill: "正在识别文字…",
-      ocrJobsWaitingSingular: "正在识别文字：还剩 {count} 个文档…",
-      ocrJobsWaitingPlural: "正在识别文字：还剩 {count} 个文档…",
+      ocrPendingPill: "正在设为可搜索…",
+      ocrJobsWaitingSingular: "正在设为可搜索：还剩 {count} 个文档…",
+      ocrJobsWaitingPlural: "正在设为可搜索：还剩 {count} 个文档…",
+      editOcrQueuedNote: "正在后台设为可搜索；完成后文字将出现在文档中。",
       ocrJobTextAdded: "已为“{title}”添加文字。",
       ocrJobNoText: "在“{title}”中未找到文字。",
       ocrJobFailed: "无法使“{title}”可搜索：{error}",
@@ -2385,7 +2390,7 @@
       captureScanToggle: '需要先掃描紙質文檔嗎？',
       captureOcrTextLabel: '提取的文本 / 備註（可編輯）',
       captureOcrTextPlaceholder: 'OCR 完成後自動填入，也可手動輸入或粘貼',
-      captureRunOcr: '運行 OCR',
+      captureRunOcr: "設為可搜索",
       captureDocTypeLabel: '文檔類型',
       captureDocTypePlaceholder: '請先選擇——它決定下方顯示哪些字段',
       captureDocTypeHint: '不在列表中？輸入一個新類型即可自動創建。',
@@ -2467,9 +2472,10 @@
       fieldSettingsReminderLookaheadLabel: '提醒提前天數',
       fieldSettingsScanBridgeUrlLabel: "掃描助手地址（僅當不在 8765 或 8766 端口時）",
       fieldSettingsScanAutoOcrLabel: "自動使掃描件可搜尋",
-      ocrPendingPill: "正在識別文字…",
-      ocrJobsWaitingSingular: "正在識別文字：還剩 {count} 個文檔…",
-      ocrJobsWaitingPlural: "正在識別文字：還剩 {count} 個文檔…",
+      ocrPendingPill: "正在設為可搜索…",
+      ocrJobsWaitingSingular: "正在設為可搜索：還剩 {count} 個文檔…",
+      ocrJobsWaitingPlural: "正在設為可搜索：還剩 {count} 個文檔…",
+      editOcrQueuedNote: "正在後台設為可搜索；完成後文字將出現在文檔中。",
       ocrJobTextAdded: "已為「{title}」添加文字。",
       ocrJobNoText: "在「{title}」中未找到文字。",
       ocrJobFailed: "無法使「{title}」可搜尋：{error}",
@@ -2756,7 +2762,9 @@
       helper_url TEXT,
       job_id TEXT,
       file_hash TEXT,
-      created_at TEXT
+      created_at TEXT,
+      ocr_language TEXT,
+      requested_by TEXT
     );
   `;
 
@@ -2785,6 +2793,8 @@
     'ALTER TABLE reminder_snoozes ADD COLUMN dismissed INTEGER DEFAULT 0',
     'ALTER TABLE documents ADD COLUMN file_hash TEXT',
     'ALTER TABLE collections ADD COLUMN folder_id INTEGER',
+    'ALTER TABLE ocr_jobs ADD COLUMN ocr_language TEXT',
+    'ALTER TABLE ocr_jobs ADD COLUMN requested_by TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -9852,7 +9862,19 @@
     wireClearButton('e-subcategory', 'e-subcategory-clear');
     wireClearButton('e-tags', 'e-tags-clear');
     wireCommaAutocomplete(el('e-tags'), 'tag-list');
-    el('e-run-ocr-btn').addEventListener('click', () => runOcrForEdit(id));
+    // Locks the OCR text box while a background job will fill it (the box is stale until then).
+    const lockEditOcrText = () => {
+      el('e-ocr-text').disabled = true;
+      el('e-run-ocr-btn').disabled = true;
+      el('e-ocr-status').textContent = t('editOcrQueuedNote');
+    };
+    if(ocrJobRows().some(r => r.document_id === id)) lockEditOcrText();
+    el('e-run-ocr-btn').addEventListener('click', async () => {
+      if(!canMakeSearchable(d)){ runOcrForEdit(id); return; } // already searchable: just read its text
+      await queueEditOcr(d, el('e-ocr-lang').value);
+      lockEditOcrText();
+      refreshOcrPending(activeOcrRows());
+    });
 
     if(d.file_path){
       (async () => {
@@ -10001,7 +10023,8 @@
       const documentType = el('e-type').value.trim() || null;
       const date = el('e-date').value || null;
       const notes = el('e-notes').value.trim() || null;
-      const ocrText = el('e-ocr-text').value.trim() || null;
+      // A pending background job will replace the text; the locked box is stale, so keep what's saved.
+      const ocrText = ocrJobRows().some(r => r.document_id === id) ? (d.ocr_text || null) : (el('e-ocr-text').value.trim() || null);
 
       // Payment method/Amount/Currency are plain generic fields now (see
       // migrateSentinelFieldsToGeneric()) -- their "preserve the existing value if
@@ -13000,8 +13023,8 @@
   // PDF (GET /ocr/<job>); job_id NULL = waiting for Dossiary's own OCR.
   function ocrJobRows(){
     if(!db) return [];
-    return queryAll('SELECT document_id, helper_url, job_id, file_hash, created_at FROM ocr_jobs').rows
-      .map(r => ({ document_id: r[0], helper_url: r[1], job_id: r[2], file_hash: r[3], created_at: r[4] }));
+    return queryAll('SELECT document_id, helper_url, job_id, file_hash, created_at, ocr_language, requested_by FROM ocr_jobs').rows
+      .map(r => ({ document_id: r[0], helper_url: r[1], job_id: r[2], file_hash: r[3], created_at: r[4], ocr_language: r[5], requested_by: r[6] }));
   }
   function deleteOcrJob(docId){
     db.run('DELETE FROM ocr_jobs WHERE document_id = ?', [docId]);
@@ -13021,8 +13044,8 @@
       if(!d) return; // skipped as a duplicate, or not added
       const job = entry && typeof entry.ocrJob === 'string' && entry.ocrJob ? entry.ocrJob : null;
       if(!job && d.has_text_layer) return; // already searchable (e.g. scanix500 before 0.4 ran OCR itself)
-      db.run('INSERT OR REPLACE INTO ocr_jobs (document_id, helper_url, job_id, file_hash, created_at) VALUES (?, ?, ?, ?, ?)',
-        [d.id, job ? helperUrl : null, job, d.file_hash || null, now]);
+      db.run('INSERT OR REPLACE INTO ocr_jobs (document_id, helper_url, job_id, file_hash, created_at, ocr_language, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [d.id, job ? helperUrl : null, job, d.file_hash || null, now, null, 'scan']);
       queued++;
     });
     if(queued) await persistDb();
@@ -13043,7 +13066,19 @@
   let ocrPendingDocIds = new Set();      // documents still waiting for text (pill in table/grid/panel)
   let ocrUnreachableSince = {};          // helper URL -> Date.now() of its first failed poll in a row
 
-  function activeOcrRows(){ return ocrJobRows().filter(r => r.job_id || scanAutoOcr); }
+  // An 'edit' row (the Edit form's "Make searchable") was asked for, so it runs and shows
+  // whatever the scan setting says; the setting only governs scans' own fallback.
+  function isActiveOcrRow(r){ return !!r.job_id || r.requested_by === 'edit' || scanAutoOcr; }
+  function activeOcrRows(){ return ocrJobRows().filter(isActiveOcrRow); }
+
+  // The Edit form's "Make searchable": Dossiary's own OCR in the background,
+  // like a scan's fallback, whatever the scan setting says -- it was asked for.
+  async function queueEditOcr(d, lang){
+    db.run('INSERT OR REPLACE INTO ocr_jobs (document_id, helper_url, job_id, file_hash, created_at, ocr_language, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [d.id, null, null, d.file_hash || null, nowIso(), lang, 'edit']);
+    await persistDb();
+    startOcrJobRunner();
+  }
 
   function startOcrJobRunner(){
     if(!ocrJobTimer) ocrJobTimer = setInterval(runOcrJobPass, OCR_JOB_POLL_MS);
@@ -13129,9 +13164,10 @@
     ocrFallbackRunning = true;
     let outcome = null, error = null;
     const d = allDocs.find(x => x.id === docId);
+    const row = ocrJobRows().find(r => r.document_id === docId);
     try{
       if(d && !d.deleted && canMakeSearchable(d)){
-        outcome = await makeDocumentSearchable(docId, scanOcrLanguage, () => {}, () => rootDirHandle !== root);
+        outcome = await makeDocumentSearchable(docId, (row && row.ocr_language) || scanOcrLanguage, () => {}, () => rootDirHandle !== root);
       }
     }catch(e){ error = e; }
     finally{ ocrFallbackRunning = false; }
@@ -13143,7 +13179,7 @@
     if(error) setStatusT('ocrJobFailed', { title, error: fileErrorText(error, 'fileErrorWrite') }, 'err');
     else if(outcome && outcome.status === 'no-words') setStatusT('ocrJobNoText', { title }, 'ok');
     else if(outcome && outcome.status === 'built') setStatusT('ocrJobTextAdded', { title }, 'ok');
-    const left = ocrJobRows().filter(r => r.job_id || scanAutoOcr);
+    const left = activeOcrRows();
     refreshOcrPending(left);
     if(!left.length) stopOcrJobRunner();
   }
@@ -13168,7 +13204,7 @@
       }
       const rows = ocrJobRows();
       // With the setting off a fallback row waits quietly: no pill, no count.
-      const active = rows.filter(r => r.job_id || scanAutoOcr);
+      const active = rows.filter(isActiveOcrRow);
       refreshOcrPending(active);
       if(!active.length){ stopOcrJobRunner(); return; }
       const next = active.find(r => !r.job_id);

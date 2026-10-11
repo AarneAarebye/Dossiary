@@ -384,11 +384,13 @@ working" problem that motivated this project in the first place.
   this pops the full list of existing values back up instead of staying
   filtered to whatever was typed before, handy when you want to pick a
   different value from the list rather than retype one.
-- **Re-run OCR on an existing document** — the Edit dialog has its own
-  "Run OCR" button, refreshing just the OCR text field against the
-  document's actual saved file. It works on images and PDFs alike,
-  rendering every page of a PDF to an image first; unlike capture, it only
-  refreshes the text and never rebuilds the file.
+- **Make an existing document searchable** — the Edit dialog has its own
+  "Make searchable" button. For a document that isn't searchable yet it
+  queues Dossiary's own OCR in the background (like a scan's fallback; the
+  text and the searchable PDF appear in the document when it's done, and
+  the OCR text box is locked until then). For a document that already has
+  a text layer it just reads the text out of the saved file into the OCR
+  text field, rendering every page of a PDF to an image first.
 - **Document Type is placed prominently, near the top of both forms** —
   since it's the one field that determines whether Organization, People,
   or any custom fields show up at all (see "Dynamic fields per document

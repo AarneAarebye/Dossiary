@@ -1107,7 +1107,7 @@ helper answers `/ocr/<job>` from `H.ocrResponses` (default 200 with a
 with `window.__DEBUG_holdOcrJobs(true)` and drive every pass with
 `__DEBUG_runOcrJobPass()`. The stub starts libraries with `scan_auto_ocr`
 `'0'` unless `window.__STUB_KEEP_SCAN_AUTO_OCR` is set, like the
-`view_mode` note above; the running state (button text, the elapsed-time counter in the dialog
+`view_mode` note above. `test_edit_ocr.py` marks its first three documents `has_text_layer` (via `__DEBUG_dbRun` + `__DEBUG_loadDocumentsFromDb`) so the Edit form's "Make searchable" still reads their text instantly, and adds a scanned PDF for the new behaviour: the button queues an `'edit'` `ocr_jobs` row (with the setting off), locks the text box, a save keeps `ocr_text`, a pass makes it searchable; the running state (button text, the elapsed-time counter in the dialog
 and on the status line, stopped and replaced by the result, toolbar disabled,
 Escape/close/backdrop blocked); inline pairing for both versions (local
 code check, wrong code, `{code, client}` JSON, token per helper, a 401
