@@ -288,7 +288,11 @@ repo it changes.
    fallback, Scan Multi as shortcut. Tested against the stub and the
    reference helper; released before any real helper exists. **Done (2026-10-09):** plan docs/superpowers/plans/2026-10-09-scan-dialog.md.
 3. **macOS helper.**
-4. **scanix500 version 2.**
+4. **scanix500 version 2.** **Done (2026-10-11):** scanix500 0.4.0, plan
+   docs/superpowers/plans/2026-10-11-scanix500-protocol-v2.md in the iX500
+   repo; version 1 kept for Dossiary before 1.44. Checked on the real iX500.
+   Follow-ups: a Paper size choice and step-by-step scan progress, both
+   needing protocol fields (Dossiary shows the elapsed time meanwhile).
 5. **Windows helper** (needs a Windows machine or VM with a scanner for
    the manual check; CI covers it until then).
 
