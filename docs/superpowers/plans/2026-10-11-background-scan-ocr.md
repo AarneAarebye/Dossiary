@@ -390,3 +390,81 @@ Run: `cd tests && python3 test_scan_dialog.py 2>&1 | grep -v ": True$"` → only
 git add dossiary.html tests/test_scan_dialog.py CLAUDE.md tests/CLAUDE.md
 git commit -m "Scans: follow OCR jobs, swap in the searchable PDF, fall back to Dossiary's own OCR"
 ```
+
+---
+
+### Task 3: "Make searchable" wording, and the Edit form's button queues background OCR
+
+Owner decisions after Task 2 (2026-10-11): the pending label reads "Making searchable…", the forms' "Run OCR" button reads "Make searchable", and the Edit form's button no longer refills the OCR text box on the spot — it queues the document for Dossiary's own OCR in the background, like a scan's fallback.
+
+**Files:**
+- Modify: `dossiary.html`, `tests/stub_studio2.js` (only if the new column needs it), `tests/test_scan_dialog.py`, `tests/test_edit_ocr.py`, any other test that reads the old labels (`grep -ln "Run OCR\|reading text" tests/*.py` — e.g. `test_i18n.py`, `test_studio.py`, `test_studio2.py`, `test_searchable_pdf.py`, `test_ocr_suggestions.py`, `test_copy_path.py`, `test_sidecar_and_search.py`, `test_storage_stats.py`), `CLAUDE.md`, `tests/CLAUDE.md`, `README.md`, `README.de.md`, `USER_GUIDE.md`, `USER_GUIDE.de.md`, `USER_GUIDE.es.md`, `USER_GUIDE.fr.md`, `USER_GUIDE.zh-Hans.md`, `USER_GUIDE.zh-Hant.md`
+
+**Interfaces:**
+- Consumes: Task 2's runner (`runOcrJobPass`, `runOcrFallback`, `refreshOcrPending`, `ocrPendingDocIds`, `startOcrJobRunner`), `ocrJobRows()`, `deleteOcrJob()`.
+- Produces: `ocr_jobs` gains `ocr_language TEXT` and `requested_by TEXT` (`'scan'` | `'edit'`); `queueEditOcr(d, lang)`.
+
+- [ ] **Step 1: Wording (all six languages)**
+
+| key | en | de | es | fr | zh-Hans | zh-Hant |
+|---|---|---|---|---|---|---|
+| `captureRunOcr` (existing; value changes) | Make searchable | Durchsuchbar machen | Hacer buscable | Rendre interrogeable | 设为可搜索 | 設為可搜索 |
+| `ocrPendingPill` (from Task 2; value changes) | Making searchable… | Wird durchsuchbar gemacht… | Haciendo buscable… | Conversion en PDF interrogeable… | 正在设为可搜索… | 正在設為可搜索… |
+| `ocrJobsWaitingSingular` | Making searchable: {count} document left… | Wird durchsuchbar gemacht: noch {count} Dokument… | Haciendo buscable: queda {count} documento… | Conversion en PDF interrogeable : encore {count} document… | 正在设为可搜索：还剩 {count} 个文档… | 正在設為可搜索：還剩 {count} 個文檔… |
+| `ocrJobsWaitingPlural` | Making searchable: {count} documents left… | Wird durchsuchbar gemacht: noch {count} Dokumente… | Haciendo buscable: quedan {count} documentos… | Conversion en PDF interrogeable : encore {count} documents… | 正在设为可搜索：还剩 {count} 个文档… | 正在設為可搜索：還剩 {count} 個文檔… |
+| `editOcrQueuedNote` (new) | Being made searchable in the background; the text appears in the document when it's done. | Wird im Hintergrund durchsuchbar gemacht; der Text erscheint im Dokument, sobald es fertig ist. | Se está haciendo buscable en segundo plano; el texto aparecerá en el documento cuando termine. | Conversion en PDF interrogeable en arrière-plan ; le texte apparaîtra dans le document une fois terminé. | 正在后台设为可搜索；完成后文字将出现在文档中。 | 正在後台設為可搜索；完成後文字將出現在文檔中。 |
+
+Docs: replace "Run OCR" (and its translations: "OCR ausführen", "Ejecutar OCR", "Lancer l'OCR", "运行 OCR", "運行 OCR") with the new button names in `USER_GUIDE*.md` and the Edit-form sentence in `README.md`/`README.de.md`, adjusting the surrounding sentence where it describes what the Edit form's button does. Screenshots are recaptured at the next release, not now.
+
+- [ ] **Step 2: Failing tests**
+
+In `tests/test_edit_ocr.py` (and wherever the Edit form's OCR button is clicked), change the expectations to the new behaviour, and add a scenario in `tests/test_scan_dialog.py` (or `test_edit_ocr.py`, whichever already opens the Edit form with a PDF document) with `window.__STUB_KEEP_SCAN_AUTO_OCR` *not* set (setting off — the button must work anyway):
+1. A scanned PDF without text: clicking `#e-run-ocr-btn` (label "Make searchable") adds an `ocr_jobs` row with `job_id` null, `requested_by` `'edit'`, `ocr_language` = the form's `#e-ocr-lang` value; the OCR text box is disabled with the `editOcrQueuedNote` shown; the table/panel show "Making searchable…".
+2. Saving the Edit form while the row exists leaves `ocr_text` as it was (type into another field, Save, check `ocr_text` unchanged and the title saved).
+3. Running a pass (`__DEBUG_runOcrJobPass()` and waiting for `__DEBUG_ocrFallbackIdle()`) makes the document searchable (`searchable_pdf_built` 1), fills `ocr_text`, removes the row — even though `scan_auto_ocr` is `'0'`.
+4. Reopening the Edit form while a row is pending shows the box disabled with the note.
+5. A document that is already searchable (`searchable_pdf_built` 1 or `has_text_layer` 1): the button keeps today's behaviour (runs `runOcrForEdit()` and fills the box), and no row is added.
+6. The capture form's button reads "Make searchable" (German: "Durchsuchbar machen").
+
+- [ ] **Step 3: Implement**
+
+1. `SCHEMA`: the `ocr_jobs` table gains `ocr_language TEXT` and `requested_by TEXT`. Add both to `SCHEMA_MIGRATIONS` (`ALTER TABLE ocr_jobs ADD COLUMN …`) so a library opened on the Task 1/2 build gets them. `queueScanOcr()` writes `requested_by = 'scan'`, `ocr_language = NULL`; `ocrJobRows()` returns both fields.
+2. `runOcrFallback(docId, root)`: read the row; use `row.ocr_language || scanOcrLanguage`. The runner's rule "no fallback while the setting is off" (and "no pill/count for fallback rows while off") applies only to rows with `requested_by !== 'edit'`; an `'edit'` row always runs and always shows.
+3. `queueEditOcr(d, lang)`:
+
+```js
+  // The Edit form's "Make searchable": Dossiary's own OCR in the background,
+  // like a scan's fallback, whatever the scan setting says -- it was asked for.
+  async function queueEditOcr(d, lang){
+    db.run('INSERT OR REPLACE INTO ocr_jobs (document_id, helper_url, job_id, file_hash, created_at, ocr_language, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [d.id, null, null, d.file_hash || null, nowIso(), lang, 'edit']);
+    await persistDb();
+    startOcrJobRunner();
+  }
+```
+
+4. Edit form: the `#e-run-ocr-btn` click handler becomes:
+
+```js
+    el('e-run-ocr-btn').addEventListener('click', async () => {
+      if(!canMakeSearchable(d)){ runOcrForEdit(id); return; } // already searchable: just read its text
+      await queueEditOcr(d, el('e-ocr-lang').value);
+      lockEditOcrText();
+      refreshOcrPending(ocrJobRows());
+    });
+```
+
+with `lockEditOcrText()` disabling `#e-ocr-text` and the button, and showing `t('editOcrQueuedNote')` in `#e-ocr-status`. Call `lockEditOcrText()` when the Edit form opens for a document that has an `ocr_jobs` row.
+5. `saveEditedDocument()`: when the document has an `ocr_jobs` row, leave `ocr_text` out of the `UPDATE` (keep `d.ocr_text`), so a pending job's text isn't erased by the locked, stale box.
+6. Docs: update `CLAUDE.md`'s "Background OCR" paragraph (Edit form now queues; `requested_by`/`ocr_language`; setting applies to scans only) and the `runOcrForEdit()` note (now only for already-searchable documents); `tests/CLAUDE.md` for the changed `test_edit_ocr.py`.
+
+- [ ] **Step 4: Run the tests**
+
+`cd tests && for t in test_scan_dialog.py test_edit_ocr.py test_i18n.py test_studio.py test_studio2.py test_searchable_pdf.py test_ocr_suggestions.py test_copy_path.py test_sidecar_and_search.py test_storage_stats.py test_make_searchable.py test_detail_panel.py; do python3 $t 2>&1 | grep -E ": False|Traceback" && echo "^^ $t"; done; python3 test_i18n_coverage.py | tail -1` → no output except `PASS`.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A dossiary.html tests CLAUDE.md README.md README.de.md USER_GUIDE*.md
+git commit -m "Make searchable: one name for OCR everywhere; the Edit form's button queues background OCR"
+```
