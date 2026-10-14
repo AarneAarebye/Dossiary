@@ -46,7 +46,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (97 scripts) + shared
+tests/                   Playwright regression suite (98 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -4159,6 +4159,31 @@ this repo's git tags.
   Checked against the real pdf-lib 1.17.1 once (properties read back,
   pages and Creator/Producer kept); the suite uses the stub's fake, whose
   `save()` records the properties as `props`.
+- **Import a folder** (`openImportModal()`, `readImportIndex()`,
+  `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder…") is
+  Export's counterpart: every file at the top of a folder picked with
+  `showDirectoryPicker({mode: 'read'})` (hidden files skipped, subfolders
+  not walked) goes through `createReviewDocumentFromFile(file,
+  'folder-import', beforeSave)` -- the Inbox/drag-and-drop path, so exact
+  duplicates are skipped and counted, and the folder is only ever read.
+  `isInsideLibrary()` refuses the library or anything in it. **With an
+  `index.csv`** (Export's, in any UI language: the separator is whichever of
+  `;`/`,` the header uses more, and headers are matched against every
+  language's `STRINGS` value for the column's key, `IMPORT_CSV_COLUMNS`),
+  a file named in its File column gets that row's title, date, import date
+  (kept, so a round trip keeps its history), category, subcategory, type,
+  notes, tags, People, and every other column as a custom field (created as
+  a text field if the library lacks it; an existing person-type field takes
+  comma-separated names), and is filed with `needs_review = 0`. The
+  `beforeSave` hook applies this inside `createReviewDocumentFromFile()`,
+  before its sidecar write and its one `persistDb()`. A document type with
+  no field setup before the import gets the fields its rows used appended
+  (so they aren't orphaned); a type that already had a setup is left alone.
+  **Files without a row, or every file when there is no `index.csv`**, are
+  added like a dropped file: filename title, flagged for review. An
+  `index.csv` without a File column, or unreadable, is reported and the
+  files are still added. The summary is "Label: N" lines (added, with
+  details, for review, duplicates, failed, index rows without a file).
 - **Share** (`openShareModal()`, `shareEmailHref()`, `#bulk-share-btn` in
   the bulk More menu, the panel-only `'share'` action) is the closest a
   browser gets to Mariner's Email: the Web Share API hands `File`s to the

@@ -918,6 +918,7 @@
             <button type="button" class="tools-menu-item" role="menuitem" id="manage-values-btn" data-i18n="toolbarManageValues">✎ Rename or merge values…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="library-check-btn" data-i18n="toolbarLibraryCheck">🔍 Library check</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="storage-stats-btn" data-i18n="toolbarStorageStats">💾 Storage stats</button>
+            <button type="button" class="tools-menu-item" role="menuitem" id="import-folder-btn" data-i18n="toolbarImportFolder">📂 Import a folder…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="backup-btn" data-i18n="toolbarBackup">🗄 Back up library…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="toolbar-buttons-btn" data-i18n="toolbarButtonsMenu">👁 Toolbar buttons…</button>
           </div>
@@ -1125,6 +1126,7 @@
       scanPairCodeLabel: "Pairing code", scanPairInvalidCode: "Enter the 6-digit code.", scanPairWrongCode: "That code didn't work. Choose “Pair a Browser…” again for a new code.",
       shareAction: 'Share…', shareModalTitle: 'Share', shareReading: 'Reading {done} of {total} files…', shareReady: 'Ready: {count} file(s). Share opens your system’s share sheet, to send them by email, message or another app.', shareButton: 'Share', shareDone: 'Handed over to the app you chose.', shareUnsupported: 'This browser can’t hand files to other apps. Export them to a folder, then attach them to an email yourself.', shareExportBtn: 'Export to a folder…', shareEmailBtn: 'Write an email', shareFailedRead: 'Could not read: {count}.', shareError: 'Sharing failed: {error}', shareNothing: 'None of these documents has a file to share.',
       exportWriteDetails: 'Write title, category, type and tags into exported PDFs', exportDetailsSkipped: '{count} PDF(s) copied without details (could not be opened as PDF).',
+      toolbarImportFolder: '📂 Import a folder…', importModalTitle: 'Import a folder', importIntro: 'Adds every file in a folder you choose as a new document. If the folder has an index.csv (as Export writes it), each file listed there gets its title, date, category, tags and other details; other files go to the Inbox for review. The folder itself isn’t changed, and files already in the library are skipped.', importChooseFolderBtn: 'Choose folder…', importInsideLibrary: 'That folder is inside this library. Choose a folder outside it.', importNoFiles: 'There are no files to import in “{folder}”.', importIndexNoFileColumn: 'it has no File column', importIndexUnreadable: 'index.csv could not be used ({error}), so the files were added without its details.', importProgress: 'Importing {done} of {total}…', importDone: 'Imported from “{folder}”.', importCountAdded: 'Added: {count}', importCountWithDetails: 'With details from index.csv: {count}', importCountForReview: 'In the Inbox for review: {count}', importCountDuplicates: 'Already in the library, skipped: {count}', importCountFailed: 'Could not import: {count}', importCountUnmatched: 'Rows in index.csv without a file: {count}',
       toolbarButtonsMenu: '👁 Toolbar buttons…', toolbarButtonsTitle: 'Toolbar buttons', toolbarButtonsHint: 'Untick the buttons you don’t use. This is saved for this library; Add document and Tools always stay.',
       splitsLabel: 'Split by category', splitsStart: '+ Split across categories', splitsAddLine: '+ Add a line', splitsCategoryPlaceholder: 'Category', splitsAmountPlaceholder: 'Amount', splitsNotePlaceholder: 'Note (optional)', splitsRemoveLine: 'Remove this line', splitsSummary: 'Split {split} of {amount}; {rest} stays with “{category}”.', splitsSummaryNoAmount: 'Enter the Amount above to split it.', splitsErrorTooMuch: 'The lines add up to more than the Amount.', splitsErrorLine: 'Every line needs a category and an amount.', splitsErrorNoAmount: 'Enter the Amount before splitting it.', detailSplits: 'Split',
       viewCalendar: '▤ Calendar', calPrevMonth: 'Previous month', calNextMonth: 'Next month', calThisMonth: 'Today', calMonthCountSingular: '1 document this month', calMonthCountPlural: '{count} documents this month', calUndated: 'No date ({count})',
@@ -1345,6 +1347,7 @@
       scanPairCodeLabel: "Código de emparejamiento", scanPairInvalidCode: "Introduzca el código de 6 dígitos.", scanPairWrongCode: "Ese código no funcionó. Elija «Pair a Browser…» de nuevo para obtener un código nuevo.",
       shareAction: 'Compartir…', shareModalTitle: 'Compartir', shareReading: 'Leyendo {done} de {total} archivos…', shareReady: 'Listo: {count} archivo(s). Compartir abre el menú para compartir del sistema, para enviarlos por correo, mensaje u otra aplicación.', shareButton: 'Compartir', shareDone: 'Entregado a la aplicación elegida.', shareUnsupported: 'Este navegador no puede pasar archivos a otras aplicaciones. Expórtalos a una carpeta y adjúntalos tú a un correo.', shareExportBtn: 'Exportar a una carpeta…', shareEmailBtn: 'Escribir un correo', shareFailedRead: 'No se pudieron leer: {count}.', shareError: 'No se pudo compartir: {error}', shareNothing: 'Ninguno de estos documentos tiene un archivo para compartir.',
       exportWriteDetails: 'Escribir título, categoría, tipo y etiquetas en los PDF exportados', exportDetailsSkipped: '{count} PDF copiados sin datos (no se pudieron abrir como PDF).',
+      toolbarImportFolder: '📂 Importar una carpeta…', importModalTitle: 'Importar una carpeta', importIntro: 'Añade cada archivo de la carpeta que elijas como un documento nuevo. Si la carpeta tiene un index.csv (como el que escribe Exportar), cada archivo que aparece en él recibe su título, fecha, categoría, etiquetas y demás datos; los otros archivos van a la bandeja de entrada para revisarlos. La carpeta no se modifica y los archivos que ya están en la biblioteca se omiten.', importChooseFolderBtn: 'Elegir carpeta…', importInsideLibrary: 'Esa carpeta está dentro de esta biblioteca. Elige una carpeta fuera de ella.', importNoFiles: 'No hay archivos que importar en «{folder}».', importIndexNoFileColumn: 'no tiene columna Archivo', importIndexUnreadable: 'No se pudo usar index.csv ({error}), así que los archivos se añadieron sin sus datos.', importProgress: 'Importando {done} de {total}…', importDone: 'Importado de «{folder}».', importCountAdded: 'Añadidos: {count}', importCountWithDetails: 'Con datos de index.csv: {count}', importCountForReview: 'En la bandeja de entrada para revisar: {count}', importCountDuplicates: 'Ya en la biblioteca, omitidos: {count}', importCountFailed: 'No se pudieron importar: {count}', importCountUnmatched: 'Filas de index.csv sin archivo: {count}',
       toolbarButtonsMenu: '👁 Botones de la barra…', toolbarButtonsTitle: 'Botones de la barra de herramientas', toolbarButtonsHint: 'Desmarca los botones que no uses. Se guarda para esta biblioteca; Añadir documento y Herramientas siempre se quedan.',
       splitsLabel: 'Dividir por categoría', splitsStart: '+ Dividir entre categorías', splitsAddLine: '+ Añadir una línea', splitsCategoryPlaceholder: 'Categoría', splitsAmountPlaceholder: 'Importe', splitsNotePlaceholder: 'Nota (opcional)', splitsRemoveLine: 'Quitar esta línea', splitsSummary: 'Dividido {split} de {amount}; {rest} queda en «{category}».', splitsSummaryNoAmount: 'Introduce el importe arriba para dividirlo.', splitsErrorTooMuch: 'Las líneas suman más que el importe.', splitsErrorLine: 'Cada línea necesita una categoría y un importe.', splitsErrorNoAmount: 'Introduce el importe antes de dividirlo.', detailSplits: 'División',
       viewCalendar: '▤ Calendario', calPrevMonth: 'Mes anterior', calNextMonth: 'Mes siguiente', calThisMonth: 'Hoy', calMonthCountSingular: '1 documento este mes', calMonthCountPlural: '{count} documentos este mes', calUndated: 'Sin fecha ({count})',
@@ -1565,6 +1568,7 @@
       scanPairCodeLabel: "Code d'association", scanPairInvalidCode: "Saisissez le code à 6 chiffres.", scanPairWrongCode: "Ce code n'a pas fonctionné. Choisissez à nouveau « Pair a Browser… » pour obtenir un nouveau code.",
       shareAction: 'Partager…', shareModalTitle: 'Partager', shareReading: 'Lecture de {done} fichier(s) sur {total}…', shareReady: 'Prêt : {count} fichier(s). Partager ouvre le menu de partage du système, pour les envoyer par e-mail, message ou une autre app.', shareButton: 'Partager', shareDone: 'Transmis à l’app choisie.', shareUnsupported: 'Ce navigateur ne peut pas transmettre de fichiers à d’autres apps. Exportez-les dans un dossier, puis joignez-les vous-même à un e-mail.', shareExportBtn: 'Exporter dans un dossier…', shareEmailBtn: 'Écrire un e-mail', shareFailedRead: 'Lecture impossible : {count}.', shareError: 'Échec du partage : {error}', shareNothing: 'Aucun de ces documents n’a de fichier à partager.',
       exportWriteDetails: 'Écrire le titre, la catégorie, le type et les étiquettes dans les PDF exportés', exportDetailsSkipped: '{count} PDF copiés sans informations (impossible de les ouvrir comme PDF).',
+      toolbarImportFolder: '📂 Importer un dossier…', importModalTitle: 'Importer un dossier', importIntro: 'Ajoute chaque fichier du dossier choisi comme nouveau document. Si le dossier contient un index.csv (tel qu’écrit par Exporter), chaque fichier qui y figure reçoit son titre, sa date, sa catégorie, ses étiquettes et ses autres informations ; les autres fichiers vont dans la boîte de réception pour vérification. Le dossier lui-même n’est pas modifié, et les fichiers déjà présents dans la bibliothèque sont ignorés.', importChooseFolderBtn: 'Choisir un dossier…', importInsideLibrary: 'Ce dossier se trouve dans cette bibliothèque. Choisissez un dossier en dehors.', importNoFiles: 'Aucun fichier à importer dans « {folder} ».', importIndexNoFileColumn: 'il n’a pas de colonne Fichier', importIndexUnreadable: 'index.csv n’a pas pu être utilisé ({error}) ; les fichiers ont été ajoutés sans ses informations.', importProgress: 'Importation de {done} sur {total}…', importDone: 'Importé depuis « {folder} ».', importCountAdded: 'Ajoutés : {count}', importCountWithDetails: 'Avec les informations d’index.csv : {count}', importCountForReview: 'Dans la boîte de réception à vérifier : {count}', importCountDuplicates: 'Déjà dans la bibliothèque, ignorés : {count}', importCountFailed: 'Non importés : {count}', importCountUnmatched: 'Lignes d’index.csv sans fichier : {count}',
       toolbarButtonsMenu: '👁 Boutons de la barre…', toolbarButtonsTitle: 'Boutons de la barre d’outils', toolbarButtonsHint: 'Décochez les boutons que vous n’utilisez pas. C’est enregistré pour cette bibliothèque ; Ajouter un document et Outils restent toujours.',
       splitsLabel: 'Répartir par catégorie', splitsStart: '+ Répartir entre catégories', splitsAddLine: '+ Ajouter une ligne', splitsCategoryPlaceholder: 'Catégorie', splitsAmountPlaceholder: 'Montant', splitsNotePlaceholder: 'Note (facultatif)', splitsRemoveLine: 'Supprimer cette ligne', splitsSummary: 'Réparti {split} sur {amount} ; {rest} reste dans « {category} ».', splitsSummaryNoAmount: 'Saisissez le montant ci-dessus pour le répartir.', splitsErrorTooMuch: 'Les lignes dépassent le montant.', splitsErrorLine: 'Chaque ligne a besoin d’une catégorie et d’un montant.', splitsErrorNoAmount: 'Saisissez le montant avant de le répartir.', detailSplits: 'Répartition',
       viewCalendar: '▤ Calendrier', calPrevMonth: 'Mois précédent', calNextMonth: 'Mois suivant', calThisMonth: 'Aujourd’hui', calMonthCountSingular: '1 document ce mois-ci', calMonthCountPlural: '{count} documents ce mois-ci', calUndated: 'Sans date ({count})',
@@ -1785,6 +1789,7 @@
       scanPairCodeLabel: "Kopplungscode", scanPairInvalidCode: "Bitte den 6-stelligen Code eingeben.", scanPairWrongCode: "Dieser Code hat nicht funktioniert. Wähle erneut „Pair a Browser…“ für einen neuen Code.",
       shareAction: 'Teilen…', shareModalTitle: 'Teilen', shareReading: 'Lese {done} von {total} Dateien…', shareReady: 'Bereit: {count} Datei(en). Teilen öffnet das Teilen-Menü des Systems, zum Senden per Mail, Nachricht oder in eine andere App.', shareButton: 'Teilen', shareDone: 'An die gewählte App übergeben.', shareUnsupported: 'Dieser Browser kann keine Dateien an andere Apps übergeben. Exportiere sie in einen Ordner und hänge sie selbst an eine E-Mail an.', shareExportBtn: 'In einen Ordner exportieren…', shareEmailBtn: 'E-Mail schreiben', shareFailedRead: 'Nicht lesbar: {count}.', shareError: 'Teilen fehlgeschlagen: {error}', shareNothing: 'Keines dieser Dokumente hat eine Datei zum Teilen.',
       exportWriteDetails: 'Titel, Kategorie, Typ und Tags in die exportierten PDFs schreiben', exportDetailsSkipped: '{count} PDF(s) ohne Angaben kopiert (ließen sich nicht als PDF öffnen).',
+      toolbarImportFolder: '📂 Ordner importieren…', importModalTitle: 'Ordner importieren', importIntro: 'Fügt jede Datei eines Ordners Ihrer Wahl als neues Dokument hinzu. Liegt im Ordner eine index.csv (wie sie der Export schreibt), erhält jede dort aufgeführte Datei Titel, Datum, Kategorie, Tags und weitere Angaben; alle anderen Dateien kommen zur Prüfung in den Posteingang. Der Ordner selbst wird nicht verändert, und Dateien, die schon in der Bibliothek sind, werden übersprungen.', importChooseFolderBtn: 'Ordner wählen…', importInsideLibrary: 'Dieser Ordner liegt in der Bibliothek. Wählen Sie einen Ordner außerhalb.', importNoFiles: 'In „{folder}“ gibt es keine Dateien zum Importieren.', importIndexNoFileColumn: 'es fehlt die Spalte Datei', importIndexUnreadable: 'Die index.csv war nicht verwendbar ({error}), deshalb wurden die Dateien ohne ihre Angaben hinzugefügt.', importProgress: 'Importiere {done} von {total}…', importDone: 'Aus „{folder}“ importiert.', importCountAdded: 'Hinzugefügt: {count}', importCountWithDetails: 'Mit Angaben aus der index.csv: {count}', importCountForReview: 'Zur Prüfung im Posteingang: {count}', importCountDuplicates: 'Schon in der Bibliothek, übersprungen: {count}', importCountFailed: 'Nicht importiert: {count}', importCountUnmatched: 'Zeilen der index.csv ohne Datei: {count}',
       toolbarButtonsMenu: '👁 Werkzeugleisten-Buttons…', toolbarButtonsTitle: 'Buttons der Werkzeugleiste', toolbarButtonsHint: 'Entferne den Haken bei Buttons, die du nicht nutzt. Das wird für diese Bibliothek gespeichert; Dokument hinzufügen und Werkzeuge bleiben immer.',
       splitsLabel: 'Auf Kategorien aufteilen', splitsStart: '+ Auf Kategorien aufteilen', splitsAddLine: '+ Zeile hinzufügen', splitsCategoryPlaceholder: 'Kategorie', splitsAmountPlaceholder: 'Betrag', splitsNotePlaceholder: 'Notiz (optional)', splitsRemoveLine: 'Diese Zeile entfernen', splitsSummary: '{split} von {amount} aufgeteilt; {rest} bleibt bei „{category}“.', splitsSummaryNoAmount: 'Gib oben den Betrag ein, um ihn aufzuteilen.', splitsErrorTooMuch: 'Die Zeilen ergeben mehr als den Betrag.', splitsErrorLine: 'Jede Zeile braucht eine Kategorie und einen Betrag.', splitsErrorNoAmount: 'Gib den Betrag ein, bevor du ihn aufteilst.', detailSplits: 'Aufteilung',
       viewCalendar: '▤ Kalender', calPrevMonth: 'Vorheriger Monat', calNextMonth: 'Nächster Monat', calThisMonth: 'Heute', calMonthCountSingular: '1 Dokument in diesem Monat', calMonthCountPlural: '{count} Dokumente in diesem Monat', calUndated: 'Ohne Datum ({count})',
@@ -2005,6 +2010,7 @@
       scanPairCodeLabel: "配对代码", scanPairInvalidCode: "请输入 6 位代码。", scanPairWrongCode: "该代码无效。请再次选择“Pair a Browser…”以获取新代码。",
       shareAction: '分享…', shareModalTitle: '分享', shareReading: '正在读取第 {done} 个文件，共 {total} 个…', shareReady: '已就绪：{count} 个文件。“分享”会打开系统的分享菜单，可通过邮件、消息或其他应用发送。', shareButton: '分享', shareDone: '已交给你选择的应用。', shareUnsupported: '此浏览器无法把文件交给其他应用。请先导出到文件夹，再自行作为邮件附件发送。', shareExportBtn: '导出到文件夹…', shareEmailBtn: '写邮件', shareFailedRead: '无法读取：{count} 个。', shareError: '分享失败：{error}', shareNothing: '这些文档都没有可分享的文件。',
       exportWriteDetails: '将标题、分类、类型和标签写入导出的 PDF', exportDetailsSkipped: '{count} 个 PDF 未写入信息即复制（无法作为 PDF 打开）。',
+      toolbarImportFolder: '📂 导入文件夹…', importModalTitle: '导入文件夹', importIntro: '将您选择的文件夹中的每个文件添加为新文档。如果文件夹中有 index.csv（由导出功能写入），其中列出的每个文件都会获得标题、日期、分类、标签和其他信息；其他文件会进入收件箱等待审阅。文件夹本身不会更改，资料库中已有的文件会被跳过。', importChooseFolderBtn: '选择文件夹…', importInsideLibrary: '该文件夹位于此资料库内。请选择资料库以外的文件夹。', importNoFiles: '“{folder}”中没有可导入的文件。', importIndexNoFileColumn: '缺少“文件”列', importIndexUnreadable: '无法使用 index.csv（{error}），因此添加文件时未包含其信息。', importProgress: '正在导入第 {done} 个，共 {total} 个…', importDone: '已从“{folder}”导入。', importCountAdded: '已添加：{count}', importCountWithDetails: '带有 index.csv 中的信息：{count}', importCountForReview: '在收件箱中等待审阅：{count}', importCountDuplicates: '已在资料库中，已跳过：{count}', importCountFailed: '无法导入：{count}', importCountUnmatched: 'index.csv 中没有对应文件的行：{count}',
       toolbarButtonsMenu: '👁 工具栏按钮…', toolbarButtonsTitle: '工具栏按钮', toolbarButtonsHint: '取消勾选你不使用的按钮。此设置按资料库保存；“添加文档”和“工具”始终保留。',
       splitsLabel: '按分类拆分', splitsStart: '+ 拆分到多个分类', splitsAddLine: '+ 添加一行', splitsCategoryPlaceholder: '分类', splitsAmountPlaceholder: '金额', splitsNotePlaceholder: '备注（可选）', splitsRemoveLine: '删除此行', splitsSummary: '已拆分 {split}（共 {amount}）；{rest} 仍归入“{category}”。', splitsSummaryNoAmount: '请先在上方输入金额再拆分。', splitsErrorTooMuch: '各行合计超过了金额。', splitsErrorLine: '每一行都需要分类和金额。', splitsErrorNoAmount: '拆分前请先输入金额。', detailSplits: '拆分',
       viewCalendar: '▤ 日历', calPrevMonth: '上个月', calNextMonth: '下个月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文档', calMonthCountPlural: '本月 {count} 份文档', calUndated: '无日期（{count}）',
@@ -2225,6 +2231,7 @@
       scanPairCodeLabel: "配對代碼", scanPairInvalidCode: "請輸入 6 位代碼。", scanPairWrongCode: "該代碼無效。請再次選擇「Pair a Browser…」以獲取新代碼。",
       shareAction: '分享…', shareModalTitle: '分享', shareReading: '正在讀取第 {done} 個文件，共 {total} 個…', shareReady: '已就緒：{count} 個文件。「分享」會打開系統的分享菜單，可通過郵件、消息或其他應用發送。', shareButton: '分享', shareDone: '已交給你選擇的應用。', shareUnsupported: '此瀏覽器無法把文件交給其他應用。請先導出到文件夾，再自行作爲郵件附件發送。', shareExportBtn: '導出到文件夾…', shareEmailBtn: '寫郵件', shareFailedRead: '無法讀取：{count} 個。', shareError: '分享失敗：{error}', shareNothing: '這些文檔都沒有可分享的文件。',
       exportWriteDetails: '將標題、分類、類型和標籤寫入導出的 PDF', exportDetailsSkipped: '{count} 個 PDF 未寫入信息即複製（無法作爲 PDF 打開）。',
+      toolbarImportFolder: '📂 導入文件夾…', importModalTitle: '導入文件夾', importIntro: '將您選擇的文件夾中的每個文件添加爲新文檔。如果文件夾中有 index.csv（由導出功能寫入），其中列出的每個文件都會獲得標題、日期、分類、標籤和其他信息；其他文件會進入收件箱等待審閱。文件夾本身不會更改，資料庫中已有的文件會被跳過。', importChooseFolderBtn: '選擇文件夾…', importInsideLibrary: '該文件夾位於此資料庫內。請選擇資料庫以外的文件夾。', importNoFiles: '“{folder}”中沒有可導入的文件。', importIndexNoFileColumn: '缺少“文件”列', importIndexUnreadable: '無法使用 index.csv（{error}），因此添加文件時未包含其信息。', importProgress: '正在導入第 {done} 個，共 {total} 個…', importDone: '已從“{folder}”導入。', importCountAdded: '已添加：{count}', importCountWithDetails: '帶有 index.csv 中的信息：{count}', importCountForReview: '在收件箱中等待審閱：{count}', importCountDuplicates: '已在資料庫中，已跳過：{count}', importCountFailed: '無法導入：{count}', importCountUnmatched: 'index.csv 中沒有對應文件的行：{count}',
       toolbarButtonsMenu: '👁 工具欄按鈕…', toolbarButtonsTitle: '工具欄按鈕', toolbarButtonsHint: '取消勾選你不使用的按鈕。此設置按資料庫保存；「添加文檔」和「工具」始終保留。',
       splitsLabel: '按分類拆分', splitsStart: '+ 拆分到多個分類', splitsAddLine: '+ 添加一行', splitsCategoryPlaceholder: '分類', splitsAmountPlaceholder: '金額', splitsNotePlaceholder: '備註（可選）', splitsRemoveLine: '刪除此行', splitsSummary: '已拆分 {split}（共 {amount}）；{rest} 仍歸入「{category}」。', splitsSummaryNoAmount: '請先在上方輸入金額再拆分。', splitsErrorTooMuch: '各行合計超過了金額。', splitsErrorLine: '每一行都需要分類和金額。', splitsErrorNoAmount: '拆分前請先輸入金額。', detailSplits: '拆分',
       viewCalendar: '▤ 日曆', calPrevMonth: '上個月', calNextMonth: '下個月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文檔', calMonthCountPlural: '本月 {count} 份文檔', calUndated: '無日期（{count}）',
@@ -2965,6 +2972,7 @@
   let openRowContextMenu = null;
   let backupRunning = false; // the Backup dialog is copying -- blocks closing it
   let exportRunning = false; // the Export dialog is copying files -- blocks closing it
+  let importRunning = false; // the Import dialog is adding files -- blocks closing it
   let makeSearchableRunning = false; // the "Make searchable" dialog's OCR/rebuild is in progress -- blocks closing it, like the backfill flag above
   let findDuplicatesBackfillRunning = false; // tracks whether the Library check modal's file_hash backfill is in progress, shared with onModalKeydown()
 
@@ -7335,6 +7343,261 @@
     }catch(e){ return false; }
   }
 
+  // --- Import a folder ---
+  // The counterpart to Export: every file at the top of a folder the person
+  // picks becomes a new document, through the same createReviewDocumentFromFile()
+  // Inbox and drag-and-drop use (so an exact duplicate of a library document
+  // is skipped, and the folder's files are only ever read). When the folder
+  // has an index.csv -- the one Export writes, in any UI language -- each
+  // file named in it gets that row's details and is filed (not flagged for
+  // review); files without a row land in the Inbox like a dropped file.
+  // Unknown columns become text fields; a type that had no field setup
+  // before the import gets the fields its rows used, so they aren't orphaned.
+  function parseCsv(text){
+    text = text.replace(/^﻿/, '');
+    // The separator is whichever of ';' and ',' the header line uses more
+    // (outside quotes): Export writes ';' for de/fr/es, ',' otherwise.
+    const firstLine = text.split(/\r?\n/, 1)[0].replace(/"[^"]*"/g, '');
+    const sep = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    for(let i = 0; i < text.length; i++){
+      const c = text[i];
+      if(quoted){
+        if(c === '"'){
+          if(text[i + 1] === '"'){ cell += '"'; i++; } else quoted = false;
+        }else cell += c;
+      }else if(c === '"') quoted = true;
+      else if(c === sep){ row.push(cell); cell = ''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      }else cell += c;
+    }
+    if(cell !== '' || row.length){ row.push(cell); rows.push(row); }
+    return rows.filter(r => r.some(v => v.trim() !== ''));
+  }
+
+  // index.csv's fixed columns, recognised by their header in any UI language
+  // (Export writes them translated); Amount, Currency and Payment method are
+  // always written in English. Any other column is a custom field.
+  const IMPORT_CSV_COLUMNS = [
+    ['file', 'exportCsvFile'], ['title', 'editTitleLabel'], ['date', 'tableColDate'], ['import_date', 'tableColImported'],
+    ['category', 'tableColCategory'], ['subcategory', 'editSubcategoryLabel'], ['document_type', 'tableColType'],
+    ['tags', 'tableColTags'], ['people', 'tableColPeople'], ['notes', 'detailSectionNotes'],
+  ];
+  function readImportIndex(text){
+    const rows = parseCsv(text);
+    if(!rows.length) return null;
+    const norm = (s) => s.trim().toLowerCase();
+    const aliases = {};
+    for(const [col, key] of IMPORT_CSV_COLUMNS){
+      for(const lang of SUPPORTED_LANGS){ const label = STRINGS[lang] && STRINGS[lang][key]; if(label) aliases[norm(label)] ??= col; }
+    }
+    const columns = rows[0].map(h => h.trim());
+    const assigned = new Set();
+    const roles = columns.map(h => {
+      const col = aliases[norm(h)];
+      if(col && !assigned.has(col)){ assigned.add(col); return { builtin: col }; }
+      return h ? { field: h } : null;
+    });
+    if(!assigned.has('file')) return null; // not an index we can match files with
+    const byName = new Map();
+    for(const r of rows.slice(1)){
+      const rec = { fields: {} };
+      roles.forEach((role, i) => {
+        const v = (r[i] ?? '').trim();
+        if(!role) return;
+        if(role.builtin) rec[role.builtin] = v;
+        else if(v) rec.fields[role.field] = v;
+      });
+      if(rec.file) byName.set(rec.file.toLowerCase(), rec);
+    }
+    return byName;
+  }
+
+  const isoDay = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || '') && !isNaN(new Date(v.slice(0, 10)).getTime()) ? v.slice(0, 10) : null;
+  const splitList = (v) => (v || '').split(',').map(s => s.trim()).filter(Boolean);
+
+  // Applies one index.csv row to a just-created document (database and
+  // in-memory copy). Runs inside createReviewDocumentFromFile() before its
+  // sidecar write and save, so a file costs one save, not two.
+  function applyImportedDetails(d, rec, newTypes){
+    const title = rec.title || d.title;
+    const date = isoDay(rec.date), importDate = isoDay(rec.import_date) || d.import_date;
+    const vals = { title, category: rec.category || null, subcategory: rec.subcategory || null,
+      document_type: rec.document_type || d.document_type || null, date, import_date: importDate, notes: rec.notes || null };
+    db.run(`UPDATE documents SET title=?, category=?, subcategory=?, document_type=?, date=?, import_date=?, notes=?, needs_review=0 WHERE id=?`,
+      [vals.title, vals.category, vals.subcategory, vals.document_type, vals.date, vals.import_date, vals.notes, d.id]);
+    Object.assign(d, vals, { needs_review: false });
+
+    const usedFields = [];
+    const linkPeople = (fieldName, names) => {
+      const fieldId = fieldNameToId[fieldName];
+      if(fieldId === undefined || !names.length) return;
+      for(const name of names){
+        let personId = personNameToId[name];
+        if(personId === undefined){
+          personId = nextPersonId++;
+          db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+          personNameToId[name] = personId;
+        }
+        db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [d.id, fieldId, personId]);
+      }
+      d.personFieldValues = { ...(d.personFieldValues || {}), [fieldName]: names };
+      if(fieldName === 'People') d.people = names;
+      usedFields.push(fieldName);
+    };
+
+    const tags = [...new Set(splitList(rec.tags))];
+    for(const name of tags){
+      let tagId = tagNameToId[name];
+      if(tagId === undefined){
+        tagId = nextTagId++;
+        db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+        tagNameToId[name] = tagId;
+      }
+      db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [d.id, tagId]);
+    }
+    d.tags = tags;
+    linkPeople('People', [...new Set(splitList(rec.people))]);
+
+    for(const [name, value] of Object.entries(rec.fields)){
+      if(fieldNameToId[name] === undefined){
+        const id = nextFieldId++;
+        db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)', [id, name, 'text', 0, 1]);
+        fieldDefs.push({ id, name, type: 'text', showAsColumn: false, autocomplete: true });
+        fieldNameToId[name] = id;
+      }
+      const def = fieldDefs.find(f => f.name === name);
+      if(def && def.type === 'person'){ linkPeople(name, [...new Set(splitList(value))]); continue; }
+      db.run('DELETE FROM document_field_values WHERE document_id = ? AND field_id = ?', [d.id, fieldNameToId[name]]);
+      db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [d.id, fieldNameToId[name], value]);
+      d.customFields = { ...(d.customFields || {}), [name]: value };
+      usedFields.push(name);
+    }
+
+    // A type this library had no field setup for: give it the fields its
+    // imported documents use. A type that already had one is left as it was.
+    const type = d.document_type;
+    if(type && newTypes.has(type)){
+      const entries = typeFieldOrder[type] || [];
+      for(const name of usedFields){
+        if(!entries.some(e => e.field === name)) entries.push({ field: name, position: entries.length });
+      }
+      typeFieldOrder[type] = entries;
+      db.run('DELETE FROM document_type_fields WHERE document_type = ?', [type]);
+      for(const e of entries) db.run('INSERT INTO document_type_fields (document_type, field_name, position) VALUES (?, ?, ?)', [type, e.field, e.position]);
+    }
+  }
+
+  function openImportModal(){
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('importModalTitle')}</h2>
+          <p>${t('importIntro')}</p>
+          <div class="status" id="import-status"></div>
+          <ul id="import-summary" style="display:none;"></ul>
+          <ul id="import-failed-list" style="display:none;"></ul>
+          <div class="modal-actions">
+            <button class="primary" id="import-start-btn">${t('importChooseFolderBtn')}</button>
+            <button id="import-cancel-btn">${t('commonCancel')}</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const tryClose = () => { if(!importRunning) closeModal(); };
+    el('modal-close-btn').addEventListener('click', tryClose);
+    el('import-cancel-btn').addEventListener('click', tryClose);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') tryClose(); });
+    document.addEventListener('keydown', onModalKeydown);
+
+    el('import-start-btn').addEventListener('click', async () => {
+      const statusEl = el('import-status');
+      let src;
+      try{ src = await window.showDirectoryPicker({ mode: 'read' }); }
+      catch(e){ return; } // picker cancelled
+      if(await isInsideLibrary(src)){
+        statusEl.className = 'status err';
+        statusEl.textContent = t('importInsideLibrary');
+        return;
+      }
+      const files = [];
+      let indexHandle = null;
+      for await (const [name, handle] of src.entries()){
+        if(handle.kind !== 'file' || name.startsWith('.')) continue; // .DS_Store, ._ files
+        if(name.toLowerCase() === 'index.csv'){ indexHandle = handle; continue; }
+        files.push({ name, handle });
+      }
+      files.sort((a, b) => a.name.localeCompare(b.name));
+      if(!files.length){
+        statusEl.className = 'status err';
+        statusEl.textContent = t('importNoFiles', {folder: src.name});
+        return;
+      }
+      let index = null, indexError = null;
+      if(indexHandle){
+        try{ index = readImportIndex(await (await indexHandle.getFile()).text()); if(!index) indexError = t('importIndexNoFileColumn'); }
+        catch(e){ indexError = e.message; }
+      }
+
+      const startBtn = el('import-start-btn'), cancelBtn = el('import-cancel-btn');
+      startBtn.disabled = cancelBtn.disabled = el('modal-close-btn').disabled = true;
+      importRunning = true;
+      statusEl.className = 'status busy';
+      const newTypes = new Set();
+      if(index){
+        for(const rec of index.values()) if(rec.document_type && !(typeFieldOrder[rec.document_type] || []).length) newTypes.add(rec.document_type);
+      }
+      const matched = new Set();
+      let added = 0, withDetails = 0, skipped = 0;
+      const failed = [];
+      try{
+        for(let i = 0; i < files.length; i++){
+          const { name, handle } = files[i];
+          statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('importProgress', {done: i, total: files.length}));
+          const rec = index && index.get(name.toLowerCase());
+          if(rec) matched.add(name.toLowerCase());
+          try{
+            const file = await handle.getFile();
+            const result = await createReviewDocumentFromFile(file, 'folder-import', rec ? (d) => applyImportedDetails(d, rec, newTypes) : null);
+            if(result.skippedDuplicate){ skipped++; continue; }
+            added++;
+            if(rec) withDetails++;
+          }catch(e){ failed.push({ name, error: e.message }); }
+        }
+      }finally{
+        importRunning = false;
+        el('modal-close-btn').disabled = false;
+      }
+      if(added){
+        renderStats(); populateFilters(); populateDatalists(); renderColumnsMenu(); render();
+      }
+      const unmatched = index ? [...index.keys()].filter(k => !matched.has(k)).length : 0;
+      const lines = [t('importCountAdded', {count: added})];
+      if(index) lines.push(t('importCountWithDetails', {count: withDetails}));
+      if(added > withDetails) lines.push(t('importCountForReview', {count: added - withDetails}));
+      if(skipped) lines.push(t('importCountDuplicates', {count: skipped}));
+      if(failed.length) lines.push(t('importCountFailed', {count: failed.length}));
+      if(unmatched) lines.push(t('importCountUnmatched', {count: unmatched}));
+      statusEl.className = 'status ' + (failed.length || indexError ? 'err' : 'ok');
+      statusEl.textContent = t('importDone', {folder: src.name}) + (indexError ? ' ' + t('importIndexUnreadable', {error: indexError}) : '');
+      const summary = el('import-summary');
+      summary.style.display = '';
+      summary.innerHTML = lines.map(l => `<li>${escapeHtml(l)}</li>`).join('');
+      if(failed.length){
+        const list = el('import-failed-list');
+        list.style.display = '';
+        list.innerHTML = failed.map(f => `<li>${escapeHtml(f.name)}: ${escapeHtml(f.error)}</li>`).join('');
+      }
+      startBtn.style.display = 'none';
+      cancelBtn.disabled = false;
+      cancelBtn.textContent = t('detailCloseAriaLabel');
+    });
+  }
+
   // --- Keyboard shortcuts (mostly for working through the review queue) ---
   // Table keys only act when no dialog is open and the focus isn't in a text
   // field, so they never interfere with typing. In the Edit form,
@@ -7459,7 +7722,7 @@
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
     if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
-  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !backupRunning && !pageToolsRunning && !scanDialogRunning) closeModal(); }
+  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !importRunning && !backupRunning && !pageToolsRunning && !scanDialogRunning) closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', useKey: 'librariesUseSqlJs' },
@@ -12827,7 +13090,7 @@
   // caller-specific cleanup (inbox/ removal + banner update vs. none). Returns
   // the new document's id and title; throws on failure, having already rolled
   // back the id reservation, so callers don't need to.
-  async function createReviewDocumentFromFile(file, source){
+  async function createReviewDocumentFromFile(file, source, beforeSave){
     const id = nextDocId++;
     try{
       // Hash first and check for an exact-duplicate match against an
@@ -12903,6 +13166,10 @@
           await recordPdfTextLayer(d, pdf);
         }catch(e){ /* left for "Check for text" */ }
       }
+
+      // Folder import fills in an index.csv row's details here, so the
+      // sidecar and the one save below already carry them.
+      if(beforeSave){ try{ beforeSave(d); }catch(e){ console.warn('Import details not applied:', e); } }
 
       await writeSidecarForDoc(d);
       await persistDb();
@@ -13905,6 +14172,7 @@
   el('library-check-btn').addEventListener('click', openLibraryCheckModal);
   el('storage-stats-btn').addEventListener('click', openStorageStatsModal);
   el('backup-btn').addEventListener('click', openBackupModal);
+  el('import-folder-btn').addEventListener('click', openImportModal);
   el('toolbar-buttons-btn').addEventListener('click', openToolbarButtonsModal);
   el('manage-values-btn').addEventListener('click', openManageValuesModal);
 
