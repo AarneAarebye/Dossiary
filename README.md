@@ -210,6 +210,12 @@ working" problem that motivated this project in the first place.
   reader; this can be switched off, and a PDF that can't be opened is
   copied unchanged. Nothing in the library changes — only the copies get
   the details.
+- **Import a folder** — **Tools → Import a folder…** adds every file in a
+  folder you pick as a new document. If the folder has an `index.csv` (as
+  Export writes it), each file listed there gets its title, date, category,
+  tags, amount and other details back and is filed; any other file — or
+  every file, when there's no `index.csv` — goes to the Inbox for review.
+  The folder isn't changed, and files already in the library are skipped.
 - **Share** — **Share…** (in a document's panel, or More ▾ for a selection)
   hands the files to your system's share sheet — Mail, Messages, AirDrop or
   any other app that offers it — named like exported copies and, for PDFs,

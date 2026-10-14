@@ -246,6 +246,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   das lässt sich abschalten, und ein PDF, das sich nicht öffnen lässt,
   wird unverändert kopiert. In der Bibliothek ändert sich nichts — nur die
   Kopien bekommen die Angaben.
+- **Ordner importieren** — **Werkzeuge → Ordner importieren…** fügt jede
+  Datei eines Ordners Ihrer Wahl als neues Dokument hinzu. Liegt dort eine
+  `index.csv` (wie sie der Export schreibt), erhält jede darin aufgeführte
+  Datei Titel, Datum, Kategorie, Tags, Betrag und weitere Angaben zurück und
+  wird abgelegt; jede andere Datei — oder jede Datei, wenn es keine
+  `index.csv` gibt — kommt zur Prüfung in den Posteingang. Der Ordner wird
+  nicht verändert, und Dateien, die schon in der Bibliothek sind, werden
+  übersprungen.
 - **Teilen** — **Teilen…** (im Detailbereich eines Dokuments oder unter
   Mehr ▾ für eine Auswahl) übergibt die Dateien an das Teilen-Menü des
   Systems — Mail, Nachrichten, AirDrop oder jede andere App, die es

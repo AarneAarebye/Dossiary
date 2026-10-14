@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **97
-scripts covering most of the app's actual functionality** (94 of them
+There's a real, runnable Playwright regression suite in `tests/` — **98
+scripts covering most of the app's actual functionality** (95 of them
 Playwright-driven; two aren't — `test_i18n_coverage.py`, a plain static
 check with no browser involved, and `test_scan_watch_version.py`, a
 standalone subprocess check of `scan_watch.py --version`'s output — see
@@ -990,7 +990,16 @@ by name; `index.csv` with a row per exported file, quoting, amount/
 currency/tags/custom-field columns, `,` in English and `;` in German, and
 omitted when unticked; `files/` unchanged -- the stub's folder picker takes
 a one-shot `window.__NEXT_PICKED_DIR`, and its directory handles gained
-`resolve()`), autofill from earlier documents
+`resolve()`), folder import (`test_import_folder.py` -- a round trip:
+export two documents in German (`;`, German headers) plus a loose file,
+import into an empty library; a folder inside the library refused; title,
+date, kept import date, category, subcategory, type, notes, Amount/
+Currency, tags, People and a custom field restored and the documents
+filed, the new type given the fields it used; the loose file flagged for
+review; hidden files ignored; the sidecar carrying the details; the
+folder unchanged; a second import skipping all three as duplicates; an
+empty folder reported; a folder without `index.csv` adding every file for
+review), autofill from earlier documents
 (`test_autofill.py` -- a known title, typed with odd spacing and case,
 replacing capture's untouched default type from the most recent match and
 filling Category/Subcategory/Payment method/Currency as guesses naming the
