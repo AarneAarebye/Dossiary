@@ -56,7 +56,7 @@ def doc(i, title, doc_type, file_path, original=None, thumb=None):
         "notes": None, "ocr_text": f"text {i}", "ocr_language": None,
         "file_path": file_path, "original_file_path": original, "thumbnail_path": thumb,
         "created_at": "2026-03-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
-        "archived": 0, "needs_review": 1 if i == 2 else 0, "deleted": 0, "file_hash": f"hash{i}",
+        "archived": 0, "needs_review": 0, "deleted": 0, "file_hash": f"hash{i}",
     }
 
 SEED = {
@@ -152,7 +152,7 @@ async def main():
         # === Scenario 1: "only what these documents use" ===
         used = await page.evaluate(BUILD_JS, [[1, 2], 'used'])
         print("Only the exported documents, ids kept:", sorted(d['id'] for d in used['documents']) == [1, 2])
-        print("...with their details:", next(d for d in used['documents'] if d['id'] == 2)['needs_review'] == 1
+        print("...with their details:", next(d for d in used['documents'] if d['id'] == 2)['ocr_text'] == 'text 2'
               and next(d for d in used['documents'] if d['id'] == 1)['file_hash'] == 'hash1')
         print("Only their tags:", [t['name'] for t in used['tags']] == ['tax'])
         print("Only their people:", sorted(x['name'] for x in used['people']) == ['Arne', 'Jana'])

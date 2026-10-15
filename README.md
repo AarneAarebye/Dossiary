@@ -210,6 +210,14 @@ working" problem that motivated this project in the first place.
   reader; this can be switched off, and a PDF that can't be opened is
   copied unchanged. Nothing in the library changes — only the copies get
   the details.
+- **Export as library** — select documents and choose **More ▾ → Export as
+  library…** to make a new, ready-to-open `<Name>.dossiary` library from
+  them: to hand documents to someone, or to split a library. **Copy** leaves
+  this library as it is; **Move** puts the documents in this library's Waste
+  bin once the new library is written (restoring them undoes it). The new
+  library gets only the fields and settings these documents use, or
+  everything from this library if you choose. A document whose file can't
+  be read is left out and listed.
 - **Import a folder** — **Tools → Import a folder…** adds every file in a
   folder you pick as a new document. If the folder has an `index.csv` (as
   Export writes it), each file listed there gets its title, date, category,
@@ -907,7 +915,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Development
 
-There's a real, runnable Playwright regression suite in `tests/` (98
+There's a real, runnable Playwright regression suite in `tests/` (99
 scripts, no real user data — every test seeds its own synthetic library
 state). Each is standalone: `cd tests && python3 test_<name>.py`. See
 `CLAUDE.md`'s "How this was tested" section for what's covered and how
