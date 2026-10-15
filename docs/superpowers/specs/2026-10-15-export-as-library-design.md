@@ -24,10 +24,12 @@ search result is exported by opening it and ticking select-all.
   preview, validation and `.dossiary` handling of the new-library form
   (`libraryFolderName()`; names with `/ \ : * ? " < > |` or a leading dot
   refused; a name already ending in `.dossiary` isn't doubled).
-- **Location**: "Choose folder…" (`showDirectoryPicker({mode: 'readwrite'})`).
-  The library itself or a folder inside it is refused (`isInsideLibrary()`).
-  An existing folder of the chosen name is never reused; the dialog says so
-  and asks for another name.
+- **Location**: chosen when **Export library** is clicked
+  (`showDirectoryPicker({mode: 'readwrite'})`), as in Export and Back up
+  library; the hint under the name says the folder is created in the folder
+  chosen next. The library itself or a folder inside it is refused
+  (`isInsideLibrary()`). An existing folder of the chosen name is never
+  reused; the dialog says so and asks for another name.
 - **Documents**: Copy (default) / Move. Move's note: "The documents go to the
   Waste bin here once the new library has been written. Restoring them from
   the Waste bin undoes it."
@@ -109,14 +111,17 @@ library.
 3. Build the database from the documents that made it, then write
    `library.sqlite` -- last, so a folder without it never looks like a
    finished library.
+   If no document could be read, no library is made (the folder is
+   removed) and the dialog says so.
 4. Stop, or any failure before step 3 completes, removes the new folder
    (`removeEntry(..., {recursive: true})`, as Back up library does). The open
    library is untouched up to here.
 5. Move only, after step 3 succeeded: the exported documents (not the ones
    left out) go to the Waste bin with one `persistDb()`, the same way bulk
    Delete does (`bulkSetDeleted()`). Their files stay in place. If that save
-   fails, the summary says so: the new library is complete, and the
-   documents are still in this library too.
+   fails, their Waste-bin flag is undone in memory and the summary says so:
+   the new library is complete, and the documents are still in this library
+   too.
 
 Nothing is ever deleted from this library's folder.
 
