@@ -46,6 +46,13 @@ the repo for people who scan with other software.
   given a destination, copies `Dossiary.app` there. Not part of a normal
   Dossiary release; rebuilt only when the launcher source changes.
 
+## scanix500 --version
+
+`scanix500 --version` prints `scanix500 <version>` (from
+`scanix500.__version__`) and exits 0, via argparse's `action="version"`, so it
+works without the otherwise required `destination` argument. Covered by a
+test in `tests/test_cli.py`. The install script uses it (below).
+
 ## scanix500 installed copy
 
 New script in the iX500 repo: `scripts/install-app.sh <ref>` (a tag like
@@ -58,8 +65,11 @@ New script in the iX500 repo: `scripts/install-app.sh <ref>` (a tag like
 3. Creates `/Applications/Dossiary/scanix500/venv.new`, installs
    `python-sane` with the `CPATH`/`LIBRARY_PATH` the README describes, then
    the exported package (not editable, no dev extras).
-4. Checks the new environment: `venv.new/bin/python -c "import scanix500,
-   sane"` and that `venv.new/bin/scanix500-menubar` exists.
+4. Checks the new environment: `venv.new/bin/scanix500 --version` must print
+   `scanix500 <version>` with the version the exported `pyproject.toml`
+   declares, `venv.new/bin/python -c "import sane"` must succeed (scanix500
+   imports `sane` lazily, so `--version` alone doesn't prove it built), and
+   `venv.new/bin/scanix500-menubar` must exist.
 5. Stops the LaunchAgent (`launchctl bootout gui/$UID/com.scanix500.menubar`,
    ignoring "not loaded"), moves `venv` to `venv.old`, `venv.new` to `venv`,
    writes `VERSION`, removes `venv.old`.
@@ -115,6 +125,7 @@ This replaces the "copy to /Applications" memory rule:
 
 - Launcher: built and opened by hand, with Chrome present; the missing-
   `dossiary.html` dialog checked by running a copy from an empty folder.
+- `scanix500 --version`: unit test, run by the iX500 suite.
 - `install-app.sh`: a run against the real tag (the move above), plus a run
   with a nonexistent ref, which must fail at step 2 with the running
   scanix500 untouched (`launchctl print gui/$UID/com.scanix500.menubar`
