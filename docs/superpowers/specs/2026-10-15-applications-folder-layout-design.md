@@ -19,7 +19,8 @@ folders are for development only.
 ├── dossiary.html                 the app itself
 ├── Dossiary Scan Helper.app      signed helper, starts at login
 └── scanix500/
-    ├── venv/                     Python environment installed from a release tag
+    ├── venv -> venvs/0.5.0-…     symlink to the environment in use
+    ├── venvs/0.5.0-20261015T2105/ Python environment installed from a release tag
     └── VERSION                   e.g. "0.5.0 (v0.5.0)"
 ```
 
@@ -62,17 +63,20 @@ New script in the iX500 repo: `scripts/install-app.sh <ref>` (a tag like
    `tesseract`) and stops with the `brew install` line if one is missing.
 2. Exports `<ref>` with `git archive` into a temporary folder, so the
    working copy and its current branch are never touched.
-3. Creates `/Applications/Dossiary/scanix500/venv.new`, installs
-   `python-sane` with the `CPATH`/`LIBRARY_PATH` the README describes, then
-   the exported package (not editable, no dev extras).
-4. Checks the new environment: `venv.new/bin/scanix500 --version` must print
+3. Creates a new environment at `/Applications/Dossiary/scanix500/venvs/
+   <version>-<yyyymmddThhmmss>` (a Python venv can't be renamed or moved:
+   its scripts carry its absolute path, so each install gets its own folder
+   that never moves), installs `python-sane` with the `CPATH`/`LIBRARY_PATH`
+   the README describes, then the exported package with its `menubar` extra
+   (not editable, no dev extras).
+4. Checks the new environment: `<new>/bin/scanix500 --version` must print
    `scanix500 <version>` with the version the exported `pyproject.toml`
-   declares, `venv.new/bin/python -c "import sane"` must succeed (scanix500
+   declares, `<new>/bin/python -c "import sane"` must succeed (scanix500
    imports `sane` lazily, so `--version` alone doesn't prove it built), and
-   `venv.new/bin/scanix500-menubar` must exist.
+   `<new>/bin/scanix500-menubar` must exist.
 5. Stops the LaunchAgent (`launchctl bootout gui/$UID/com.scanix500.menubar`,
-   ignoring "not loaded"), moves `venv` to `venv.old`, `venv.new` to `venv`,
-   writes `VERSION`, removes `venv.old`.
+   ignoring "not loaded"), points the `venv` symlink at the new environment
+   (`ln -sfn`) and writes `VERSION`.
 6. Writes `~/Library/LaunchAgents/com.scanix500.menubar.plist` pointing at
    the installed venv, with the log at `~/Library/Logs/scanix500.log`
    (not `/tmp`, which is cleared on restart), and loads it
@@ -80,11 +84,18 @@ New script in the iX500 repo: `scripts/install-app.sh <ref>` (a tag like
 7. Replaces the broken `/opt/homebrew/bin/scanix500` wrapper (it imports
    scanix500 from Homebrew's Python, where it isn't installed) with a
    symlink to `venv/bin/scanix500`.
+8. Removes the environments in `venvs/` other than the new one.
 
 Any failure in steps 1-4 leaves the installed version and the running
-LaunchAgent untouched and removes `venv.new`. A failure in 5-7 is reported
-with the step that failed; `venv.old` is kept until the swap completes, so
-the previous version can be put back by hand.
+LaunchAgent untouched and removes the new environment. A failure in 5-7 is
+reported with the step that failed; the previous environment is only removed
+in step 8, so it can be put back by pointing `venv` at it again.
+
+The install location, LaunchAgent folder, log path, `scanix500` link,
+`launchctl` and `brew` can be overridden with environment variables
+(`SCANIX500_INSTALL_DIR`, `SCANIX500_AGENT_DIR`, `SCANIX500_LOG`,
+`SCANIX500_BIN_LINK`, `LAUNCHCTL`, `BREW`), so the failure paths can be tested
+without touching the real installation.
 
 `packaging/com.scanix500.menubar.plist` stays the template for people
 running from their own venv; the script writes its own filled-in copy. The
@@ -126,10 +137,11 @@ This replaces the "copy to /Applications" memory rule:
 - Launcher: built and opened by hand, with Chrome present; the missing-
   `dossiary.html` dialog checked by running a copy from an empty folder.
 - `scanix500 --version`: unit test, run by the iX500 suite.
-- `install-app.sh`: a run against the real tag (the move above), plus a run
-  with a nonexistent ref, which must fail at step 2 with the running
-  scanix500 untouched (`launchctl print gui/$UID/com.scanix500.menubar`
-  still shows it running).
+- `install-app.sh`: pytest tests (`tests/test_install_app.py`) run it with
+  the overrides above and fake `brew`/`launchctl`: a missing prerequisite and
+  a nonexistent ref each fail before anything under the install folder,
+  LaunchAgent folder or link changes, and `launchctl` is never called.
+  The real install is the run against v0.5.0 in the move above.
 - No changes to `dossiary.html` or the test suite.
 
 ## Out of scope
