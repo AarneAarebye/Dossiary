@@ -150,7 +150,7 @@ async def main():
         await page.evaluate("() => { window.__opened = []; window.open = (url) => { window.__opened.push(url); return null; }; }")
         await page.keyboard.press('Enter')
         await page.wait_for_timeout(300)
-        print("Enter opens the selected document's file:", await page.evaluate("window.__opened.length === 1 && window.__opened[0].startsWith('blob:')"))
+        print("Enter opens the selected document's file:", await page.evaluate("window.__opened.filter(u => u.startsWith('blob:')).length === 1"))
 
         # === Scenario 8: labels translate ===
         await page.select_option('#lang-select', 'de')

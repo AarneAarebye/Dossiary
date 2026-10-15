@@ -6492,11 +6492,7 @@
       if(e.target.closest('.select-col, .row-edit-col, .tile-select')) return;
       const d = allDocs.find(x => x.id === Number(tr.dataset.id));
       if(!d || !d.file_path) return;
-      try{
-        const fh = await resolveFileHandle(d.file_path, false);
-        const file = await fh.getFile();
-        window.open(URL.createObjectURL(file), '_blank');
-      }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
+      await openDocumentFile(d, d.file_path);
     }));
     // Right-click selects the row (identical to the click listener above)
     // and opens a context menu carrying most of the panel's own actions.
@@ -7138,10 +7134,37 @@
     return '﻿' + lines.join('\r\n') + '\r\n'; // BOM so spreadsheets read UTF-8
   }
 
-  // An exported copy of a PDF carrying its details in the PDF's own
-  // properties (Title, Subject, Keywords), as shown by Finder's Get Info or
-  // a PDF reader. Only ever applied to the copy written by Export -- files
-  // in the library are never rewritten for this. pdf-lib copies the pages
+  // Opens a document's file (or its original) in a new tab. A PDF opens as an
+  // in-memory copy titled with the document's own name (pdfWithDetails()),
+  // because Chrome's PDF viewer shows the PDF's Title property as the tab
+  // title and a blob: URL has no file name to fall back on -- scans made
+  // searchable by ocrmypdf all said 'Untitled'. The tab is opened before the
+  // file is read, so a slow read (iCloud) or pdf-lib's first load can't
+  // outlast the click's permission to open a tab. The library's file is
+  // never changed.
+  async function openDocumentFile(d, path){
+    const tab = window.open('', '_blank');
+    try{
+      const fh = await resolveFileHandle(path, false);
+      let blob = await fh.getFile();
+      if(/\.pdf$/i.test(path)){
+        const titled = await pdfWithDetails(await blob.arrayBuffer(), d);
+        if(titled) blob = new Blob([titled], { type: 'application/pdf' });
+      }
+      const url = URL.createObjectURL(blob);
+      if(tab) tab.location.href = url;
+      else window.open(url, '_blank');
+    }catch(e){
+      if(tab) tab.close();
+      alert(t('detailOpenFileError', {error: e.message}));
+    }
+  }
+
+  // A copy of a PDF carrying its details in the PDF's own properties
+  // (Title, Subject, Keywords), as shown by Finder's Get Info or a PDF
+  // reader. Applied to the copies Export and Share write and to the
+  // in-memory copy openDocumentFile() shows -- files in the library are
+  // never rewritten for this. pdf-lib copies the pages
   // as they are (no re-rendering). Returns null for a PDF it can't open
   // (encrypted, damaged, or pdf-lib couldn't load), which is then copied
   // unchanged.
@@ -8969,25 +8992,13 @@
     if(d.file_path){
       actions.push({
         key: 'open-file', label: t('detailOpenFile'), variant: 'primary',
-        onClick: async () => {
-          try{
-            const fh = await resolveFileHandle(d.file_path, false);
-            const file = await fh.getFile();
-            window.open(URL.createObjectURL(file), '_blank');
-          }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
-        },
+        onClick: () => openDocumentFile(d, d.file_path),
       });
     }
     if(d.original_file_path){
       actions.push({
         key: 'open-original', label: t('detailOpenOriginal'), variant: null,
-        onClick: async () => {
-          try{
-            const fh = await resolveFileHandle(d.original_file_path, false);
-            const file = await fh.getFile();
-            window.open(URL.createObjectURL(file), '_blank');
-          }catch(e){ alert(t('detailOpenFileError', {error: e.message})); }
-        },
+        onClick: () => openDocumentFile(d, d.original_file_path),
       });
     }
     // A deleted document only offers Restore -- see toggleDeleted()'s own
