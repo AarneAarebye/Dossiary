@@ -4031,32 +4031,108 @@
   }
   // Settings that describe one library's own history, not its setup.
   const SETUP_SETTINGS_NOT_COPIED = ['last_backup_at'];
-  // Copies into the (fresh, empty) global db. Field ids are kept, since
-  // visible_columns, sort_key and smart collection rules refer to them.
-  // Runs before the field migrations, which then find their fields by name
-  // and add only what the source lacked. A table the source can't provide
+  // Rows of `table` with explicit columns, read whole and filtered by the
+  // caller (the sql.js convention above); [] when the table or a column
+  // doesn't exist (an older library).
+  function selectRows(srcDb, table, cols){
+    try{
+      const res = srcDb.exec(`SELECT ${cols.join(', ')} FROM ${table}`);
+      return res && res.length ? res[0].values : [];
+    }catch(e){ return []; }
+  }
+  function insertRows(dstDb, table, cols, rows){
+    const placeholders = cols.map(() => '?').join(', ');
+    for(const row of rows) dstDb.run(`INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`, row);
+  }
+  // Copies into a fresh, empty database (the global db by default). Field ids
+  // are kept, since visible_columns, sort_key and smart collection rules refer
+  // to them. Runs before the field migrations, which then find their fields by
+  // name and add only what the source lacked. A table the source can't provide
   // (an older library) is skipped.
-  function copySetupFrom(srcDb){
-    const copy = (table, cols, keep) => {
-      let res;
-      try{ res = srcDb.exec(`SELECT ${cols.join(', ')} FROM ${table}`); }catch(e){ return; }
-      if(!res || !res.length) return;
-      const placeholders = cols.map(() => '?').join(', ');
-      for(const row of res[0].values){
-        if(keep && !keep(row)) continue;
-        db.run(`INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`, row);
-      }
-    };
+  function copySetupFrom(srcDb, dstDb = db, settingsNotCopied = SETUP_SETTINGS_NOT_COPIED){
+    const copy = (table, cols, keep) => insertRows(dstDb, table, cols, selectRows(srcDb, table, cols).filter(row => !keep || keep(row)));
     copy('fields', ['id', 'name', 'type', 'show_as_column', 'autocomplete']);
     copy('document_type_fields', ['document_type', 'field_name', 'position']);
     copy('field_descriptions', ['field_name', 'description']);
     copy('collection_folders', ['id', 'name']);
-    // folder_id is newer than collections itself; an older source lacks it.
-    let withFolder = true;
-    try{ srcDb.exec('SELECT folder_id FROM collections'); }catch(e){ withFolder = false; }
-    copy('collections', withFolder ? ['id', 'name', 'kind', 'criteria', 'folder_id'] : ['id', 'name', 'kind', 'criteria'], row => row[2] === 'smart');
-    copy('settings', ['key', 'value'], row => !SETUP_SETTINGS_NOT_COPIED.includes(row[0]));
+    copy('collections', collectionColumns(srcDb), row => row[2] === 'smart');
+    copy('settings', ['key', 'value'], row => !settingsNotCopied.includes(row[0]));
   }
+  // folder_id is newer than collections itself; an older source lacks it.
+  function collectionColumns(srcDb){
+    try{ srcDb.exec('SELECT folder_id FROM collections'); return ['id', 'name', 'kind', 'criteria', 'folder_id']; }
+    catch(e){ return ['id', 'name', 'kind', 'criteria']; }
+  }
+
+  // --- Export as library ---
+  // Settings that stay with this library and this computer when documents go
+  // to a new library: its backup history, the scanner's address and the last
+  // scan settings.
+  const EXPORT_SETTINGS_NOT_COPIED = ['last_backup_at', 'scan_bridge_url', 'scan_last_settings'];
+  const DOCUMENT_COLUMNS = ['id', 'title', 'category', 'subcategory', 'document_type', 'payment_method', 'amount', 'currency',
+    'date', 'import_date', 'notes', 'ocr_text', 'ocr_language', 'file_path', 'original_file_path', 'created_at', 'source',
+    'source_legacy_id', 'thumbnail_path', 'archived', 'needs_review', 'deleted', 'searchable_pdf_built', 'file_hash',
+    'has_text_layer', 'text_checked', 'thumbnail_hd'];
+
+  // The new library's database for "Export as library": documents `ids` with
+  // everything that belongs to them, and setup -- 'used' (fields holding a
+  // value on these documents plus the built-ins the migrations would add
+  // anyway) or 'all' (what "Copy the setup of" copies). Ids are kept, so every
+  // stored path (files/<id>_...) and reference stays valid. Duplicate marks and
+  // pending OCR jobs belong to this library and aren't copied.
+  function buildExportLibraryDb(srcDb, ids, setupMode){
+    const dst = new SQL.Database();
+    dst.run(SCHEMA);
+    const idSet = new Set(ids);
+    const forDocs = (table, cols) => {
+      const rows = selectRows(srcDb, table, cols).filter(row => idSet.has(row[0]));
+      insertRows(dst, table, cols, rows);
+      return rows;
+    };
+    const docs = forDocs('documents', DOCUMENT_COLUMNS);
+    const docTypes = new Set(docs.map(row => row[DOCUMENT_COLUMNS.indexOf('document_type')]).filter(Boolean));
+    const docTags = forDocs('document_tags', ['document_id', 'tag_id']);
+    const docPeople = forDocs('document_people', ['document_id', 'person_id']);
+    const fieldPeople = forDocs('document_field_people', ['document_id', 'field_id', 'person_id']);
+    const fieldValues = forDocs('document_field_values', ['document_id', 'field_id', 'value']);
+    forDocs('document_splits', ['document_id', 'position', 'category', 'amount', 'note']);
+    const snoozes = forDocs('reminder_snoozes', ['document_id', 'field_id', 'snoozed_until', 'dismissed']);
+
+    const tagIds = new Set(docTags.map(row => row[1]));
+    insertRows(dst, 'tags', ['id', 'name'], selectRows(srcDb, 'tags', ['id', 'name']).filter(row => tagIds.has(row[0])));
+    const personIds = new Set([...docPeople.map(row => row[1]), ...fieldPeople.map(row => row[2])]);
+    insertRows(dst, 'people', ['id', 'name'], selectRows(srcDb, 'people', ['id', 'name']).filter(row => personIds.has(row[0])));
+
+    if(setupMode === 'all'){
+      copySetupFrom(srcDb, dst, EXPORT_SETTINGS_NOT_COPIED);
+    }else{
+      const usedFieldIds = new Set([...fieldValues.map(row => row[1]), ...fieldPeople.map(row => row[1]), ...snoozes.map(row => row[1])]);
+      const fieldCols = ['id', 'name', 'type', 'show_as_column', 'autocomplete'];
+      const fields = selectRows(srcDb, 'fields', fieldCols).filter(row => usedFieldIds.has(row[0]) || NON_RENAMEABLE_FIELD_NAMES.includes(row[1]));
+      insertRows(dst, 'fields', fieldCols, fields);
+      const fieldNames = new Set(fields.map(row => row[1]));
+      insertRows(dst, 'document_type_fields', ['document_type', 'field_name', 'position'],
+        selectRows(srcDb, 'document_type_fields', ['document_type', 'field_name', 'position']).filter(row => docTypes.has(row[0]) && fieldNames.has(row[1])));
+      insertRows(dst, 'field_descriptions', ['field_name', 'description'],
+        selectRows(srcDb, 'field_descriptions', ['field_name', 'description']).filter(row => fieldNames.has(row[0]) || FIELD_DESCRIPTION_BUILTIN_NAMES.includes(row[0])));
+      insertRows(dst, 'settings', ['key', 'value'],
+        selectRows(srcDb, 'settings', ['key', 'value']).filter(row => !EXPORT_SETTINGS_NOT_COPIED.includes(row[0])));
+    }
+
+    // Manual collections holding an exported document, with only those documents.
+    const memberships = selectRows(srcDb, 'collection_documents', ['collection_id', 'document_id']).filter(row => idSet.has(row[1]));
+    const memberOf = new Set(memberships.map(row => row[0]));
+    const collCols = collectionColumns(srcDb);
+    const manual = selectRows(srcDb, 'collections', collCols).filter(row => row[2] === 'manual' && memberOf.has(row[0]));
+    insertRows(dst, 'collections', collCols, manual);
+    insertRows(dst, 'collection_documents', ['collection_id', 'document_id'], memberships);
+    if(setupMode !== 'all'){ // 'all' already copied every folder
+      const folderIds = new Set(manual.map(row => row[4]).filter(v => v != null));
+      insertRows(dst, 'collection_folders', ['id', 'name'], selectRows(srcDb, 'collection_folders', ['id', 'name']).filter(row => folderIds.has(row[0])));
+    }
+    return dst;
+  }
+  window.__DEBUG_buildExportLibrary = (ids, mode) => buildExportLibraryDb(db, ids, mode).export(); // test-only hook (tests/test_export_library.py)
 
   async function initNewLibrary(setup = null){
     try{
