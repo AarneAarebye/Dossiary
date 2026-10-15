@@ -687,7 +687,7 @@ this repo's git tags.
   The list lives behind "?" rather than a footer link, since the footer's
   height is part of `.table-wrap`'s max-height budget.
 - **Suggested values from OCR text** (`suggestFromOcrText()`,
-  `applyOcrGuess()`, `applyOcrSuggestions()`) offer a likely date, amount
+  `applyGuess()`, `applyOcrSuggestions()`) offer a likely date, amount
   and currency, read from a document's OCR text, as guesses with the same
   amber `.field-guess` look as the date preset above (plus an
   `.ocr-guess-hint` note), cleared on first edit. **When**: in the Edit form
@@ -2708,7 +2708,7 @@ this repo's git tags.
   six languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 388 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']`, 719 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2914,7 +2914,7 @@ this repo's git tags.
   key present" — a static safety net against the one mistake
   `test_i18n.py`'s scenario-by-scenario clicking can't exhaustively rule
   out (a key added to English but never given a translation in some other
-  language, or vice versa, anywhere in this ~270-key, hand-maintained
+  language, or vice versa, anywhere in this ~720-key, hand-maintained
   dictionary that no single Playwright run touches every corner of).
   Its own key-extraction regex needed to be **more careful than a naive
   "key starts a line" pattern**: `STRINGS.en`/`STRINGS.de` pack several
@@ -2946,7 +2946,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (388 keys apiece now, not ~260), and
+  grew from two top-level keys to six (719 keys apiece now, not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -3118,7 +3118,7 @@ this repo's git tags.
   **Description text is never run through `t()`** — like a field's own
   name, it's free-form content someone typed for their own library, not
   app chrome; running it through the translation lookup would be wrong
-  twice over — it isn't one of this app's ~278 known UI strings in the
+  twice over — it isn't one of this app's ~720 known UI strings in the
   first place, so `t()`'s fallback would just echo it back unchanged, and
   passing it through `t(key, params)` at all would risk a literal `{...}`
   substring in someone's own description being misread as a substitution
