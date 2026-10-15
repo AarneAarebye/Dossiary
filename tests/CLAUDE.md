@@ -481,7 +481,9 @@ selection and highlighting its row; the toggle button being absent in
 Reports view; the panel force-collapsing below the mobile breakpoint
 regardless of the saved preference; and, this same branch's own follow-up
 row-interaction behaviors — double-clicking a row opening its document's
-file in a new tab, a single click never opening anything, a document with
+file in a new tab (a PDF as an in-memory copy titled with the document's
+name, read back from the stub's fake pdf-lib through a wrapped
+`URL.createObjectURL`), a single click never opening anything, a document with
 no `file_path` being a silent no-op on double-click, and (the propagation-
 leak fix caught in this branch's own final review) double-clicking the
 row's `.select-col` checkbox also being a silent no-op rather than
@@ -999,7 +1001,21 @@ filed, the new type given the fields it used; the loose file flagged for
 review; hidden files ignored; the sidecar carrying the details; the
 folder unchanged; a second import skipping all three as duplicates; an
 empty folder reported; a folder without `index.csv` adding every file for
-review), autofill from earlier documents
+review), export as library (`test_export_library.py` -- the new
+library's database built through `window.__DEBUG_buildExportLibrary`:
+only the exported documents with ids kept and their tags, people, custom
+values, splits and snoozes; "only what's used" keeping just the fields
+with values plus the built-ins, their types' setup, their descriptions,
+settings minus `last_backup_at`/`scan_bridge_url`/`scan_last_settings`,
+and a manual collection holding only exported documents; "everything"
+adding every field, Smart Collections and folders; no duplicate marks or
+OCR jobs; then the dialog: its defaults and hints, a folder inside the
+library refused, Copy writing files, originals, previews, fresh sidecars
+and `library.sqlite` at the same paths with this library unchanged, an
+existing folder name refused, Escape blocked and Stop removing the
+incomplete library, Move with one file missing leaving that document out
+and in this library while the other goes to the Waste bin, and "Open it"
+switching to the new library), autofill from earlier documents
 (`test_autofill.py` -- a known title, typed with odd spacing and case,
 replacing capture's untouched default type from the most recent match and
 filling Category/Subcategory/Payment method/Currency as guesses naming the
