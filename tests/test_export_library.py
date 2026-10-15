@@ -195,6 +195,7 @@ async def main():
         await open_dialog([1, 2])
         print("Default name is the library's plus (export):", await page.input_value('#export-library-name') == 'MyLib (export)')
         print("Hint names the new folder:", 'MyLib (export).dossiary' in await page.inner_text('#export-library-hint'))
+        print("Setup is explained with examples:", 'Smart Collections' in await page.inner_text('#export-library-setup-hint'))
         print("The folder hint explains Chrome's blocked folders:", 'Downloads' in await page.inner_text('.folder-picker-hint'))
         print("Copy and 'only what's used' are the defaults:",
               await page.is_checked('input[name="export-library-mode"][value="copy"]')
