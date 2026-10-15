@@ -246,6 +246,16 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   das lässt sich abschalten, und ein PDF, das sich nicht öffnen lässt,
   wird unverändert kopiert. In der Bibliothek ändert sich nichts — nur die
   Kopien bekommen die Angaben.
+- **Als Bibliothek exportieren** — Dokumente auswählen und **Mehr ▾ → Als
+  Bibliothek exportieren…** wählen: Daraus entsteht eine neue
+  `<Name>.dossiary`-Bibliothek, die sich sofort öffnen lässt — zum
+  Weitergeben oder um eine Bibliothek aufzuteilen. **Kopieren** lässt diese
+  Bibliothek, wie sie ist; **Verschieben** legt die Dokumente hier in den
+  Papierkorb, sobald die neue Bibliothek geschrieben ist (Wiederherstellen
+  macht es rückgängig). Die neue Bibliothek bekommt nur die Felder und
+  Einstellungen, die diese Dokumente nutzen, oder auf Wunsch alles aus
+  dieser Bibliothek. Ein Dokument, dessen Datei nicht lesbar ist, wird
+  ausgelassen und aufgeführt.
 - **Ordner importieren** — **Werkzeuge → Ordner importieren…** fügt jede
   Datei eines Ordners Ihrer Wahl als neues Dokument hinzu. Liegt dort eine
   `index.csv` (wie sie der Export schreibt), erhält jede darin aufgeführte
@@ -1046,7 +1056,7 @@ MIT — siehe [LICENSE](LICENSE).
 
 ## Entwicklung
 
-Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (98
+Es gibt eine echte, lauffähige Playwright-Testsuite in `tests/` (99
 Skripte, keine echten Nutzerdaten — jeder Test erzeugt seinen eigenen
 synthetischen Bibliothekszustand). Jedes Skript ist eigenständig:
 `cd tests && python3 test_<name>.py`. Der Abschnitt „How this was

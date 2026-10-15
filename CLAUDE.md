@@ -49,7 +49,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (98 scripts) + shared
+tests/                   Playwright regression suite (99 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -4162,6 +4162,27 @@ this repo's git tags.
   Checked against the real pdf-lib 1.17.1 once (properties read back,
   pages and Creator/Producer kept); the suite uses the stub's fake, whose
   `save()` records the properties as `props`.
+- **Export as library** (`openExportLibraryModal()`, `buildExportLibraryDb()`,
+  `#bulk-export-library-btn` in the bulk More menu; spec
+  `docs/superpowers/specs/2026-10-15-export-as-library-design.md`) turns the
+  selected documents into a new `<Name>.dossiary` library, copied or moved.
+  The new database is built in memory from the open one with **ids kept**, so
+  every stored path stays valid: the documents and their tags, people,
+  custom values, splits and reminder snoozes; manual collections holding them
+  (with only those members); and setup -- 'used' (fields with a value on
+  these documents plus `NON_RENAMEABLE_FIELD_NAMES`, their types' field
+  setup, descriptions, settings) or 'all' (`copySetupFrom()`, now taking a
+  target database and an excluded-settings list). Never copied:
+  `EXPORT_SETTINGS_NOT_COPIED` (`last_backup_at`, `scan_bridge_url`,
+  `scan_last_settings`), `not_duplicate_groups`, `ocr_jobs`. Order: each
+  document's file and original are read before anything is written (a
+  document that can't be read is left out and listed, and stays here on
+  Move), previews and fresh sidecars (`sidecarTextForDoc()`) best-effort,
+  `library.sqlite` last; Stop, a failure or nothing readable removes the new
+  folder; Move then calls `bulkSetDeleted()` on the exported ids (undone in
+  memory if that save fails). "Open it" switches via `resetAll()` +
+  `proceedWithRootDirHandle()`, and the new library is added to Recent
+  libraries. `exportLibraryRunning` blocks closing the dialog meanwhile.
 - **Import a folder** (`openImportModal()`, `readImportIndex()`,
   `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder…") is
   Export's counterpart: every file at the top of a folder picked with
