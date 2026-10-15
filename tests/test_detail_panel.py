@@ -346,11 +346,17 @@ async def main():
             single_click_opened_nothing = True
         print("single click does not open the file:", single_click_opened_nothing)
 
-        # double click opens the file in a new tab
+        # double click opens the file in a new tab -- a PDF as an in-memory
+        # copy titled with the document's own name, since Chrome's PDF viewer
+        # shows the PDF's Title (ocrmypdf writes 'Untitled')
+        await page.evaluate("() => { const make = URL.createObjectURL; window.__lastBlob = null; URL.createObjectURL = (b) => { window.__lastBlob = b; return make(b); }; }")
         async with page.expect_event('popup', timeout=3000) as popup_info:
             await page.dblclick('tr[data-id="4"]')
         popup = await popup_info.value
         print("double-click opens the file in a new tab:", popup is not None)
+        opened = await page.evaluate("async () => window.__lastBlob ? await window.__lastBlob.text() : ''")
+        opened_props = json.loads(opened.split('\n', 1)[1]).get('props') if opened.startswith('%PDF-FAKELIB') else None
+        print("the opened PDF is titled with the document's name:", (opened_props or {}).get('title') == 'Doc With File')
         await popup.close()
 
         # a document with no file_path is a silent no-op on double-click -- no
