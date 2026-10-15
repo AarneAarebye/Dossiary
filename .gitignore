@@ -245,3 +245,4 @@ __marimo__/
 
 # Editor swap files
 *.swp
+packaging/macos/build/

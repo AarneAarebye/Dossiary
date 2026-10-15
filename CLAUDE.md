@@ -26,6 +26,9 @@ probably belongs in the other repo instead.
 ```
 dossiary.html            The entire app (single file: HTML + CSS + JS)
 scan_watch.py            Standalone watched-folder helper -- see its own note below
+packaging/macos/         Dossiary.app launcher (AppleScript) and its build
+                          script, build-launcher.sh -- see the spec
+                          docs/superpowers/specs/2026-10-15-applications-folder-layout-design.md
 README.md                Usage docs, schema, and known limitations
 README.de.md             German translation of README.md
 USER_GUIDE.md            Non-technical beginner guide, linked from README.md
