@@ -20,7 +20,7 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 DEMO = os.path.join(HERE, 'demo')
 PORT = 8833
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(REPO, 'docs', 'user-guide')
-ONLY = sys.argv[1].split(',') if len(sys.argv) > 1 and sys.argv[1] != 'all' else ['en', 'de', 'es', 'fr', 'zh-Hans', 'zh-Hant']
+ONLY = sys.argv[1].split(',') if len(sys.argv) > 1 and sys.argv[1] != 'all' else ['en', 'de', 'es', 'fr', 'zh-Hans', 'zh-Hant', 'hy']
 
 EN_NAMES = {'no-library': '01-no-library', 'empty-folder': '02-empty-folder', 'library-ready': '03-library-ready',
             'capture-blank': '04-capture-blank', 'capture-ocr': '05-capture-ocr', 'capture-filled': '06-capture-filled',
@@ -56,7 +56,7 @@ async def capture(browser, lang):
     outdir = os.path.join(OUT, lang)
     os.makedirs(outdir, exist_ok=True)
     ctx = await browser.new_context(viewport={'width': 1440, 'height': 770}, device_scale_factor=1,
-        locale={'en': 'en-US', 'de': 'de-DE', 'es': 'es-ES', 'fr': 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW'}[lang])
+        locale={'en': 'en-US', 'de': 'de-DE', 'es': 'es-ES', 'fr': 'fr-FR', 'zh-Hans': 'zh-CN', 'zh-Hant': 'zh-TW', 'hy': 'hy-AM'}[lang])
     page = await ctx.new_page()
     # No scan helper exists for the shots, whatever runs on this machine (a
     # real scanix500 on 8765 would bring up Scan Multi in the toolbar).
