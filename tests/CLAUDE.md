@@ -13,14 +13,14 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **99
-scripts covering most of the app's actual functionality** (95 of them
-Playwright-driven; three aren't — `test_i18n_coverage.py`, a plain static
-check with no browser involved, `test_user_guides.py`, a static check that
-every User Guide's images exist, every guide links all the others, and
-`USER_GUIDE_LANGS` matches the translated guides, and `test_scan_watch_version.py`, a
-standalone subprocess check of `scan_watch.py --version`'s output — see
-their own descriptions below): capture, edit,
+There's a real, runnable Playwright regression suite in `tests/` — **100
+scripts covering most of the app's actual functionality** (97 of them
+Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
+is a plain static check with no browser involved. `test_user_guides.py` is
+also a static check: every User Guide's images exist, every guide links all
+the others, and `USER_GUIDE_LANGS` matches the translated guides.
+`test_scan_watch_version.py` is a standalone subprocess check of
+`scan_watch.py --version`'s output): capture, edit,
 tags, people, subcategory, columns/filters (including persistence), OCR
 (images and PDFs, both capture-time and edit-time, across every language
 option, including edit-time OCR against every page of a multi-page PDF,
