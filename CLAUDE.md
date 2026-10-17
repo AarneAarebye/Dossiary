@@ -2958,8 +2958,8 @@ this repo's git tags.
   from two languages to six changed that check's loop bound, not its
   underlying logic.
   **Armenian (`hy`) is the seventh language**, translated independently
-  (not derived from another block) and checked by a native speaker through
-  a review page before release. It auto-detects from a bare `hy` or any
+  (not derived from another block) and shipped in v1.49.0 before a native
+  speaker's review; corrections from that review page follow in an update. It auto-detects from a bare `hy` or any
   `hy-*` locale, formats dates with `hy-AM`, and adds Tesseract's `hye` to
   the OCR language lists (`ocrLangArmenian`). `test_i18n_coverage.py` also
   checks that every translation keeps exactly English's `{placeholders}`.
