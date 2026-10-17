@@ -700,9 +700,10 @@ this repo's git tags.
   save like typed values, the same as the date preset. **Deliberately
   conservative parsing**: the first plausible date in the text (ISO,
   `dd.mm.yyyy`/`yy`, `dd/mm/yyyy` -- day-first unless a part is > 12 or the
-  UI language is English -- and de/en/fr/es month names, impossible dates
+  UI language is English -- and de/en/fr/es/hy month names (Armenian also in its official
+  `2026 թ. հոկտեմբերի 17` order), impossible dates
   skipped); an amount only from a line naming a total ("Gesamt", "Summe",
-  "Total", "Betrag", "Amount due", ... or the line after it, since OCR
+  "Total", "Betrag", "Amount due", "Ընդամենը", ... or the line after it, since OCR
   often splits label and figure), the largest such figure, with
   `1.234,56`/`1,234.56` both understood; the currency from that figure or
   the text, written the way the library already writes it (`€` vs `EUR`,
@@ -4148,7 +4149,7 @@ this repo's git tags.
   files already in that folder, which are never overwritten -- numbered
   " (2)"), plus an optional `index.csv` of the details: the fixed columns,
   Amount/Currency/Payment method, and every other custom field present in
-  the export. The CSV separator follows the UI language (`;` for de/fr/es,
+  the export. The CSV separator follows the UI language (`;` for de/fr/es/hy,
   whose spreadsheets use a decimal comma, `,` otherwise) and starts with a
   BOM so spreadsheets read it as UTF-8. **Read-only for the library**, and
   `isInsideLibrary()` (`isSameEntry()` / `resolve()`) refuses the library

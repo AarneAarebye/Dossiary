@@ -62,6 +62,10 @@ PARSER_CASES = [
     ("Impossible dates are skipped", "31.02.2026 then 01.03.2026", {"date": "2026-03-01", "amount": None, "currency": None}),
     ("Slash date with day > 12 is day-first", "14/03/2026", {"date": "2026-03-14", "amount": None, "currency": None}),
     ("Nothing useful", "Hello World", {"date": None, "amount": None, "currency": None}),
+    ("Armenian date, day month year", "Ամսաթիվ՝ 17 հոկտեմբերի 2026 թ.", {"date": "2026-10-17", "amount": None, "currency": None}),
+    ("Armenian date, official order", "Երևան, 2026 թ. հոկտեմբերի 5", {"date": "2026-10-05", "amount": None, "currency": None}),
+    ("Armenian total in dram", "Ապրանք 2000,00\nԸնդամենը 12500,00 ֏", {"date": None, "amount": "12500.00", "currency": "AMD"}),
+    ("Armenian total with AMD", "Վճարման ենթակա գումար\n3450,50 AMD", {"date": None, "amount": "3450.50", "currency": "AMD"}),
 ]
 
 async def route_stub(page):
