@@ -4,7 +4,7 @@
 測試配置？請查閱 [README.md](README.md)（英文）或 [README.de.md](README.de.md)
 （德文）。本指南刻意保持非技術性。*
 
-*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [Ce guide en français](USER_GUIDE.fr.md) · [简体中文版](USER_GUIDE.zh-Hans.md)*
+*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [Ce guide en français](USER_GUIDE.fr.md) · [简体中文版](USER_GUIDE.zh-Hans.md) · [Այս ուղեցույցը հայերեն](USER_GUIDE.hy.md)*
 
 ## Dossiary 是什麼？
 

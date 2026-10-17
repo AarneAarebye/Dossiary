@@ -6,7 +6,7 @@ migration, la configuration des tests ? Consultez [README.md](README.md)
 (en anglais) ou [README.de.md](README.de.md) (en allemand). Ce guide est
 délibérément non technique.*
 
-*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [简体中文版](USER_GUIDE.zh-Hans.md) · [繁體中文版](USER_GUIDE.zh-Hant.md)*
+*[This guide in English](USER_GUIDE.md) · [Diese Anleitung auf Deutsch](USER_GUIDE.de.md) · [Esta guía en español](USER_GUIDE.es.md) · [简体中文版](USER_GUIDE.zh-Hans.md) · [繁體中文版](USER_GUIDE.zh-Hant.md) · [Այս ուղեցույցը հայերեն](USER_GUIDE.hy.md)*
 
 ## Qu'est-ce que Dossiary ?
 

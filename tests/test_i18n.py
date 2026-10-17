@@ -797,6 +797,9 @@ async def main():
               hy_lang_value_30 == "hy" and hy_title_30 == "Գրադարան բացված չէ")
         print("Scenario 30 -- empty-state title is in Armenian script:",
               any('\u0531' <= ch <= '\u058F' for ch in hy_title_30))
+        hy_guide_href_30 = await page30.locator('#user-guide-link').get_attribute('href')
+        print("Scenario 30 -- footer User Guide link points at the Armenian guide:",
+              hy_guide_href_30.endswith('/USER_GUIDE.hy.md'))
         await page30.select_option('#lang-select', 'en')
         await page30.wait_for_timeout(150)
         en_title_30 = await page30.locator('#empty-state h2').inner_text()

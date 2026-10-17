@@ -38,9 +38,10 @@ USER_GUIDE.fr.md         French translation of USER_GUIDE.md
 USER_GUIDE.zh-Hans.md    Simplified Chinese translation of USER_GUIDE.md
 USER_GUIDE.zh-Hant.md    Traditional Chinese translation of USER_GUIDE.md,
                           derived from USER_GUIDE.zh-Hans.md via OpenCC
+USER_GUIDE.hy.md         Armenian translation of USER_GUIDE.md
 docs/user-guide/         Screenshots for each USER_GUIDE.<lang>.md, one
                           subfolder per language (en/, de/, es/, fr/,
-                          zh-Hans/, zh-Hant/), plus capture.py and the
+                          zh-Hans/, zh-Hant/, hy/), plus capture.py and the
                           fabricated demo/ images it captures from -- see
                           that section's own note below
 MIGRATION.md             Migrating from Mariner Paperless, linked from README.md
@@ -120,7 +121,7 @@ names); hide `.scanline` so the sweeping line doesn't cross controls;
 blank `#status` for shots whose last status message doesn't retranslate;
 and switch language via `#lang-select`'s `change` event between shots,
 reopening any modal afterward, since the language switch is blocked while
-a modal is open. **The English guide has 12 images, the five translated
+a modal is open. **The English guide has 12 images, the six translated
 guides 9, with their own numbering** (`02-table`, `03-capture-blank`, …,
 `09-reports` — no empty-folder, library-ready, or collections images),
 so a capture has to be saved under each guide's own filenames, not
@@ -142,7 +143,7 @@ new-library form, adds Amount/Currency to the three demo types via
 `__DEBUG_dbRun()` and reopens the library, captures the three fabricated
 demo documents from `docs/user-guide/demo/` with real OCR, stages the
 inbox scan by writing into OPFS, and saves every shot under that guide's
-own filenames. `python3 docs/user-guide/capture.py all` rewrites all 57
+own filenames. `python3 docs/user-guide/capture.py all` rewrites all 66
 images; pass `en,de` to limit languages, or an output folder to review
 first. Bump `APP_VERSION` before capturing for a release, since the
 footer shows it.
@@ -161,7 +162,7 @@ it safely could between, say, two regional variants of the same script.
 **The footer's own "User Guide" link (`#user-guide-link`,
 `updateUserGuideLink()`) resolves to a per-language file via a second,
 deliberately separate array — `USER_GUIDE_LANGS`, currently `['de', 'es',
-'fr', 'zh-Hans', 'zh-Hant']`** — not `SUPPORTED_LANGS` itself.
+'fr', 'zh-Hans', 'zh-Hant', 'hy']`** — not `SUPPORTED_LANGS` itself.
 `userGuideUrl()` appends `.${currentLang}` to the linked filename only
 when `currentLang` is in `USER_GUIDE_LANGS`; otherwise the link points at
 plain `USER_GUIDE.md` (English, suffix-less, matching the file-naming
