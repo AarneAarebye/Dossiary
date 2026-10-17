@@ -77,4 +77,22 @@ assert not any_keyset_mismatch, "one or more languages have a key set that doesn
 
 unused_en_only = en_keys - referenced_keys
 print("Keys defined in STRINGS.en but never referenced (informational only):", sorted(unused_en_only))
+# Every translation must keep exactly the {placeholders} of the English text:
+# a dropped {count} would otherwise only show up as a wrong message at runtime.
+value_re = re.compile(r'''(?:^|[{,])\s*(\w+):\s*(['"])((?:\\.|(?!\2).)*)\2''', re.MULTILINE)
+placeholder_re = re.compile(r'\{(\w+)\}')
+lang_values = {}
+for m in lang_block_re.finditer(strings_body):
+    code = m.group(1) or m.group(2)
+    lang_values[code] = {k: set(placeholder_re.findall(v)) for k, _, v in value_re.findall(m.group(3))}
+placeholder_problems = []
+for code, values in sorted(lang_values.items()):
+    if code == 'en':
+        continue
+    for key, english in lang_values['en'].items():
+        if key in values and values[key] != english:
+            placeholder_problems.append(f"STRINGS.{code}.{key}: {sorted(values[key])} vs English {sorted(english)}")
+for problem in placeholder_problems:
+    print("Placeholder mismatch:", problem)
+assert not placeholder_problems, f"{len(placeholder_problems)} translation(s) don't keep the English placeholders"
 print("PASS")
