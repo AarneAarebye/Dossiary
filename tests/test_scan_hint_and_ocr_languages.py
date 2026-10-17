@@ -7,7 +7,7 @@ APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ si
 import asyncio
 from playwright.async_api import async_playwright
 
-EXPECTED_LANG_VALUES = ['eng+deu', 'deu', 'eng', 'fra', 'spa', 'chi_sim', 'chi_tra']
+EXPECTED_LANG_VALUES = ['eng+deu', 'deu', 'eng', 'fra', 'spa', 'chi_sim', 'chi_tra', 'hye']
 
 async def main():
     async with async_playwright() as p:

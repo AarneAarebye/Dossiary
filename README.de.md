@@ -65,10 +65,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   clientseitiger OCR über [Tesseract.js](https://github.com/naptha/tesseract.js),
   die vollständig im Browser läuft. Sprachoptionen: Deutsch, Englisch, oder
   beide automatisch erkannt zusammen, außerdem einzeln Französisch,
-  Spanisch, Chinesisch (Vereinfacht) und Chinesisch (Traditionell /
+  Spanisch, Chinesisch (Vereinfacht), Chinesisch (Traditionell /
   Kantonesisch — Tesseract hat kein eigenes Modell für Kantonesisch, da
   kantonesischer Text mit derselben traditionellen Schrift geschrieben
-  wird). Bei JPEG/PNG-Bildern sowie bei gescannten PDFs ohne eigene
+  wird) und Armenisch. Bei JPEG/PNG-Bildern sowie bei gescannten PDFs ohne eigene
   echte Textebene wird zusätzlich ein **durchsuchbares PDF**
   erzeugt — das Bild mit einer unsichtbaren, markierbaren Textebene über
   jedem erkannten Wort (dieselbe „Sandwich“-Technik, die auch Tools wie
@@ -624,10 +624,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   prüfen, zu korrigieren oder zu löschen. Er erscheint nur dann nicht
   mehr, wenn er einmal gelöscht wurde, oder wenn Sie den Dokumenttyp auf
   etwas ändern, das ihn nicht enthält, und ihn dabei nicht anfassen.
-- **Sechs Oberflächensprachen** — die gesamte Benutzeroberfläche
+- **Sieben Oberflächensprachen** — die gesamte Benutzeroberfläche
   (nicht nur OCR — siehe „Erfassen" oben) gibt es auf Englisch, Deutsch,
-  Spanisch, Französisch, Chinesisch (vereinfacht) und Chinesisch
-  (traditionell), auswählbar über das Sprachmenü in der Fußzeile; sie startet
+  Spanisch, Französisch, Chinesisch (vereinfacht), Chinesisch
+  (traditionell) und Armenisch (Հայերեն), auswählbar über das Sprachmenü in der Fußzeile; sie startet
   passend zur Sprache Ihres Browsers und merkt sich danach Ihre Wahl.
 
 ## Erste Schritte

@@ -436,7 +436,7 @@ async def main():
         print("Scenario 20 -- Reports breakdown dropdown's fixed options translated:", breakdown_options[:3] == ["Kategorie", "Typ", "Personen"])
 
         ocr_lang_de = ["Automatisch (Deutsch + Englisch)", "Nur Deutsch", "Nur Englisch", "Nur Französisch",
-                        "Nur Spanisch", "Nur Chinesisch (Vereinfacht)", "Nur Chinesisch (Traditionell / Kantonesisch)"]
+                        "Nur Spanisch", "Nur Chinesisch (Vereinfacht)", "Nur Chinesisch (Traditionell / Kantonesisch)", "Armenisch"]
         await page3.click('#add-btn')
         await page3.wait_for_timeout(200)
         capture_ocr_lang_options = await page3.locator('#ocr-lang option').all_inner_texts()
@@ -691,7 +691,7 @@ async def main():
         # array in order, checking all rules per locale) with an explicit 'en' rule,
         # so 'en-us' -- the user's own first preference -- matches before 'zh-cn'/
         # 'zh' are ever consulted. This also doubles as a dropdown-contents check
-        # (item 6): the six SUPPORTED_LANGS option values and native names, not just
+        # (item 6): the seven SUPPORTED_LANGS option values and native names, not just
         # the currently-selected value every other scenario above checks ===
         page28 = await browser.new_page()
         await page28.add_init_script("""
@@ -710,8 +710,10 @@ async def main():
               en_title_28 == "No library open" and en_lang_value_28 == "en")
         lang_option_values_28 = await page28.eval_on_selector_all('#lang-select option', 'els => els.map(e => e.value)')
         lang_option_labels_28 = await page28.locator('#lang-select option').all_inner_texts()
-        print("Scenario 28 -- #lang-select has exactly the six expected language codes:",
-              lang_option_values_28 == ['en', 'de', 'es', 'fr', 'zh-Hans', 'zh-Hant'])
+        print("Scenario 28 -- #lang-select has exactly the seven expected language codes:",
+              lang_option_values_28 == ['en', 'de', 'es', 'fr', 'zh-Hans', 'zh-Hant', 'hy'])
+        print("Scenario 28 -- dropdown labels include the native Armenian name (Հայերեն):",
+              'Հայերեն' in lang_option_labels_28)
         print("Scenario 28 -- dropdown labels include the native Simplified Chinese name (简体中文):",
               '简体中文' in lang_option_labels_28)
         await page28.close()
@@ -774,6 +776,43 @@ async def main():
         print("Scenario 29 -- an edit-save status message also re-renders correctly after a language switch:",
               "gespeichert" in status_saved_de)
         await page29.close()
+
+        # === Scenario 30: an Armenian browser (navigator.languages = ['hy-AM',
+        # 'en']) starts in Armenian -- the start screen is in Armenian script, the
+        # OCR language lists offer Armenian -- and switching back to English works. ===
+        page30 = await browser.new_page()
+        await page30.add_init_script("""
+            Object.defineProperty(navigator, 'language', { get: () => 'hy-AM' });
+            Object.defineProperty(navigator, 'languages', { get: () => ['hy-AM', 'en'] });
+        """)
+        await page30.route('**/*', lambda route: route.fulfill(body="/* stubbed */", content_type='application/javascript')
+                          if any(s in route.request.url for s in ('sql-wasm.js', 'tesseract', 'jspdf', 'pdf.js'))
+                          else route.continue_())
+        await page30.add_init_script(stub_js)
+        await page30.goto(f"file://{APP_PATH}")
+        await page30.wait_for_timeout(200)
+        hy_title_30 = await page30.locator('#empty-state h2').inner_text()
+        hy_lang_value_30 = await page30.locator('#lang-select').input_value()
+        print("Scenario 30 -- hy-AM browser locale auto-detects Armenian:",
+              hy_lang_value_30 == "hy" and hy_title_30 == "Գրադարան բացված չէ")
+        print("Scenario 30 -- empty-state title is in Armenian script:",
+              any('\u0531' <= ch <= '\u058F' for ch in hy_title_30))
+        await page30.select_option('#lang-select', 'en')
+        await page30.wait_for_timeout(150)
+        en_title_30 = await page30.locator('#empty-state h2').inner_text()
+        print("Scenario 30 -- switching from Armenian back to English works:", en_title_30 == "No library open")
+        await page30.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
+        await page30.click("#open-btn")
+        await page30.wait_for_timeout(300)
+        await page30.select_option('#lang-select', 'hy')
+        await page30.wait_for_timeout(150)
+        await page30.click('#add-btn')
+        await page30.wait_for_timeout(200)
+        ocr_values_30 = await page30.eval_on_selector_all('#ocr-lang option', 'els => els.map(e => e.value)')
+        ocr_labels_30 = await page30.locator('#ocr-lang option').all_inner_texts()
+        print("Scenario 30 -- capture form offers Armenian OCR (hye):",
+              'hye' in ocr_values_30 and 'Հայերեն' in ocr_labels_30)
+        await page30.close()
 
         print("JS ERRORS:", errors)
         await browser.close()

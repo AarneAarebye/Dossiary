@@ -54,10 +54,10 @@ working" problem that motivated this project in the first place.
 - **Capture** — add a new document (PDF or image), with client-side OCR via
   [Tesseract.js](https://github.com/naptha/tesseract.js) running entirely in
   your browser. Language options: German, English, or both auto-detected
-  together, plus single-language French, Spanish, Chinese (Simplified), and
+  together, plus single-language French, Spanish, Chinese (Simplified),
   Chinese (Traditional / Cantonese — Tesseract has no separate Cantonese
   model, since Cantonese text is written with the same traditional-character
-  script). For JPEG/PNG images, and for scanned PDFs with no real text
+  script), and Armenian. For JPEG/PNG images, and for scanned PDFs with no real text
   layer of their own, this also builds a **searchable PDF** — the
   image with an invisible, selectable text layer positioned over each
   recognized word (the same "sandwich" technique tools like `ocrmypdf`
@@ -528,9 +528,9 @@ working" problem that motivated this project in the first place.
   have the chance to review, fix, or clear it. It just won't appear again
   once cleared, or once you change the document's type to something that
   doesn't include it and don't touch it.
-- **Six interface languages** — the whole UI (not just OCR — see
+- **Seven interface languages** — the whole UI (not just OCR — see
   "Capture" above) is available in English, German, Spanish, French,
-  Chinese (Simplified), and Chinese (Traditional), picked from the
+  Chinese (Simplified), Chinese (Traditional), and Armenian (Հայերեն), picked from the
   language menu in the footer; it starts by matching your browser's own
   language and remembers whichever you pick from then on.
 

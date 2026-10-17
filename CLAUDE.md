@@ -2705,10 +2705,10 @@ this repo's git tags.
   browser's IndexedDB would silently strip our fake `FileSystemDirectoryHandle`
   class down to a plain data object, unlike what happens to a *real* handle.
 - **UI language support (started as English/German, later generalized to
-  six languages — English, German, Spanish, French, Chinese Simplified,
-  Chinese Traditional)** is a flat per-language dictionary (`STRINGS.en` /
+  seven languages — English, German, Spanish, French, Chinese Simplified,
+  Chinese Traditional, Armenian)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']`, 719 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']` / `STRINGS.hy`, 720 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -2937,8 +2937,8 @@ this repo's git tags.
   the failure mode (a flood of *fake* missing-key reports burying any
   *real* one) is the opposite of the usual silent-gap risk this kind of
   check exists to catch.
-  **Generalized from two languages to six** (`SUPPORTED_LANGS = ['en', 'de',
-  'es', 'fr', 'zh-Hans', 'zh-Hant']`, plus `NATIVE_LANG_NAMES` — each code's
+  **Generalized from two languages to six, later seven** (`SUPPORTED_LANGS = ['en', 'de',
+  'es', 'fr', 'zh-Hans', 'zh-Hant', 'hy']`, plus `NATIVE_LANG_NAMES` — each code's
   own name for itself, `简体中文`/`繁體中文` etc., deliberately never run
   through `t()`, since a language's name for itself in its own script is
   what belongs in a language picker no matter which language is currently
@@ -2946,7 +2946,8 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six (719 keys apiece now, not ~260), and
+  grew from two top-level keys to six, then seven (720 keys apiece now,
+  not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
   hardcoded to specifically `en`/`de` in the first place.
@@ -2954,8 +2955,14 @@ this repo's git tags.
   way now, rather than a hardcoded `STRINGS.en`/`STRINGS.de` pair — going
   from two languages to six changed that check's loop bound, not its
   underlying logic.
+  **Armenian (`hy`) is the seventh language**, translated independently
+  (not derived from another block) and checked by a native speaker through
+  a review page before release. It auto-detects from a bare `hy` or any
+  `hy-*` locale, formats dates with `hy-AM`, and adds Tesseract's `hye` to
+  the OCR language lists (`ocrLangArmenian`). `test_i18n_coverage.py` also
+  checks that every translation keeps exactly English's `{placeholders}`.
   **The old `EN | DE` two-state `#lang-toggle` button was replaced by a
-  `<select id="lang-select">`** listing all six languages via
+  `<select id="lang-select">`** listing all seven languages via
   `NATIVE_LANG_NAMES`, since a two-state toggle has no way to generalize
   past two options. `setLang(lang)` itself didn't change — same
   signature, same conditional follow-up calls described above — only the

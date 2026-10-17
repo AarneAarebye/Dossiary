@@ -316,13 +316,15 @@ the case that motivated making `loadLang()` locale-major instead of
 rule-major — `navigator.languages = ['en-US', 'zh-CN', 'zh']` (English
 first, Chinese as a secondary input language) correctly resolving to
 English rather than Chinese — which doubles as a check of `#lang-select`'s
-full option list, not just its currently-selected value: exactly the six
-expected language codes, with native names (e.g. `简体中文`) rendering
-correctly. Also a static i18n key-coverage check (`test_i18n_coverage.py` — no Playwright,
+full option list, not just its currently-selected value: exactly the seven
+expected language codes, with native names (e.g. `简体中文`, `Հայերեն`) rendering
+correctly; Scenario 30 checks an `hy-AM` browser starting in Armenian, switching
+back to English, and the capture form offering Armenian OCR (`hye`). Also a static i18n key-coverage check (`test_i18n_coverage.py` — no Playwright,
 just a grep-based Python script confirming every `data-i18n`/
 `data-i18n-placeholder`/`data-i18n-title`/`data-i18n-aria-label`
 attribute value and every `t('key')` call argument in `dossiary.html`
-exists in every one of the six languages' own `STRINGS` block — looped
+exists in every one of the seven languages' own `STRINGS` block (and that
+each translation keeps exactly English's `{placeholders}`) — looped
 over `SUPPORTED_LANGS` itself (parsed straight out of `dossiary.html`,
 not hardcoded), so a language added to the dropdown without a matching
 `STRINGS` block fails this check loudly instead of silently crashing the
