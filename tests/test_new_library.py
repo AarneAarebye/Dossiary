@@ -53,7 +53,7 @@ async def main():
         await page.fill('#new-library-name', 'Tax/2026')
         await page.click('#create-library-btn')
         await page.wait_for_timeout(200)
-        print("A name with a slash is refused:", 'without' in await page.inner_text('#new-library-error'))
+        print("A name with a slash is refused:", 'none of these characters' in await page.inner_text('#new-library-error'))
         await page.evaluate("async () => { await window.__TEST_ROOT.getDirectoryHandle('Taken.dossiary', { create: true }); }")
         await page.fill('#new-library-name', 'Taken')
         await page.click('#create-library-btn')

@@ -432,11 +432,11 @@ async def scenario_scan_v1(p):
     # Not JSON / no files array: a bad answer, nothing added.
     await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{status: 200, raw: 'not valid json'}}]")
     await start_scan(page)
-    print("a non-JSON answer is reported:", "doesn't understand" in await page.inner_text('#scan-dialog-status'))
+    print("a non-JSON answer is reported:", "doesn’t understand" in await page.inner_text('#scan-dialog-status'))
     await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{status: 200, body: {{ok: true, partial: false, message: 'x', output_paths: []}}}}]")
     await start_scan(page)
     print("an ok answer without files is reported, nothing added:",
-          "doesn't understand" in await page.inner_text('#scan-dialog-status') and len((await db_state(page))['documents']) == 6)
+          "doesn’t understand" in await page.inner_text('#scan-dialog-status') and len((await db_state(page))['documents']) == 6)
 
     # While a scan runs: button reads Scanning…, toolbar buttons disabled, Escape/close/backdrop blocked.
     await page.evaluate(f"window.__HELPERS['{L1}'].scanResponses = [{{delayMs: 2300, status: 200, body: {{ok: false, partial: false, message: 'slow fail'}}}}]")

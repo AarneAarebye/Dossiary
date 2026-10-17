@@ -736,7 +736,7 @@ async def main_errors():
         print("...shown as an error:", 'err' in cls and 'Could not be processed: 2.' in status, repr(status))
         await page.evaluate("window.__STUB_OCR_NO_WORDS = true;")
         status, cls, failed, notext = await run_bulk([2, 6])
-        print("No text found is counted apart, with the language hint:", 'No text found, try another OCR language: 2.' in status and 'Could not be processed' not in status, repr(status))
+        print("No text found is counted apart, with the language hint:", 'No text found: 2. Try another OCR language.' in status and 'Could not be processed' not in status, repr(status))
         print("...documents listed on their own, not as failures:", sorted(notext) == ['Blank', 'Scanned PDF'] and failed == [], notext, failed)
         print("...and not shown as an error:", cls.strip() == 'status', cls)
         await select(2)

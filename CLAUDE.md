@@ -2548,7 +2548,7 @@ this repo's git tags.
   Combine use it. **"OCR found no text" isn't a failure**: OCR ran and
   recognized nothing (blank page, photo, handwriting, wrong language). A
   single run shows it in the neutral status colour; the bulk summary counts
-  it on its own ("No text found, try another OCR language: N"), lists those
+  it on its own ("No text found: N. Try another OCR language."), lists those
   documents apart from real failures (`#make-searchable-notext-list`), and
   they stay eligible for a retry.
   **`has_text_layer`** (`documents.has_text_layer`, `0`/`1`, added via
