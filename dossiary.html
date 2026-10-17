@@ -3766,7 +3766,12 @@
   function setStatusT(key, params, kind){ setStatusLive(() => t(key, params), kind); }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function nowIso(){ return new Date().toISOString(); }
-  function todayIsoDate(){ return nowIso().slice(0, 10); } // YYYY-MM-DD, matches <input type="date">
+  // YYYY-MM-DD in the person's own timezone (matches <input type="date">); the
+  // UTC day from nowIso() is yesterday or tomorrow near midnight.
+  function todayIsoDate(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
 
   function addDaysToIsoDate(iso, days){
     const d = new Date(iso + 'T00:00:00Z');

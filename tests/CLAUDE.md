@@ -1188,7 +1188,9 @@ never by file name. This list maps each of them to what it checks:
   - `test_subcategory.py` -- subcategory shown in the row, the panel and
     the sidecar, persisted, and found by search.
   - `test_date_preset.py` -- the capture date's "today" guess: amber
-    styling and hint, both cleared on the first edit, the value saved.
+    styling and hint, both cleared on the first edit, the value saved; and
+    "today" being the local day, not the UTC one (just after midnight in
+    Berlin, in the evening in Los Angeles, via a fixed clock and timezone).
   - `test_date_picker_color_scheme.py` -- both date inputs have
     `color-scheme: dark`, so the picker icon is visible.
   - `test_extensionless_file.py` -- a file with no extension saves through

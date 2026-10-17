@@ -659,8 +659,9 @@ this repo's git tags.
   generalized from `renderPeopleFieldHtml()`. Like any other dynamic field,
   a given person-type field may not exist in the DOM at all if it isn't
   configured for the current type.
-- **The capture form's date field is preset to today (`todayIsoDate()`),
-  but only in the capture form** — not the edit form, which correctly
+- **The capture form's date field is preset to today (`todayIsoDate()`,
+  the local day -- it used the UTC day until v1.49, so just after midnight
+  in Europe it pre-filled yesterday), but only in the capture form** — not the edit form, which correctly
   pre-fills with the document's own existing date, a real value, not a
   guess. The preset is intentionally visually flagged (`.field-guess`
   class + `#f-date-hint`), cleared on the field's first `input` event,

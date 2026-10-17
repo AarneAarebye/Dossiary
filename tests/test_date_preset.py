@@ -73,6 +73,32 @@ async def main():
         """)
         print("saved date value:", persisted['documents'][0]['date'])
 
+        # "Today" is the local date, not the UTC one: just after midnight in
+        # Berlin it's still yesterday in UTC, and in the evening in Los Angeles
+        # it's already tomorrow in UTC.
+        for tz, instant, expected in [
+            ('Europe/Berlin', '2026-10-17T22:30:00Z', '2026-10-18'),
+            ('America/Los_Angeles', '2026-10-18T03:30:00Z', '2026-10-17'),
+        ]:
+            ctx = await browser.new_context(timezone_id=tz)
+            tpage = await ctx.new_page()
+            tpage.on("pageerror", lambda exc: errors.append(str(exc)))
+            await tpage.clock.set_fixed_time(datetime.datetime.fromisoformat(instant.replace('Z', '+00:00')))
+            await tpage.route('**/*', route_handler)
+            await tpage.add_init_script(stub_js)
+            await tpage.goto(f"file://{APP_PATH}")
+            await tpage.wait_for_timeout(200)
+            await tpage.evaluate("window.__TEST_ROOT = window.__makeEmptyRoot();")
+            await tpage.click("#open-btn")
+            await tpage.wait_for_timeout(200)
+            await tpage.click("#init-btn")
+            await tpage.wait_for_timeout(200)
+            await tpage.click('#add-btn')
+            await tpage.wait_for_timeout(100)
+            got = await tpage.locator('#f-date').input_value()
+            print(f"preset date at {instant} in {tz} is the local day {expected}:", got == expected, got)
+            await ctx.close()
+
         print("JS ERRORS:", errors)
         await browser.close()
 
