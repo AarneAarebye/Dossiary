@@ -50,7 +50,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (100 scripts) + shared
+tests/                   Playwright regression suite (101 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -808,6 +808,26 @@ this repo's git tags.
   configured fields when "Add document" opens
   (`applyDynamicFieldsForType('f', defaultDocumentType || '')` instead of
   always starting blank).
+- **"Set up fields for this type…" in the capture and Edit forms**
+  (`#f-type-fields-btn`/`#e-type-fields-btn`, under Document Type) opens
+  Field Settings *above* the form rather than replacing it:
+  `openFieldSettingsModal({selectType, onClose})` renders into a second
+  layer, `#modal-root-over` (`modalOverRoot`), with its own
+  `fs-modal-backdrop`/`fs-modal-close-btn` ids since the form underneath
+  keeps `modal-backdrop`/`modal-close-btn`. The typed type is preselected and
+  listed even when no document has it yet (`fsExtraType`,
+  `fieldSettingsTypes()`), which the Tools-menu entry can't do for a
+  brand-new type. Escape is caught in the capture phase
+  (`stackedFieldSettingsKeydown`) so it closes only this layer (a field
+  rename input still handles its own Escape first); `closeModal()` clears
+  the layer without rebuilding anything. Closing runs the form's own
+  rebuild through `rebuildDynamicFieldsKeepingInput()`: it snapshots every
+  dynamic input by field id, rebuilds, and puts typed values back -- a guess
+  stays a guess with its note, except the default-currency guess, which
+  takes the rebuild's value since the default may just have changed. A field
+  the new setup drops disappears (Edit still shows it as orphaned if the
+  document has a saved value, with the typed value). Opened from the Tools
+  menu, Field Settings behaves exactly as before.
 - **Creating a brand new custom field happens inline in the capture/edit
   forms** (`addInlineCustomField()`, `updateAddFieldVisibility()`,
   `wireAddFieldControls()`) — a "+ Add a custom field" toggle below the

@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **100
-scripts covering most of the app's actual functionality** (97 of them
+There's a real, runnable Playwright regression suite in `tests/` — **101
+scripts covering most of the app's actual functionality** (98 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1229,6 +1229,15 @@ never by file name. This list maps each of them to what it checks:
   - `test_field_settings.py` -- the Field Settings dialog: document
     types, available vs. displayed fields, adding a field to a type and
     persisting it.
+  - `test_fields_from_form.py` -- "Set up fields for this type…" in both
+    forms: Field Settings opening above the form with its type selected (a
+    brand-new type too), Done/Escape/backdrop/✕ closing only that layer, the
+    added fields appearing with typed values (title, field values, a ticked
+    checkbox) kept, an orphaned field keeping its typed value, the new type's
+    setup saved; the default-currency guess following a changed default
+    while a typed currency stays; Escape in a rename cancelling only the
+    rename; the Tools entry unchanged; the German label. Confirmed
+    non-vacuous by disabling the restore step.
   - `test_field_autocomplete_default.py` -- the one-time migration
     switching autocomplete on for existing text fields (and its marker),
     new text fields defaulting to it, number fields not, and switching it

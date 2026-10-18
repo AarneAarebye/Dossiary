@@ -1050,6 +1050,7 @@
   </div>
 
   <div id="modal-root"></div>
+  <div id="modal-root-over"></div>
 
   <div id="drop-overlay" class="drop-overlay" style="display:none;">
     <div class="drop-overlay-box" data-i18n="dragdropOverlayText">Drop to add for review</div>
@@ -1264,7 +1265,7 @@
       bulkEditModalTitleSingular: 'Edit {count} document', bulkEditModalTitlePlural: 'Edit {count} documents',
       bulkEditSavedStatusSingular: 'Updated {count} document.', bulkEditSavedStatusPlural: 'Updated {count} documents.',
       editTitle: 'Edit document', editDocTypeLabel: 'Document type', editDocTypePlaceholder: 'Determines which fields show below',
-      editDocTypeHint: "Not in the list? Type a new one — it'll be created.", editTitleLabel: 'Title', editDateLabel: 'Date',
+      formTypeFieldsLink: 'Set up fields for this type…', editDocTypeHint: "Not in the list? Type a new one — it'll be created.", editTitleLabel: 'Title', editDateLabel: 'Date',
       editCategoryLabel: 'Category', editSubcategoryLabel: 'Subcategory',
       editSubcategoryPlaceholder: 'Independent of category, not a child of it',
       editOcrTextLabel: 'OCR / extracted text', editSaveAndDone: 'Save & Done', editSaveChanges: 'Save changes',
@@ -1485,7 +1486,7 @@
       bulkEditModalTitleSingular: 'Editar {count} documento', bulkEditModalTitlePlural: 'Editar {count} documentos',
       bulkEditSavedStatusSingular: 'Se actualizó {count} documento.', bulkEditSavedStatusPlural: 'Se actualizaron {count} documentos.',
       editTitle: 'Editar documento', editDocTypeLabel: 'Tipo de documento', editDocTypePlaceholder: 'Determina qué campos se muestran abajo',
-      editDocTypeHint: '¿No está en la lista? Escribe uno nuevo — se creará.', editTitleLabel: 'Título', editDateLabel: 'Fecha',
+      formTypeFieldsLink: 'Configurar los campos de este tipo…', editDocTypeHint: '¿No está en la lista? Escribe uno nuevo — se creará.', editTitleLabel: 'Título', editDateLabel: 'Fecha',
       editCategoryLabel: 'Categoría', editSubcategoryLabel: 'Subcategoría',
       editSubcategoryPlaceholder: 'Independiente de la categoría, no es una subordinada de ella',
       editOcrTextLabel: 'OCR / texto extraído', editSaveAndDone: 'Guardar y finalizar', editSaveChanges: 'Guardar cambios',
@@ -1706,7 +1707,7 @@
       bulkEditModalTitleSingular: 'Modifier {count} document', bulkEditModalTitlePlural: 'Modifier {count} documents',
       bulkEditSavedStatusSingular: '{count} document mis à jour.', bulkEditSavedStatusPlural: '{count} documents mis à jour.',
       editTitle: 'Modifier le document', editDocTypeLabel: 'Type de document', editDocTypePlaceholder: 'Détermine les champs affichés ci-dessous',
-      editDocTypeHint: "Absent de la liste ? Saisissez-en un nouveau — il sera créé.", editTitleLabel: 'Titre', editDateLabel: 'Date',
+      formTypeFieldsLink: 'Configurer les champs de ce type…', editDocTypeHint: "Absent de la liste ? Saisissez-en un nouveau — il sera créé.", editTitleLabel: 'Titre', editDateLabel: 'Date',
       editCategoryLabel: 'Catégorie', editSubcategoryLabel: 'Sous-catégorie',
       editSubcategoryPlaceholder: "Indépendante de la catégorie, ce n'est pas une subdivision de celle-ci",
       editOcrTextLabel: 'OCR / texte extrait', editSaveAndDone: 'Enregistrer et terminer', editSaveChanges: 'Enregistrer les modifications',
@@ -1927,7 +1928,7 @@
       bulkEditModalTitleSingular: '{count} Dokument bearbeiten', bulkEditModalTitlePlural: '{count} Dokumente bearbeiten',
       bulkEditSavedStatusSingular: '{count} Dokument aktualisiert.', bulkEditSavedStatusPlural: '{count} Dokumente aktualisiert.',
       editTitle: 'Dokument bearbeiten', editDocTypeLabel: 'Dokumenttyp', editDocTypePlaceholder: 'Bestimmt, welche Felder unten angezeigt werden',
-      editDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.', editTitleLabel: 'Titel', editDateLabel: 'Datum',
+      formTypeFieldsLink: 'Felder für diesen Typ einrichten…', editDocTypeHint: 'Nicht in der Liste? Einfach einen neuen Typ eintippen — er wird angelegt.', editTitleLabel: 'Titel', editDateLabel: 'Datum',
       editCategoryLabel: 'Kategorie', editSubcategoryLabel: 'Unterkategorie',
       editSubcategoryPlaceholder: 'Unabhängig von der Kategorie, keine Unterordnung',
       editOcrTextLabel: 'OCR / erkannter Text', editSaveAndDone: 'Speichern & Fertig', editSaveChanges: 'Änderungen speichern',
@@ -2148,7 +2149,7 @@
       bulkEditModalTitleSingular: '编辑 {count} 份文档', bulkEditModalTitlePlural: '编辑 {count} 份文档',
       bulkEditSavedStatusSingular: '已更新 {count} 份文档。', bulkEditSavedStatusPlural: '已更新 {count} 份文档。',
       editTitle: '编辑文档', editDocTypeLabel: '文档类型', editDocTypePlaceholder: '决定下方显示哪些字段',
-      editDocTypeHint: '不在列表中？输入一个新类型即可自动创建。', editTitleLabel: '标题', editDateLabel: '日期',
+      formTypeFieldsLink: '设置此类型的字段…', editDocTypeHint: '不在列表中？输入一个新类型即可自动创建。', editTitleLabel: '标题', editDateLabel: '日期',
       editCategoryLabel: '分类', editSubcategoryLabel: '子分类',
       editSubcategoryPlaceholder: '独立于分类，并非其下级',
       editOcrTextLabel: 'OCR / 提取的文本', editSaveAndDone: '保存并完成', editSaveChanges: '保存更改',
@@ -2470,7 +2471,7 @@
       editTitle: '編輯文檔',
       editDocTypeLabel: '文檔類型',
       editDocTypePlaceholder: '決定下方顯示哪些字段',
-      editDocTypeHint: '不在列表中？輸入一個新類型即可自動創建。',
+      formTypeFieldsLink: '設置此類型的字段…', editDocTypeHint: '不在列表中？輸入一個新類型即可自動創建。',
       editTitleLabel: '標題',
       editDateLabel: '日期',
       editCategoryLabel: '分類',
@@ -3112,7 +3113,7 @@
       editTitle: "Խմբագրել փաստաթուղթը",
       editDocTypeLabel: "Փաստաթղթի տեսակ",
       editDocTypePlaceholder: "Որոշում է, թե ինչ դաշտեր կցուցադրվեն ստորև",
-      editDocTypeHint: "Ցանկում չկա՞։ Մուտքագրեք նորը — այն կստեղծվի։",
+      formTypeFieldsLink: "Կարգավորել այս տեսակի դաշտերը…", editDocTypeHint: "Ցանկում չկա՞։ Մուտքագրեք նորը — այն կստեղծվի։",
       editTitleLabel: "Վերնագիր",
       editDateLabel: "Ամսաթիվ",
       editCategoryLabel: "Կատեգորիա",
@@ -3657,6 +3658,8 @@
   let scanOcrLanguage = 'eng+deu'; // OCR language for scans (scan_ocr_language), an ocrLanguageOptionsHtml() value
   let scanBridgeUrl = null; // base URL of the scanix500 HTTP bridge (e.g. "http://127.0.0.1:8765"), configured per-library; unset no longer blocks either button -- see the scan dialog (openScanDialog()), which looks for helpers on the default ports
   let fsSelectedType = null; // currently selected type inside the Field Settings modal
+  let fsExtraType = null; // a type typed into the form that opened Field Settings, listed even before any document has it
+  let stackedFieldSettingsKeydown = null; // Escape handler while Field Settings sits above a form (modalOverRoot)
 
   // Library check duplicate groups a person marked "Not a duplicate" -- keys from
   // duplicateGroupKey(), loaded by loadNotDuplicateKeys().
@@ -3737,6 +3740,10 @@
   const mainLayout = el('main-layout');
   const appNav = el('app-nav');
   const modalRoot = el('modal-root');
+  // Second modal layer, above modalRoot: Field Settings opened from the capture or
+  // Edit form renders here so the form underneath (and anything typed into it)
+  // stays open. See openFieldSettingsModal()'s onClose option.
+  const modalOverRoot = el('modal-root-over');
 
   // setStatusLive() remembers a function that rebuilds the current status text from
   // t() calls (in lastStatusBuild/lastStatusKind) so setLang() can re-render it in the
@@ -6294,6 +6301,38 @@
   // "+ Add a custom field" only makes sense once a document type is entered -- a
   // custom field is always attached to *some* type, same reasoning as every other
   // dynamic field. Called on modal open and again on every type change/clear.
+  // Rebuilds a form's dynamic fields (after Field Settings changed the type's
+  // setup) without losing what was typed: each field still shown gets back its
+  // value, and a guess stays a guess. A field the setup no longer shows is gone,
+  // unless Edit shows it as orphaned because the document has a saved value.
+  function rebuildDynamicFieldsKeepingInput(prefix, rebuild){
+    const container = el(`dynamic-fields-${prefix}`);
+    if(!container) return;
+    const before = new Map();
+    container.querySelectorAll('[data-field-id]').forEach(fieldEl => {
+      const input = fieldEl.querySelector('input');
+      if(!input) return;
+      const ocrHint = fieldEl.querySelector('.ocr-guess-hint');
+      before.set(fieldEl.dataset.fieldId, {
+        value: input.value, checked: input.checked,
+        guess: input.classList.contains('field-guess'),
+        guessHint: ocrHint && ocrHint.style.display !== 'none' ? ocrHint.textContent : null,
+      });
+    });
+    rebuild();
+    container.querySelectorAll('[data-field-id]').forEach(fieldEl => {
+      const saved = before.get(fieldEl.dataset.fieldId);
+      const input = fieldEl.querySelector('input');
+      if(!saved || !input) return;
+      if(input.type === 'checkbox'){ input.checked = saved.checked; return; }
+      if(saved.guess && !saved.guessHint) return; // the default-currency guess: keep the rebuild's (the default may have just changed)
+      input.value = saved.value;
+      if(saved.guess){ markGuess(input, saved.guessHint); return; }
+      input.classList.remove('field-guess');
+      fieldEl.querySelectorAll('.field-guess-hint').forEach(h => { h.style.display = 'none'; });
+    });
+  }
+
   function updateAddFieldVisibility(prefix){
     const typeInput = el(`${prefix}-type`);
     const wrap = el(`${prefix}-add-field-wrap`);
@@ -8748,6 +8787,7 @@
   // --- detail panel (view existing document) ---
 
   function closeModal(){
+    closeStackedFieldSettings(false);
     modalRoot.innerHTML = '';
     document.removeEventListener('keydown', onModalKeydown);
     // See openDocCollectionMenu's own declaration -- it lives outside modalRoot,
@@ -11035,6 +11075,7 @@
             </div>
             <div class="field-hint">${t('editDocTypeHint')}</div>
             ${fieldDescriptions['Document Type'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Document Type'])}</div>` : ''}
+            <button type="button" class="scan-toggle type-fields-btn" id="e-type-fields-btn">${t('formTypeFieldsLink')}</button>
           </div>
 
           <div class="field-row">
@@ -11156,11 +11197,16 @@
     const suggestFromText = () => { if(d.needs_review) applyOcrSuggestions('e', el('e-ocr-text').value); };
     suggestFromText();
     if(d.needs_review) el('e-title').addEventListener('change', () => applyHistoryAutofill('e', el('e-title').value, d.id));
-    el('e-type').addEventListener('change', () => {
+    const rebuildEditFields = () => {
       applyDynamicFieldsForType('e', el('e-type').value, d.customFields, d.personFieldValues, true, d.id);
       updateAddFieldVisibility('e');
       suggestFromText(); // the rebuild dropped any Amount/Currency guesses
-    });
+    };
+    el('e-type').addEventListener('change', rebuildEditFields);
+    el('e-type-fields-btn').addEventListener('click', () => openFieldSettingsModal({
+      selectType: el('e-type').value.trim(),
+      onClose: () => rebuildDynamicFieldsKeepingInput('e', rebuildEditFields),
+    }));
     wireAddFieldControls('e');
     wireSplitsEditor('e', d);
     wireClearButton('e-type', 'e-type-clear');
@@ -11484,14 +11530,43 @@
 
   // --- field settings modal (manage which fields show per document type, and the default type) ---
 
-  function openFieldSettingsModal(){
-    const usedTypes = getUsedDocumentTypes();
-    fsSelectedType = usedTypes.length ? usedTypes[0] : null;
+  // The types Field Settings lists: every used type, plus the type typed into
+  // the form it was opened from (fsExtraType) -- a brand-new type isn't on any
+  // document or in typeFieldOrder yet, but it's exactly the one being set up.
+  function fieldSettingsTypes(){
+    const used = getUsedDocumentTypes();
+    return fsExtraType && !used.includes(fsExtraType) ? [...used, fsExtraType].sort() : used;
+  }
 
-    modalRoot.innerHTML = `
-      <div class="backdrop" id="modal-backdrop">
+  // Closes Field Settings opened above a form (see openFieldSettingsModal()'s
+  // onClose). runOnClose is false when the form itself is going away too.
+  function closeStackedFieldSettings(runOnClose = true){
+    if(!stackedFieldSettingsKeydown) return;
+    const { handler, onClose } = stackedFieldSettingsKeydown;
+    document.removeEventListener('keydown', handler, true);
+    stackedFieldSettingsKeydown = null;
+    modalOverRoot.innerHTML = '';
+    fsExtraType = null;
+    if(runOnClose) onClose();
+  }
+
+  // opts.selectType preselects a type (listed even if new); opts.onClose makes
+  // this a second layer above the capture/Edit form instead of replacing it --
+  // closing it calls onClose, which rebuilds the form's fields from the new setup.
+  function openFieldSettingsModal(opts = {}){
+    const stacked = typeof opts.onClose === 'function';
+    fsExtraType = stacked && opts.selectType ? opts.selectType : null;
+    const usedTypes = fieldSettingsTypes();
+    fsSelectedType = opts.selectType && usedTypes.includes(opts.selectType) ? opts.selectType : (usedTypes.length ? usedTypes[0] : null);
+    // The form underneath keeps its own modal-backdrop/modal-close-btn ids, so the
+    // stacked copy needs different ones for el() to find it.
+    const backdropId = stacked ? 'fs-modal-backdrop' : 'modal-backdrop';
+    const closeId = stacked ? 'fs-modal-close-btn' : 'modal-close-btn';
+
+    (stacked ? modalOverRoot : modalRoot).innerHTML = `
+      <div class="backdrop" id="${backdropId}">
         <div class="modal wide" role="dialog" aria-modal="true">
-          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <button class="modal-close" id="${closeId}" aria-label="${t('detailCloseAriaLabel')}">✕</button>
           <h2>${t('fieldSettingsTitle')}</h2>
           <div class="fs-settings">
             <section class="fs-group">
@@ -11565,10 +11640,23 @@
         </div>
       </div>
     `;
-    el('modal-close-btn').addEventListener('click', closeModal);
-    el('fs-done-btn').addEventListener('click', closeModal);
-    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
-    document.addEventListener('keydown', onModalKeydown);
+    const close = stacked ? () => closeStackedFieldSettings() : closeModal;
+    el(closeId).addEventListener('click', close);
+    el('fs-done-btn').addEventListener('click', close);
+    el(backdropId).addEventListener('click', (e) => { if(e.target.id === backdropId) close(); });
+    if(stacked){
+      // Capture phase, so Escape closes only this layer and never reaches the
+      // form's own onModalKeydown. A field rename input handles its own Escape.
+      const handler = (e) => {
+        if(e.key !== 'Escape' || (e.target.classList && e.target.classList.contains('fs-rename-input'))) return;
+        e.preventDefault(); e.stopPropagation();
+        closeStackedFieldSettings();
+      };
+      stackedFieldSettingsKeydown = { handler, onClose: opts.onClose };
+      document.addEventListener('keydown', handler, true);
+    }else{
+      document.addEventListener('keydown', onModalKeydown);
+    }
     el('fs-default-type').addEventListener('change', (e) => saveDefaultDocumentType(e.target.value));
     el('fs-default-currency').addEventListener('change', (e) => saveDefaultCurrency(e.target.value));
     el('fs-reminder-lookahead').addEventListener('change', (e) => saveReminderLookaheadDays(e.target.value));
@@ -11663,7 +11751,7 @@
   }
 
   function renderFieldSettingsTypeList(){
-    const usedTypes = getUsedDocumentTypes();
+    const usedTypes = fieldSettingsTypes();
     const listEl = el('fs-type-list');
     if(!usedTypes.length){
       listEl.innerHTML = `<div class="fs-list-empty">${t('fieldSettingsNoDocTypes')}</div>`;
@@ -11899,6 +11987,7 @@
             </div>
             <div class="field-hint">${t('captureDocTypeHint')}</div>
             ${fieldDescriptions['Document Type'] ? `<div class="field-hint">${escapeHtml(fieldDescriptions['Document Type'])}</div>` : ''}
+            <button type="button" class="scan-toggle type-fields-btn" id="f-type-fields-btn">${t('formTypeFieldsLink')}</button>
           </div>
 
           <div class="field-row">
@@ -11986,12 +12075,17 @@
 
     applyDynamicFieldsForType('f', defaultDocumentType || '', undefined, undefined, false, null); // pre-filled default type's fields show immediately, if one is set -- documentId is always null here, there's no document yet to check for a dismissal
     updateAddFieldVisibility('f');
-    el('f-type').addEventListener('change', () => {
+    const rebuildCaptureFields = () => {
       applyDynamicFieldsForType('f', el('f-type').value, undefined, undefined, false, null);
       updateAddFieldVisibility('f');
       // The rebuild dropped any Amount/Currency suggested from OCR text.
       if(el('f-ocr-text').value.trim()) applyOcrSuggestions('f', el('f-ocr-text').value);
-    });
+    };
+    el('f-type').addEventListener('change', rebuildCaptureFields);
+    el('f-type-fields-btn').addEventListener('click', () => openFieldSettingsModal({
+      selectType: el('f-type').value.trim(),
+      onClose: () => rebuildDynamicFieldsKeepingInput('f', rebuildCaptureFields),
+    }));
     el('f-title').addEventListener('change', () => applyHistoryAutofill('f', el('f-title').value, null));
     wireAddFieldControls('f');
     wireSplitsEditor('f', null);
