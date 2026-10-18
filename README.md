@@ -104,6 +104,17 @@ working" problem that motivated this project in the first place.
   opens the same dialog with "split on blank pages" ticked and only shows
   while a scanner that can do that is available. Dossiary remembers the last
   scanner and settings per library.
+
+  The scanner doesn't have to be attached to this computer. An iX500 can
+  hang off a Raspberry Pi running scanix500-server: Dossiary still talks
+  only to the scan helper on its own computer (version 0.3.0 or later),
+  which pairs with the Pi once ("Add network scanner…", then pressing Scan
+  on the iX500) and forwards each scan over HTTPS with a pinned
+  certificate. The PDF comes back as soon as the paper has gone through;
+  the Pi makes it searchable in the background, and the searchable PDF
+  then replaces the scan, with the original kept.
+
+  ![Dossiary talks to the scan helper on localhost; only the helper's hop to scanix500-server on the Raspberry Pi crosses the network. A measured 6-page duplex scan reaches the Inbox after 27 s and is searchable after about 179 s, against 332 s if the Pi recognised the text first.](docs/images/pi-scan-path.svg)
 - **Inbox** — a lightweight amber banner appears on opening a library if its
   `inbox/` folder (at the library root, alongside `library.sqlite` and
   `files/`, and created automatically the same way `files/` is — no manual

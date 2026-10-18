@@ -121,6 +121,17 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   scannen** öffnet denselben Dialog mit „An leeren Seiten trennen“
   angehakt und erscheint nur, solange ein Scanner das kann. Dossiary merkt
   sich den letzten Scanner und seine Einstellungen pro Bibliothek.
+
+  Der Scanner muss nicht an diesem Computer hängen. Ein iX500 kann an
+  einem Raspberry Pi mit scanix500-server angeschlossen sein: Dossiary
+  spricht weiterhin nur mit dem Scan-Helfer auf dem eigenen Computer (ab
+  Version 0.3.0), der sich einmal mit dem Pi koppelt („Add network
+  scanner…“, dann Scan am iX500 drücken) und jeden Scan per HTTPS mit
+  festem Zertifikat weiterleitet. Das PDF kommt zurück, sobald das Papier
+  durch ist; der Pi macht es im Hintergrund durchsuchbar, und das
+  durchsuchbare PDF ersetzt dann den Scan, das Original bleibt erhalten.
+
+  ![Dossiary spricht über localhost mit dem Scan-Helfer; nur dessen Verbindung zu scanix500-server auf dem Raspberry Pi geht über das Netzwerk. Ein gemessener 6-seitiger Duplex-Scan ist nach 27 s im Posteingang und nach etwa 179 s durchsuchbar, statt 332 s, wenn der Pi den Text vorab erkannt hätte.](docs/images/pi-scan-path.de.svg)
 - **Inbox** — ein dezentes gelbes Banner erscheint beim Öffnen einer
   Bibliothek, wenn deren `inbox/`-Ordner (im Bibliotheks-Wurzelverzeichnis,
   neben `library.sqlite` und `files/`, und automatisch angelegt, genau wie
