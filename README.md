@@ -418,10 +418,14 @@ working" problem that motivated this project in the first place.
   available for any real custom field. Mirrors Mariner Paperless's own
   Document Types / Fields / Display Fields screen: pick a type on the
   left, add fields to it from the middle column, reorder or remove them on
-  the right — changes save immediately. Deliberately scoped to document
+  the right — changes save immediately. The type list holds the document
   types already in use (a brand new type comes into existence by typing it
-  into the Add/Edit form, not from this dialog), and to toggling/reordering
-  *existing* custom fields — it doesn't create new ones from scratch (see
+  into the Add/Edit form, not from this dialog). To set up a type you've
+  just typed, use **Set up fields for this type…** under Document Type in
+  the Add/Edit form: it opens this dialog on top of the form with that type
+  selected, and closing it brings you back to the form with the new fields
+  in place and everything you'd typed kept. The dialog is also scoped to
+  toggling/reordering *existing* custom fields — it doesn't create new ones from scratch (see
   below for where that happens instead). Any custom field can be
   **renamed** from the ✎ button next to it in the dialog's Field
   Descriptions list — its values, per-type setup, description, and any

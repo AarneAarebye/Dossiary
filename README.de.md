@@ -491,11 +491,16 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   für jedes echte benutzerdefinierte Feld. Entspricht Mariner Paperless'
   eigenem Bildschirm für Dokumenttypen/Felder/Anzeigefelder: links einen
   Typ wählen, in der mittleren Spalte Felder dazu hinzufügen, rechts
-  umsortieren oder entfernen — Änderungen werden sofort gespeichert.
-  Bewusst beschränkt auf bereits genutzte Dokumenttypen (ein brandneuer
+  umsortieren oder entfernen — Änderungen werden sofort gespeichert. Die
+  Typenliste enthält die bereits genutzten Dokumenttypen (ein brandneuer
   Typ entsteht durch Eintippen im Erfassungs-/Bearbeitungsformular, nicht
-  in diesem Dialog) und auf das Ein-/Ausblenden bzw. Umsortieren
-  *bestehender* benutzerdefinierter Felder — neue werden hier nicht von
+  in diesem Dialog). Für einen gerade eingetippten Typ gibt es unter dem
+  Dokumenttyp im Formular **Felder für diesen Typ einrichten…**: Der Link
+  öffnet diesen Dialog über dem Formular, mit diesem Typ ausgewählt; nach
+  dem Schließen ist man zurück im Formular, mit den neuen Feldern und
+  allem, was schon eingetippt war. Außerdem beschränkt sich der Dialog auf
+  das Ein-/Ausblenden bzw. Umsortieren *bestehender* benutzerdefinierter
+  Felder — neue werden hier nicht von
   Grund auf erstellt (siehe unten, wo das stattdessen geschieht). Jedes
   benutzerdefinierte Feld lässt sich über den ✎-Button in der
   Feldbeschreibungsliste des Dialogs **umbenennen** — seine Werte, die
