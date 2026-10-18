@@ -100,10 +100,25 @@ working" problem that motivated this project in the first place.
   Dossiary finds them by itself on ports 8766 and 8765; a helper on another
   port can be entered in the dialog or in Field Settings. Each browser pairs
   with a helper once: the helper's "Pair a Browser…" shows a 6-digit code to
-  type into the dialog. Scanned pages land in the Inbox. 📸 **Scan Multi**
-  opens the same dialog with "split on blank pages" ticked and only shows
-  while a scanner that can do that is available. Dossiary remembers the last
-  scanner and settings per library.
+  type into the dialog. Scanned pages land in the Inbox. To turn a stack
+  into several documents (Mariner Paperless's Scan Multi), tick "Split the
+  stack at blank sheets" (offered by scanners that can do it, such as the
+  iX500) and put a blank sheet between the documents: a sheet with nothing
+  on either side starts a new document and is left out. Ticking it also ticks "Skip blank
+  pages", which removes the blank backs of one-sided letters, and the scan
+  button then reads "Scan and split". Dossiary remembers the last scanner
+  and settings per library. (There used to be a separate 📸 Scan Multi
+  button for this; since v1.51 it's the checkbox.) What each combination
+  gives, for a stack of one- and two-sided letters scanned two-sided with
+  blank separator sheets (the dialog shows the same table under "What do
+  these options do?"):
+
+  | Split | Skip | Result |
+  |---|---|---|
+  | ✓ | ✓ | One document per letter, blank backs removed |
+  | ✓ | – | One document per letter, blank backs kept |
+  | – | ✓ | One document, all blank pages removed, separator sheets too |
+  | – | – | One document with every page |
 
   The scanner doesn't have to be attached to this computer. An iX500 can
   hang off a Raspberry Pi running scanix500-server: Dossiary still talks
@@ -878,7 +893,7 @@ separate genuinely distinct values.
   — that still requires an explicit in-app click to actually add each file
   as a document, by design.
 
-  The toolbar's "📷 Scan"/"📸 Scan Multi" buttons (see Features above) are
+  The toolbar's "📷 Scan" button (see Features above) is
   the one way Dossiary *does* trigger a real scan -- but only by talking to
   a separate helper app on the same computer, not by gaining any
   scanner-hardware access itself; the underlying platform limitation above

@@ -267,7 +267,7 @@ async def main():
                 const tb = document.querySelector('.toolbar');
                 const ids = ['search', 'category-filter', 'type-filter', 'person-filter',
                              'show-archived-toggle', 'manage-fields-btn', 'manage-collections-btn',
-                             'inbox-check-btn', 'check-reminders-btn', 'scan-btn', 'scan-multi-btn',
+                             'inbox-check-btn', 'check-reminders-btn', 'scan-btn',
                              'add-btn', 'reload-btn', 'columns-btn', 'tools-btn'];
                 const missing = ids.filter(id => !document.getElementById(id));
                 return {

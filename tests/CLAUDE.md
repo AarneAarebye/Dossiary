@@ -852,7 +852,7 @@ shared with its title; German labels), details in exported PDFs (`test_export.py
 copy carries title, subject and keywords with its pages untouched; with the
 option off the copy is byte-identical; a PDF pdf-lib can't open copied
 unchanged and reported), hiding toolbar buttons (`test_toolbar_buttons.py` -- all shown by default;
-the dialog listing the six optional buttons ticked and never Add document
+the dialog listing the five optional buttons ticked and never Add document
 or Tools; unticking hiding them at once and saving the setting; Details
 staying hidden after Reports sets its display; the choice surviving a
 reopen; ticking one again; German labels), line-item splits (`test_splits.py` -- the Edit form's split toggle; a
@@ -1142,9 +1142,13 @@ Escape/close/backdrop blocked); inline pairing for both versions (local
 code check, wrong code, `{code, client}` JSON, token per helper, a 401
 dropping it, two helpers paired at once with the first `/pair` answer held
 back (`pairDelayMs`) still storing both tokens, a legacy bridge scanning
-without a header); and Scan Multi
-shown only while a scanner can split, opening the dialog with split
-ticked, respecting Toolbar buttons…, reset on a library switch. The shared
+without a header); and `scenario_split` for the one Scan button: no Scan
+Multi button and no helper contacted on library open, ticking split
+ticking skip (untickable again), the option's label and its always-visible hint naming Paperless's Scan
+Multi, the folded options table (only with both options; four rows; folds
+again), the "Scan and split" button text following the checkbox, the request's extras, split
+remembered on reopening, Toolbar buttons… without Scan Multi, an old
+hidden `scan-multi` setting harmless, the German button text. The shared
 stub fails every request to another localhost origin unless
 `window.__ALLOW_REAL_HELPERS` is set, which only
 `manual_scan_reference_helper.py` (a manual check against the real

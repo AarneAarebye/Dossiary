@@ -162,7 +162,15 @@
   .manage-collection-folder-select{ background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius); padding:5px 6px; color:var(--text); font-family:var(--font-mono); font-size:11.5px; max-width:150px; }
   .manage-section-heading{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-dim); margin:18px 0 4px; }
   .toolbar-hidden{ display:none !important; }
-  .scan-unavailable{ display:none !important; } /* Scan Multi while no found scanner can split on blank pages */
+  .scan-split-hint{ margin:-4px 0 8px 26px; }
+  .scan-options-help-toggle{ margin:4px 0 8px; }
+  /* Overrides the document table's global table/thead/tbody rules (min-width, sticky header, row hover). */
+  .scan-options-help table{ width:100%; min-width:0; border-collapse:collapse; font-size:12px; margin:0 0 10px; }
+  .scan-options-help th, .scan-options-help td{ text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .scan-options-help thead th{ position:static; background:none; cursor:default; z-index:auto; letter-spacing:0.08em; }
+  .scan-options-help tbody tr{ cursor:default; }
+  .scan-options-help tbody tr:hover{ background:none; }
+  .scan-options-help td.mark{ text-align:center; width:1%; white-space:nowrap; }
   .scan-dialog-check{ display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; }
   .scan-dialog-text{ font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 12px; }
   .scan-dialog a{ color:var(--phosphor); font-weight:600; }
@@ -898,7 +906,6 @@
         <button id="inbox-check-btn" data-i18n="toolbarCheckInbox">📥 Check inbox</button>
         <button id="check-reminders-btn" data-i18n="toolbarCheckReminders">🔔 Check reminders</button>
         <button id="scan-btn" data-i18n="toolbarScan">📷 Scan</button>
-        <button id="scan-multi-btn" class="scan-unavailable" data-i18n="toolbarScanMulti">📸 Scan Multi</button>
         <button class="accent" id="add-btn" data-i18n="toolbarAddDocument">＋ Add document</button>
         <button id="detail-panel-toggle-btn" data-i18n="toolbarDetailsToggle">☰ Details</button>
         <div class="columns-menu-wrap">
@@ -1125,7 +1132,7 @@
     en: {
       scanHelperUnreachable: "Couldn't reach the scan helper at {url}. Is it running?", scanHelperBadAnswer: "The scan helper at {url} sent a response that Dossiary doesn’t understand. Updating the helper should fix this.", scanNeedsPairing: "The scan helper doesn't know this browser any more. Pair it again.",
       scanPairHelperNotPaired: "{helper}: not paired yet", scanPairButton: "Pair", scanPairHint: "To pair this browser, choose “Pair a Browser…” from the helper’s menu and enter the 6-digit code it shows.", scanPairPairing: "Pairing…",
-      scanDialogTitle: "Scan", scanDialogSearching: "Looking for scanners…", scanDialogStart: "Scan", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Paper source", scanSourceFlatbed: "Flatbed", scanSourceFeeder: "Document feeder", scanDialogDuplex: "Both sides", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Grayscale", scanColorBw: "Black & white", scanDialogResolutionLabel: "Resolution", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "Split on blank pages (a blank sheet starts a new document)", scanExtraSkipBlankPages: "Skip blank pages", scanDialogNothingFound: "No scan helper answered. Scanning needs a small helper app on this computer: dossiary-scan-helper for most scanners, or scanix500 for a ScanSnap iX500. If your helper runs at a different address, enter it below.", scanDialogGetHelper: "Get dossiary-scan-helper", scanDialogGetScanix500: "Get scanix500", scanDialogAddressLabel: "Helper address (optional)", scanDialogRetry: "Look again", scanDialogAddressInvalid: "Enter an address like http://localhost:8766.",
+      scanDialogTitle: "Scan", scanDialogSearching: "Looking for scanners…", scanDialogStart: "Scan", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Paper source", scanSourceFlatbed: "Flatbed", scanSourceFeeder: "Document feeder", scanDialogDuplex: "Both sides", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Grayscale", scanColorBw: "Black & white", scanDialogResolutionLabel: "Resolution", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "Split the stack at blank sheets", scanDialogStartSplit: "Scan and split", scanOptionsHelpLink: "What do these options do?", scanOptionsHelpSplit: "Split", scanOptionsHelpSkip: "Skip", scanOptionsHelpResult: "Result", scanOptionsHelpRow1: "One document per letter, blank backs removed", scanOptionsHelpRow2: "One document per letter, blank backs kept", scanOptionsHelpRow3: "One document, all blank pages removed, separator sheets too", scanOptionsHelpRow4: "One document with every page", scanSplitHint: "Like Scan Multi in Paperless: put a blank sheet between documents and scan the whole stack at once. A sheet with nothing on either side starts a new document and is left out.", scanExtraSkipBlankPages: "Skip blank pages", scanDialogNothingFound: "No scan helper answered. Scanning needs a small helper app on this computer: dossiary-scan-helper for most scanners, or scanix500 for a ScanSnap iX500. If your helper runs at a different address, enter it below.", scanDialogGetHelper: "Get dossiary-scan-helper", scanDialogGetScanix500: "Get scanix500", scanDialogAddressLabel: "Helper address (optional)", scanDialogRetry: "Look again", scanDialogAddressInvalid: "Enter an address like http://localhost:8766.",
       scanPairCodeLabel: "Pairing code", scanPairInvalidCode: "Enter the 6-digit code.", scanPairWrongCode: "That code didn't work. Choose “Pair a Browser…” again for a new code.",
       shareAction: 'Share…', folderPickerHint: "Chrome doesn’t allow you to select the Downloads, Documents, Desktop, or home folder directly. Choose or create a folder inside one of them.", exportLibraryAction: 'Export as library…', exportLibraryTitle: 'Export as library', exportLibraryIntro: 'Makes a new Dossiary library from the selected documents, ready to open. You choose where to create it after clicking Export library.', exportLibraryNameSuffix: '(export)', exportLibraryHint: 'Creates the folder “{name}” in the folder you choose.', exportLibraryModeLabel: 'Documents', exportLibraryCopy: 'Copy them — this library stays as it is', exportLibraryMove: 'Move them', exportLibraryMoveNote: "The documents are moved to the Waste bin in this library once the new library has been written. Restoring them from the Waste bin undoes the move.", exportLibrarySetupLabel: 'Setup', exportLibrarySetupUsed: 'Only what these documents use', exportLibrarySetupAll: 'Everything from this library', exportLibrarySetupHint: 'Setup means custom fields (such as Organization or Policy number), which fields each document type shows, field descriptions, settings such as the default currency, columns and sort order, and Smart Collections. Tags, people and the documents’ own details always come along.', exportLibraryCount: 'Documents: {count}', exportLibraryCountSize: 'Documents: {count} ({size})', exportLibraryOcrPending: "Still being made searchable: {count}. These documents will be exported in their current state.", exportLibraryStart: 'Export library', exportLibraryProgress: 'Copying documents: {done} of {total}', exportLibraryStopped: 'Stopped. The incomplete library was removed.', exportLibraryError: 'Export failed: {error}. The incomplete library was removed.', exportLibraryNothing: 'None of the documents could be read, so no library was made.', exportLibraryDone: 'Created “{folder}”.', exportLibraryExported: 'Documents exported: {count}', exportLibraryLeftOut: 'Left out because a file couldn’t be read: {count}', exportLibraryMoved: 'Moved to the Waste bin here: {count}', exportLibraryMoveSaveFailed: "The documents couldn’t be moved to the Waste bin in this library ({error}). The new library is complete, and the documents also remain in this library.", exportLibraryOpen: 'Open it', shareModalTitle: 'Share', shareReading: 'Reading {done} of {total} files…', shareReady: "Ready: {count} file(s). Share opens your system’s share sheet so you can send them by email, message, or another app.", shareButton: 'Share', shareDone: 'Handed over to the app you chose.', shareUnsupported: 'This browser can’t hand files to other apps. Export them to a folder, then attach them to an email yourself.', shareExportBtn: 'Export to a folder…', shareEmailBtn: 'Write an email', shareFailedRead: 'Could not read: {count}.', shareError: 'Sharing failed: {error}', shareNothing: 'None of these documents has a file to share.',
       exportWriteDetails: 'Write title, category, type and tags into exported PDFs', exportDetailsSkipped: "PDFs copied without details because they could not be opened: {count}.",
@@ -1162,7 +1169,7 @@
       toolbarAmountMinTitle: 'Min amount', toolbarAmountMaxTitle: 'Max amount', toolbarAmountUnsetLabel: 'Amount not set',
       toolbarAmountMinClearAriaLabel: 'Clear min amount', toolbarAmountMaxClearAriaLabel: 'Clear max amount',
       toolbarManageFields: '⚙ Manage fields', toolbarManageCollections: '⚙ Manage collections',
-      toolbarCheckInbox: '📥 Check inbox', toolbarCheckReminders: '🔔 Check reminders', toolbarScan: '📷 Scan', toolbarScanMulti: '📸 Scan Multi', toolbarAddDocument: '＋ Add document',
+      toolbarCheckInbox: '📥 Check inbox', toolbarCheckReminders: '🔔 Check reminders', toolbarScan: '📷 Scan', toolbarAddDocument: '＋ Add document',
       toolbarSwitchLibrary: 'Switch library', toolbarColumns: '⚙ Columns', toolbarTools: '🛠 Tools ▾', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Add all',
       bulkAddToCollection: 'Add to collection ▾', bulkNewCollectionPlaceholder: 'New collection name',
@@ -1346,7 +1353,7 @@
     es: {
       scanHelperUnreachable: "No se pudo contactar con el asistente de escaneo en {url}. ¿Está en marcha?", scanHelperBadAnswer: "El asistente de escaneo en {url} envió una respuesta que Dossiary no entiende. Actualizar el asistente debería solucionarlo.", scanNeedsPairing: "El asistente de escaneo ya no reconoce este navegador. Vuelva a emparejarlo.",
       scanPairHelperNotPaired: "{helper}: aún sin emparejar", scanPairButton: "Emparejar", scanPairHint: "Empareje este navegador una vez: elija «Pair a Browser…» en el menú del asistente e introduzca el código de 6 dígitos que muestra.", scanPairPairing: "Emparejando…",
-      scanDialogTitle: "Escanear", scanDialogSearching: "Buscando escáneres…", scanDialogStart: "Escanear", scanDialogScannerLabel: "Escáner", scanDialogSourceLabel: "Origen del papel", scanSourceFlatbed: "Cama plana", scanSourceFeeder: "Alimentador de documentos", scanDialogDuplex: "Ambas caras", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Escala de grises", scanColorBw: "Blanco y negro", scanDialogResolutionLabel: "Resolución", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Separar en páginas en blanco (una hoja en blanco inicia un documento nuevo)", scanExtraSkipBlankPages: "Omitir páginas en blanco", scanDialogNothingFound: "Ningún asistente de escaneo respondió. Para escanear hace falta una pequeña aplicación auxiliar en este ordenador: dossiary-scan-helper para la mayoría de los escáneres, o scanix500 para un ScanSnap iX500. Si el suyo funciona en otra dirección, introdúzcala abajo.", scanDialogGetHelper: "Obtener dossiary-scan-helper", scanDialogGetScanix500: "Obtener scanix500", scanDialogAddressLabel: "Dirección del asistente (opcional)", scanDialogRetry: "Buscar de nuevo", scanDialogAddressInvalid: "Introduzca una dirección como http://localhost:8766.",
+      scanDialogTitle: "Escanear", scanDialogSearching: "Buscando escáneres…", scanDialogStart: "Escanear", scanDialogScannerLabel: "Escáner", scanDialogSourceLabel: "Origen del papel", scanSourceFlatbed: "Cama plana", scanSourceFeeder: "Alimentador de documentos", scanDialogDuplex: "Ambas caras", scanDialogColorLabel: "Color", scanColorColor: "Color", scanColorGray: "Escala de grises", scanColorBw: "Blanco y negro", scanDialogResolutionLabel: "Resolución", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Separar la pila en las hojas en blanco", scanDialogStartSplit: "Escanear y separar", scanOptionsHelpLink: "¿Qué hacen estas opciones?", scanOptionsHelpSplit: "Separar", scanOptionsHelpSkip: "Omitir", scanOptionsHelpResult: "Resultado", scanOptionsHelpRow1: "Un documento por carta, sin reversos en blanco", scanOptionsHelpRow2: "Un documento por carta, con los reversos en blanco", scanOptionsHelpRow3: "Un documento, sin ninguna página en blanco, tampoco las hojas separadoras", scanOptionsHelpRow4: "Un documento con todas las páginas", scanSplitHint: "Como «Scan Multi» en Paperless: ponga una hoja en blanco entre los documentos y escanee toda la pila de una vez. Una hoja sin nada en ninguna de sus caras inicia un documento nuevo y se omite.", scanExtraSkipBlankPages: "Omitir páginas en blanco", scanDialogNothingFound: "Ningún asistente de escaneo respondió. Para escanear hace falta una pequeña aplicación auxiliar en este ordenador: dossiary-scan-helper para la mayoría de los escáneres, o scanix500 para un ScanSnap iX500. Si el suyo funciona en otra dirección, introdúzcala abajo.", scanDialogGetHelper: "Obtener dossiary-scan-helper", scanDialogGetScanix500: "Obtener scanix500", scanDialogAddressLabel: "Dirección del asistente (opcional)", scanDialogRetry: "Buscar de nuevo", scanDialogAddressInvalid: "Introduzca una dirección como http://localhost:8766.",
       scanPairCodeLabel: "Código de emparejamiento", scanPairInvalidCode: "Introduzca el código de 6 dígitos.", scanPairWrongCode: "Ese código no funcionó. Elija «Pair a Browser…» de nuevo para obtener un código nuevo.",
       shareAction: 'Compartir…', folderPickerHint: 'Chrome no permite elegir directamente Descargas, Documentos, Escritorio ni tu carpeta de inicio. Elige o crea una carpeta dentro de una de ellas.', exportLibraryAction: 'Exportar como biblioteca…', exportLibraryTitle: 'Exportar como biblioteca', exportLibraryIntro: 'Crea una nueva biblioteca de Dossiary con los documentos seleccionados, lista para abrir. Eliges dónde crearla después de pulsar Exportar biblioteca.', exportLibraryNameSuffix: '(exportación)', exportLibraryHint: 'Crea la carpeta «{name}» en la carpeta que elijas.', exportLibraryModeLabel: 'Documentos', exportLibraryCopy: 'Copiarlos: esta biblioteca no cambia', exportLibraryMove: 'Moverlos', exportLibraryMoveNote: 'Los documentos van a la Papelera aquí en cuanto se haya escrito la nueva biblioteca. Restaurarlos desde la Papelera lo deshace.', exportLibrarySetupLabel: 'Configuración', exportLibrarySetupUsed: 'Solo lo que usan estos documentos', exportLibrarySetupAll: 'Todo lo de esta biblioteca', exportLibrarySetupHint: 'La configuración son los campos personalizados (como Organización o Número de póliza), qué campos muestra cada tipo de documento, las descripciones de campos, ajustes como la moneda predeterminada, las columnas y el orden, y las colecciones inteligentes. Las etiquetas, las personas y los datos de los documentos siempre se incluyen.', exportLibraryCount: 'Documentos: {count}', exportLibraryCountSize: 'Documentos: {count} ({size})', exportLibraryOcrPending: 'Aún se están haciendo buscables: {count}. Se exportan tal como están ahora.', exportLibraryStart: 'Exportar biblioteca', exportLibraryProgress: 'Copiando documentos: {done} de {total}', exportLibraryStopped: 'Detenido. Se eliminó la biblioteca incompleta.', exportLibraryError: 'La exportación falló: {error}. Se eliminó la biblioteca incompleta.', exportLibraryNothing: 'No se pudo leer ninguno de los documentos, así que no se creó ninguna biblioteca.', exportLibraryDone: 'Creada «{folder}».', exportLibraryExported: 'Documentos exportados: {count}', exportLibraryLeftOut: 'Omitidos porque no se pudo leer un archivo: {count}', exportLibraryMoved: 'Movidos a la Papelera aquí: {count}', exportLibraryMoveSaveFailed: 'No se pudieron mover los documentos a la Papelera aquí ({error}). La nueva biblioteca está completa y los documentos siguen también en esta biblioteca.', exportLibraryOpen: 'Abrirla', shareModalTitle: 'Compartir', shareReading: 'Leyendo {done} de {total} archivos…', shareReady: 'Listo: {count} archivo(s). Compartir abre el menú para compartir del sistema, para enviarlos por correo, mensaje u otra aplicación.', shareButton: 'Compartir', shareDone: 'Entregado a la aplicación elegida.', shareUnsupported: 'Este navegador no puede pasar archivos a otras aplicaciones. Expórtalos a una carpeta y adjúntalos tú a un correo.', shareExportBtn: 'Exportar a una carpeta…', shareEmailBtn: 'Escribir un correo', shareFailedRead: 'No se pudieron leer: {count}.', shareError: 'No se pudo compartir: {error}', shareNothing: 'Ninguno de estos documentos tiene un archivo para compartir.',
       exportWriteDetails: 'Escribir título, categoría, tipo y etiquetas en los PDF exportados', exportDetailsSkipped: '{count} PDF copiados sin datos (no se pudieron abrir como PDF).',
@@ -1383,7 +1390,7 @@
       toolbarAmountMinTitle: 'Importe mín.', toolbarAmountMaxTitle: 'Importe máx.', toolbarAmountUnsetLabel: 'Importe sin definir',
       toolbarAmountMinClearAriaLabel: 'Borrar importe mínimo', toolbarAmountMaxClearAriaLabel: 'Borrar importe máximo',
       toolbarManageFields: '⚙ Administrar campos', toolbarManageCollections: '⚙ Administrar colecciones',
-      toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarCheckReminders: '🔔 Ver recordatorios', toolbarScan: '📷 Escanear', toolbarScanMulti: '📸 Escaneo múltiple', toolbarAddDocument: '＋ Añadir documento',
+      toolbarCheckInbox: '📥 Revisar bandeja de entrada', toolbarCheckReminders: '🔔 Ver recordatorios', toolbarScan: '📷 Escanear', toolbarAddDocument: '＋ Añadir documento',
       toolbarSwitchLibrary: 'Cambiar de biblioteca', toolbarColumns: '⚙ Columnas', toolbarTools: '🛠 Herramientas ▾', toolbarDetailsToggle: '☰ Detalles',
       inboxBannerAddAll: 'Añadir todo',
       bulkAddToCollection: 'Añadir a colección ▾', bulkNewCollectionPlaceholder: 'Nombre de la nueva colección',
@@ -1567,7 +1574,7 @@
     fr: {
       scanHelperUnreachable: "Impossible de joindre l'assistant de numérisation à {url}. Est-il lancé ?", scanHelperBadAnswer: "L'assistant de numérisation à {url} a envoyé une réponse que Dossiary ne comprend pas. Mettre à jour l'assistant devrait résoudre le problème.", scanNeedsPairing: "L'assistant de numérisation ne reconnaît plus ce navigateur. Associez-le à nouveau.",
       scanPairHelperNotPaired: "{helper} : pas encore associé", scanPairButton: "Associer", scanPairHint: "Associez ce navigateur une fois : choisissez « Pair a Browser… » dans le menu de l'assistant et saisissez le code à 6 chiffres affiché.", scanPairPairing: "Association…",
-      scanDialogTitle: "Numériser", scanDialogSearching: "Recherche de scanners…", scanDialogStart: "Numériser", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Source du papier", scanSourceFlatbed: "Vitre à plat", scanSourceFeeder: "Chargeur de documents", scanDialogDuplex: "Recto verso", scanDialogColorLabel: "Couleur", scanColorColor: "Couleur", scanColorGray: "Niveaux de gris", scanColorBw: "Noir et blanc", scanDialogResolutionLabel: "Résolution", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Séparer aux pages blanches (une feuille blanche commence un nouveau document)", scanExtraSkipBlankPages: "Ignorer les pages blanches", scanDialogNothingFound: "Aucun assistant de numérisation n'a répondu. La numérisation nécessite une petite application d'aide sur cet ordinateur : dossiary-scan-helper pour la plupart des scanners, ou scanix500 pour un ScanSnap iX500. Si le vôtre fonctionne à une autre adresse, saisissez-la ci-dessous.", scanDialogGetHelper: "Obtenir dossiary-scan-helper", scanDialogGetScanix500: "Obtenir scanix500", scanDialogAddressLabel: "Adresse de l'assistant (facultatif)", scanDialogRetry: "Chercher à nouveau", scanDialogAddressInvalid: "Saisissez une adresse comme http://localhost:8766.",
+      scanDialogTitle: "Numériser", scanDialogSearching: "Recherche de scanners…", scanDialogStart: "Numériser", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Source du papier", scanSourceFlatbed: "Vitre à plat", scanSourceFeeder: "Chargeur de documents", scanDialogDuplex: "Recto verso", scanDialogColorLabel: "Couleur", scanColorColor: "Couleur", scanColorGray: "Niveaux de gris", scanColorBw: "Noir et blanc", scanDialogResolutionLabel: "Résolution", scanDialogDpi: "{dpi} ppp", scanExtraSplitOnBlank: "Séparer la pile aux feuilles blanches", scanDialogStartSplit: "Numériser et séparer", scanOptionsHelpLink: "Que font ces options ?", scanOptionsHelpSplit: "Séparer", scanOptionsHelpSkip: "Ignorer", scanOptionsHelpResult: "Résultat", scanOptionsHelpRow1: "Un document par lettre, versos blancs supprimés", scanOptionsHelpRow2: "Un document par lettre, versos blancs conservés", scanOptionsHelpRow3: "Un document, toutes les pages blanches supprimées, feuilles de séparation comprises", scanOptionsHelpRow4: "Un document avec toutes les pages", scanSplitHint: "Comme « Scan Multi » dans Paperless : glissez une feuille blanche entre les documents et numérisez toute la pile d'un coup. Une feuille vierge des deux côtés commence un nouveau document et n'est pas conservée.", scanExtraSkipBlankPages: "Ignorer les pages blanches", scanDialogNothingFound: "Aucun assistant de numérisation n'a répondu. La numérisation nécessite une petite application d'aide sur cet ordinateur : dossiary-scan-helper pour la plupart des scanners, ou scanix500 pour un ScanSnap iX500. Si le vôtre fonctionne à une autre adresse, saisissez-la ci-dessous.", scanDialogGetHelper: "Obtenir dossiary-scan-helper", scanDialogGetScanix500: "Obtenir scanix500", scanDialogAddressLabel: "Adresse de l'assistant (facultatif)", scanDialogRetry: "Chercher à nouveau", scanDialogAddressInvalid: "Saisissez une adresse comme http://localhost:8766.",
       scanPairCodeLabel: "Code d'association", scanPairInvalidCode: "Saisissez le code à 6 chiffres.", scanPairWrongCode: "Ce code n'a pas fonctionné. Choisissez à nouveau « Pair a Browser… » pour obtenir un nouveau code.",
       shareAction: 'Partager…', folderPickerHint: 'Chrome ne permet pas de choisir directement Téléchargements, Documents, Bureau ni votre dossier personnel. Choisissez ou créez un dossier à l’intérieur de l’un d’eux.', exportLibraryAction: 'Exporter en bibliothèque…', exportLibraryTitle: 'Exporter en bibliothèque', exportLibraryIntro: 'Crée une nouvelle bibliothèque Dossiary à partir des documents sélectionnés, prête à ouvrir. Vous choisissez où la créer après avoir cliqué sur Exporter la bibliothèque.', exportLibraryNameSuffix: '(export)', exportLibraryHint: 'Crée le dossier « {name} » dans le dossier que vous choisissez.', exportLibraryModeLabel: 'Documents', exportLibraryCopy: 'Les copier — cette bibliothèque reste telle quelle', exportLibraryMove: 'Les déplacer', exportLibraryMoveNote: 'Les documents vont dans la Corbeille ici une fois la nouvelle bibliothèque écrite. Les restaurer depuis la Corbeille annule l’opération.', exportLibrarySetupLabel: 'Configuration', exportLibrarySetupUsed: 'Seulement ce qu’utilisent ces documents', exportLibrarySetupAll: 'Tout ce que contient cette bibliothèque', exportLibrarySetupHint: 'La configuration comprend les champs personnalisés (comme Organisme ou Numéro de contrat), les champs affichés pour chaque type de document, les descriptions de champs, des réglages comme la devise par défaut, les colonnes et le tri, et les collections intelligentes. Les étiquettes, les personnes et les informations des documents sont toujours incluses.', exportLibraryCount: 'Documents : {count}', exportLibraryCountSize: 'Documents : {count} ({size})', exportLibraryOcrPending: 'Encore en cours de rendu interrogeable : {count}. Ils sont exportés dans leur état actuel.', exportLibraryStart: 'Exporter la bibliothèque', exportLibraryProgress: 'Copie des documents : {done} sur {total}', exportLibraryStopped: 'Arrêté. La bibliothèque incomplète a été supprimée.', exportLibraryError: 'L’export a échoué : {error}. La bibliothèque incomplète a été supprimée.', exportLibraryNothing: 'Aucun des documents n’a pu être lu, aucune bibliothèque n’a donc été créée.', exportLibraryDone: '« {folder} » créé.', exportLibraryExported: 'Documents exportés : {count}', exportLibraryLeftOut: 'Écartés car un fichier n’a pas pu être lu : {count}', exportLibraryMoved: 'Déplacés dans la Corbeille ici : {count}', exportLibraryMoveSaveFailed: 'Les documents n’ont pas pu être déplacés dans la Corbeille ici ({error}). La nouvelle bibliothèque est complète, et les documents sont aussi toujours dans cette bibliothèque.', exportLibraryOpen: 'L’ouvrir', shareModalTitle: 'Partager', shareReading: 'Lecture de {done} fichier(s) sur {total}…', shareReady: 'Prêt : {count} fichier(s). Partager ouvre le menu de partage du système, pour les envoyer par e-mail, message ou une autre app.', shareButton: 'Partager', shareDone: 'Transmis à l’app choisie.', shareUnsupported: 'Ce navigateur ne peut pas transmettre de fichiers à d’autres apps. Exportez-les dans un dossier, puis joignez-les vous-même à un e-mail.', shareExportBtn: 'Exporter dans un dossier…', shareEmailBtn: 'Écrire un e-mail', shareFailedRead: 'Lecture impossible : {count}.', shareError: 'Échec du partage : {error}', shareNothing: 'Aucun de ces documents n’a de fichier à partager.',
       exportWriteDetails: 'Écrire le titre, la catégorie, le type et les étiquettes dans les PDF exportés', exportDetailsSkipped: '{count} PDF copiés sans informations (impossible de les ouvrir comme PDF).',
@@ -1604,7 +1611,7 @@
       toolbarAmountMinTitle: 'Montant min.', toolbarAmountMaxTitle: 'Montant max.', toolbarAmountUnsetLabel: 'Montant non défini',
       toolbarAmountMinClearAriaLabel: 'Effacer le montant min.', toolbarAmountMaxClearAriaLabel: 'Effacer le montant max.',
       toolbarManageFields: '⚙ Gérer les champs', toolbarManageCollections: '⚙ Gérer les collections',
-      toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarCheckReminders: '🔔 Vérifier les rappels', toolbarScan: '📷 Numériser', toolbarScanMulti: '📸 Numérisation multiple', toolbarAddDocument: '＋ Ajouter un document',
+      toolbarCheckInbox: '📥 Vérifier la boîte de réception', toolbarCheckReminders: '🔔 Vérifier les rappels', toolbarScan: '📷 Numériser', toolbarAddDocument: '＋ Ajouter un document',
       toolbarSwitchLibrary: 'Changer de bibliothèque', toolbarColumns: '⚙ Colonnes', toolbarTools: '🛠 Outils ▾', toolbarDetailsToggle: '☰ Détails',
       inboxBannerAddAll: 'Tout ajouter',
       bulkAddToCollection: 'Ajouter à une collection ▾', bulkNewCollectionPlaceholder: 'Nom de la nouvelle collection',
@@ -1788,7 +1795,7 @@
     de: {
       scanHelperUnreachable: "Der Scan-Helfer unter {url} ist nicht erreichbar. Läuft er?", scanHelperBadAnswer: "Der Scan-Helfer unter {url} hat eine Antwort geschickt, die Dossiary nicht versteht. Ein Update des Helfers sollte das beheben.", scanNeedsPairing: "Der Scan-Helfer kennt diesen Browser nicht mehr. Bitte erneut koppeln.",
       scanPairHelperNotPaired: "{helper}: noch nicht gekoppelt", scanPairButton: "Koppeln", scanPairHint: "Diesen Browser einmal koppeln: Im Menü des Helfers „Pair a Browser…“ wählen und den 6-stelligen Code eingeben, den er anzeigt.", scanPairPairing: "Kopple…",
-      scanDialogTitle: "Scannen", scanDialogSearching: "Suche nach Scannern…", scanDialogStart: "Scannen", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Papierquelle", scanSourceFlatbed: "Flachbett", scanSourceFeeder: "Dokumenteneinzug", scanDialogDuplex: "Beidseitig", scanDialogColorLabel: "Farbe", scanColorColor: "Farbe", scanColorGray: "Graustufen", scanColorBw: "Schwarzweiß", scanDialogResolutionLabel: "Auflösung", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "An leeren Seiten trennen (ein leeres Blatt beginnt ein neues Dokument)", scanExtraSkipBlankPages: "Leere Seiten weglassen", scanDialogNothingFound: "Kein Scan-Helfer hat geantwortet. Zum Scannen braucht es eine kleine Hilfs-App auf diesem Computer: dossiary-scan-helper für die meisten Scanner oder scanix500 für einen ScanSnap iX500. Läuft deiner unter einer anderen Adresse, trag sie unten ein.", scanDialogGetHelper: "dossiary-scan-helper herunterladen", scanDialogGetScanix500: "scanix500 herunterladen", scanDialogAddressLabel: "Adresse des Helfers (optional)", scanDialogRetry: "Erneut suchen", scanDialogAddressInvalid: "Gib eine Adresse wie http://localhost:8766 ein.",
+      scanDialogTitle: "Scannen", scanDialogSearching: "Suche nach Scannern…", scanDialogStart: "Scannen", scanDialogScannerLabel: "Scanner", scanDialogSourceLabel: "Papierquelle", scanSourceFlatbed: "Flachbett", scanSourceFeeder: "Dokumenteneinzug", scanDialogDuplex: "Beidseitig", scanDialogColorLabel: "Farbe", scanColorColor: "Farbe", scanColorGray: "Graustufen", scanColorBw: "Schwarzweiß", scanDialogResolutionLabel: "Auflösung", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "Stapel an leeren Blättern trennen", scanDialogStartSplit: "Scannen und trennen", scanOptionsHelpLink: "Was bewirken diese Optionen?", scanOptionsHelpSplit: "Trennen", scanOptionsHelpSkip: "Weglassen", scanOptionsHelpResult: "Ergebnis", scanOptionsHelpRow1: "Ein Dokument pro Brief, leere Rückseiten entfernt", scanOptionsHelpRow2: "Ein Dokument pro Brief, leere Rückseiten bleiben", scanOptionsHelpRow3: "Ein Dokument, alle leeren Seiten entfernt, auch die Trennblätter", scanOptionsHelpRow4: "Ein Dokument mit allen Seiten", scanSplitHint: "Wie „Scan Multi“ in Paperless: Lege zwischen die Dokumente je ein leeres Blatt und scanne den ganzen Stapel auf einmal. Ein Blatt ohne Inhalt auf beiden Seiten beginnt ein neues Dokument und wird weggelassen.", scanExtraSkipBlankPages: "Leere Seiten weglassen", scanDialogNothingFound: "Kein Scan-Helfer hat geantwortet. Zum Scannen braucht es eine kleine Hilfs-App auf diesem Computer: dossiary-scan-helper für die meisten Scanner oder scanix500 für einen ScanSnap iX500. Läuft deiner unter einer anderen Adresse, trag sie unten ein.", scanDialogGetHelper: "dossiary-scan-helper herunterladen", scanDialogGetScanix500: "scanix500 herunterladen", scanDialogAddressLabel: "Adresse des Helfers (optional)", scanDialogRetry: "Erneut suchen", scanDialogAddressInvalid: "Gib eine Adresse wie http://localhost:8766 ein.",
       scanPairCodeLabel: "Kopplungscode", scanPairInvalidCode: "Bitte den 6-stelligen Code eingeben.", scanPairWrongCode: "Dieser Code hat nicht funktioniert. Wähle erneut „Pair a Browser…“ für einen neuen Code.",
       shareAction: 'Teilen…', folderPickerHint: 'Chrome erlaubt nicht, „Downloads“, „Dokumente“, „Schreibtisch“ oder deinen Benutzerordner selbst zu wählen. Wähle einen Ordner darin oder lege einen an.', exportLibraryAction: 'Als Bibliothek exportieren…', exportLibraryTitle: 'Als Bibliothek exportieren', exportLibraryIntro: 'Erstellt aus den ausgewählten Dokumenten eine neue Dossiary-Bibliothek, die sich sofort öffnen lässt. Wo sie angelegt wird, wählst du nach Klick auf „Bibliothek exportieren“.', exportLibraryNameSuffix: '(Export)', exportLibraryHint: 'Legt den Ordner „{name}“ in dem Ordner an, den du wählst.', exportLibraryModeLabel: 'Dokumente', exportLibraryCopy: 'Kopieren – diese Bibliothek bleibt, wie sie ist', exportLibraryMove: 'Verschieben', exportLibraryMoveNote: 'Die Dokumente kommen hier in den Papierkorb, sobald die neue Bibliothek geschrieben ist. Wiederherstellen aus dem Papierkorb macht es rückgängig.', exportLibrarySetupLabel: 'Einrichtung', exportLibrarySetupUsed: 'Nur was diese Dokumente nutzen', exportLibrarySetupAll: 'Alles aus dieser Bibliothek', exportLibrarySetupHint: 'Zur Einrichtung gehören eigene Felder (etwa Organisation oder Vertragsnummer), welche Felder jeder Dokumenttyp zeigt, Feldbeschreibungen, Einstellungen wie Standardwährung, Spalten und Sortierung sowie intelligente Sammlungen. Tags, Personen und die Angaben der Dokumente kommen immer mit.', exportLibraryCount: 'Dokumente: {count}', exportLibraryCountSize: 'Dokumente: {count} ({size})', exportLibraryOcrPending: 'Werden noch durchsuchbar gemacht: {count}. Sie werden so exportiert, wie sie jetzt sind.', exportLibraryStart: 'Bibliothek exportieren', exportLibraryProgress: 'Dokumente werden kopiert: {done} von {total}', exportLibraryStopped: 'Angehalten. Die unvollständige Bibliothek wurde entfernt.', exportLibraryError: 'Export fehlgeschlagen: {error}. Die unvollständige Bibliothek wurde entfernt.', exportLibraryNothing: 'Keines der Dokumente konnte gelesen werden, daher wurde keine Bibliothek angelegt.', exportLibraryDone: '„{folder}“ angelegt.', exportLibraryExported: 'Exportierte Dokumente: {count}', exportLibraryLeftOut: 'Ausgelassen, weil eine Datei nicht lesbar war: {count}', exportLibraryMoved: 'Hier in den Papierkorb verschoben: {count}', exportLibraryMoveSaveFailed: 'Die Dokumente konnten hier nicht in den Papierkorb verschoben werden ({error}). Die neue Bibliothek ist vollständig, und die Dokumente sind auch weiterhin in dieser Bibliothek.', exportLibraryOpen: 'Öffnen', shareModalTitle: 'Teilen', shareReading: 'Lese {done} von {total} Dateien…', shareReady: 'Bereit: {count} Datei(en). Teilen öffnet das Teilen-Menü des Systems, zum Senden per Mail, Nachricht oder in eine andere App.', shareButton: 'Teilen', shareDone: 'An die gewählte App übergeben.', shareUnsupported: 'Dieser Browser kann keine Dateien an andere Apps übergeben. Exportiere sie in einen Ordner und hänge sie selbst an eine E-Mail an.', shareExportBtn: 'In einen Ordner exportieren…', shareEmailBtn: 'E-Mail schreiben', shareFailedRead: 'Nicht lesbar: {count}.', shareError: 'Teilen fehlgeschlagen: {error}', shareNothing: 'Keines dieser Dokumente hat eine Datei zum Teilen.',
       exportWriteDetails: 'Titel, Kategorie, Typ und Tags in die exportierten PDFs schreiben', exportDetailsSkipped: '{count} PDF(s) ohne Angaben kopiert (ließen sich nicht als PDF öffnen).',
@@ -1825,7 +1832,7 @@
       toolbarAmountMinTitle: 'Betrag min.', toolbarAmountMaxTitle: 'Betrag max.', toolbarAmountUnsetLabel: 'Betrag nicht gesetzt',
       toolbarAmountMinClearAriaLabel: 'Mindestbetrag löschen', toolbarAmountMaxClearAriaLabel: 'Höchstbetrag löschen',
       toolbarManageFields: '⚙ Felder verwalten', toolbarManageCollections: '⚙ Sammlungen verwalten',
-      toolbarCheckInbox: '📥 Posteingang prüfen', toolbarCheckReminders: '🔔 Erinnerungen prüfen', toolbarScan: '📷 Scannen', toolbarScanMulti: '📸 Mehrfach scannen', toolbarAddDocument: '＋ Dokument hinzufügen',
+      toolbarCheckInbox: '📥 Posteingang prüfen', toolbarCheckReminders: '🔔 Erinnerungen prüfen', toolbarScan: '📷 Scannen', toolbarAddDocument: '＋ Dokument hinzufügen',
       toolbarSwitchLibrary: 'Bibliothek wechseln', toolbarColumns: '⚙ Spalten', toolbarTools: '🛠 Werkzeuge ▾', toolbarDetailsToggle: '☰ Details',
       inboxBannerAddAll: 'Alle hinzufügen',
       bulkAddToCollection: 'Zu Sammlung hinzufügen ▾', bulkNewCollectionPlaceholder: 'Neuer Sammlungsname',
@@ -2009,7 +2016,7 @@
     'zh-Hans': {
       scanHelperUnreachable: "无法连接到位于 {url} 的扫描助手。它在运行吗？", scanHelperBadAnswer: "位于 {url} 的扫描助手返回了 Dossiary 无法理解的答复。更新该助手应可解决。", scanNeedsPairing: "扫描助手已不认识此浏览器。请重新配对。",
       scanPairHelperNotPaired: "{helper}：尚未配对", scanPairButton: "配对", scanPairHint: "请将此浏览器配对一次：在助手的菜单中选择“Pair a Browser…”，然后输入它显示的 6 位代码。", scanPairPairing: "正在配对…",
-      scanDialogTitle: "扫描", scanDialogSearching: "正在查找扫描仪…", scanDialogStart: "扫描", scanDialogScannerLabel: "扫描仪", scanDialogSourceLabel: "进纸方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自动进纸器", scanDialogDuplex: "双面", scanDialogColorLabel: "颜色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "按空白页分割（空白页开始新文档）", scanExtraSkipBlankPages: "跳过空白页", scanDialogNothingFound: "没有扫描助手响应。扫描需要在这台电脑上运行一个小型助手应用：大多数扫描仪使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手运行在其他地址，请在下方输入。", scanDialogGetHelper: "获取 dossiary-scan-helper", scanDialogGetScanix500: "获取 scanix500", scanDialogAddressLabel: "助手地址（可选）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "请输入类似 http://localhost:8766 的地址。",
+      scanDialogTitle: "扫描", scanDialogSearching: "正在查找扫描仪…", scanDialogStart: "扫描", scanDialogScannerLabel: "扫描仪", scanDialogSourceLabel: "进纸方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自动进纸器", scanDialogDuplex: "双面", scanDialogColorLabel: "颜色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "在空白纸处分割整叠文档", scanDialogStartSplit: "扫描并分割", scanOptionsHelpLink: "这些选项有什么作用？", scanOptionsHelpSplit: "分割", scanOptionsHelpSkip: "跳过", scanOptionsHelpResult: "结果", scanOptionsHelpRow1: "每封信一份文档，删除空白背面", scanOptionsHelpRow2: "每封信一份文档，保留空白背面", scanOptionsHelpRow3: "一份文档，删除所有空白页，包括分隔纸", scanOptionsHelpRow4: "一份包含所有页面的文档", scanSplitHint: "类似 Paperless 中的“Scan Multi”：在文档之间各放一张空白纸，一次扫描整叠文档。两面都空白的纸张会开始一个新文档，且不会保留。", scanExtraSkipBlankPages: "跳过空白页", scanDialogNothingFound: "没有扫描助手响应。扫描需要在这台电脑上运行一个小型助手应用：大多数扫描仪使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手运行在其他地址，请在下方输入。", scanDialogGetHelper: "获取 dossiary-scan-helper", scanDialogGetScanix500: "获取 scanix500", scanDialogAddressLabel: "助手地址（可选）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "请输入类似 http://localhost:8766 的地址。",
       scanPairCodeLabel: "配对代码", scanPairInvalidCode: "请输入 6 位代码。", scanPairWrongCode: "该代码无效。请再次选择“Pair a Browser…”以获取新代码。",
       shareAction: '分享…', folderPickerHint: 'Chrome 不允许直接选择“下载”“文稿”“桌面”或你的个人文件夹。请选择或新建其中的一个文件夹。', exportLibraryAction: '导出为资料库…', exportLibraryTitle: '导出为资料库', exportLibraryIntro: '用所选文档创建一个可直接打开的新 Dossiary 资料库。点击“导出资料库”后再选择创建位置。', exportLibraryNameSuffix: '（导出）', exportLibraryHint: '将在你选择的文件夹中创建文件夹“{name}”。', exportLibraryModeLabel: '文档', exportLibraryCopy: '复制——此资料库保持不变', exportLibraryMove: '移动', exportLibraryMoveNote: '新资料库写入完成后，这些文档会移到此处的回收站。从回收站恢复即可撤销。', exportLibrarySetupLabel: '设置', exportLibrarySetupUsed: '仅这些文档用到的内容', exportLibrarySetupAll: '此资料库的全部内容', exportLibrarySetupHint: '设置包括自定义字段（例如“机构”或“保单号”）、每种文档类型显示哪些字段、字段说明、默认货币、列和排序等设置，以及智能收藏集。标签、人员和文档本身的信息始终会一并导出。', exportLibraryCount: '文档：{count}', exportLibraryCountSize: '文档：{count}（{size}）', exportLibraryOcrPending: '仍在设为可搜索：{count}。将按当前状态导出。', exportLibraryStart: '导出资料库', exportLibraryProgress: '正在复制文档：{done} / {total}', exportLibraryStopped: '已停止。不完整的资料库已删除。', exportLibraryError: '导出失败：{error}。不完整的资料库已删除。', exportLibraryNothing: '所有文档都无法读取，因此没有创建资料库。', exportLibraryDone: '已创建“{folder}”。', exportLibraryExported: '已导出的文档：{count}', exportLibraryLeftOut: '因文件无法读取而略过：{count}', exportLibraryMoved: '已移到此处的回收站：{count}', exportLibraryMoveSaveFailed: '无法将这些文档移到此处的回收站（{error}）。新资料库已完整，这些文档也仍在此资料库中。', exportLibraryOpen: '打开', shareModalTitle: '分享', shareReading: '正在读取第 {done} 个文件，共 {total} 个…', shareReady: '已就绪：{count} 个文件。“分享”会打开系统的分享菜单，可通过邮件、消息或其他应用发送。', shareButton: '分享', shareDone: '已交给你选择的应用。', shareUnsupported: '此浏览器无法把文件交给其他应用。请先导出到文件夹，再自行作为邮件附件发送。', shareExportBtn: '导出到文件夹…', shareEmailBtn: '写邮件', shareFailedRead: '无法读取：{count} 个。', shareError: '分享失败：{error}', shareNothing: '这些文档都没有可分享的文件。',
       exportWriteDetails: '将标题、分类、类型和标签写入导出的 PDF', exportDetailsSkipped: '{count} 个 PDF 未写入信息即复制（无法作为 PDF 打开）。',
@@ -2046,7 +2053,7 @@
       toolbarAmountMinTitle: '最小金额', toolbarAmountMaxTitle: '最大金额', toolbarAmountUnsetLabel: '金额未设置',
       toolbarAmountMinClearAriaLabel: '清除最小金额', toolbarAmountMaxClearAriaLabel: '清除最大金额',
       toolbarManageFields: '⚙ 管理字段', toolbarManageCollections: '⚙ 管理收藏集',
-      toolbarCheckInbox: '📥 检查收件箱', toolbarCheckReminders: '🔔 检查提醒', toolbarScan: '📷 扫描', toolbarScanMulti: '📸 多页扫描', toolbarAddDocument: '＋ 添加文档',
+      toolbarCheckInbox: '📥 检查收件箱', toolbarCheckReminders: '🔔 检查提醒', toolbarScan: '📷 扫描', toolbarAddDocument: '＋ 添加文档',
       toolbarSwitchLibrary: '切换资料库', toolbarColumns: '⚙ 列', toolbarTools: '🛠 工具 ▾', toolbarDetailsToggle: '☰ 详情',
       inboxBannerAddAll: '全部添加',
       bulkAddToCollection: '添加到收藏集 ▾', bulkNewCollectionPlaceholder: '新收藏集名称',
@@ -2230,7 +2237,7 @@
     'zh-Hant': {
       scanHelperUnreachable: "無法連接到位於 {url} 的掃描助手。它在運行嗎？", scanHelperBadAnswer: "位於 {url} 的掃描助手返回了 Dossiary 無法理解的答覆。更新該助手應可解決。", scanNeedsPairing: "掃描助手已不認識此瀏覽器。請重新配對。",
       scanPairHelperNotPaired: "{helper}：尚未配對", scanPairButton: "配對", scanPairHint: "請將此瀏覽器配對一次：在助手的菜單中選擇“Pair a Browser…”，然後輸入它顯示的 6 位代碼。", scanPairPairing: "正在配對…",
-      scanDialogTitle: "掃描", scanDialogSearching: "正在查找掃描儀…", scanDialogStart: "掃描", scanDialogScannerLabel: "掃描儀", scanDialogSourceLabel: "進紙方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自動進紙器", scanDialogDuplex: "雙面", scanDialogColorLabel: "顏色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "按空白頁分割（空白頁開始新文檔）", scanExtraSkipBlankPages: "跳過空白頁", scanDialogNothingFound: "沒有掃描助手響應。掃描需要在這臺電腦上運行一個小型助手應用：大多數掃描儀使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手運行在其他地址，請在下方輸入。", scanDialogGetHelper: "獲取 dossiary-scan-helper", scanDialogGetScanix500: "獲取 scanix500", scanDialogAddressLabel: "助手地址（可選）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "請輸入類似 http://localhost:8766 的地址。",
+      scanDialogTitle: "掃描", scanDialogSearching: "正在查找掃描儀…", scanDialogStart: "掃描", scanDialogScannerLabel: "掃描儀", scanDialogSourceLabel: "進紙方式", scanSourceFlatbed: "平板", scanSourceFeeder: "自動進紙器", scanDialogDuplex: "雙面", scanDialogColorLabel: "顏色", scanColorColor: "彩色", scanColorGray: "灰度", scanColorBw: "黑白", scanDialogResolutionLabel: "分辨率", scanDialogDpi: "{dpi} dpi", scanExtraSplitOnBlank: "在空白紙處分割整疊文檔", scanDialogStartSplit: "掃描並分割", scanOptionsHelpLink: "這些選項有什麼作用？", scanOptionsHelpSplit: "分割", scanOptionsHelpSkip: "跳過", scanOptionsHelpResult: "結果", scanOptionsHelpRow1: "每封信一份文檔，刪除空白背面", scanOptionsHelpRow2: "每封信一份文檔，保留空白背面", scanOptionsHelpRow3: "一份文檔，刪除所有空白頁，包括分隔紙", scanOptionsHelpRow4: "一份包含所有頁面的文檔", scanSplitHint: "類似 Paperless 中的“Scan Multi”：在文檔之間各放一張空白紙，一次掃描整疊文檔。兩面都空白的紙張會開始一個新文檔，且不會保留。", scanExtraSkipBlankPages: "跳過空白頁", scanDialogNothingFound: "沒有掃描助手響應。掃描需要在這臺電腦上運行一個小型助手應用：大多數掃描儀使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。如果您的助手運行在其他地址，請在下方輸入。", scanDialogGetHelper: "獲取 dossiary-scan-helper", scanDialogGetScanix500: "獲取 scanix500", scanDialogAddressLabel: "助手地址（可選）", scanDialogRetry: "重新查找", scanDialogAddressInvalid: "請輸入類似 http://localhost:8766 的地址。",
       scanPairCodeLabel: "配對代碼", scanPairInvalidCode: "請輸入 6 位代碼。", scanPairWrongCode: "該代碼無效。請再次選擇「Pair a Browser…」以獲取新代碼。",
       shareAction: '分享…', folderPickerHint: 'Chrome 不允許直接選擇「下載」「文稿」「桌面」或你的個人文件夾。請選擇或新建其中的一個文件夾。', exportLibraryAction: '導出為資料庫…', exportLibraryTitle: '導出為資料庫', exportLibraryIntro: '用所選文檔創建一個可直接打開的新 Dossiary 資料庫。點擊「導出資料庫」後再選擇創建位置。', exportLibraryNameSuffix: '（導出）', exportLibraryHint: '將在你選擇的文件夾中創建文件夾「{name}」。', exportLibraryModeLabel: '文檔', exportLibraryCopy: '複製——此資料庫保持不變', exportLibraryMove: '移動', exportLibraryMoveNote: '新資料庫寫入完成後，這些文檔會移到此處的回收站。從回收站恢復即可撤銷。', exportLibrarySetupLabel: '設置', exportLibrarySetupUsed: '僅這些文檔用到的內容', exportLibrarySetupAll: '此資料庫的全部內容', exportLibrarySetupHint: '設置包括自定義字段（例如「機構」或「保單號」）、每種文檔類型顯示哪些字段、字段說明、默認貨幣、列和排序等設置，以及智能收藏集。標籤、人員和文檔本身的信息始終會一併導出。', exportLibraryCount: '文檔：{count}', exportLibraryCountSize: '文檔：{count}（{size}）', exportLibraryOcrPending: '仍在設為可搜索：{count}。將按當前狀態導出。', exportLibraryStart: '導出資料庫', exportLibraryProgress: '正在複製文檔：{done} / {total}', exportLibraryStopped: '已停止。不完整的資料庫已刪除。', exportLibraryError: '導出失敗：{error}。不完整的資料庫已刪除。', exportLibraryNothing: '所有文檔都無法讀取，因此沒有創建資料庫。', exportLibraryDone: '已創建「{folder}」。', exportLibraryExported: '已導出的文檔：{count}', exportLibraryLeftOut: '因文件無法讀取而略過：{count}', exportLibraryMoved: '已移到此處的回收站：{count}', exportLibraryMoveSaveFailed: '無法將這些文檔移到此處的回收站（{error}）。新資料庫已完整，這些文檔也仍在此資料庫中。', exportLibraryOpen: '打開', shareModalTitle: '分享', shareReading: '正在讀取第 {done} 個文件，共 {total} 個…', shareReady: '已就緒：{count} 個文件。「分享」會打開系統的分享菜單，可通過郵件、消息或其他應用發送。', shareButton: '分享', shareDone: '已交給你選擇的應用。', shareUnsupported: '此瀏覽器無法把文件交給其他應用。請先導出到文件夾，再自行作爲郵件附件發送。', shareExportBtn: '導出到文件夾…', shareEmailBtn: '寫郵件', shareFailedRead: '無法讀取：{count} 個。', shareError: '分享失敗：{error}', shareNothing: '這些文檔都沒有可分享的文件。',
       exportWriteDetails: '將標題、分類、類型和標籤寫入導出的 PDF', exportDetailsSkipped: '{count} 個 PDF 未寫入信息即複製（無法作爲 PDF 打開）。',
@@ -2291,7 +2298,7 @@
       toolbarAmountMaxClearAriaLabel: '清除最大金額',
       toolbarManageFields: '⚙ 管理字段',
       toolbarManageCollections: '⚙ 管理收藏集',
-      toolbarCheckInbox: '📥 檢查收件箱', toolbarCheckReminders: '🔔 檢查提醒', toolbarScan: '📷 掃描', toolbarScanMulti: '📸 多頁掃描', toolbarAddDocument: '＋ 添加文檔',
+      toolbarCheckInbox: '📥 檢查收件箱', toolbarCheckReminders: '🔔 檢查提醒', toolbarScan: '📷 掃描', toolbarAddDocument: '＋ 添加文檔',
       toolbarSwitchLibrary: '切換資料庫',
       toolbarColumns: '⚙ 列', toolbarTools: '🛠 工具 ▾', toolbarDetailsToggle: '☰ 詳情',
       inboxBannerAddAll: '全部添加',
@@ -2596,8 +2603,8 @@
       scanColorBw: "Սև ու սպիտակ",
       scanDialogResolutionLabel: "Թույլատրություն",
       scanDialogDpi: "{dpi} dpi",
-      scanExtraSplitOnBlank: "Բաժանել դատարկ էջերով (դատարկ թերթը սկսում է նոր փաստաթուղթ)",
-      scanExtraSkipBlankPages: "Բաց թողնել դատարկ էջերը",
+      scanExtraSplitOnBlank: "Բաժանել կույտը դատարկ թերթերով",
+      scanDialogStartSplit: "Սկանավորել և բաժանել", scanOptionsHelpLink: "Ի՞նչ են անում այս ընտրանքները", scanOptionsHelpSplit: "Բաժանել", scanOptionsHelpSkip: "Բաց թողնել", scanOptionsHelpResult: "Արդյունք", scanOptionsHelpRow1: "Մեկ փաստաթուղթ յուրաքանչյուր նամակի համար, դատարկ հետնամասերը հեռացված", scanOptionsHelpRow2: "Մեկ փաստաթուղթ յուրաքանչյուր նամակի համար, դատարկ հետնամասերը պահված", scanOptionsHelpRow3: "Մեկ փաստաթուղթ, բոլոր դատարկ էջերը հեռացված, այդ թվում՝ բաժանող թերթերը", scanOptionsHelpRow4: "Մեկ փաստաթուղթ՝ բոլոր էջերով", scanSplitHint: "Նույնն է, ինչ Paperless-ի «Scan Multi»-ը։ Փաստաթղթերի միջև դրեք դատարկ թերթ և սկանավորեք ամբողջ կույտը միանգամից։ Երկու կողմից էլ դատարկ թերթը սկսում է նոր փաստաթուղթ և չի պահվում։", scanExtraSkipBlankPages: "Բաց թողնել դատարկ էջերը",
       scanDialogNothingFound: "Ոչ մի սկանավորման օգնական չպատասխանեց։ Սկանավորման համար այս համակարգչում անհրաժեշտ է փոքր օգնական ծրագիր՝ dossiary-scan-helper՝ սկաներների մեծ մասի համար, կամ scanix500՝ ScanSnap iX500-ի համար։ Եթե ձերն աշխատում է այլ հասցեով, մուտքագրեք այն ստորև։",
       scanDialogGetHelper: "Ներբեռնել dossiary-scan-helper",
       scanDialogGetScanix500: "Ներբեռնել scanix500",
@@ -2853,7 +2860,6 @@
       toolbarCheckInbox: "📥 Ստուգել մուտքայինը",
       toolbarCheckReminders: "🔔 Ստուգել հիշեցումները",
       toolbarScan: "📷 Սկանավորել",
-      toolbarScanMulti: "📸 Բազմակի սկանավորում",
       toolbarAddDocument: "＋ Ավելացնել փաստաթուղթ",
       toolbarSwitchLibrary: "Փոխել գրադարանը",
       toolbarColumns: "⚙ Սյունակներ",
@@ -4072,7 +4078,6 @@
     { key: 'check-inbox', id: 'inbox-check-btn', labelKey: 'toolbarCheckInbox' },
     { key: 'check-reminders', id: 'check-reminders-btn', labelKey: 'toolbarCheckReminders' },
     { key: 'scan', id: 'scan-btn', labelKey: 'toolbarScan' },
-    { key: 'scan-multi', id: 'scan-multi-btn', labelKey: 'toolbarScanMulti' },
     { key: 'details', id: 'detail-panel-toggle-btn', labelKey: 'toolbarDetailsToggle' },
     { key: 'columns', id: 'columns-btn', labelKey: 'toolbarColumns', wrap: true },
   ];
@@ -4934,11 +4939,7 @@
     // synchronously right here rather than needing its own fire-and-forget treatment.
     const dueOnOpen = checkReminders();
     if(dueOnOpen.length) openRemindersModal(dueOnOpen);
-    // Read-only requests to localhost: is there a scanner that can split on
-    // blank pages (Scan Multi)? Ignored if another library opened meanwhile.
     if(ocrJobRows().length) startOcrJobRunner();
-    const scanCheckRoot = rootDirHandle;
-    discoverScanHelpers().then(helpers => { if(rootDirHandle === scanCheckRoot) updateScanMultiAvailability(helpers); });
   }
 
   function resetAll(){
@@ -4949,7 +4950,7 @@
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
-    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null; scanAutoOcr = true; scanOcrLanguage = 'eng+deu'; el('scan-multi-btn').classList.add('scan-unavailable');
+    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null; scanAutoOcr = true; scanOcrLanguage = 'eng+deu';
     collections = []; collectionFolders = []; collapsedCollectionFolders = new Set(); collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; collectionsTabsOpen = false; selectedDocIds = new Set();
     reminderSnoozes = {}; notDuplicateKeys = new Set();
     reportDrilldownIds = new Set(); reportDrilldownLabel = ''; reportDrilldownReturnTo = 'reports';
@@ -9058,7 +9059,7 @@
     if(unhashed.length){
       // Close control disabled for the duration -- same "disable, only
       // re-enable on completion" treatment startScanFromDialog() already uses for the
-      // Scan/Scan Multi buttons. The in-progress Stop button (below) is the
+      // Scan button. The in-progress Stop button (below) is the
       // one sanctioned way out mid-pass: it lets in-flight reads finish and
       // persists everything hashed so far before showing results, rather
       // than abandoning half-written state the way closing the modal would.
@@ -9071,7 +9072,7 @@
       // stops working for every other modal for the rest of the session.
       // try/finally guarantees that regardless of success or failure, the
       // same "disable, only re-enable in finally" treatment startScanFromDialog()
-      // already uses for the Scan/Scan Multi buttons.
+      // already uses for the Scan button.
       // Reads several files at once (BACKFILL_CONCURRENCY) -- on a library
       // folder synced via iCloud/Dropbox/etc., a file evicted to the cloud has
       // to be downloaded before it can be hashed, and overlapping those
@@ -14824,19 +14825,6 @@
     return all;
   }
 
-  // Scan Multi is a shortcut to the dialog with "Split on blank pages"
-  // ticked, so it's shown only while some helper can do that: a scanner
-  // offering splitOnBlank, or a scanix500 not paired yet (its scanner, the
-  // iX500, can -- pairing happens in the dialog; an unpaired helper lists no
-  // scanners, so scanix500 is recognized by its version 1 health or, from
-  // 0.4.0, its helper name). Kept apart from .toolbar-hidden, which is the
-  // person's own choice in Toolbar buttons….
-  function updateScanMultiAvailability(helpers){
-    const unpairedScanix500 = (h) => !h.paired && (h.version === 1 || h.label === 'scanix500');
-    const available = helpers.some(h => unpairedScanix500(h) || h.scanners.some(s => s.extras.includes('splitOnBlank')));
-    el('scan-multi-btn').classList.toggle('scan-unavailable', !available);
-  }
-
   window.__DEBUG_scanDiscovery = async () => {
     const helpers = await discoverScanHelpers();
     return {
@@ -14851,7 +14839,7 @@
   // chosen one supports. The last scanner and its settings are remembered
   // per library (scan_last_settings).
   let scanDialogRunning = false; // a scan request is in flight -- blocks closing the dialog
-  let scanDialogState = null;    // {helpers, choices, forceSplit} for the open dialog
+  let scanDialogState = null;    // {helpers, choices} for the open dialog
   const SCAN_HELPER_DOWNLOAD_URL = 'https://github.com/AarneAarebye/dossiary-scan-helper/releases';
   const SCANIX500_URL = 'https://github.com/AarneAarebye/iX500';
   const SCAN_SETTING_LABEL_KEYS = {
@@ -14870,9 +14858,9 @@
     await persistDb();
   }
 
-  async function openScanDialog({ splitOnBlank = false } = {}){
+  async function openScanDialog(){
     if(scanDialogRunning) return;
-    scanDialogState = { helpers: [], choices: [], forceSplit: splitOnBlank };
+    scanDialogState = { helpers: [], choices: [] };
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal scan-dialog" role="dialog" aria-modal="true">
@@ -14900,7 +14888,6 @@
   async function refreshScanDialog(){
     const keep = el('scan-dialog-scanner') ? readScanDialogSettings() : readLastScanSettings();
     const helpers = await discoverScanHelpers();
-    updateScanMultiAvailability(helpers);
     if(!el('scan-dialog-body')) return; // closed while looking
     scanDialogState.helpers = helpers;
     scanDialogState.choices = scannerChoices(helpers);
@@ -15020,14 +15007,42 @@
         <select id="${id}">${values.map(v => `<option value="${escapeHtml(String(v))}" ${v === current ? 'selected' : ''}>${escapeHtml(labelOf(v))}</option>`).join('')}</select>
       </div>` : '';
     const extras = s.extras.filter(x => SCAN_EXTRA_LABEL_KEYS[x]);
-    const extraOn = (x) => (x === 'splitOnBlank' && scanDialogState.forceSplit) || (keep ? !!(keep.extras && keep.extras[x]) : x === 'skipBlankPages');
+    const extraOn = (x) => keep ? !!(keep.extras && keep.extras[x]) : x === 'skipBlankPages';
     const duplexOn = keep ? !!keep.duplex : s.duplex;
     box.innerHTML = `
       ${selectHtml('scan-dialog-source', 'scanDialogSourceLabel', s.sources, source, v => t(SCAN_SETTING_LABEL_KEYS.source[v]))}
       <label class="scan-dialog-check" id="scan-dialog-duplex-wrap"><input type="checkbox" id="scan-dialog-duplex" ${duplexOn ? 'checked' : ''} /> ${t('scanDialogDuplex')}</label>
       ${selectHtml('scan-dialog-color', 'scanDialogColorLabel', s.colorModes, pick(s.colorModes, keep && keep.colorMode), v => t(SCAN_SETTING_LABEL_KEYS.colorMode[v]))}
       ${selectHtml('scan-dialog-resolution', 'scanDialogResolutionLabel', s.resolutions, pick(s.resolutions, keep && keep.resolution), v => t('scanDialogDpi', {dpi: v}))}
-      ${extras.map(x => `<label class="scan-dialog-check"><input type="checkbox" class="scan-dialog-extra" data-extra="${x}" ${extraOn(x) ? 'checked' : ''} /> ${t(SCAN_EXTRA_LABEL_KEYS[x])}</label>`).join('')}`;
+      ${extras.map(x => `<label class="scan-dialog-check"><input type="checkbox" class="scan-dialog-extra" data-extra="${x}" ${extraOn(x) ? 'checked' : ''} /> ${t(SCAN_EXTRA_LABEL_KEYS[x])}</label>${x === 'splitOnBlank' ? `<div class="doc-sub scan-split-hint" id="scan-split-hint">${t('scanSplitHint')}</div>` : ''}`).join('')}`;
+    // Split and skip work together in scanix500: a sheet blank on every side
+    // is the separator, and skip removes the other blank pages (the blank
+    // backs of one-sided letters), which split alone would keep. So ticking
+    // split ticks skip too -- a suggestion, it can be unticked again.
+    // With both options, a folded table of what each combination gives.
+    if(extras.includes('splitOnBlank') && extras.includes('skipBlankPages')){
+      const row = (split, skip, key) => `<tr><td class="mark">${split ? '✓' : '–'}</td><td class="mark">${skip ? '✓' : '–'}</td><td>${t(key)}</td></tr>`;
+      box.insertAdjacentHTML('beforeend', `
+        <button type="button" class="scan-toggle scan-options-help-toggle" id="scan-options-help-toggle" aria-expanded="false" aria-controls="scan-options-help">${t('scanOptionsHelpLink')}</button>
+        <div class="scan-options-help" id="scan-options-help" hidden>
+          <table>
+            <thead><tr><th>${t('scanOptionsHelpSplit')}</th><th>${t('scanOptionsHelpSkip')}</th><th>${t('scanOptionsHelpResult')}</th></tr></thead>
+            <tbody>${row(true, true, 'scanOptionsHelpRow1')}${row(true, false, 'scanOptionsHelpRow2')}${row(false, true, 'scanOptionsHelpRow3')}${row(false, false, 'scanOptionsHelpRow4')}</tbody>
+          </table>
+        </div>`);
+      el('scan-options-help-toggle').addEventListener('click', () => {
+        const help = el('scan-options-help');
+        help.hidden = !help.hidden;
+        el('scan-options-help-toggle').setAttribute('aria-expanded', String(!help.hidden));
+      });
+    }
+    const splitBox = box.querySelector('.scan-dialog-extra[data-extra="splitOnBlank"]');
+    const skipBox = box.querySelector('.scan-dialog-extra[data-extra="skipBlankPages"]');
+    if(splitBox) splitBox.addEventListener('change', () => {
+      if(splitBox.checked && skipBox) skipBox.checked = true;
+      syncScanStartLabel();
+    });
+    syncScanStartLabel();
     const syncDuplex = () => {
       const current = el('scan-dialog-source') ? el('scan-dialog-source').value : source;
       const allowed = s.duplex && current === 'feeder';
@@ -15036,6 +15051,18 @@
     };
     if(el('scan-dialog-source')) el('scan-dialog-source').addEventListener('change', syncDuplex);
     syncDuplex();
+  }
+
+  // The start button says what will happen: "Scan", or "Scan and split"
+  // while split at blank sheets is ticked -- the one setting that turns a
+  // stack into several documents, and it's remembered from the last scan.
+  function scanStartLabel(){
+    const splitBox = modalRoot.querySelector('.scan-dialog-extra[data-extra="splitOnBlank"]');
+    return t(splitBox && splitBox.checked ? 'scanDialogStartSplit' : 'scanDialogStart');
+  }
+  function syncScanStartLabel(){
+    const splitBox = modalRoot.querySelector('.scan-dialog-extra[data-extra="splitOnBlank"]');
+    if(el('scan-dialog-start-btn') && !scanDialogRunning) el('scan-dialog-start-btn').textContent = scanStartLabel();
   }
 
   function readScanDialogSettings(){
@@ -15229,7 +15256,6 @@
     startBtn.disabled = true;
     startBtn.textContent = t('scanScanning');
     el('scan-btn').disabled = true;
-    el('scan-multi-btn').disabled = true;
     // The scan request only answers when the helper is done -- a feeder batch
     // with OCR can take minutes -- so the dialog and the status line count the
     // time up, rather than looking stuck. (Real progress would need the
@@ -15258,10 +15284,9 @@
       if(el('scan-dialog-status')) el('scan-dialog-status').textContent = '';
       scanDialogRunning = false;
       el('scan-btn').disabled = false;
-      el('scan-multi-btn').disabled = false;
       if(el('scan-dialog-start-btn')){
         el('scan-dialog-start-btn').disabled = false;
-        el('scan-dialog-start-btn').textContent = t('scanDialogStart');
+        el('scan-dialog-start-btn').textContent = scanStartLabel();
       }
     }
     if(!outcome || outcome.done) return;
@@ -15307,7 +15332,6 @@
   el('manage-values-btn').addEventListener('click', openManageValuesModal);
 
   el('scan-btn').addEventListener('click', () => openScanDialog());
-  el('scan-multi-btn').addEventListener('click', () => openScanDialog({ splitOnBlank: true }));
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a

@@ -163,8 +163,9 @@ a ScanSnap iX500.
    the Inbox, ready to review.
 
 Dossiary remembers your scanner and settings for next time. With a scanner
-that can split a stack on blank sheets, **📸 Scan Multi** turns one stack
-into several documents.
+that can split a stack on blank sheets, tick **Split the stack at blank
+sheets** in the dialog to turn one stack into several documents: just put a
+blank sheet between them (Mariner Paperless called this Scan Multi).
 
 ## A quick tour of everything else
 

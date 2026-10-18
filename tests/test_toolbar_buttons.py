@@ -48,22 +48,22 @@ async def main():
         def box(label):
             return page.locator('.toolbar-buttons-list label', has_text=label).locator('input')
 
-        print("All buttons show by default:", all([await visible(s) for s in ['#inbox-check-btn', '#check-reminders-btn', '#scan-btn', '#scan-multi-btn', '#detail-panel-toggle-btn', '#columns-btn']]))
+        print("All buttons show by default:", all([await visible(s) for s in ['#inbox-check-btn', '#check-reminders-btn', '#scan-btn', '#detail-panel-toggle-btn', '#columns-btn']]))
         await open_dialog()
         labels = await page.locator('.toolbar-buttons-list label').all_inner_texts()
-        print("The dialog lists the optional buttons, ticked:", [l.strip() for l in labels] == ['📥 Check inbox', '🔔 Check reminders', '📷 Scan', '📸 Scan Multi', '☰ Details', '⚙ Columns']
-              and await page.locator('.toolbar-buttons-list input:checked').count() == 6)
+        print("The dialog lists the optional buttons, ticked:", [l.strip() for l in labels] == ['📥 Check inbox', '🔔 Check reminders', '📷 Scan', '☰ Details', '⚙ Columns']
+              and await page.locator('.toolbar-buttons-list input:checked').count() == 5)
         print("...but not Add document or Tools:", not any('Add document' in l or 'Tools' in l for l in labels))
         await box('Scan').first.uncheck()
-        await box('Scan Multi').uncheck()
+        await box('Check reminders').uncheck()
         await box('Columns').uncheck()
         await box('Details').uncheck()
         await page.wait_for_timeout(200)
-        print("Unticking hides them at once:", not await visible('#scan-btn') and not await visible('#scan-multi-btn')
+        print("Unticking hides them at once:", not await visible('#scan-btn') and not await visible('#check-reminders-btn')
               and not await visible('#columns-btn') and not await visible('#detail-panel-toggle-btn') and await visible('#inbox-check-btn'))
         await page.click('#toolbar-buttons-done-btn')
         db = await page.evaluate("() => JSON.parse(new TextDecoder().decode(window.__TEST_ROOT._children.get('library.sqlite')._bytes))")
-        print("The choice is saved in the library:", sorted(json.loads(next(r['value'] for r in db['settings'] if r['key'] == 'hidden_toolbar_buttons'))) == ['columns', 'details', 'scan', 'scan-multi'])
+        print("The choice is saved in the library:", sorted(json.loads(next(r['value'] for r in db['settings'] if r['key'] == 'hidden_toolbar_buttons'))) == ['check-reminders', 'columns', 'details', 'scan'])
 
         await page.click('#nav-item-reports')
         await page.wait_for_timeout(200)
@@ -80,7 +80,7 @@ async def main():
         await open_dialog()
         await box('Scan').first.check()
         await page.wait_for_timeout(200)
-        print("Ticking a button again brings it back:", await visible('#scan-btn') and not await visible('#scan-multi-btn'))
+        print("Ticking a button again brings it back:", await visible('#scan-btn') and not await visible('#check-reminders-btn'))
         await page.click('#toolbar-buttons-done-btn')
 
         await page.evaluate("() => { const s = document.getElementById('lang-select'); s.value = 'de'; s.dispatchEvent(new Event('change')); }")

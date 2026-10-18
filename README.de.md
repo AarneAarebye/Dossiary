@@ -117,10 +117,27 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   auf einem anderen Port lässt sich im Dialog oder in den Feldeinstellungen
   eintragen. Jeder Browser wird einmal mit einem Helfer gekoppelt: „Pair a
   Browser…“ im Helfer zeigt einen 6-stelligen Code, der im Dialog
-  eingegeben wird. Gescannte Seiten landen im Posteingang. 📸 **Mehrfach
-  scannen** öffnet denselben Dialog mit „An leeren Seiten trennen“
-  angehakt und erscheint nur, solange ein Scanner das kann. Dossiary merkt
-  sich den letzten Scanner und seine Einstellungen pro Bibliothek.
+  eingegeben wird. Gescannte Seiten landen im Posteingang. Um aus einem
+  Stapel mehrere Dokumente zu machen (Scan Multi in Mariner Paperless),
+  „Stapel an leeren Blättern trennen“ anhaken (angeboten von Scannern, die
+  das können, etwa dem iX500) und zwischen die Dokumente je ein leeres
+  Blatt legen: Ein Blatt ohne Inhalt auf beiden Seiten beginnt ein neues
+  Dokument und wird weggelassen.
+  Das Anhaken setzt auch „Leere Seiten weglassen“, das die leeren
+  Rückseiten einseitiger Briefe entfernt, und der Scan-Button heißt dann
+  „Scannen und trennen“. Dossiary merkt sich den letzten Scanner und seine
+  Einstellungen pro Bibliothek. (Früher gab es dafür einen eigenen Button
+  📸 Mehrfach scannen; seit v1.51 ist es das Kontrollkästchen.) Was jede
+  Kombination ergibt, für einen beidseitig gescannten Stapel ein- und
+  zweiseitiger Briefe mit leeren Trennblättern (der Dialog zeigt dieselbe
+  Tabelle unter „Was bewirken diese Optionen?“):
+
+  | Trennen | Weglassen | Ergebnis |
+  |---|---|---|
+  | ✓ | ✓ | Ein Dokument pro Brief, leere Rückseiten entfernt |
+  | ✓ | – | Ein Dokument pro Brief, leere Rückseiten bleiben |
+  | – | ✓ | Ein Dokument, alle leeren Seiten entfernt, auch die Trennblätter |
+  | – | – | Ein Dokument mit allen Seiten |
 
   Der Scanner muss nicht an diesem Computer hängen. Ein iX500 kann an
   einem Raspberry Pi mit scanix500-server angeschlossen sein: Dossiary
@@ -1008,10 +1025,10 @@ verfälschen, statt tatsächlich getrennte Werte zu trennen.
   oben — auch dort ist, wie beabsichtigt, weiterhin ein expliziter Klick
   in der App nötig, um jede Datei tatsächlich als Dokument hinzuzufügen.
 
-  Die Werkzeugleisten-Buttons „📷 Scan"/„📸 Scan Multi" (siehe Funktionen
-  oben) sind der eine Weg, auf dem Dossiary tatsächlich einen echten Scan
-  auslöst -- aber nur, indem sie mit einer separaten Hilfs-App auf
-  demselben Computer sprechen, nicht dadurch, dass Dossiary selbst Zugriff
+  Der Werkzeugleisten-Button „📷 Scannen" (siehe Funktionen
+  oben) ist der eine Weg, auf dem Dossiary tatsächlich einen echten Scan
+  auslöst -- aber nur, indem er mit einer separaten Hilfs-App auf
+  demselben Computer spricht, nicht dadurch, dass Dossiary selbst Zugriff
   auf Scanner-Hardware erhält; die oben beschriebene grundlegende
   Plattform-Einschränkung bleibt bestehen. Die beiden unterstützten
   Helfer, die Erkennung und die einmalige Kopplung stehen oben unter

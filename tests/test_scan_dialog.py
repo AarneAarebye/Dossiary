@@ -276,12 +276,13 @@ async def scenario_dialog(p):
           and await page.eval_on_selector('#scan-dialog-color', 'e => e.value') == 'gray'
           and await page.eval_on_selector('#scan-dialog-resolution', 'e => e.value') == '600')
 
-    # The splitOnBlank option ticks the extra (Scan Multi's shortcut, Task 5).
+    # A remembered split on blank pages comes back ticked, and the button says so.
     await page.click('#scan-dialog-cancel-btn')
-    await page.evaluate(f"window.__DEBUG_saveLastScanSettings({{scanner: '{L1}|scanix500', extras: {{}}}})")
-    await page.evaluate("window.__DEBUG_openScanDialog({splitOnBlank: true})")
+    await page.evaluate(f"window.__DEBUG_saveLastScanSettings({{scanner: '{L1}|scanix500', extras: {{splitOnBlank: true}}}})")
+    await page.evaluate("window.__DEBUG_openScanDialog({})")
     await page.wait_for_timeout(300)
-    print("splitOnBlank option ticks split on blank pages:", await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]'))
+    print("a remembered split on blank pages comes back ticked:", await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]')
+          and await page.inner_text('#scan-dialog-start-btn') == 'Scan and split')
 
     # A remembered scanner that's gone falls back to the first.
     await page.click('#scan-dialog-cancel-btn')
@@ -451,7 +452,7 @@ async def scenario_scan_v1(p):
           and (await page.inner_text('#status')).strip().startswith('Scanning… 0:01'))
     print("Scan button reads Scanning… while scanning:", await page.inner_text('#scan-dialog-start-btn') == 'Scanning…'
           and not await page.is_enabled('#scan-dialog-start-btn'))
-    print("toolbar Scan buttons disabled while scanning:", not await page.is_enabled('#scan-btn') and not await page.is_enabled('#scan-multi-btn'))
+    print("toolbar Scan button disabled while scanning:", not await page.is_enabled('#scan-btn'))
     await page.keyboard.press('Escape')
     await page.click('#modal-close-btn')
     await page.mouse.click(5, 5)
@@ -460,7 +461,7 @@ async def scenario_scan_v1(p):
     print("the timer stops and the helper's message replaces it:", await page.inner_text('#scan-dialog-status') != ''
           and 'Scanning' not in await page.inner_text('#scan-dialog-status'))
     print("everything re-enabled afterwards:", await page.is_enabled('#scan-dialog-start-btn') and await page.is_enabled('#scan-btn')
-          and await page.inner_text('#scan-dialog-start-btn') == 'Scan')
+          and await page.inner_text('#scan-dialog-start-btn') == 'Scan and split')  # split was ticked for an earlier scan, so it's remembered
     await page.keyboard.press('Escape')
     print("Escape closes it again once idle:", await page.locator('#scan-dialog-body').count() == 0)
 
@@ -678,61 +679,81 @@ async def scenario_pairing(p):
     await browser.close()
 
 
-# === Task 5: Scan Multi only while a scanner can split on blank pages ===
-async def scenario_scan_multi(p):
-    async def visible(page, sel):
-        return await page.is_visible(sel)
-
-    browser, page, errors = await open_app(p)
-    await page.wait_for_timeout(200)
-    print("no helper: Scan Multi hidden, Scan shown:", not await visible(page, '#scan-multi-btn') and await visible(page, '#scan-btn'))
-    await browser.close()
-
-    browser, page, errors = await open_app(p, helpers={L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS[:2]}}, tokens={L2: 'tok-2'})
+# === One Scan button: split on blank pages in the dialog (Scan Multi merged in) ===
+async def scenario_split(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers={L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS}})
     await page.wait_for_timeout(300)
-    print("version 2 scanners without splitOnBlank: Scan Multi hidden:", not await visible(page, '#scan-multi-btn'))
-    await page.evaluate(f"window.__HELPERS['{L2}'].scanners = {json.dumps(V2_SCANNERS)}")
+    print("no Scan Multi button any more:", await page.locator('#scan-multi-btn').count() == 0 and await page.is_visible('#scan-btn'))
+    print("opening a library asks no scan helper anything:", await calls(page) == [])
+
+    split = '.scan-dialog-extra[data-extra=splitOnBlank]'
+    skip = '.scan-dialog-extra[data-extra=skipBlankPages]'
     await page.click('#scan-btn')
     await page.wait_for_timeout(300)
-    await page.keyboard.press('Escape')
-    print("opening the dialog re-checks: a splitter appears, Scan Multi shown:", await visible(page, '#scan-multi-btn'))
-    await browser.close()
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:splitter')
+    print("split unticked, button reads Scan:", not await page.is_checked(split) and await page.inner_text('#scan-dialog-start-btn') == 'Scan')
+    print("the option names the stack and blank sheets:", 'Split the stack at blank sheets' in await page.inner_text('#scan-dialog-settings'))
+    print("its hint is always shown and names Paperless's Scan Multi:", await page.is_visible('#scan-split-hint')
+          and 'Scan Multi in Paperless' in await page.inner_text('#scan-split-hint'))
+    print("the options table starts folded:", await page.is_visible('#scan-options-help-toggle') and not await page.is_visible('#scan-options-help'))
+    await page.click('#scan-options-help-toggle')
+    rows = await page.eval_on_selector_all('#scan-options-help tbody tr', 'els => els.map(e => e.innerText.replace(/\\s+/g, " ").trim())')
+    print("clicking the link shows the four combinations:", await page.is_visible('#scan-options-help')
+          and await page.get_attribute('#scan-options-help-toggle', 'aria-expanded') == 'true'
+          and rows == ['✓ ✓ One document per letter, blank backs removed', '✓ – One document per letter, blank backs kept',
+                       '– ✓ One document, all blank pages removed, separator sheets too', '– – One document with every page'])
+    if __import__('sys').argv[1:]: await page.screenshot(path=__import__('sys').argv[1])
+    await page.click('#scan-options-help-toggle')
+    print("clicking again folds it:", not await page.is_visible('#scan-options-help'))
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:feeder')
+    print("no table for a scanner without both options:", await page.locator('#scan-options-help-toggle').count() == 0)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:splitter')
+    await page.uncheck(skip)
+    await page.check(split)
+    print("ticking split ticks skip blank pages too:", await page.is_checked(skip))
+    print("...the button reads Scan and split:", await page.inner_text('#scan-dialog-start-btn') == 'Scan and split')
+    print("...and the hint explains the separator sheet:", await page.is_visible('#scan-split-hint')
+          and 'nothing on either side' in await page.inner_text('#scan-split-hint'))
+    await page.uncheck(skip)
+    print("skip can be unticked again, split stays:", not await page.is_checked(skip) and await page.is_checked(split))
+    await page.uncheck(split)
+    print("unticking split: button reads Scan:", await page.inner_text('#scan-dialog-start-btn') == 'Scan')
 
-    browser, page, errors = await open_app(p, helpers={L1: {"version": 1, "token": "tok-1"}})
-    await page.wait_for_timeout(300)
-    print("unpaired scanix500 on library open: Scan Multi shown:", await visible(page, '#scan-multi-btn'))
-    page_v1 = page
-    browser_v2, page_v2, _ = await open_app(p, helpers={L1: {"version": 2, "token": "tok-1", "helper": "scanix500", "scanners": []}})
-    await page_v2.wait_for_timeout(300)
-    print("unpaired scanix500 0.4.0 (protocol 2): Scan Multi shown:", await visible(page_v2, '#scan-multi-btn'))
-    await browser_v2.close()
-    page = page_v1
-    await page.click('#scan-multi-btn')
-    await page.wait_for_timeout(300)
-    await page.fill('.scan-pair-code', '123456')
-    await page.click('.scan-pair-btn')
-    await page.wait_for_timeout(400)
-    print("Scan Multi opens the dialog with split on blank pages ticked:", await page.is_checked('.scan-dialog-extra[data-extra=splitOnBlank]'))
+    await page.check(split)
     await start_scan(page)
-    scan = [x for x in await calls(page) if '/scan?' in x['url']][-1]
-    print("...and scans with split_on_blank=true:", scan['url'].endswith('split_on_blank=true'))
+    scan = [x for x in await calls(page) if x['url'] == f'{L2}/scan'][-1]
+    print("the scan asks to split and skip blank pages:", json.loads(scan['body'])['extras'] == {"splitOnBlank": True, "skipBlankPages": True})
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    print("reopening remembers split, with its button text and hint:", await page.is_checked(split)
+          and await page.inner_text('#scan-dialog-start-btn') == 'Scan and split' and await page.is_visible('#scan-split-hint'))
+    await page.keyboard.press('Escape')
 
-    # Hidden by the person (Toolbar buttons…) stays hidden even when available.
     await page.click('#tools-btn')
     await page.click('#toolbar-buttons-btn')
-    await page.uncheck('.toolbar-buttons-list input[data-key=scan-multi]')
+    keys = await page.eval_on_selector_all('.toolbar-buttons-list input', 'els => els.map(e => e.dataset.key)')
+    print("Toolbar buttons… no longer lists Scan Multi:", 'scan-multi' not in keys and 'scan' in keys)
     await page.click('#toolbar-buttons-done-btn')
-    print("hidden via Toolbar buttons stays hidden:", not await visible(page, '#scan-multi-btn'))
-
-    # Switching library resets it until the new library's check finishes.
-    await page.evaluate(f"window.__HELPERS['{L1}'].down = true")
-    await page.click('#reload-btn')
-    await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot({}); window.__TEST_ROOT.name = 'Other';")
-    await page.click('#open-btn')
-    await page.wait_for_timeout(400)
-    print("another library without a reachable helper: Scan Multi hidden:",
-          await page.eval_on_selector('#scan-multi-btn', 'e => e.classList.contains("scan-unavailable")'))
     print("no page errors:", errors == [])
+    await browser.close()
+
+    # A library that had hidden Scan Multi opens without trouble.
+    browser, page, errors = await open_app(p)
+    await page.evaluate("""() => { window.__DEBUG_dbRun("INSERT OR REPLACE INTO settings (key, value) VALUES ('hidden_toolbar_buttons', ?)", ['["scan-multi"]']);
+                                  return window.__DEBUG_loadDocumentsFromDb(); }""")
+    await page.wait_for_timeout(200)
+    print("an old hidden Scan Multi setting is harmless:", errors == [] and await page.is_visible('#scan-btn'))
+    await browser.close()
+
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, lang='de', helpers={L2: {"version": 2, "token": "tok-2", "scanners": V2_SCANNERS}})
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:splitter')
+    await page.check(split)
+    print("German button text:", await page.inner_text('#scan-dialog-start-btn') == 'Scannen und trennen')
+    print("German option and hint:", 'Stapel an leeren Blättern trennen' in await page.inner_text('#scan-dialog-settings')
+          and 'Scan Multi' in await page.inner_text('#scan-split-hint'))
+    print("German options link:", await page.inner_text('#scan-options-help-toggle') == 'Was bewirken diese Optionen?')
     await browser.close()
 
 
@@ -1070,7 +1091,7 @@ async def scenario_ocr_jobs(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_scan_multi, scenario_ocr_request, scenario_ocr_jobs]
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs]
 
 
 async def main():

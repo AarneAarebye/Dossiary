@@ -25,7 +25,7 @@ SEED = {
 }
 
 MENU_IDS = ['manage-fields-btn', 'manage-collections-btn', 'manage-values-btn', 'library-check-btn', 'storage-stats-btn', 'import-folder-btn', 'backup-btn', 'toolbar-buttons-btn']
-TOOLBAR_IDS = ['inbox-check-btn', 'check-reminders-btn', 'scan-btn', 'scan-multi-btn', 'add-btn', 'detail-panel-toggle-btn', 'columns-btn', 'tools-btn']
+TOOLBAR_IDS = ['inbox-check-btn', 'check-reminders-btn', 'scan-btn', 'add-btn', 'detail-panel-toggle-btn', 'columns-btn', 'tools-btn']
 
 async def main():
     async with async_playwright() as p:

@@ -170,8 +170,10 @@ para un ScanSnap iX500.
    llegan a la Bandeja de entrada, listas para revisar.
 
 Dossiary recuerda tu escáner y tus ajustes para la próxima vez. Con un
-escáner que puede separar una pila en las hojas en blanco, **📸 Escaneo
-múltiple** convierte una pila en varios documentos.
+escáner que puede separar una pila en las hojas en blanco, marca
+**Separar la pila en las hojas en blanco** en el diálogo para convertir una
+pila en varios documentos: basta con poner una hoja en blanco entre ellos
+(en Mariner Paperless se llamaba Scan Multi).
 
 ## Un breve recorrido por todo lo demás
 

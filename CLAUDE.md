@@ -1932,7 +1932,7 @@ this repo's git tags.
   `.tools-menu-item`, `toggleToolbarMenu()`) holds the occasional-use
   actions -- Manage fields, Manage collections, Library check, and Storage
   stats -- so the toolbar itself
-  keeps only daily ones (Check inbox, Check reminders, Scan, Scan Multi,
+  keeps only daily ones (Check inbox, Check reminders, Scan,
   Add document, Details, Columns). Moved there on request, and it also
   eases the recurring toolbar-wrap/`.table-wrap` calibration problem (see
   that note near the top): the toolbar got a row shorter at most desktop
@@ -1954,8 +1954,8 @@ this repo's git tags.
   this menu rather than on the toolbar.** **"👁 Toolbar buttons…"**
   (`openToolbarButtonsModal()`, `OPTIONAL_TOOLBAR_BUTTONS`,
   `hidden_toolbar_buttons` setting, a JSON key list) lets a library hide
-  daily buttons it doesn't use -- Check inbox, Check reminders, Scan, Scan
-  Multi, Details, Columns (its `.columns-menu-wrap`); never Add document or
+  daily buttons it doesn't use -- Check inbox, Check reminders, Scan,
+  Details, Columns (its `.columns-menu-wrap`); never Add document or
   Tools, so nothing becomes unreachable. Hiding only, deliberately: a
   shorter toolbar can only free height, while adding or reordering buttons
   is what keeps breaking the `.table-wrap` calibration. `.toolbar-hidden`
@@ -2391,13 +2391,28 @@ this repo's git tags.
   Bearer <token>` is only sent when there is a token: a pre-0.3.0
   scanix500 (no `paired` field, counts as paired) rejects the preflight for
   that header. A 401 drops the token and brings the code field back.
-  **📸 Scan Multi** opens the same dialog with split on blank pages ticked,
-  and is shown only while a found scanner offers `splitOnBlank` or a
-  scanix500 waits to be paired (an unpaired helper lists no scanners, so
-  scanix500 is recognized by its version 1 health or its `helper` name) (`updateScanMultiAvailability()`,
-  `.scan-unavailable`, kept apart from the person's own `.toolbar-hidden`).
-  Dossiary checks when a library opens (read-only requests to localhost)
-  and whenever the dialog opens. **Nothing found** explains what to
+  **One Scan button since v1.51** -- the separate 📸 Scan Multi button
+  (the dialog with split on blank pages ticked, shown only while a scanner
+  could split) was merged into the dialog's own checkbox: it differed from
+  Scan only in that one tick. The option reads "Split the stack at blank
+  sheets" (a whole blank sheet, not a blank page, is the separator), and
+  its always-visible hint (`#scan-split-hint`) names Paperless's Scan
+  Multi for former Mariner users. Ticking it also ticks
+  "Skip blank pages" (untickable again), because in scanix500
+  (`blank_filter.py`) a sheet blank on every side is the separator and is
+  dropped, while other blank pages -- the blank backs of one-sided
+  letters -- are kept unless skip is on; split alone is rarely what anyone
+  wants. A scanner offering both gets a folded "What do these options
+  do?" table of the four combinations (`#scan-options-help-toggle`,
+  `#scan-options-help`; its CSS overrides the document table's global
+  `table`/`thead th` rules, whose `min-width:800px` and sticky header
+  would otherwise leak in). While split is ticked the start button reads "Scan and split"
+  (`syncScanStartLabel()`/`scanStartLabel()`), since split is remembered
+  with the scanner's settings and quietly turns one stack into several
+  documents. A library whose `hidden_toolbar_buttons` still lists
+  `scan-multi` is unaffected (unknown keys are ignored). With Scan Multi's
+  availability check gone, opening a library no longer contacts any scan
+  helper; discovery happens only when the dialog opens. **Nothing found** explains what to
   install, links dossiary-scan-helper's releases and scanix500, and offers
   the address field with "Look again". **Tests**: the shared stub fails
   every request to another localhost origin, so no test reaches a real

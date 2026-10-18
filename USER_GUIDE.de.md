@@ -175,9 +175,11 @@ für einen ScanSnap iX500.
 3. Wähle Scanner und Einstellungen und klicke auf **Scannen**. Die Seiten
    landen im Posteingang und warten auf die Prüfung.
 
-Dossiary merkt sich Scanner und Einstellungen für das nächste Mal. Mit einem
-Scanner, der einen Stapel an leeren Blättern trennen kann, macht
-**📸 Mehrfach scannen** aus einem Stapel mehrere Dokumente.
+Dossiary merkt sich Scanner und Einstellungen für das nächste Mal. Kann dein
+Scanner einen Stapel an leeren Blättern trennen, hake im Dialog
+**Stapel an leeren Blättern trennen** an, um aus einem Stapel mehrere
+Dokumente zu machen: Lege einfach ein leeres Blatt zwischen sie (in Mariner
+Paperless hieß das Scan Multi).
 
 ## Ein kurzer Rundgang durch alles Weitere
 
