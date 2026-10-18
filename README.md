@@ -101,7 +101,7 @@ working" problem that motivated this project in the first place.
   port can be entered in the dialog or in Field Settings. Each browser pairs
   with a helper once: the helper's "Pair a Browser…" shows a 6-digit code to
   type into the dialog. Scanned pages land in the Inbox. To turn a stack
-  into several documents (Mariner Paperless's Scan Multi), tick "Split the
+  into several documents (Scan Multi), tick "Split the
   stack at blank sheets" (offered by scanners that can do it, such as the
   iX500) and put a blank sheet between the documents: a sheet with nothing
   on either side starts a new document and is left out. Ticking it also ticks "Skip blank

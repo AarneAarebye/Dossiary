@@ -178,8 +178,7 @@ für einen ScanSnap iX500.
 Dossiary merkt sich Scanner und Einstellungen für das nächste Mal. Kann dein
 Scanner einen Stapel an leeren Blättern trennen, hake im Dialog
 **Stapel an leeren Blättern trennen** an, um aus einem Stapel mehrere
-Dokumente zu machen: Lege einfach ein leeres Blatt zwischen sie (in Mariner
-Paperless hieß das Scan Multi).
+Dokumente zu machen: Lege einfach ein leeres Blatt zwischen sie (Scan Multi).
 
 ## Ein kurzer Rundgang durch alles Weitere
 

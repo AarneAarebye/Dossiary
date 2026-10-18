@@ -2396,8 +2396,9 @@ this repo's git tags.
   could split) was merged into the dialog's own checkbox: it differed from
   Scan only in that one tick. The option reads "Split the stack at blank
   sheets" (a whole blank sheet, not a blank page, is the separator), and
-  its always-visible hint (`#scan-split-hint`) names Paperless's Scan
-  Multi for former Mariner users. Ticking it also ticks
+  its always-visible hint (`#scan-split-hint`) starts with "Scan Multi:"
+  for former Mariner Paperless users (the hint doesn't name Paperless); "Skip blank pages" has its own hint
+  (`#scan-skip-hint`, the blank backs of one-sided letters). Ticking split also ticks
   "Skip blank pages" (untickable again), because in scanix500
   (`blank_filter.py`) a sheet blank on every side is the separator and is
   dropped, while other blank pages -- the blank backs of one-sided

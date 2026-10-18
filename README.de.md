@@ -118,7 +118,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   eintragen. Jeder Browser wird einmal mit einem Helfer gekoppelt: „Pair a
   Browser…“ im Helfer zeigt einen 6-stelligen Code, der im Dialog
   eingegeben wird. Gescannte Seiten landen im Posteingang. Um aus einem
-  Stapel mehrere Dokumente zu machen (Scan Multi in Mariner Paperless),
+  Stapel mehrere Dokumente zu machen (Scan Multi),
   „Stapel an leeren Blättern trennen“ anhaken (angeboten von Scannern, die
   das können, etwa dem iX500) und zwischen die Dokumente je ein leeres
   Blatt legen: Ein Blatt ohne Inhalt auf beiden Seiten beginnt ein neues

@@ -1144,8 +1144,8 @@ dropping it, two helpers paired at once with the first `/pair` answer held
 back (`pairDelayMs`) still storing both tokens, a legacy bridge scanning
 without a header); and `scenario_split` for the one Scan button: no Scan
 Multi button and no helper contacted on library open, ticking split
-ticking skip (untickable again), the option's label and its always-visible hint naming Paperless's Scan
-Multi, the folded options table (only with both options; four rows; folds
+ticking skip (untickable again), the option's label and its always-visible hint starting with "Scan
+Multi:", skip blank pages' own hint, the folded options table (only with both options; four rows; folds
 again), the "Scan and split" button text following the checkbox, the request's extras, split
 remembered on reopening, Toolbar buttons… without Scan Multi, an old
 hidden `scan-multi` setting harmless, the German button text. The shared

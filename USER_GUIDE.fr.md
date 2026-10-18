@@ -182,7 +182,7 @@ Dossiary se souvient de votre scanner et de vos réglages pour la fois
 suivante. Avec un scanner capable de séparer une pile sur les feuilles
 blanches, cochez **Séparer la pile aux feuilles blanches** dans la fenêtre
 pour transformer une pile en plusieurs documents : il suffit de glisser une
-feuille blanche entre eux (Mariner Paperless appelait cela Scan Multi).
+feuille blanche entre eux (Scan Multi).
 
 ## Un rapide tour de tout le reste
 
