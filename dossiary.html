@@ -7990,6 +7990,28 @@
   function exportLibraryDefaultName(){
     return `${rootDirHandle.name.replace(/\.dossiary$/i, '')} ${t('exportLibraryNameSuffix')}`;
   }
+  async function writeFileAt(dir, path, data){
+    const parts = path.split('/');
+    for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
+    const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true })).createWritable();
+    await w.write(data);
+    await w.close();
+  }
+  function bytesOf(data){
+    if(typeof data === 'string') return new TextEncoder().encode(data);
+    return data instanceof Uint8Array ? data : new Uint8Array(data);
+  }
+  // [relative path, file handle] for every file under dir, subfolders included.
+  async function listFilesUnder(dir, prefix = ''){
+    const out = [];
+    for await (const [name, handle] of dir.entries()){
+      if(name === '.DS_Store' || name.startsWith('._')) continue;
+      if(handle.kind === 'directory') out.push(...await listFilesUnder(handle, `${prefix}${name}/`));
+      else out.push([`${prefix}${name}`, handle]);
+    }
+    return out;
+  }
+
   function openExportLibraryModal(ids){
     const docs = ids.map(id => allDocs.find(x => x.id === id)).filter(d => d && !d.deleted);
     if(!docs.length) return;
@@ -8018,6 +8040,18 @@
             <label class="show-archived-toggle"><input type="radio" name="export-library-setup" value="all" /> ${t('exportLibrarySetupAll')}</label>
             <div class="field-hint" id="export-library-setup-hint">${t('exportLibrarySetupHint')}</div>
           </div>
+          <div class="field">
+            <label>${t('exportLibraryOutputLabel')}</label>
+            <label class="show-archived-toggle"><input type="radio" name="export-library-output" value="library" checked /> ${t('exportLibraryOutputLibrary')}</label>
+            <label class="show-archived-toggle"><input type="radio" name="export-library-output" value="folder" /> ${t('exportLibraryOutputFolder')}</label>
+            <label class="show-archived-toggle"><input type="radio" name="export-library-output" value="zip" /> ${t('exportLibraryOutputZip')}</label>
+            <label class="show-archived-toggle"><input type="radio" name="export-library-output" value="both" /> ${t('exportLibraryOutputBoth')}</label>
+            <div class="field-hint" id="export-library-output-hint" style="display:none;">${t('exportLibraryOutputHint')}</div>
+          </div>
+          <div class="field" id="export-bundle-choose" style="display:none;">
+            <button id="export-bundle-choose-btn">${t('exportBundleChooseBtn')}</button>
+            <div class="field-hint" id="export-bundle-choose-note"></div>
+          </div>
           <p class="doc-sub" id="export-library-size">${escapeHtml(t('exportLibraryCount', {count: docs.length}))}</p>
           ${pendingOcr ? `<p class="doc-sub" id="export-library-ocr-note">${escapeHtml(t('exportLibraryOcrPending', {count: pendingOcr}))}</p>` : ''}
           <div class="status" id="export-library-status"></div>
@@ -8037,10 +8071,36 @@
     document.addEventListener('keydown', onModalKeydown);
 
     const nameInput = el('export-library-name');
+    const selectedOutput = () => document.querySelector('input[name="export-library-output"]:checked').value;
     const updateHint = () => {
       const raw = nameInput.value.trim();
-      el('export-library-hint').textContent = raw ? t('exportLibraryHint', {name: libraryFolderName(raw)}) : '';
+      const hint = el('export-library-hint');
+      if(!raw){ hint.textContent = ''; return; }
+      const names = bundleNames(raw);
+      const output = selectedOutput();
+      hint.textContent = output === 'library' ? t('exportLibraryHint', {name: names.library})
+        : output === 'folder' ? t('exportBundleHintFolder', {name: names.bundle, library: names.library})
+        : output === 'zip' ? t('exportBundleHintZip', {name: names.zip})
+        : t('exportBundleHintBoth', {name: names.bundle, zip: names.zip});
     };
+    document.querySelectorAll('input[name="export-library-output"]').forEach(r => r.addEventListener('change', () => {
+      el('export-library-output-hint').style.display = selectedOutput() === 'library' ? 'none' : '';
+      updateHint();
+    }));
+    let chosenOwnCopy = null; // a dossiary.html picked in this dialog
+    el('export-bundle-choose-btn').addEventListener('click', async () => {
+      const note = el('export-bundle-choose-note');
+      let handles;
+      try{ handles = await window.showOpenFilePicker({ types: [{ description: 'Dossiary', accept: { 'text/html': ['.html'] } }] }); }
+      catch(e){ return; } // picker cancelled
+      const text = await (await handles[0].getFile()).text();
+      const version = dossiaryVersionIn(text);
+      if(!version){ note.textContent = t('exportBundleNotDossiary'); return; }
+      if(version !== APP_VERSION && !confirm(t('exportBundleVersionMismatch', {found: version, running: APP_VERSION}))) return;
+      chosenOwnCopy = text;
+      try{ await storeOwnCopy(text, version); }catch(e){ /* still used for this dialog */ }
+      note.textContent = t('exportBundleChosen', {version});
+    });
     nameInput.addEventListener('input', updateHint);
     updateHint();
     document.querySelectorAll('input[name="export-library-mode"]').forEach(r => r.addEventListener('change', () => {
@@ -8073,19 +8133,44 @@
       const fail = (text) => { statusEl.className = 'status err'; statusEl.textContent = text; };
       const raw = nameInput.value.trim();
       if(!raw || /[\/\\:*?"<>|]/.test(raw) || raw.startsWith('.')) return fail(t('newLibraryNameInvalid'));
-      const folderName = libraryFolderName(raw);
+      const names = bundleNames(raw);
+      const folderName = names.library;
+      const output = selectedOutput();
+      const bundle = output !== 'library';
+      const wantsFolder = output !== 'zip';
+      const wantsZip = output === 'zip' || output === 'both';
+      const topFolder = bundle ? names.bundle : folderName;
       let parent;
       try{ parent = await window.showDirectoryPicker({ mode: 'readwrite' }); }
       catch(e){ return; } // picker cancelled
       if(await isInsideLibrary(parent)) return fail(t('backupInsideLibrary'));
-      let exists = false;
-      try{ await parent.getDirectoryHandle(folderName); exists = true; }catch(e){ /* free */ }
-      if(exists) return fail(t('newLibraryExists', {name: folderName}));
+      const taken = async (name, kind) => {
+        try{ await (kind === 'dir' ? parent.getDirectoryHandle(name) : parent.getFileHandle(name)); return true; }
+        catch(e){ return false; }
+      };
+      if(wantsFolder && await taken(topFolder, 'dir')) return fail(t('newLibraryExists', {name: topFolder}));
+      if(wantsZip && await taken(names.zip, 'file')) return fail(t('exportBundleZipExists', {name: names.zip}));
+      let appHtml = null;
+      if(bundle){
+        statusEl.className = 'status busy';
+        statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportBundleGetting'));
+        const got = await getDossiaryHtmlForBundle(chosenOwnCopy);
+        if(!got.text){
+          el('export-bundle-choose').style.display = '';
+          if(got.declined){ statusEl.className = 'status'; statusEl.textContent = ''; }
+          else fail(t('exportBundleNeedFile'));
+          return;
+        }
+        appHtml = got.text;
+        statusEl.className = 'status';
+        statusEl.textContent = '';
+      }
       const move = document.querySelector('input[name="export-library-mode"]:checked').value === 'move';
       const setupMode = document.querySelector('input[name="export-library-setup"]:checked').value;
 
       const startBtn = el('export-library-start-btn'), cancelBtn = el('export-library-cancel-btn'), stopBtn = el('export-library-stop-btn');
       startBtn.disabled = cancelBtn.disabled = nameInput.disabled = true;
+      el('export-bundle-choose-btn').disabled = true;
       document.querySelectorAll('input[name^="export-library-"]').forEach(r => { r.disabled = true; });
       stopBtn.style.display = '';
       el('modal-close-btn').disabled = true;
@@ -8095,18 +8180,29 @@
 
       const exported = new Set(), leftOut = [];
       let outcome = 'done', errorMessage = '', moveError = '';
+      let bundleDir = null, zipHandle = null, zipStream = null, zip = null, madeTopFolder = false;
       try{
-        dest = await parent.getDirectoryHandle(folderName, { create: true });
-        await dest.getDirectoryHandle('files', { create: true });
-        await dest.getDirectoryHandle('inbox', { create: true });
-        const writeTo = async (path, data) => {
-          const parts = path.split('/');
-          let dir = dest;
-          for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
-          const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true })).createWritable();
-          await w.write(data);
-          await w.close();
-        };
+        let sink;
+        if(wantsFolder){
+          const top = await parent.getDirectoryHandle(topFolder, { create: true });
+          madeTopFolder = true;
+          if(bundle){ bundleDir = top; dest = await top.getDirectoryHandle(folderName, { create: true }); }
+          else dest = top;
+          await dest.getDirectoryHandle('files', { create: true });
+          await dest.getDirectoryHandle('inbox', { create: true });
+          sink = (path, data) => writeFileAt(dest, path, data);
+        }
+        if(wantsZip){
+          zipHandle = await parent.getFileHandle(names.zip, { create: true });
+          zipStream = await zipHandle.createWritable();
+          zip = createZipWriter(zipStream);
+        }
+        if(!sink){
+          // Zip only: the library goes straight into the zip, one entry at a time.
+          let queue = Promise.resolve();
+          const prefix = `${names.bundle}/${folderName}/`;
+          sink = (path, data) => (queue = queue.then(() => zip.add(prefix + path, bytesOf(data))));
+        }
         const readPath = (path) => withFileOp('read', path, async () => (await (await resolveFileHandle(path, false)).getFile()).arrayBuffer());
         let next = 0, done = 0;
         const worker = async () => {
@@ -8117,14 +8213,18 @@
               // leaves no files behind in the new library.
               const main = d.file_path ? await readPath(d.file_path) : null;
               const original = d.original_file_path ? await readPath(d.original_file_path) : null;
-              if(main) await writeTo(d.file_path, main);
-              if(original) await writeTo(d.original_file_path, original);
-              if(d.thumbnail_path){ try{ await writeTo(d.thumbnail_path, await readPath(d.thumbnail_path)); }catch(e){ /* best-effort */ } }
+              if(main) await sink(d.file_path, main);
+              if(original) await sink(d.original_file_path, original);
+              if(d.thumbnail_path){
+                let thumb = null;
+                try{ thumb = await readPath(d.thumbnail_path); }catch(e){ /* best-effort */ }
+                if(thumb) await sink(d.thumbnail_path, thumb);
+              }
               const stem = sidecarBaseNameFromFilePath(d.file_path);
-              if(stem){ try{ await writeTo(`files/${stem}.txt`, sidecarTextForDoc(d)); }catch(e){ /* best-effort */ } }
+              if(stem) await sink(`files/${stem}.txt`, sidecarTextForDoc(d));
               exported.add(d.id);
             }catch(e){
-              if(!e.fileOp){ stopRequested = true; throw e; } // the new folder can't be written: give up
+              if(!e.fileOp){ stopRequested = true; throw e; } // the new library can't be written: give up
               leftOut.push({ d, reason: fileErrorText(e, 'exportLibraryError') });
             }
             done++;
@@ -8134,19 +8234,45 @@
         await Promise.all(Array.from({length: Math.min(4, docs.length)}, worker));
         if(stopRequested) outcome = 'stopped';
         else if(!exported.size) outcome = 'nothing';
-        else await writeTo('library.sqlite', buildExportLibraryDb(db, docs.map(d => d.id).filter(id => exported.has(id)), setupMode).export());
+        else{
+          await sink('library.sqlite', buildExportLibraryDb(db, docs.map(d => d.id).filter(id => exported.has(id)), setupMode).export());
+          if(bundle){
+            const readme = bundleReadmeText(folderName);
+            if(bundleDir){
+              await writeFileAt(bundleDir, 'dossiary.html', appHtml);
+              await writeFileAt(bundleDir, 'How to open.txt', readme);
+            }else{
+              await zip.add(`${names.bundle}/dossiary.html`, bytesOf(appHtml));
+              await zip.add(`${names.bundle}/How to open.txt`, bytesOf(readme));
+            }
+          }
+          if(zip && bundleDir){
+            // Both: zip the folder just written, so the two hold the same files.
+            const files = await listFilesUnder(bundleDir);
+            for(let i = 0; i < files.length && !stopRequested; i++){
+              const [path, handle] = files[i];
+              await zip.add(`${names.bundle}/${path}`, new Uint8Array(await (await handle.getFile()).arrayBuffer()));
+              statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportBundleZipProgress', {done: i + 1, total: files.length}));
+            }
+          }
+          if(stopRequested) outcome = 'stopped';
+          else if(zip){ await zip.finish(); await zipStream.close(); zipStream = null; }
+        }
       }catch(e){
         outcome = 'error';
         errorMessage = e.message;
       }
-      if(outcome !== 'done' && dest){
-        // A partial copy isn't a library -- don't leave one around looking like it.
-        try{ await parent.removeEntry(folderName, { recursive: true }); }catch(e){}
+      if(outcome !== 'done'){
+        // Nothing half-made stays behind looking finished.
+        if(zipStream){ try{ await zipStream.abort(); }catch(e){} }
+        if(zipHandle){ try{ await parent.removeEntry(names.zip); }catch(e){} }
+        if(madeTopFolder){ try{ await parent.removeEntry(topFolder, { recursive: true }); }catch(e){} }
         dest = null;
+        zip = null;
       }
       let moved = 0;
       if(outcome === 'done'){
-        recordRecentLibrary(dest).catch(() => {});
+        if(dest) recordRecentLibrary(dest).catch(() => {});
         if(move){
           const ids = [...exported];
           try{ await bulkSetDeleted(ids, true); moved = ids.length; }
@@ -8164,14 +8290,20 @@
       cancelBtn.disabled = false;
       cancelBtn.textContent = t('detailCloseAriaLabel');
       if(outcome === 'done'){
-        const lines = [t('exportLibraryDone', {folder: `${parent.name}/${folderName}`}), t('exportLibraryExported', {count: exported.size})];
+        const lines = [];
+        if(dest) lines.push(t('exportLibraryDone', {folder: `${parent.name}/${topFolder}`}));
+        if(zip){
+          lines.push(t('exportBundleZipDone', {zip: `${parent.name}/${names.zip}`, size: formatBytes(zip.size)}));
+          if(zip.size > zipLimits.emailBytes) lines.push(t('exportBundleZipLarge'));
+        }
+        lines.push(t('exportLibraryExported', {count: exported.size}));
         if(leftOut.length) lines.push(t('exportLibraryLeftOut', {count: leftOut.length}));
         if(moved) lines.push(t('exportLibraryMoved', {count: moved}));
         if(moveError) lines.push(t('exportLibraryMoveSaveFailed', {error: moveError}));
         statusEl.className = 'status ' + (leftOut.length || moveError ? 'err' : 'ok');
         statusEl.innerHTML = lines.map(escapeHtml).join('<br>')
           + (leftOut.length ? `<ul id="export-library-left-out">${leftOut.map(({d, reason}) => `<li>${escapeHtml(displayName(d))}: ${escapeHtml(reason)}</li>`).join('')}</ul>` : '');
-        el('export-library-open-btn').style.display = '';
+        if(dest) el('export-library-open-btn').style.display = '';
       }else if(outcome === 'stopped'){
         fail(t('exportLibraryStopped'));
       }else if(outcome === 'nothing'){
