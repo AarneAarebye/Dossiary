@@ -42,7 +42,10 @@ async def main():
         page = await browser.new_page(viewport={'width': 1440, 'height': 900})
         errors = []
         page.on("pageerror", lambda exc: errors.append(str(exc)))
-        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" and 'ERR_FAILED' not in msg.text else None)
+        # A blocked request logs ERR_FAILED: expected only for the faked jsDelivr, or while the test has it offline.
+        def expected_failure(msg):
+            return 'ERR_FAILED' in msg.text and (not net['online'] or 'cdn.jsdelivr.net' in (msg.location or {}).get('url', ''))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" and not expected_failure(msg) else None)
 
         async def route_handler(route):
             url = route.request.url
@@ -57,6 +60,8 @@ async def main():
         net = {'online': True, 'body': OWN_COPY}
         async def own_copy_route(route):
             fetches.append(route.request.url)
+            if net.get('delay'):
+                await asyncio.sleep(net['delay'])
             if not net['online']:
                 await route.abort()
                 return
@@ -364,6 +369,53 @@ async def main():
         print("German output choices:", 'Bibliothek + Dossiary als Ordner' in body and 'Beides: Ordner und .zip-Datei' in body)
         await close_dialog()
         await page.select_option('#lang-select', 'en')
+
+        # === Scenario 18: the download wait locks the dialog ===
+        fetches.clear()
+        net['delay'] = 1.5
+        await open_dialog([2], 'Held', 'folder')
+        await page.evaluate("() => { window.__NEXT_PICKED_DIR = window.__EXPORT_PARENT; }")
+        await page.click('#export-library-start-btn')
+        await page.wait_for_timeout(500)
+        print("During the download Start, Cancel and close are disabled:",
+              await page.is_disabled('#export-library-start-btn') and await page.is_disabled('#export-library-cancel-btn')
+              and await page.is_disabled('#modal-close-btn'))
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+        print("...Escape doesn't close the dialog:", await page.is_visible('#export-library-start-btn'))
+        await page.wait_for_timeout(2200)
+        net['delay'] = 0
+        print("The bundle is made once, from one download:", 'Held' in await page.evaluate(PARENT_NAMES) and len(fetches) == 1, fetches)
+        print("...with the downloaded copy:", await page.evaluate(READ_IN, ['Held', 'dossiary.html']) == OWN_COPY)
+        await close_dialog()
+
+        # === Scenario 19: after a missing copy the dialog is usable again ===
+        await page.evaluate("() => window.__FAKE_IDB_DATABASES.delete('dossiary-bundle-source')")
+        net['online'] = False
+        await open_dialog([2], 'Missing', 'folder')
+        await start()
+        print("Missing copy: Start and Cancel are enabled again:",
+              not await page.is_disabled('#export-library-start-btn') and not await page.is_disabled('#export-library-cancel-btn')
+              and not await page.is_disabled('#modal-close-btn') and await page.is_visible('#export-bundle-choose'))
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(150)
+        print("...and Escape closes it again:", not await page.is_visible('#export-library-start-btn'))
+        await open_dialog([2], 'Missing', 'folder')
+        await start()
+
+        # === Scenario 20: a chosen file that can't be read ===
+        before = len(errors)
+        await page.evaluate("""() => {
+            window.showOpenFilePicker = async () => [{ kind: 'file', name: 'dossiary.html',
+                getFile: async () => { throw new DOMException('gone', 'NotFoundError'); } }];
+        }""")
+        await page.click('#export-bundle-choose-btn')
+        await page.wait_for_timeout(200)
+        note = await page.inner_text('#export-bundle-choose-note')
+        print("An unreadable chosen file shows a message:", note.strip() != '', repr(note))
+        print("...without a page error:", len(errors) == before, errors[before:])
+        await close_dialog()
+        net['online'] = True
 
         print("JS ERRORS:", errors)
         await browser.close()

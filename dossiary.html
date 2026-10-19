@@ -8093,7 +8093,9 @@
       let handles;
       try{ handles = await window.showOpenFilePicker({ types: [{ description: 'Dossiary', accept: { 'text/html': ['.html'] } }] }); }
       catch(e){ return; } // picker cancelled
-      const text = await (await handles[0].getFile()).text();
+      let text;
+      try{ text = await (await handles[0].getFile()).text(); }
+      catch(e){ note.textContent = fileErrorText(e, 'exportBundleNotDossiary'); return; }
       const version = dossiaryVersionIn(text);
       if(!version){ note.textContent = t('exportBundleNotDossiary'); return; }
       if(version !== APP_VERSION && !confirm(t('exportBundleVersionMismatch', {found: version, running: APP_VERSION}))) return;
@@ -8152,10 +8154,18 @@
       if(wantsZip && await taken(names.zip, 'file')) return fail(t('exportBundleZipExists', {name: names.zip}));
       let appHtml = null;
       if(bundle){
+        // The download can take up to 15 s: lock the dialog meanwhile, so a second Start or a close can't run alongside it.
+        const lockBtns = [el('export-library-start-btn'), el('export-library-cancel-btn'), el('modal-close-btn')];
+        exportLibraryRunning = true;
+        lockBtns.forEach(b => { b.disabled = true; });
         statusEl.className = 'status busy';
         statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportBundleGetting'));
-        const got = await getDossiaryHtmlForBundle(chosenOwnCopy);
+        let got;
+        try{ got = await getDossiaryHtmlForBundle(chosenOwnCopy); }
+        catch(e){ got = { missing: true }; }
         if(!got.text){
+          exportLibraryRunning = false;
+          lockBtns.forEach(b => { b.disabled = false; });
           el('export-bundle-choose').style.display = '';
           if(got.declined){ statusEl.className = 'status'; statusEl.textContent = ''; }
           else fail(t('exportBundleNeedFile'));
@@ -8231,7 +8241,10 @@
             statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportLibraryProgress', {done, total: docs.length}));
           }
         };
-        await Promise.all(Array.from({length: Math.min(4, docs.length)}, worker));
+        // Settle every worker before any cleanup, so none is still writing into what gets removed.
+        const settled = await Promise.allSettled(Array.from({length: Math.min(4, docs.length)}, worker));
+        const rejected = settled.find(r => r.status === 'rejected');
+        if(rejected) throw rejected.reason;
         if(stopRequested) outcome = 'stopped';
         else if(!exported.size) outcome = 'nothing';
         else{

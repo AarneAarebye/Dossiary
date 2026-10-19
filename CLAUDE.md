@@ -4223,7 +4223,7 @@ this repo's git tags.
   `scan_last_settings`), `not_duplicate_groups`, `ocr_jobs`. Order: each
   document's file and original are read before anything is written (a
   document that can't be read is left out and listed, and stays here on
-  Move), previews and fresh sidecars (`sidecarTextForDoc()`) best-effort,
+  Move), previews (only the *read* is best-effort) and fresh sidecars (`sidecarTextForDoc()`; a failed preview or sidecar *write* aborts the export, since the destination is broken),
   `library.sqlite` last; Stop, a failure or nothing readable removes the new
   folder; Move then calls `bulkSetDeleted()` on the exported ids (undone in
   memory if that save fails). "Open it" switches via `resetAll()` +
@@ -4251,6 +4251,9 @@ this repo's git tags.
   writes the folder, then zips it (`listFilesUnder()`). Stop or a failure
   aborts and removes the partial zip and the created folder. The test stub's
   writable streams append like the real API (they used to replace).
+  The stored copy lives in the shared `file://` IndexedDB origin, like Recent
+  libraries (another local page could plant a copy whose version text
+  matches); it is only used when the download fails.
 - **Import a folder** (`openImportModal()`, `readImportIndex()`,
   `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder…") is
   Export's counterpart: every file at the top of a folder picked with
