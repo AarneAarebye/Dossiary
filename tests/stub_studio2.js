@@ -19,14 +19,21 @@ class FakeFileHandle {
     // A test can hook the database write (window.__STUB_ON_DB_WRITE) to act while Save is awaiting it.
     if (this.name === 'library.sqlite' && window.__STUB_ON_DB_WRITE) { const f = window.__STUB_ON_DB_WRITE; window.__STUB_ON_DB_WRITE = null; await f(); }
     return {
+      // Like the real stream: each write appends at the current position.
       write: async (data) => {
-        if (data instanceof ArrayBuffer) buf = new Uint8Array(data);
-        else if (data instanceof Uint8Array) buf = data;
-        else if (typeof data === 'string') buf = new TextEncoder().encode(data);
-        else if (data && data.arrayBuffer) buf = new Uint8Array(await data.arrayBuffer());
-        else buf = new Uint8Array(0);
+        let chunk;
+        if (data instanceof ArrayBuffer) chunk = new Uint8Array(data);
+        else if (ArrayBuffer.isView(data)) chunk = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+        else if (typeof data === 'string') chunk = new TextEncoder().encode(data);
+        else if (data && data.arrayBuffer) chunk = new Uint8Array(await data.arrayBuffer());
+        else chunk = new Uint8Array(0);
+        const next = new Uint8Array(buf.length + chunk.length);
+        next.set(buf);
+        next.set(chunk, buf.length);
+        buf = next;
       },
       close: async () => { self._bytes = buf; },
+      abort: async () => { buf = new Uint8Array(0); },
     };
   }
 }
