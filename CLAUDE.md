@@ -50,7 +50,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (101 scripts) + shared
+tests/                   Playwright regression suite (104 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
