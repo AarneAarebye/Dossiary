@@ -284,6 +284,15 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Einstellungen, die diese Dokumente nutzen, oder auf Wunsch alles aus
   dieser Bibliothek. Ein Dokument, dessen Datei nicht lesbar ist, wird
   ausgelassen und aufgeführt.
+  Unter **Was erstellen** lässt sich Dossiary selbst mitgeben: die Bibliothek
+  plus eine Kopie von `dossiary.html` und eine kurze `How to open.txt`, als
+  Ordner, als `.zip`-Datei oder beides — zum Weitergeben an jemanden ohne
+  Dossiary. Die Person entpackt es, öffnet `dossiary.html` in Chrome oder Edge
+  auf einem Computer und wählt den Bibliotheksordner. Dossiary lädt seine
+  eigene Kopie in der laufenden Version herunter; offline fragt es einmal nach
+  `dossiary.html` und merkt sie sich. Die Zip-Datei ist nicht komprimiert
+  (Scans werden kaum kleiner), große Pakete schicken Sie daher besser per
+  AirDrop, geteiltem Ordner oder USB-Stick als per E-Mail.
 - **Ordner importieren** — **Werkzeuge → Ordner importieren…** fügt jede
   Datei eines Ordners Ihrer Wahl als neues Dokument hinzu. Liegt dort eine
   `index.csv` (wie sie der Export schreibt), erhält jede darin aufgeführte

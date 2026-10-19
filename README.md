@@ -244,6 +244,15 @@ working" problem that motivated this project in the first place.
   library gets only the fields and settings these documents use, or
   everything from this library if you choose. A document whose file can't
   be read is left out and listed.
+  **What to create** can also bundle Dossiary itself: the library plus a copy
+  of `dossiary.html` and a short `How to open.txt`, as a folder, a `.zip`
+  file, or both — something you can send to a person who doesn't have
+  Dossiary. They unzip it, open `dossiary.html` in Chrome or Edge on a
+  computer, and choose the library folder. Dossiary downloads its own copy at
+  the version you're running; offline, it asks you once to choose
+  `dossiary.html` and remembers it. The zip isn't compressed (scans barely
+  shrink), so large bundles are better sent by AirDrop, a shared folder or a
+  USB stick than by email.
 - **Import a folder** — **Tools → Import a folder…** adds every file in a
   folder you pick as a new document. If the folder has an `index.csv` (as
   Export writes it), each file listed there gets its title, date, category,

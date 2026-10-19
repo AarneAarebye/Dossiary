@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **101
-scripts covering most of the app's actual functionality** (98 of them
+There's a real, runnable Playwright regression suite in `tests/` — **104
+scripts covering most of the app's actual functionality** (101 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1019,7 +1019,27 @@ and `library.sqlite` at the same paths with this library unchanged, an
 existing folder name refused, Escape blocked and Stop removing the
 incomplete library, Move with one file missing leaving that document out
 and in this library while the other goes to the Waste bin, and "Open it"
-switching to the new library), autofill from earlier documents
+switching to the new library, bundles with Dossiary (`test_export_bundle.py` -- bundle names; the
+download from jsDelivr at the running version (faked with `page.route`,
+`access-control-allow-origin: *`), another version's download ignored,
+offline with nothing stored, a copy chosen in the dialog, the stored copy
+used silently, an outdated stored copy asking and declining/accepting;
+`How to open.txt` in English, and German followed by English; then the
+dialog: Library only unchanged and never fetching; a folder bundle's layout,
+downloaded `dossiary.html`, instructions, summary, Open it and Recent
+libraries entry; an existing bundle folder or zip refused; offline → Choose
+dossiary.html (a non-Dossiary file refused, the chosen one stored and used on
+the next click, and later without asking); an outdated stored copy declined
+writing nothing; zip only read back with Python's `zipfile` (entries,
+contents, CRCs, the zipped database, no folder, no Open it, no Recent
+libraries entry); Both with identical folder and zip contents; the email
+note and a ZIP64 zip with Armenian/Chinese names via
+`__DEBUG_setZipLimits`; Stop removing a partial zip; Move only after the
+zip is written; German labels), the zip writer itself
+(`test_zip_writer.py` -- CRC32's check value, entries/contents/CRCs/stored/
+UTF-8 flag read back with Python's `zipfile`, ZIP64 records with lowered
+limits, an empty zip), and the stub's writable streams appending like the
+real API (`test_stub_writable.py`)), autofill from earlier documents
 (`test_autofill.py` -- a known title, typed with odd spacing and case,
 replacing capture's untouched default type from the most recent match and
 filling Category/Subcategory/Payment method/Currency as guesses naming the

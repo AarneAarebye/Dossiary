@@ -4229,6 +4229,28 @@ this repo's git tags.
   memory if that save fails). "Open it" switches via `resetAll()` +
   `proceedWithRootDirHandle()`, and the new library is added to Recent
   libraries. `exportLibraryRunning` blocks closing the dialog meanwhile.
+  **Bundles** (spec
+  `docs/superpowers/specs/2026-10-20-export-bundle-with-dossiary-design.md`):
+  "What to create" (`export-library-output`: `library` | `folder` | `zip` |
+  `both`) can add Dossiary itself -- `<Bundle>/dossiary.html`,
+  `<Bundle>/<Name>.dossiary/`, `<Bundle>/How to open.txt`
+  (`bundleReadmeText()`: the UI language, then English) -- as a folder,
+  `<Bundle>.zip`, or both. A `file://` page can't read its own file, so
+  `getDossiaryHtmlForBundle()` downloads
+  `cdn.jsdelivr.net/gh/AarneAarebye/Dossiary@v<APP_VERSION>/dossiary.html`
+  (checked for the same `APP_VERSION`, 15 s timeout), else uses a copy
+  chosen once ("Choose dossiary.html…"), whose *contents* are kept in
+  IndexedDB (`dossiary-bundle-source`/`copies`) -- not a handle, since
+  re-reading one needs a permission prompt that would use up the click the
+  folder picker needs; that is also why the download happens only after the
+  folder is picked. Library only never calls `fetch`. The zip comes from a
+  built-in writer (`createZipWriter()`, `crc32()`, `zipLimits`): stored
+  entries, UTF-8 names, ZIP64 past 4 GB or 65,535 entries, appended to one
+  `createWritable()` stream so nothing large sits in memory. Zip only writes
+  the library straight into the zip through the export loop's `sink`; Both
+  writes the folder, then zips it (`listFilesUnder()`). Stop or a failure
+  aborts and removes the partial zip and the created folder. The test stub's
+  writable streams append like the real API (they used to replace).
 - **Import a folder** (`openImportModal()`, `readImportIndex()`,
   `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder…") is
   Export's counterpart: every file at the top of a folder picked with
