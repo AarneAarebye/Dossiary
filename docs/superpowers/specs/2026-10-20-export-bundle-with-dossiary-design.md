@@ -72,23 +72,31 @@ language, so the instructions match what the recipient sees.
    contains `APP_VERSION = '<APP_VERSION>'`. (Checked 2026-10-20: jsDelivr
    serves the tagged file with `access-control-allow-origin: *`, readable from
    a `file://` page.)
-2. **Remembered file**: a `FileSystemFileHandle` stored in the existing
-   `dossiary-app-db` IndexedDB (new object store `bundleSource`, one record).
-   Permission is re-requested with `requestPermission({mode: 'read'})` on the
-   Start click.
-3. **Ask**: when 1 fails and there is no usable remembered file, the dialog
-   shows a note ("Dossiary couldn't download its own copy (offline, or this
-   version isn't released). Choose dossiary.html once; it will be
-   remembered.") and a **Choose dossiary.html…** button
-   (`showOpenFilePicker`, `.html`). The chosen handle is stored.
+2. **Remembered copy**: the *contents* of a dossiary.html chosen earlier,
+   stored with its version in IndexedDB (database `dossiary-bundle-source`,
+   store `copies`, one record `{id: 'dossiary.html', version, text,
+   savedAt}`). The contents, not a file handle: re-reading a stored handle
+   needs `requestPermission()`, whose prompt would use up the click that the
+   folder picker needs. A stored copy is outdated after an update, which the
+   version check below catches.
+3. **Ask**: when 1 fails and there is no stored copy, nothing is written; the
+   dialog shows a note ("Dossiary couldn't download its own copy (offline, or
+   this version isn't released). Choose dossiary.html once — it will be
+   remembered — then click Export library again.") and a **Choose
+   dossiary.html…** button (`showOpenFilePicker`, `.html`). The chosen file
+   is read and stored at once.
 
-A remembered or chosen file whose version string differs from `APP_VERSION`
-(or has none) asks: "This dossiary.html is version X; you are running Y. Use
-it anyway?" (`confirm()`). Declining clears nothing and stops the export
-before it starts.
+A file without `const APP_VERSION = '…'` is refused ("That file isn't
+Dossiary."). A stored or chosen copy whose version differs from
+`APP_VERSION` asks: "This dossiary.html is version X; you are running Y.
+Use it anyway?" (`confirm()`). Declining stops the export before anything is
+written.
 
-The download happens on the Start click, only for a bundle output. Library
-only never contacts the network.
+Order on the Start click: check the name, pick the destination folder
+(which needs the click's user activation, so it comes before any network
+wait), refuse an existing folder/zip name, then get dossiary.html (download
+with a 15 s timeout, else the stored copy), then write. Library only never
+contacts the network.
 
 ### 2. The folder
 
@@ -145,8 +153,9 @@ for Grammarly. `test_i18n_coverage.py` covers the keys as usual.
 
 ## Docs
 
-README.md/README.de.md (Export as library paragraph), the User Guides where
-Export as library is mentioned, and the CLAUDE.md "Export as library" note.
+README.md/README.de.md (Export as library paragraph) and the CLAUDE.md
+"Export as library" note. No User Guide mentions Export as library, so none
+changes.
 
 ## Testing (`tests/test_export_bundle.py`)
 
@@ -159,8 +168,8 @@ The stub fakes `fetch` for the jsDelivr URL and `showOpenFilePicker`.
 3. Both: folder and zip with identical contents.
 4. ZIP64: threshold lowered, Python `zipfile` still reads it.
 5. UTF-8 names (Armenian and Chinese titles) survive.
-6. Download fails → Choose button → chosen file used and remembered (second
-   export doesn't ask).
+6. Download fails → Choose button → chosen file stored; the next Export
+   library click uses it, and a later export doesn't ask again.
 7. Version mismatch → confirm declined → nothing written.
 8. Stop mid-run → no bundle folder, no zip.
 9. Move + zip → documents in the Waste bin only after success.
