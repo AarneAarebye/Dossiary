@@ -1176,6 +1176,7 @@ stub fails every request to another localhost origin unless
 `window.__ALLOW_REAL_HELPERS` is set, which only
 `manual_scan_reference_helper.py` (a manual check against the real
 reference helper, not part of the suite) does).
+`export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
 update this paragraph in the same change; don't let this description

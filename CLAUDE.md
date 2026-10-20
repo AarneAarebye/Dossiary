@@ -4139,6 +4139,14 @@ this repo's git tags.
   through `fieldDefs` because `fieldNameToId` is already cleared by then).
   The editor's live count covers non-deleted documents; saving is refused
   without a name or with a rule missing its value.
+  **The iPhone app (`dossiary-ios`, a sibling repo) ports this rule logic
+  to Swift.** `tests/export_smart_rule_cases.py` (not part of the suite)
+  writes the cases it checks against -- criteria in both formats and the ids
+  this JavaScript matches -- into that repo's test fixtures. After changing
+  `matchesRule()`, `matchesRules()`, `matchesCriteria()` or `smartRuleActual()`,
+  run it and tell the iPhone app's tests about the change. The iPhone app also
+  reads `library.sqlite` directly (read-only): a schema change should keep
+  old columns readable, as `SCHEMA_MIGRATIONS` already does.
 - **Rename or merge values** (`openManageValuesModal()`, `valuesForKind()`,
   `renameValue()`, `startValueRename()`, Tools → "✎ Rename or merge
   values…") is Mariner's Tag Editor and editable category/merchant lists:
