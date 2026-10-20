@@ -4168,7 +4168,14 @@ this repo's git tags.
   in-memory database is always the authoritative copy); every other file
   is copied as is, 4 at a time for iCloud's sake, skipping `.DS_Store`/`._*`.
   Plain copies rather than a zip: no dependency, and a backup is simply
-  another library folder -- restoring means opening it. Stop removes the
+  another library folder -- restoring means opening it. **Each backup also
+  gets `dossiary.html` and `How to open.txt` at its top**
+  (`ownCopyForBackup()`: the jsDelivr download, else a stored copy of
+  exactly this version -- never a `confirm()`; see the Export-as-library
+  bundles note), written after the files; a library opened from an earlier
+  backup has its own old copies skipped from the listing so the fresh ones
+  replace them. Without a copy (offline, nothing stored) the backup still
+  completes and the summary says so (`backupNoAppCopy`). Stop removes the
   partial folder (`removeEntry(..., {recursive: true})`) so an incomplete
   copy never looks like a backup; files that can't be read are listed.
   `last_backup_at` and `backup_reminder_days` (default 30, 0 = off) are

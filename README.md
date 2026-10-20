@@ -188,8 +188,10 @@ working" problem that motivated this project in the first place.
 - **Backup** — "🛠 Tools → 🗄 Back up library…" copies the whole library
   into a new dated folder inside a folder you choose (an external disk, a
   different cloud). A backup is just another library folder: to restore,
-  open it. A reminder on opening the library (every 30 days by default,
-  adjustable, or off) tells you when a backup is due.
+  open it. Every backup also contains `dossiary.html` and a short
+  `How to open.txt`, so it opens on any computer with Chrome or Edge even
+  without Dossiary installed. A reminder on opening the library (every 30
+  days by default, adjustable, or off) tells you when a backup is due.
 - **Grid view** — documents are shown as preview tiles by default; the
   **☰ List / ▦ Grid** switch at the right of the "Showing N of M" line
   changes to a table and back, with a slider for the tile size; the choice is remembered per

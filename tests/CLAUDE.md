@@ -984,7 +984,10 @@ empty name refused; Escape cancelling without closing; the sidecar and the
 category filter updated), backup (`test_backup.py` -- the "no backup
 yet" reminder on the open status line; a folder inside the library
 refused; a dated folder with every library file byte for byte, a fresh
-`library.sqlite`, `.DS_Store` skipped; a second backup getting its own
+`library.sqlite`, `.DS_Store` skipped, `dossiary.html` (the faked
+jsDelivr download, replacing the library's own older copy) and
+`How to open.txt` naming the backup folder; offline with nothing stored,
+the backup completing without them and saying so; a second backup getting its own
 "(2)" folder; no reminder right after a backup; an overdue one depending
 on the configured days, retranslating on a language switch, and 0
 switching it off; the dialog unclosable mid-copy and Stop removing the

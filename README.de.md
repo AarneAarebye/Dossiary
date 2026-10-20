@@ -219,7 +219,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Sicherung** — „🛠 Werkzeuge → 🗄 Bibliothek sichern…“ kopiert die
   ganze Bibliothek in einen neuen, datierten Ordner innerhalb eines Ordners
   Ihrer Wahl (externe Festplatte, andere Cloud). Eine Sicherung ist einfach
-  ein weiterer Bibliotheksordner: zum Wiederherstellen öffnen Sie ihn. Beim
+  ein weiterer Bibliotheksordner: zum Wiederherstellen öffnen Sie ihn. Jede
+  Sicherung enthält außerdem `dossiary.html` und eine kurze
+  `How to open.txt` und lässt sich so auf jedem Computer mit Chrome oder
+  Edge öffnen, auch ohne installiertes Dossiary. Beim
   Öffnen der Bibliothek erinnert ein Hinweis, wenn eine Sicherung fällig ist
   (standardmäßig alle 30 Tage, einstellbar oder abschaltbar).
 - **Rasteransicht** — Dokumente erscheinen standardmäßig als

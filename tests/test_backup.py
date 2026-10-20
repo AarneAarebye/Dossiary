@@ -4,12 +4,15 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
-import asyncio, json
+import asyncio, json, re
 from playwright.async_api import async_playwright
 
 # Back up library: the whole library folder copied into a new dated folder
 # inside a folder the person picks (never inside the library itself), with a
-# reminder on the "Opened library" status line when a backup is due.
+# reminder on the "Opened library" status line when a backup is due. Every
+# backup also carries dossiary.html and "How to open.txt" (jsDelivr faked).
+VERSION = re.search(r"const APP_VERSION = '([^']+)'", open(APP_PATH, encoding='utf-8').read()).group(1)
+OWN_COPY = f"<!DOCTYPE html><html><body><script>const APP_VERSION = '{VERSION}';</script>downloaded copy</body></html>"
 SEED = {
     "documents": [
         {
@@ -42,8 +45,9 @@ async def main():
         browser = await p.chromium.launch()
         page = await browser.new_page(viewport={'width': 1440, 'height': 900})
         errors = []
+        net = {'online': True}
         page.on("pageerror", lambda exc: errors.append(str(exc)))
-        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" and not ('ERR_FAILED' in msg.text and not net['online']) else None)
 
         async def route_handler(route):
             url = route.request.url
@@ -52,6 +56,13 @@ async def main():
             else:
                 await route.continue_()
         await page.route('**/*', route_handler)
+        net = {'online': True}
+        async def own_copy_route(route):
+            if not net['online']:
+                await route.abort()
+                return
+            await route.fulfill(status=200, body=OWN_COPY, content_type='text/html', headers={'access-control-allow-origin': '*'})
+        await page.route('https://cdn.jsdelivr.net/gh/**', own_copy_route)
         await page.add_init_script(open('stub_studio2.js').read())
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
@@ -71,6 +82,7 @@ async def main():
                 await put('thumbnails/1.png', 'thumb');
                 await put('inbox/staged.pdf', 'staged');
                 await put('.DS_Store', 'junk');
+                await put('dossiary.html', 'an older copy');  // the library itself was opened from a backup
                 window.__BACKUP_PARENT = window.__makeEmptyRoot();
                 window.__BACKUP_PARENT.name = 'External disk';
             }
@@ -100,7 +112,14 @@ async def main():
         print("One new folder named after the library and the date:", len(folders) == 1 and folders[0].startswith('MyLib backup 20'), folders)
         copied = await page.evaluate("async (name) => {" + LIST_JS.replace("async (root) => {", "const root = await window.__BACKUP_PARENT.getDirectoryHandle(name);") , folders[0])
         print("Every library file is copied, macOS clutter skipped:",
-              copied == ['files/1_a.pdf', 'files/1_a.txt', 'files/1_a/a.pdf', 'inbox/staged.pdf', 'library.sqlite', 'thumbnails/1.png'], copied)
+              copied == ['How to open.txt', 'dossiary.html', 'files/1_a.pdf', 'files/1_a.txt', 'files/1_a/a.pdf', 'inbox/staged.pdf', 'library.sqlite', 'thumbnails/1.png'], copied)
+        app_files = await page.evaluate("""async (name) => {
+            const root = await window.__BACKUP_PARENT.getDirectoryHandle(name);
+            const read = async (n) => await (await (await root.getFileHandle(n)).getFile()).text();
+            return [await read('dossiary.html'), await read('How to open.txt')];
+        }""", folders[0])
+        print("dossiary.html is the downloaded copy, replacing the library's older one:", app_files[0] == OWN_COPY)
+        print("How to open names the backup folder itself:", folders[0] in app_files[1] and 'Open library folder' in app_files[1], repr(app_files[1][:200]))
         same = await page.evaluate("""async (name) => {
             const root = await window.__BACKUP_PARENT.getDirectoryHandle(name);
             const files = await root.getDirectoryHandle('files');
@@ -109,7 +128,7 @@ async def main():
         print("...byte for byte:", same == 'original pdf')
         db_copy = await page.evaluate("async (name) => JSON.parse(await (await (await (await window.__BACKUP_PARENT.getDirectoryHandle(name)).getFileHandle('library.sqlite')).getFile()).text())", folders[0])
         print("The copied database holds the documents:", [d['title'] for d in db_copy['documents']] == ['Scan'])
-        print("Status reports the count and where:", 'Backed up 6 files to “External disk/MyLib backup' in status, repr(status))
+        print("Status reports the count and where:", 'Backed up 8 files to “External disk/MyLib backup' in status and 'isn’t in this backup' not in status, repr(status))
         print("Last-backup date shown:", 'Last backup' in await page.inner_text('#backup-last'))
         await page.click('#backup-cancel-btn')
         await page.wait_for_timeout(150)
@@ -122,6 +141,22 @@ async def main():
         await page.wait_for_timeout(800)
         folders = await page.evaluate("async () => { const n = []; for await (const [k] of window.__BACKUP_PARENT.entries()) n.push(k); return n.sort(); }")
         print("A second backup never reuses the first folder:", len(folders) == 2 and folders[1].endswith('(2)'), folders)
+        await page.click('#backup-cancel-btn')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 4b: offline with no stored copy, the backup still completes ===
+        net['online'] = False
+        await page.evaluate("() => { window.__OFFLINE_PARENT = window.__makeEmptyRoot(); window.__NEXT_PICKED_DIR = window.__OFFLINE_PARENT; }")
+        await page.click('#tools-btn'); await page.click('#backup-btn')
+        await page.wait_for_timeout(200)
+        await page.click('#backup-start-btn')
+        await page.wait_for_timeout(800)
+        status = await page.inner_text('#backup-status')
+        print("Offline: the backup completes and says dossiary.html is missing:", 'Backed up' in status and 'isn’t in this backup' in status, repr(status))
+        name = (await page.evaluate("async () => { const n = []; for await (const [k] of window.__OFFLINE_PARENT.entries()) n.push(k); return n; }"))[0]
+        copied = await page.evaluate("async (name) => {" + LIST_JS.replace("async (root) => {", "const root = await window.__OFFLINE_PARENT.getDirectoryHandle(name);"), name)
+        print("...keeping the library's own files, no How to open:", 'dossiary.html' in copied and 'How to open.txt' not in copied and 'library.sqlite' in copied, copied)
+        net['online'] = True
         await page.click('#backup-cancel-btn')
         await page.wait_for_timeout(150)
 
