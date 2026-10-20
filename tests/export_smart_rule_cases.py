@@ -216,13 +216,20 @@ async def main():
         for name, criteria in RULE_CASES + SNAPSHOT_CASES:
             expected = await page.evaluate("(c) => window.__DEBUG_smartMatchIds(c)", criteria)
             cases.append({"name": name, "criteria": criteria, "expected": expected})
+        await browser.close()
+        # A page error may have made some expectations wrong: never write
+        # them over a good fixture.
+        if errors:
+            print("JS ERRORS:", errors)
+            print(f"Not writing {OUT}.")
+            return 1
         version = re.search(r"const APP_VERSION = '([^']+)'", open(APP_PATH, encoding='utf-8').read()).group(1)
         out = {"generatedFrom": f"dossiary.html {version}", "today": today, "tables": tables, "cases": cases}
         _os2.makedirs(_os2.path.dirname(OUT), exist_ok=True)
         with open(OUT, 'w', encoding='utf-8') as f:
             json.dump(out, f, ensure_ascii=False, indent=1)
         print(f"Wrote {len(cases)} cases to {OUT}")
-        print("JS ERRORS:", errors)
-        await browser.close()
+        print("JS ERRORS: []")
+        return 0
 
-asyncio.run(main())
+sys.exit(asyncio.run(main()))
