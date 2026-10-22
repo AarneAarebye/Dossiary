@@ -2551,8 +2551,22 @@ this repo's git tags.
   tick while `unsynced` with a change held back (`syncRetryHeldBack()`), and
   storing an admin token (`setSyncAdminToken()`, Connect in the devices
   dialog) does the same for `unconnected`; once granted or offline the change
-  is written through `persistDb()`, so the safety net still applies. View
-  preferences stay as they were. `busy` → a take-over dialog ("Being edited on {device} since
+  is written through `persistDb()`, so the safety net still applies (the
+  tick asks again once a minute after an unanswered acquire, or at once when
+  that tick's poll got an answer; a tick also notices a token another tab
+  stored). View preferences stay as they were. **A held-back change never
+  lives only in memory** (fix round 3): 30 s after the last one (`syncTick()`,
+  `SYNC_HELD_BACK_COPY_MS`), and best-effort on `pagehide`,
+  `writeHeldBackCopy()` writes the in-memory database to a `.kept-aside/<this
+  Mac>-<time>/library.sqlite` copy -- one folder per held-back episode
+  (`syncHeldBackEpisode`), updated in place while it continues, never the live
+  file -- and names it on the status line and in the marker's tooltip. The
+  copy stays after the change is written for real (nothing is removed). While
+  no admin call has ever answered in this session, the `unsynced` reason says
+  Dossiary Sync may not be running or not be installed
+  (`syncNotRunningReason`). A job's change alone, in these states, is held
+  silently: it stays unwritten in memory but sets no "not saved" marker or
+  `beforeunload`. `busy` → a take-over dialog ("Being edited on {device} since
   {time}.", appended as its own layer to `#modal-root`, or to
   `#modal-root-over` when a dialog such as the Edit form is already open, so
   that dialog survives; Escape = Cancel, caught on `window` in the capture
@@ -2595,10 +2609,21 @@ this repo's git tags.
   back one heartbeat interval after its last write instead of ten minutes. A
   background save that meets a newer version doesn't keep anything aside
   (it holds only derived data -- hashes, a finished OCR row): it drops that
-  data with the reload and the job redoes it, unless a person's change is
-  also held back, which is kept aside as usual. **An open dialog counts as
-  activity**: while one is open and the lease is held, the idle clock is
-  reset every tick, so a form left open never meets a released lease. **The safety net**: if a real write finds this tab's
+  data with the reload and the job redoes it -- unless a person's change is
+  held back or a person's flow is still pending (`syncPersonFlowPending`:
+  set by `ensureEditLease()`, cleared by that person's write, a keep-aside,
+  or a tick finding no dialog open and nothing unwritten), which is kept
+  aside as usual, so a person's change between its `db.run` and its own save
+  is never dropped. A lease a background save takes inside `persistDb()`
+  (backfill, "Check for text", a backup's date) is marked background-only
+  too. **The dialog an editing flow opened counts as activity**
+  (`syncEditDialogEl`, captured right after `ensureEditLease()` -- not
+  Reminders, Storage stats, the shortcuts list): while it's open and the
+  lease is held, the idle clock is reset every tick, for at most an hour
+  without key or pointer input (`SYNC_EDIT_DIALOG_MAX_MS`,
+  `syncLastInputAt`). With no device name known, the "close this dialog"
+  message reads "This library was changed on another Mac …"
+  (`syncCloseDialogFirstUnknown`). **The safety net**: if a real write finds this tab's
   memory based on an older version than the newest one another Mac is known
   to have made (`syncBehind()`: `syncKnownNewer`, noted by
   `syncNoteNewer()` from acquire answers, polls not showing this tab as

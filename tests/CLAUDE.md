@@ -1272,7 +1272,17 @@ iMac's newer version uses again isn't deleted from a stale Library check);
 `reload_refused` (`__DEBUG_syncBackgroundBusy(true)` makes the needed reload
 fail: Archive doesn't start, "The library is updating…"; once free it archives
 on the newer version); and in `safety_net`, a background save behind a newer
-version keeping nothing aside and showing no notice).
+version keeping nothing aside and showing no notice). Fix round 3:
+`held_back_copy` (no copy at 20 s, a `.kept-aside` copy with this tab's bytes
+at 30 s, the live file untouched, folder in tooltip and status line, a
+further change updating the same copy, the copy kept once written for real);
+`person_change_not_dropped` (`__DEBUG_ensureEditLease()` + a person's
+`__DEBUG_dbRun()`, then a job's save meeting a newer version keeps it aside
+with the notice); `connected_elsewhere` (a token stored by another tab picked
+up by the next tick); `idle_non_edit_dialogs` (Storage stats doesn't keep the
+lease; an Edit form an hour without input doesn't either); and in
+`service_down`, a job's change held silently, the "may not be running"
+tooltip, and no new acquire from a tick within the minute).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
