@@ -970,6 +970,7 @@
            Everything happens locally in your browser — nothing is uploaded.</p>
         <div id="recent-libraries" style="display:none;"></div>
         <button class="primary" id="open-btn" data-i18n="emptyOpenButton">Open library folder</button>
+        <button type="button" id="empty-devices-btn" data-i18n="toolbarDevices" style="margin-left:8px;">📱 iPhone &amp; other devices…</button>
         <div class="hint">
           <span data-i18n="emptyHintBrowser">Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).</span><br/>
           <span data-i18n="emptyHintWriteAccess">This app needs write access to save new documents, so pick "Edit"/allow when your browser asks.</span><br/><br/>
@@ -16291,6 +16292,8 @@
   }
 
   el('devices-btn').addEventListener('click', () => openDevicesDialog());
+  // Also on the start screen: managing devices doesn't need an open library.
+  el('empty-devices-btn').addEventListener('click', () => openDevicesDialog());
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a

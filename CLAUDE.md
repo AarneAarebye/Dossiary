@@ -2424,7 +2424,8 @@ this repo's git tags.
   scenario, and `tests/manual_scan_reference_helper.py` checks against the
   real reference helper by hand.
 - **iPhone & other devices** (`openDevicesDialog()`, `syncAdminFetch()`,
-  Tools → `#devices-btn`; spec in dossiary-ios
+  Tools → `#devices-btn`, and `#empty-devices-btn` on the start screen,
+  since it needs no open library; spec in dossiary-ios
   `docs/superpowers/specs/2026-10-22-dossiary-devices-dialog-design.md`)
   manages Dossiary Sync's paired devices through its loopback-only admin
   API on `http://127.0.0.1:8769` (3 s health timeout, 15 s for every other

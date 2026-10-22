@@ -599,7 +599,26 @@ async def scenario_storage_refuses_write(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german,
+async def scenario_start_screen(p):
+    # Managing devices doesn't need a library: the start screen offers it too.
+    browser = await p.chromium.launch()
+    page = await browser.new_page()
+    errors = []
+    page.on("pageerror", lambda exc: errors.append(str(exc)))
+    await page.add_init_script(open('stub_studio2.js').read())
+    await page.goto(f"file://{APP_PATH}")
+    await page.wait_for_timeout(200)
+    await page.evaluate(FAKE_SYNC, sample_sync())
+    print("start screen shows the devices button:", await page.is_visible('#empty-devices-btn'))
+    await page.click('#empty-devices-btn')
+    await page.wait_for_selector('#devices-connect-btn')
+    print("it opens the dialog without a library, offering Connect:", await page.locator('#devices-connect-btn').count() == 1)
+    await page.click('#modal-close-btn')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+SCENARIOS = [scenario_start_screen, scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german,
              scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write]
 
 

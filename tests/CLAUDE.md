@@ -1178,7 +1178,8 @@ stub fails every request to another localhost origin unless
 reference helper, not part of the suite) does).
 The devices dialog (`test_devices_dialog.py` -- a fake `fetch` playing
 Dossiary Sync's admin API on `127.0.0.1:8769` per scenario (`FAKE_SYNC`,
-answering 415 to a POST without JSON like the real one): not running with
+answering 415 to a POST without JSON like the real one): the start screen's
+button opening it with no library open; not running with
 the install link and Look again; Connect asking for a code as JSON, a wrong
 code, the right one normalised and its token stored; a 429 naming the wait;
 a stored valid token going straight to the devices with role labels and
