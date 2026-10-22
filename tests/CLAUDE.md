@@ -1245,7 +1245,20 @@ change, no reload over it, a busy acquire for a background write turning
 `other` silently while a person's save still asks; removing the take-over
 layer settling the dialog; a write right after opening waiting for a slow
 sync-file read and taking the lease; and no new acquire within a minute of an
-unanswered one).
+unanswered one. Fix round 1 moved the lease to the start of editing: the busy
+scenario now gets the dialog when Edit opens (Cancel → no form, "Not
+started"; Archive asks too; Take over → form, save writes), and a held-back
+change comes from `hold_back_change()` -- the lease lost to the other Mac
+while the form is open; `acquire_newer_version` checks that opening Edit on a
+newer hub version reloads first and the newer content survives the save;
+`safety_net` writes a change into memory with `__DEBUG_dbRun()` and a granted
+acquire reports a newer version: nothing written, `.kept-aside/<Mac>-<time>/`
+holding this tab's bytes, a reload, the notice, and a second one in its own
+folder; `sleep_lost_lease` (the state shows no lease while holding → `none`,
+the bump not taken as this Mac's, the save kept aside; the heartbeat's
+re-acquire with a newer version reloading); `background_files` (a queued OCR
+fallback job stays queued while the iMac edits and while the lease is busy, no
+dialog, then runs once the lease is taken silently)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

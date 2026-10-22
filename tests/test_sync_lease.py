@@ -204,47 +204,92 @@ async def scenario_first_change(p):
     await browser.close()
 
 
+async def open_edit(page, row=1):
+    await page.click(f'tr[data-id="{row}"]')
+    await page.wait_for_timeout(150)
+    await page.click('#edit-doc-btn')
+    await page.wait_for_timeout(300)
+
+
+async def hold_back_change(page, title):
+    """Open the Edit form while holding the lease, lose it to the other Mac (poll), then save: busy → Cancel."""
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, THIS_LEASE))
+    await open_edit(page)
+    await page.fill('#e-title', title)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'busy'; window.__SYNC.busyLease = s.lease; }", state(3, BUSY_LEASE))
+    await tick(page)
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(300)
+
+
 async def scenario_busy(p):
     browser, page, errors = await open_app(p, sync={"token": "admin-tok", "acquire": "busy", "busyLease": BUSY_LEASE})
     before = await writes(page)
-    await page.click('tr[data-id="1"]')
-    await page.wait_for_timeout(150)
-    await page.click('#edit-doc-btn')
-    await page.wait_for_timeout(200)
-    await page.fill('#e-title', 'Mine')
-    await page.click('#save-edit-btn')
-    await page.wait_for_timeout(300)
+    await open_edit(page)
     text = await page.inner_text('#sync-takeover-dialog') if await page.locator('#sync-takeover-dialog').count() else ''
-    print("busy: the take-over dialog names the device and time:", 'Being edited on MacBook Pro since 02:02 PM.' in text, repr(text))
+    print("busy: opening Edit shows the take-over dialog first:", 'Being edited on MacBook Pro since 02:02 PM.' in text, repr(text))
     print("...with Take over and Cancel:", await page.locator('#sync-takeover-btn').count() == 1 and await page.locator('#sync-takeover-cancel-btn').count() == 1)
-    print("...and nothing is written while it's open:", await writes(page) == before)
+    print("...and the form isn't open yet:", await page.locator('#e-title').count() == 0)
     await page.click('#sync-takeover-cancel-btn')
     await page.wait_for_timeout(300)
-    print("Cancel writes nothing:", await writes(page) == before and await saved_title(page) == 'Invoice')
-    print("...the dialog is gone:", await page.locator('#sync-takeover-dialog').count() == 0)
+    print("Cancel: the Edit form doesn't open:", await page.locator('#e-title').count() == 0 and await page.locator('#sync-takeover-dialog').count() == 0)
+    print("...the status line names who's editing:", await status(page) == 'Not started: MacBook Pro is editing this library.', await status(page))
+    m = await marker(page)
+    print("...marker reads 'editing on MacBook Pro':", m['visible'] and m['text'] == 'editing on MacBook Pro', m)
+    print("...nothing written:", await writes(page) == before)
+
+    # A one-shot action asks the same way (Archive in the panel).
+    await page.click('#archive-toggle-btn')
+    await page.wait_for_timeout(300)
+    print("Archive asks too:", await page.locator('#sync-takeover-dialog').count() == 1)
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(300)
+    archived = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].archived")
+    print("...Escape cancels it: not archived, nothing written:", not archived and await writes(page) == before)
+
+    # Take over: the form opens, and the save writes.
+    await page.click('#edit-doc-btn')
+    await page.wait_for_timeout(300)
+    await page.click('#sync-takeover-btn')
+    await page.wait_for_timeout(300)
+    acq = await lease_calls(page, 'acquire')
+    print("Take over acquires with takeOver true:", acq[-1]['body'] == {"action": "acquire", "takeOver": True}, acq[-1])
+    print("...then the Edit form opens:", await page.locator('#e-title').count() == 1)
+    await page.fill('#e-title', 'Taken over')
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(400)
+    print("...and the save writes:", await saved_title(page) == 'Taken over')
+    m = await marker(page)
+    print("...marker reads '✎ editing':", m['text'] == '✎ editing', m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # Held back: the lease goes to the other Mac while the form is open.
+    browser, page, errors = await open_app(p)
+    before_title = await saved_title(page)
+    await hold_back_change(page, 'Mine')
+    print("lease lost while editing: Save asks:", await page.locator('#sync-takeover-dialog').count() == 1)
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
+    print("Cancel writes nothing:", await saved_title(page) == before_title)
     m = await marker(page)
     print("...marker says unsaved changes:", m['visible'] and m['text'] == 'unsaved changes', m)
     print("...the change stays in this window:", 'Mine' in await page.inner_text('tr[data-id="1"]'))
+    print("...and no 'Saved' line:", 'Saved' not in await status(page), await status(page))
+    w = await writes(page)
     await page.click('th[data-key="title"]')
     await page.wait_for_timeout(200)
-    print("a sort click now doesn't write the held-back change:", await writes(page) == before and await saved_title(page) == 'Invoice')
-
-    # The next real save asks again; Escape is Cancel.
-    await edit_title(page, 'Mine again', wait=300)
-    print("the next save asks again:", await page.locator('#sync-takeover-dialog').count() == 1 and len(await lease_calls(page, 'acquire')) == 2)
-    await page.keyboard.press('Escape')
+    print("a sort click now doesn't write the held-back change:", await writes(page) == w and await saved_title(page) == before_title)
+    # The next change asks again; Take over writes everything.
+    await page.click('#edit-doc-btn')
     await page.wait_for_timeout(300)
-    print("Escape cancels (nothing written):", await page.locator('#sync-takeover-dialog').count() == 0 and await writes(page) == before)
-
-    # And once more: Take over.
-    await edit_title(page, 'Taken over', wait=300)
+    print("the next change asks again:", await page.locator('#sync-takeover-dialog').count() == 1)
     await page.click('#sync-takeover-btn')
+    await page.wait_for_timeout(300)
+    await page.fill('#e-title', 'Mine again')
+    await page.click('#save-edit-btn')
     await page.wait_for_timeout(400)
-    acq = await lease_calls(page, 'acquire')
-    print("Take over acquires with takeOver true:", acq[-1]['body'] == {"action": "acquire", "takeOver": True}, acq[-1])
-    print("...then writes everything:", await saved_title(page) == 'Taken over' and await writes(page) > before)
-    m = await marker(page)
-    print("...marker reads '✎ editing':", m['text'] == '✎ editing', m)
+    print("...Take over writes:", await saved_title(page) == 'Mine again' and (await marker(page))['text'] == '✎ editing')
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -382,12 +427,12 @@ async def scenario_backup(p):
 
 async def scenario_german(p):
     browser, page, errors = await open_app(p, sync={"token": "admin-tok", "acquire": "busy", "busyLease": BUSY_LEASE}, lang='de')
-    await edit_title(page, 'Meins', wait=300)
+    await open_edit(page)
     text = await page.inner_text('#sync-takeover-dialog')
     print("German take-over dialog:", 'Wird seit 14:02 auf MacBook Pro bearbeitet.' in text and 'Übernehmen' in text, repr(text))
     await page.click('#sync-takeover-cancel-btn')
     await page.wait_for_timeout(300)
-    print("German 'unsaved changes':", (await marker(page))['text'] == 'ungespeicherte Änderungen', await marker(page))
+    print("German 'not started':", await status(page) == 'Nicht begonnen: MacBook Pro bearbeitet diese Bibliothek.', await status(page))
     await page.evaluate("window.__SYNC.acquire = 'granted'")
     await edit_title(page, 'Meins')
     print("German '✎ editing':", (await marker(page))['text'] == '✎ in Bearbeitung', await marker(page))
@@ -567,15 +612,138 @@ async def scenario_holding_no_reload(p):
 
 
 async def scenario_acquire_newer_version(p):
-    # Constraint (e): the service pulled first, so a granted acquire reports a newer version.
+    # Constraint (e) / review Critical 1: the service pulls the newer version before answering granted.
+    # Opening Edit takes the lease first and reloads, so the save lands on the newer version.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquireVersion": 4, "state": state(3)})
-    await edit_title(page, 'Edited here')
-    await page.wait_for_timeout(200)
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await open_edit(page)
     st = await sync_state(page)
-    print("granted with a newer version: this tab's change is written anyway:", await disk_doc_title(page, 1) == 'Edited here')
-    print("...then the library reloads:", st['reloads'] == 1 and st['version'] == 4, st)
-    print("...and the change is still shown:", 'Edited here' in await row_text(page, 1))
-    print("...not left as unsaved:", not st['unsaved'])
+    print("opening Edit on a newer hub version reloads before the form opens:", st['reloads'] == 1 and st['version'] == 4 and 'Receipt (iMac)' in await row_text(page, 2), st)
+    print("...then the form opens:", await page.locator('#e-title').count() == 1)
+    await page.fill('#e-title', 'Edited here')
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(400)
+    print("the newer version's content survives:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    print("...and this tab's change is on top of it:", await disk_doc_title(page, 1) == 'Edited here')
+    print("...nothing kept aside:", not await kept_aside_names(page))
+    print("...'Saved' shown:", 'Saved' in await status(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def kept_aside_names(page):
+    return await page.evaluate("""async () => {
+        const k = window.__TEST_ROOT._children.get('.kept-aside');
+        if(!k) return [];
+        const out = []; for await (const [n] of k.entries()) out.push(n); return out;
+    }""")
+
+
+async def kept_aside_title(page, name):
+    return await page.evaluate("""async (n) => {
+        const d = window.__TEST_ROOT._children.get('.kept-aside')._children.get(n);
+        return JSON.parse(await (await d._children.get('library.sqlite').getFile()).text()).documents[0].title;
+    }""", name)
+
+
+async def scenario_safety_net(p):
+    # B: memory with a real change, based on v3; the grant reports v4 (pulled onto disk). Nothing is written over it.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquireVersion": 4})
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Mine (old base)', 1])")
+    await disk_change(page, {2: 'Receipt (iMac)'})
+    w = await writes(page)
+    ok = await page.evaluate("window.__DEBUG_persistDb()")
+    await page.wait_for_timeout(500)
+    print("safety net: persistDb() answers false:", ok is False, ok)
+    print("...library.sqlite isn't written:", await writes(page) == w and await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'Invoice')
+    names = await kept_aside_names(page)
+    print("...this tab's bytes are kept aside under .kept-aside/<this Mac>-<time>/:", len(names) == 1 and names[0].startswith('MacBook Pro-'), names)
+    print("...with this tab's change in them:", names and await kept_aside_title(page, names[0]) == 'Mine (old base)')
+    print("...the library reloads to the newer version:", 'Receipt (iMac)' in await row_text(page, 2) and 'Mine' not in await row_text(page, 1))
+    notice = await page.inner_text('#sync-notice-dialog') if await page.locator('#sync-notice-dialog').count() else ''
+    print("...a notice names the folder:", f'.kept-aside/{names[0]}' in notice and 'please make it again' in notice, repr(notice))
+    print("...and the status line too:", '.kept-aside/' in await status(page))
+    await page.click('#sync-notice-ok-btn')
+    await page.wait_for_timeout(150)
+    print("...OK closes it:", await page.locator('#sync-notice-dialog').count() == 0)
+    # A second time never overwrites the first folder.
+    # (This tab now holds the lease; it lapses and the iMac edits again.)
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Mine again', 1])")
+    await disk_change(page, {2: 'Receipt (iMac 2)'})
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 5; }", state(5))
+    await tick(page)
+    await page.evaluate("window.__DEBUG_persistDb()")
+    await page.wait_for_timeout(500)
+    names2 = await kept_aside_names(page)
+    print("...a second one gets its own folder:", len(names2) == 2 and names[0] in names2, names2)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_sleep_lost_lease(p):
+    # Important 3: the lease expired while this tab thought it held it, and the iMac changed the library.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await open_edit(page)
+    await page.fill('#e-title', 'Typed before sleeping')
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("poll: lease gone while 'holding' → not holding any more:", st['state'] == 'none', st)
+    print("...the bump isn't taken as this Mac's push:", st['version'] == 3)
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(600)
+    print("...Save then doesn't write over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'Invoice')
+    names = await kept_aside_names(page)
+    print("...this tab's change is kept aside:", len(names) == 1 and await kept_aside_title(page, names[0]) == 'Typed before sleeping', names)
+    print("...and the iMac's version is loaded:", 'Receipt (iMac)' in await row_text(page, 2))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # Heartbeat: lost with no holder, the silent re-acquire reports a newer version → reload.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    await edit_title(page, 'Mine')
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__SYNC.heartbeat = 'lost'; window.__SYNC.lostLease = null; window.__SYNC.acquireVersion = 4;")
+    await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
+    await page.wait_for_timeout(400)
+    st = await sync_state(page)
+    print("heartbeat re-acquire with a newer version reloads:", 'Receipt (iMac)' in await row_text(page, 2) and st['version'] == 4 and st['state'] == 'holding', st)
+    print("...nothing written over it:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_background_files(p):
+    # Important 2: background jobs write files only with the lease (OCR job runner).
+    seed = dict(SEED2)
+    seed["ocr_jobs"] = [{"document_id": 1, "helper_url": None, "job_id": None, "file_hash": None,
+                         "created_at": "2026-03-01T00:00:00Z", "ocr_language": "eng", "requested_by": "edit"}]
+    browser, page, errors = await open_app(p, seed=seed, sync={"token": "admin-tok", "state": state(3, IMAC_LEASE),
+                                                                "acquire": "busy", "busyLease": IMAC_LEASE},
+                                           extra_files={'files/1_a.pdf': 'pdf'})
+    await page.evaluate("window.__DEBUG_holdOcrJobs(true)")
+    await tick(page)
+    await page.evaluate("window.__DEBUG_runOcrJobPass()")
+    await page.wait_for_timeout(400)
+    rows = await page.evaluate("window.__DEBUG_ocrJobRows().length")
+    print("iMac editing: the OCR job doesn't run, stays queued:", rows == 1 and await page.evaluate("window.__DEBUG_ocrFallbackIdle()"))
+    print("...no dialog, and never a take-over:", await page.locator('#sync-takeover-dialog').count() == 0 and all(not c['body']['takeOver'] for c in await lease_calls(page, 'acquire')))
+    # Lease free but taken when the job wants it: still busy → waits, silently.
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3))
+    await tick(page)
+    await page.evaluate("window.__DEBUG_runOcrJobPass()")
+    await page.wait_for_timeout(400)
+    print("lease free but busy at the moment: still queued, no dialog:", await page.evaluate("window.__DEBUG_ocrJobRows().length") == 1 and await page.locator('#sync-takeover-dialog').count() == 0)
+    # Granted: the job runs (and finishes, whatever OCR makes of the fake file).
+    await page.evaluate("window.__SYNC.acquire = 'granted'")
+    await tick(page)   # the poll sees the lease free again
+    await page.evaluate("window.__DEBUG_runOcrJobPass()")
+    for _ in range(20):
+        await page.wait_for_timeout(200)
+        if await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0: break
+    print("with the lease taken silently, the job runs:", await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0 and (await sync_state(page))['state'] == 'holding')
+    errors = [e for e in errors if 'ERR_FAILED' not in e]
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -673,8 +841,8 @@ async def scenario_view_write_newer_on_disk(p):
 
 async def scenario_cancel_followups(p):
     # 2. After Cancel: a status line of our own, beforeunload, and Switch library asks.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "busy", "busyLease": BUSY_LEASE})
-    await edit_title(page, 'Mine', wait=300)
+    browser, page, errors = await open_app(p, seed=SEED2)
+    await hold_back_change(page, 'Mine')
     await page.click('#sync-takeover-cancel-btn')
     await page.wait_for_timeout(300)
     print("Cancel: the status line says it isn't saved:", await status(page) == 'Not saved: MacBook Pro is editing this library. Your change stays in this window; your next change asks again.', await status(page))
@@ -711,46 +879,48 @@ async def scenario_background_writes_wait(p):
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, IMAC_LEASE)})
     await tick(page)
     print("the poll shows the iMac editing:", (await sync_state(page))['state'] == 'other' and (await marker(page))['text'] == 'editing on iMac')
-    before = await writes(page)
     await page.evaluate("(l) => { window.__SYNC.acquire = 'busy'; window.__SYNC.busyLease = l; }", IMAC_LEASE)
-    # A real background writer: Create missing previews in Grid view.
-    await page.click('#view-grid-btn')
-    await page.wait_for_timeout(200)
-    w_after_view = await writes(page)
-    has_btn = await page.locator('#create-previews-btn').is_visible()
-    print("Create missing previews is offered:", has_btn)
-    if has_btn:
-        await page.click('#create-previews-btn')
-    await page.wait_for_timeout(500)
-    print("...and has run:", await page.evaluate("!document.getElementById('create-previews-btn').textContent.includes('Stop')"))
-    print("a background write while 'other': no dialog:", await page.locator('#sync-takeover-dialog').count() == 0)
-    print("...no acquire:", await lease_calls(page, 'acquire') == [])
-    print("...nothing written:", await writes(page) == w_after_view, before, w_after_view, await writes(page))
+    before = await writes(page)
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Job change', 2])")
     await page.evaluate("window.__DEBUG_persistDb({ background: true })")
     await page.wait_for_timeout(200)
-    print("...also through persistDb({background: true}):", await page.locator('#sync-takeover-dialog').count() == 0 and await writes(page) == w_after_view)
-    await page.click('#view-list-btn')
+    print("a background write while 'other': no dialog:", await page.locator('#sync-takeover-dialog').count() == 0)
+    print("...no acquire:", await lease_calls(page, 'acquire') == [])
+    print("...nothing written:", await writes(page) == before)
+    await page.click('th[data-key="title"]')
     await page.wait_for_timeout(200)
-    print("a view-only click then doesn't carry the job's unleased changes:", await writes(page) == w_after_view)
-    await disk_change(page, {2: 'Receipt from iMac'}, sync_version=4)
+    print("a view-only click then doesn't carry the job's unleased change:", await writes(page) == before)
+    await disk_change(page, {3: 'Letter from iMac'}, sync_version=4)
     await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, IMAC_LEASE))
     await tick(page)
-    print("...and a newer version doesn't reload them away:", (await sync_state(page))['reloads'] == 0 and (await sync_state(page))['unsaved'])
+    print("...and a newer version doesn't reload it away:", (await sync_state(page))['reloads'] == 0 and (await sync_state(page))['unsaved'])
+    # A person's click (Create missing previews) does ask.
+    await page.click('#view-grid-btn')
+    await page.wait_for_timeout(200)
+    if await page.locator('#create-previews-btn').is_visible():
+        await page.click('#create-previews-btn')
+        await page.wait_for_timeout(300)
+    print("Create missing previews is a person's click: it asks:", await page.locator('#sync-takeover-dialog').count() == 1)
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(200)
     await browser.close()
 
     # State none, lease busy: a background write asks nothing either and becomes 'other'.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "busy", "busyLease": IMAC_LEASE})
     before = await writes(page)
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Job change', 2])")
     await page.evaluate("window.__DEBUG_persistDb({ background: true })")
     await page.wait_for_timeout(300)
     print("background write, lease busy: no dialog:", await page.locator('#sync-takeover-dialog').count() == 0)
     print("...nothing written, state other:", await writes(page) == before and (await sync_state(page))['state'] == 'other')
-    # A person's save afterwards still asks.
-    await edit_title(page, 'Mine', wait=300)
-    print("...a person's save afterwards still asks:", await page.locator('#sync-takeover-dialog').count() == 1)
+    await open_edit(page)
+    print("...a person's edit afterwards still asks:", await page.locator('#sync-takeover-dialog').count() == 1)
     await page.click('#sync-takeover-btn')
     await page.wait_for_timeout(300)
-    print("...and Take over writes:", await disk_doc_title(page, 1) == 'Mine')
+    await page.fill('#e-title', 'Mine')
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(400)
+    print("...and Take over writes both:", await disk_doc_title(page, 1) == 'Mine' and await disk_doc_title(page, 2) == 'Job change')
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -758,15 +928,15 @@ async def scenario_background_writes_wait(p):
 async def scenario_takeover_layer_removed(p):
     # 4. The take-over promise settles when its layer goes away.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "busy", "busyLease": BUSY_LEASE})
-    await edit_title(page, 'Mine', wait=300)
+    await open_edit(page)
     print("dialog open:", await page.locator('#sync-takeover-dialog').count() == 1)
     await page.evaluate("document.getElementById('sync-takeover-layer').remove()")
     await page.wait_for_timeout(200)
     print("removing its layer settles it (no acquire left pending):", not (await sync_state(page))['pending'])
-    print("...nothing written:", await disk_doc_title(page, 1) == 'Invoice')
-    await page.evaluate("document.getElementById('modal-root').innerHTML = ''")
-    await edit_title(page, 'Mine again', wait=300)
-    print("...the next save asks again:", await page.locator('#sync-takeover-dialog').count() == 1 and len(await lease_calls(page, 'acquire')) == 2)
+    print("...nothing written, no form:", await disk_doc_title(page, 1) == 'Invoice' and await page.locator('#e-title').count() == 0)
+    await page.click('#edit-doc-btn')
+    await page.wait_for_timeout(300)
+    print("...the next attempt asks again:", await page.locator('#sync-takeover-dialog').count() == 1 and len(await lease_calls(page, 'acquire')) == 2)
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -811,7 +981,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
              scenario_acquire_newer_version, scenario_lost_via_state, scenario_kept_aside, scenario_last_error, scenario_german_task2,
              scenario_view_write_newer_on_disk, scenario_cancel_followups, scenario_background_writes_wait,
-             scenario_takeover_layer_removed, scenario_sync_read_before_writes, scenario_unanswered_backoff]
+             scenario_takeover_layer_removed, scenario_sync_read_before_writes, scenario_unanswered_backoff,
+             scenario_safety_net, scenario_sleep_lost_lease, scenario_background_files]
 
 
 async def main():

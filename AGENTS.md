@@ -2506,8 +2506,29 @@ this repo's git tags.
   /admin/libraries/<id>/lease {action, takeOver}`). **Only a library with a
   readable `.dossiary-sync.json` (`{libraryId, hub, version}`) at its root
   takes part**, read in `afterDbReady()`; without one nothing changes and no
-  admin call is made. **The gate is inside `persistDb(opts)`**, so every one of
-  its ~80 callers is covered: a real write without the lease first runs
+  admin call is made. **The lease is taken when editing starts**
+  (`ensureEditLease()`, fix round 1 of the review): Dossiary Sync pulls a
+  newer version onto disk *before* answering an acquire with `granted`, so a
+  change already made in memory on the older version can never be written
+  safely afterwards. Every person-started flow that ends in `persistDb()`
+  calls it before anything changes -- opening the Edit form, capture,
+  bulk edit, Edit pages…, Combine…, Make searchable, Field Settings, Manage
+  collections, Rename or merge values, the smart collection editor, Toolbar
+  buttons, Import a folder; Check inbox/Add all, a drop, a scan start; and
+  the one-shot actions (archive, delete/restore, flag/done and their bulk
+  forms, reminders, add to/remove from/create collection, Save as Smart
+  Collection, regenerate preview, preview jobs, Library check's
+  not-a-duplicate, delete fields/tags/people/previews, re-link, "Check for
+  text", the Edit form's Make searchable queue, the backup reminder days).
+  Granted at the loaded version → go on; granted newer → reload first
+  (`maybeReload(true)`, which may run under an open dialog since nothing has
+  changed yet), then go on with ids from the fresh database; busy → the
+  take-over dialog right there, and Cancel means the flow doesn't start
+  ("Not started: {device} is editing this library."); offline, not
+  connected, no answer, no sync file → go on. A change held back from
+  before, met by a newer version, is kept aside first (below) and the flow
+  doesn't start. **The gate is also inside `persistDb(opts)`**, so every one of
+  its ~80 callers is still covered: a real write without the lease first runs
   `ensureLease()` (one acquire in flight, shared by concurrent saves). No
   admin token → `unconnected`, write; `granted` → `holding`; `offline` →
   `offline`, write; no answer, a timeout or an error → `unsynced` with the
@@ -2517,8 +2538,12 @@ this repo's git tags.
   `#modal-root-over` when a dialog such as the Edit form is already open, so
   that dialog survives; Escape = Cancel, caught on `window` in the capture
   phase). Take over acquires with `takeOver: true` and writes; Cancel writes
-  nothing and sets `syncUnsavedChanges` (marker "unsaved changes"), and the
-  next real save asks again and writes everything; a status line of its own
+  nothing and sets `syncUnsavedChanges` (marker "unsaved changes") -- since
+  the lease is taken at the start, this only happens when it is lost while a
+  form is open --, and the next real save asks again and writes everything;
+  `persistDb()` returns false when it didn't write (held back, kept aside, a
+  skipped view preference), and the Edit, capture and bulk-edit saves then
+  skip their "Saved …" line; a status line of its own
   ("Not saved: …", posted with `setTimeout(0)` so it lands after the caller's
   "Saved …") says so, `beforeunload` asks while such a change is held back,
   and Switch library asks in a real dialog (`switchLibraryAsking()`,
@@ -2538,7 +2563,30 @@ this repo's git tags.
   the lease free an acquire answering `busy` returns false without a dialog
   (and a person's save that joined that acquire asks with one of its own).
   Their change then waits in memory as held back (`syncHoldBack()`), for the
-  next real save or the job's next pass. **Real changes in memory are
+  next real save or the job's next pass. **Background jobs write files only
+  with the lease to hand** (`syncMayWriteFiles()`: holding, offline, not
+  connected, the service not answering, or no sync file -- the states in
+  which a person's save writes too -- and never while behind a newer version
+  or holding back a change): the OCR runner skips its pass while another Mac
+  edits, and before swapping in a helper's result or starting its own OCR it
+  calls `syncBackgroundMayWrite()`, which takes a free lease silently
+  (`ensureLease(true)`, never a dialog) -- otherwise the job stays queued; a
+  preview job stops at the next document; a backup writes `last_backup_at`
+  only that way too. **The safety net**: if a real write finds this tab's
+  memory based on an older version than the newest one another Mac is known
+  to have made (`syncBehind()`: `syncKnownNewer`, noted by
+  `syncNoteNewer()` from acquire answers, polls not showing this tab as
+  holder, and the sync file while not holding), it doesn't write
+  `library.sqlite` -- unless the file on disk still hashes to what this tab
+  loaded or last wrote (`syncDiskIsOurs()`, `syncLoadedHash`/
+  `syncLastWrittenHash`: then the higher number was this Mac's own push).
+  Instead `syncKeepAsideAndReload()` writes `db.export()` to
+  `.kept-aside/<this Mac>-<yyyy-mm-dd-hhmm>[-n]/library.sqlite` (never
+  reusing a folder; `.kept-aside` is skipped by sync and backups), closes any
+  open form, reloads, and shows the folder on the status line and in a
+  notice (`#sync-notice-dialog`) asking to make the change again. If even
+  that write fails the change stays in memory, held back. Files a flow wrote
+  before its `persistDb()` stay where they are, untracked. **Real changes in memory are
   tracked**: `trackDbChanges()` wraps the main database's `db.run` and counts
   every statement except a view-preference settings write
   (`SYNC_VIEW_PREF_KEYS`); `persistDb()` notes the count it exported, and
@@ -2569,12 +2617,16 @@ this repo's git tags.
   is open (`#modal-root` or `#modal-root-over` non-empty), a save is in
   flight (`syncPersistsInFlight`), an acquire is pending, a change is held
   back or dirty, or a background job runs (`syncBackgroundJobRunning()`);
-  the next poll tries again. While holding, a newer polled version is this
-  Mac's own push and just moves `syncLibrary.version` along. A granted
-  acquire whose `version` is above the loaded one (the service pulled
-  first) writes this tab's change anyway -- Dossiary Sync keeps a version
-  with an old base aside -- and then reloads (`syncReloadWanted`, allowed
-  while holding); nothing is dropped. **Lease lost**: the state naming
+  the next poll tries again. A newer polled version is this Mac's own push
+  only while the state says `lease.holder === 'this'`; then it just moves
+  `syncLibrary.version` along. If the state shows no lease (it expired --
+  the Mac slept) or another holder while this tab thinks it holds it, the
+  tab drops to `none`/`other` and the version counts as another Mac's: a
+  reload, or the safety net if memory has unwritten changes. The
+  heartbeat's silent re-acquire routes its `version` the same way.
+  `reloadLibraryKeepingView()` marks the fresh database `__untracked` while
+  the migrations run, so their changes don't count as this tab's, without
+  resetting the count for anything else. **Lease lost**: the state naming
   another holder while holding → `other` and the status line "{device} took
   over editing this library." (a builder, so it retranslates); while `none`
   it just shows "editing on …", and back to `none` once the lease is free.
