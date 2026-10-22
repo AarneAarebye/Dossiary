@@ -1282,7 +1282,21 @@ with the notice); `connected_elsewhere` (a token stored by another tab picked
 up by the next tick); `idle_non_edit_dialogs` (Storage stats doesn't keep the
 lease; an Edit form an hour without input doesn't either); and in
 `service_down`, a job's change held silently, the "may not be running"
-tooltip, and no new acquire from a tick within the minute).
+tooltip, and no new acquire from a tick within the minute. Fix round 4: `multi_drop_job_save` and
+`tick_before_insert` (a real two-file / one-file drop whose files folder is
+hooked: the lease lapses and the iMac's v4 appears while the drop is mid-way,
+a job's save lands between a file's INSERT and its own save -- after a tick
+in the second -- and the sidecar write is slow, so the reload wins: the
+dropped document survives in the library or a `.kept-aside` copy); in
+`safety_net`, a background save behind a newer version now keeping a quiet
+copy with a plain status line and no notice; `held_back_copy_race` (two
+copies at once make one folder, a copy finishing after the real save claims
+nothing, a later episode gets its own folder); `job_data_retried` (a job's
+data held while the service was down written by a tick once it answers, and
+a person's Edit meeting a newer version with only job data unwritten opening
+on the fresh library, the job data kept aside quietly); `quiet_copy_reused`
+(two quiet saves while a job blocks the reload sharing one folder with the
+latest memory)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

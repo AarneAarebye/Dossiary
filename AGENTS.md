@@ -2561,12 +2561,19 @@ this repo's git tags.
   Mac>-<time>/library.sqlite` copy -- one folder per held-back episode
   (`syncHeldBackEpisode`), updated in place while it continues, never the live
   file -- and names it on the status line and in the marker's tooltip. The
-  copy stays after the change is written for real (nothing is removed). While
+  copy stays after the change is written for real (nothing is removed). Only
+  one copy is written at a time (`syncHeldBackCopyRunning`; a tick and
+  `pagehide` together make one folder), and a copy that finishes after the
+  change was written for real -- or after a new episode began
+  (`syncHeldBackGen`) -- claims no episode and posts no status. While
   no admin call has ever answered in this session, the `unsynced` reason says
   Dossiary Sync may not be running or not be installed
   (`syncNotRunningReason`). A job's change alone, in these states, is held
   silently: it stays unwritten in memory but sets no "not saved" marker or
-  `beforeunload`. `busy` → a take-over dialog ("Being edited on {device} since
+  `beforeunload`; the tick's retry (and connecting) writes it as a
+  background save once a lease can be had (`syncJobDataHeld()`: dirty,
+  nothing held back, no person's flow pending, no save or job running), so
+  it never stays dirty, blocking reloads. `busy` → a take-over dialog ("Being edited on {device} since
   {time}.", appended as its own layer to `#modal-root`, or to
   `#modal-root-over` when a dialog such as the Edit form is already open, so
   that dialog survives; Escape = Cancel, caught on `window` in the capture
@@ -2606,15 +2613,26 @@ this repo's git tags.
   preview job stops at the next document; a backup writes `last_backup_at`
   only that way too. A lease only a background job took
   (`syncLeaseForBackgroundOnly`, cleared by any person's flow or save) goes
-  back one heartbeat interval after its last write instead of ten minutes. A
-  background save that meets a newer version doesn't keep anything aside
-  (it holds only derived data -- hashes, a finished OCR row): it drops that
-  data with the reload and the job redoes it -- unless a person's change is
-  held back or a person's flow is still pending (`syncPersonFlowPending`:
-  set by `ensureEditLease()`, cleared by that person's write, a keep-aside,
-  or a tick finding no dialog open and nothing unwritten), which is kept
-  aside as usual, so a person's change between its `db.run` and its own save
-  is never dropped. A lease a background save takes inside `persistDb()`
+  back one heartbeat interval after its last write instead of ten minutes.
+  **Nothing in memory is ever dropped** (fix round 4): a background save
+  that meets a newer version keeps this tab's bytes aside too, since a
+  person's change made between its `db.run` and its own save (a multi-file
+  drop or Inbox add persists once per file, with awaits in between) may be
+  in memory with the job's data. Only how loudly differs: with no person's
+  change known to be pending (`syncPersonFlowPending` -- set by
+  `ensureEditLease()`, cleared by that person's write, a keep-aside, or a
+  tick finding no dialog open and nothing unwritten -- and nothing held
+  back) it's kept aside **quietly** (`syncKeepAsideAndReload(inline,
+  quiet)`): a plain status line naming the folder (`syncKeptAsideQuiet`),
+  no notice, no dialog closed, a reload only when nothing is in the way;
+  otherwise with the notice as below. The flag never decides whether data is
+  written somewhere. While memory stays on the same old version (a running
+  backfill blocks the reload), later quiet copies overwrite the same folder
+  (`syncQuietEpisode`, `writeKeptAsideInto()`): memory only grew, so the
+  newer copy holds everything the older one did. A person's flow that meets
+  a newer version with only a job's data unwritten (nothing held back, no
+  earlier flow pending) keeps it aside quietly and goes on, on the fresh
+  library, instead of saying "Your change couldn't be saved". A lease a background save takes inside `persistDb()`
   (backfill, "Check for text", a backup's date) is marked background-only
   too. **The dialog an editing flow opened counts as activity**
   (`syncEditDialogEl`, captured right after `ensureEditLease()` -- not

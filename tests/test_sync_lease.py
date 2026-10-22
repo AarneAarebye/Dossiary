@@ -723,7 +723,7 @@ async def scenario_safety_net(p):
     await page.wait_for_timeout(500)
     names2 = await kept_aside_names(page)
     print("...a second one gets its own folder:", len(names2) == 2 and names[0] in names2, names2)
-    # N3: a background job's save behind a newer version keeps nothing aside and shows no notice.
+    # A background job's save behind a newer version: never dropped (R1, fix round 4) -- kept aside quietly, no notice.
     await page.click('#sync-notice-ok-btn')
     await page.wait_for_timeout(150)
     await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 6; }", state(6))
@@ -732,7 +732,12 @@ async def scenario_safety_net(p):
     await tick(page)
     await page.evaluate("window.__DEBUG_persistDb({ background: true })")
     await page.wait_for_timeout(500)
-    print("a background save behind a newer version: no folder, no notice:", len(await kept_aside_names(page)) == 2 and await page.locator('#sync-notice-dialog').count() == 0)
+    names3 = await kept_aside_names(page)
+    quiet = [n for n in names3 if n not in names2]
+    print("a background save behind a newer version: kept aside in a folder of its own, no notice:", len(quiet) == 1 and await page.locator('#sync-notice-dialog').count() == 0, names3)
+    print("...the copy holds this tab's memory (the job's data with it):", quiet and await page.evaluate("""async (n) => JSON.parse(await (await window.__TEST_ROOT._children.get('.kept-aside')._children.get(n)._children.get('library.sqlite').getFile()).text()).documents.find(d => d.id === 2).file_hash""", quiet[0]) == 'abc')
+    st = await status(page)
+    print("...a plain status line names the folder:", quiet and f'.kept-aside/{quiet[0]}' in st and 'please make it again' not in st, st)
     print("...the newer version is loaded:", 'Receipt (iMac 3)' in await row_text(page, 2))
     print("no page errors:", not errors, errors)
     await browser.close()
@@ -1204,6 +1209,202 @@ async def scenario_idle_non_edit_dialogs(p):
     await browser.close()
 
 
+async def drop_files(page, names):
+    parts = ",".join(f"new File([new TextEncoder().encode({('dropped:' + n)!r})], {n!r}, {{type: 'application/pdf'}})" for n in names)
+    await page.evaluate(f"""() => {{
+        const dt = new DataTransfer();
+        [{parts}].forEach(f => dt.items.add(f));
+        document.dispatchEvent(new DragEvent('drop', {{ bubbles: true, cancelable: true, dataTransfer: dt }}));
+    }}""")
+
+
+async def where_titles(page, titles):
+    """For each title: 'library' if library.sqlite holds it, else the .kept-aside folder that does, else None."""
+    return await page.evaluate("""async (titles) => {
+        const root = window.__TEST_ROOT;
+        const read = async (h) => JSON.parse(await (await h.getFile()).text()).documents.map(d => d.title);
+        const live = await read(root._children.get('library.sqlite'));
+        const kept = [];
+        const k = root._children.get('.kept-aside');
+        if(k) for await (const [n, d] of k.entries()) kept.push([n, await read(d._children.get('library.sqlite'))]);
+        const out = {};
+        for(const t of titles){
+            if(live.includes(t)) out[t] = 'library';
+            else { const hit = kept.find(([, ts]) => ts.includes(t)); out[t] = hit ? hit[0] : null; }
+        }
+        return out;
+    }""", titles)
+
+
+# The iMac changes the library while this tab's drop is mid-way: the lease
+# has lapsed (no lease in the state), the hub is at v4, and a job's save
+# comes along. Installed on the files folder: `before_copy` runs when the
+# active copy of a file is about to be written (after the gate, before its
+# INSERT), `before_sidecar` when its sidecar is (after its INSERT, before
+# its own save).
+HOOK_FILES = """([copyName, sidecarName, tickBeforeCopy]) => {
+    const files = window.__TEST_ROOT._children.get('files');
+    const orig = files.getFileHandle.bind(files);
+    window.__HOOK_LOG = [];
+    files.getFileHandle = async (name, opts) => {
+        if(tickBeforeCopy && name.endsWith(copyName) && !window.__HOOK_COPY_DONE){
+            window.__HOOK_COPY_DONE = true;
+            await window.__DEBUG_syncNow(0);          // a tick between the gate and the first INSERT
+            window.__HOOK_LOG.push('tick');
+        }
+        if(name.endsWith(sidecarName) && !window.__HOOK_SIDECAR_DONE){
+            window.__HOOK_SIDECAR_DONE = true;
+            const root = window.__TEST_ROOT;
+            const h = root._children.get('library.sqlite');
+            const data = JSON.parse(await (await h.getFile()).text());
+            data.documents.find(x => x.id === 2).title = 'Receipt (iMac)';
+            h._bytes = new TextEncoder().encode(JSON.stringify(data));
+            root._children.get('.dossiary-sync.json')._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: 4 }));
+            window.__SYNC.state = { libraryId: 'lib-7f3a', version: 4, hubReachable: true, lease: null, offline: false, keptAside: [], lastError: null };
+            window.__SYNC.acquireVersion = 4;
+            await window.__DEBUG_syncNow(0);          // the poll: the lease lapsed, v4 exists
+            window.__HOOK_LOG.push('job:' + await window.__DEBUG_persistDb({ background: true }));   // a job's save, behind
+            await new Promise(r => setTimeout(r, 400));   // the sidecar write takes a while (iCloud)
+        }
+        return orig(name, opts);
+    };
+}"""
+
+
+async def scenario_multi_drop_job_save(p):
+    # R1 (a): a two-file drop. File 1's save clears the pending flag; file 2's INSERT is in memory when a job's save meets v4.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    await page.evaluate(HOOK_FILES, ['_two.pdf', '_two.txt', False])
+    await drop_files(page, ['one.pdf', 'two.pdf'])
+    await page.wait_for_timeout(1500)
+    log = await page.evaluate("window.__HOOK_LOG")
+    print("the job's save ran between file 2's INSERT and its save:", any(x.startswith('job:') for x in log), log)
+    where = await where_titles(page, ['one', 'two'])
+    print("file 1 is in the library or a kept-aside copy:", where['one'] is not None, where)
+    print("file 2's row survives, in the library or a kept-aside copy (never silently lost):", where['two'] is not None, where)
+    print("...nothing written over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_tick_before_insert(p):
+    # R1 (b): one dropped file. A tick runs between the gate and the INSERT (nothing dirty yet), then a job's save meets v4.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    await page.evaluate(HOOK_FILES, ['_solo.pdf', '_solo.txt', True])
+    await drop_files(page, ['solo.pdf'])
+    await page.wait_for_timeout(1500)
+    log = await page.evaluate("window.__HOOK_LOG")
+    print("a tick ran before the INSERT and a job's save after it:", log[:1] == ['tick'] and any(x.startswith('job:') for x in log), log)
+    where = await where_titles(page, ['solo'])
+    print("the dropped document survives, in the library or a kept-aside copy (never silently lost):", where['solo'] is not None, where)
+    print("...nothing written over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def disk_file_hash(page, id):
+    return await page.evaluate("async (id) => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents.find(d => d.id === id).file_hash", id)
+
+
+async def scenario_held_back_copy_race(p):
+    # R2: a held-back copy still being written when the change is written for real doesn't claim the episode afterwards;
+    # two copies at once (a tick and pagehide) make one folder.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
+    await page.evaluate("""() => {
+        const root = window.__TEST_ROOT;
+        const orig = root.getDirectoryHandle.bind(root);
+        root.getDirectoryHandle = async (name, opts) => {
+            if(name === '.kept-aside' && window.__SLOW_KEPT) await new Promise(r => setTimeout(r, 600));
+            return orig(name, opts);
+        };
+    }""")
+    await edit_title(page, 'First episode')
+    await page.evaluate("() => { window.__SLOW_KEPT = true; window.dispatchEvent(new Event('pagehide')); window.dispatchEvent(new Event('pagehide')); }")
+    await page.wait_for_timeout(50)
+    await page.evaluate("window.__SYNC.down = false")
+    await tick(page, 5 * 1000)          # the service answers: the change is written for real while the copy is still being written
+    await page.wait_for_timeout(1500)
+    print("the change is written for real:", await disk_doc_title(page, 1) == 'First episode' and not (await sync_state(page))['unsaved'])
+    names = await kept_aside_names(page)
+    print("two copies started at once made one folder:", len(names) == 1, names)
+    st = await status(page)
+    print("...the late copy doesn't claim 'also kept safe' for a change already saved:", 'also kept safe' not in st, st)
+    m = await marker(page)
+    print("...nor the marker's tooltip:", '.kept-aside' not in m['title'], m['title'])
+    # A new held-back episode gets its own folder, not the late copy's.
+    await page.evaluate("window.__SLOW_KEPT = false; window.__SYNC.down = true")
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, None))
+    await release_and_hold_back(page, 'Second episode')
+    await page.evaluate("window.__DEBUG_syncNow(31 * 1000)")
+    await page.wait_for_timeout(300)
+    names2 = await kept_aside_names(page)
+    new = [n for n in names2 if n not in names]
+    print("a later episode gets a folder of its own:", len(new) == 1 and await kept_aside_title(page, new[0]) == 'Second episode', names2)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def release_and_hold_back(page, title):
+    """Give the lease back (idle), then make a change while the service doesn't answer: held back."""
+    for _ in range(11):
+        await page.evaluate("window.__DEBUG_syncNow(60 * 1000)")
+    await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
+    await edit_title(page, title)
+
+
+async def scenario_job_data_retried(p):
+    # R3: a job's data held silently while the service didn't answer is written by a tick once it answers ...
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 2])")
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    st = await sync_state(page)
+    print("a job's data held silently:", st['dirty'] and not st['unsaved'], st)
+    await page.evaluate("window.__SYNC.down = false")
+    await tick(page, 61 * 1000)
+    await page.wait_for_timeout(300)
+    print("once the service answers, a tick writes it:", await disk_file_hash(page, 2) == 'abc' and not (await sync_state(page))['dirty'], await sync_state(page))
+    await page.wait_for_timeout(100)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+    # ... and a person's flow meeting a newer version with only a job's data unwritten keeps it aside quietly and goes on.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 2])")
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; window.__SYNC.down = false; }", state(4))
+    await open_edit(page)
+    print("Edit opens on the newer version (no 'couldn't be saved' notice):", await page.locator('#e-title').count() == 1 and await page.locator('#sync-notice-dialog').count() == 0)
+    print("...the iMac's version is loaded:", 'Receipt (iMac)' in await row_text(page, 2))
+    names = await kept_aside_names(page)
+    held = names and await page.evaluate("""async (n) => JSON.parse(await (await window.__TEST_ROOT._children.get('.kept-aside')._children.get(n)._children.get('library.sqlite').getFile()).text()).documents.find(d => d.id === 2).file_hash""", names[0])
+    print("...the job's data is kept aside quietly, not dropped:", len(names) == 1 and held == 'abc', names)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_quiet_copy_reused(p):
+    # Quiet copies while a job blocks the reload: one folder, updated in place, holding the latest memory.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquireVersion": 4})
+    await page.evaluate("window.__DEBUG_syncBackgroundBusy(true)")
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    for h in ['h1', 'h2']:
+        await page.evaluate(f"window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['{h}', 1])")
+        await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+        await page.wait_for_timeout(200)
+    names = await kept_aside_names(page)
+    latest = names and await page.evaluate("""async (n) => JSON.parse(await (await window.__TEST_ROOT._children.get('.kept-aside')._children.get(n)._children.get('library.sqlite').getFile()).text()).documents.find(d => d.id === 1).file_hash""", names[0])
+    print("two quiet saves behind the same version: one folder with the latest memory:", len(names) == 1 and latest == 'h2', names, latest)
+    print("...nothing written over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    await page.evaluate("window.__DEBUG_syncBackgroundBusy(false)")
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, THIS_LEASE))
+    await tick(page)
+    await page.wait_for_timeout(300)
+    print("...once the job ends the newer version loads:", 'Receipt (iMac)' in await row_text(page, 2))
+    print("no notice for a job's data:", await page.locator('#sync-notice-dialog').count() == 0)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -1212,7 +1413,9 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_takeover_layer_removed, scenario_sync_read_before_writes, scenario_unanswered_backoff,
              scenario_safety_net, scenario_sleep_lost_lease, scenario_background_files,
              scenario_idle_and_forms, scenario_dialog_open_refuses, scenario_library_check_stale, scenario_reload_refused,
-             scenario_connected_elsewhere, scenario_held_back_copy, scenario_person_change_not_dropped, scenario_idle_non_edit_dialogs]
+             scenario_connected_elsewhere, scenario_held_back_copy, scenario_person_change_not_dropped, scenario_idle_non_edit_dialogs,
+             scenario_multi_drop_job_save, scenario_tick_before_insert,
+             scenario_held_back_copy_race, scenario_job_data_retried, scenario_quiet_copy_reused]
 
 
 async def main():
