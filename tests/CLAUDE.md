@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **104
-scripts covering most of the app's actual functionality** (101 of them
+There's a real, runnable Playwright regression suite in `tests/` — **105
+scripts covering most of the app's actual functionality** (102 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1176,6 +1176,17 @@ stub fails every request to another localhost origin unless
 `window.__ALLOW_REAL_HELPERS` is set, which only
 `manual_scan_reference_helper.py` (a manual check against the real
 reference helper, not part of the suite) does).
+The devices dialog (`test_devices_dialog.py` -- a fake `fetch` playing
+Dossiary Sync's admin API on `127.0.0.1:8769` per scenario (`FAKE_SYNC`,
+answering 415 to a POST without JSON like the real one): not running with
+the install link and Look again; Connect asking for a code as JSON, a wrong
+code, the right one normalised and its token stored; a 429 naming the wait;
+a stored valid token going straight to the devices with role labels and
+relative last-seen times; per-library checkboxes for phones only, allow and
+deny requests with the status line, a refused change undone; Remove behind
+`confirm()`; the language switch blocked while open; Disconnect; a revoked
+token dropped on open and on a 401; a blocked `localStorage`; German labels
+and relative times).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

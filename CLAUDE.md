@@ -50,7 +50,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (104 scripts) + shared
+tests/                   Playwright regression suite (105 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2420,6 +2420,24 @@ this repo's git tags.
   helper on the machine; `tests/test_scan_dialog.py` fakes helpers per
   scenario, and `tests/manual_scan_reference_helper.py` checks against the
   real reference helper by hand.
+- **iPhone & other devices** (`openDevicesDialog()`, `syncAdminFetch()`,
+  Tools → `#devices-btn`; spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-22-dossiary-devices-dialog-design.md`)
+  manages Dossiary Sync's paired devices through its loopback-only admin
+  API on `http://127.0.0.1:8769` (3 s health timeout). Not answering → an
+  explanation and the dossiary-sync link; otherwise Connect asks the service
+  to show a code as a macOS notification (a 429 names the wait) and swaps
+  the typed code for an admin token, kept per browser in `localStorage`
+  (`dossiary_sync_admin_token`, try/catch, memory fallback). Every POST is
+  JSON (the service answers 415 otherwise). A token the service no longer
+  knows (`connected: false`, or a 401) is dropped and Connect comes back.
+  Connected: devices with role labels (phone/mirror/restore), relative
+  last-seen (`Intl.RelativeTimeFormat`), one checkbox per shared library
+  for phones (allow/deny at once, status line, a refusal undoes the tick),
+  Remove behind `confirm()`, shared libraries read-only with the
+  `dossiary-sync share <folder>` note, Disconnect. `#devices-add-slot` is
+  where "Add iPhone or iPad…" and its QR code go. `devicesDialogSeq` drops
+  answers for a dialog that was closed or reopened meanwhile.
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default

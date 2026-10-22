@@ -174,6 +174,19 @@
   .scan-dialog-check{ display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; }
   .scan-dialog-text{ font-size:12.5px; color:var(--text-dim); line-height:1.6; margin:0 0 12px; }
   .scan-dialog a{ color:var(--phosphor); font-weight:600; }
+  .devices-dialog a{ color:var(--phosphor); font-weight:600; }
+  .devices-dialog h3{ font-size:13px; margin:16px 0 8px; color:var(--text); }
+  .devices-row{ border:1px solid var(--line); border-radius:var(--radius); padding:8px 10px; margin:0 0 8px; }
+  .devices-row-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .devices-name{ font-weight:600; }
+  .devices-role, .devices-seen{ font-size:12px; color:var(--text-dim); }
+  .devices-remove-btn{ margin-left:auto; }
+  .devices-libs{ display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:6px; font-size:12.5px; }
+  .devices-libs label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .devices-library-list{ margin:0 0 8px; padding-left:18px; font-size:13px; }
+  .devices-unavailable{ color:var(--text-dim); font-size:12px; }
+  .devices-code-row{ display:flex; gap:8px; align-items:center; }
+  .devices-code-row input{ width:10em; font-family:var(--font-mono); letter-spacing:0.08em; }
   .toolbar-buttons-list{ display:flex; flex-direction:column; gap:8px; margin:12px 0 4px; }
   .toolbar-buttons-list label{ display:flex; align-items:center; gap:10px; font-size:13.5px; cursor:pointer; }
   .nav-item.drop-target{ background:var(--phosphor-dim); color:var(--text); outline:1px dashed var(--phosphor); outline-offset:-2px; }
@@ -927,6 +940,7 @@
             <button type="button" class="tools-menu-item" role="menuitem" id="storage-stats-btn" data-i18n="toolbarStorageStats">💾 Storage stats</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="import-folder-btn" data-i18n="toolbarImportFolder">📂 Import a folder…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="backup-btn" data-i18n="toolbarBackup">🗄 Back up library…</button>
+            <button type="button" class="tools-menu-item" role="menuitem" id="devices-btn" data-i18n="toolbarDevices">📱 iPhone &amp; other devices…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="toolbar-buttons-btn" data-i18n="toolbarButtonsMenu">👁 Toolbar buttons…</button>
           </div>
         </div>
@@ -1138,6 +1152,7 @@
       exportWriteDetails: 'Write title, category, type and tags into exported PDFs', exportDetailsSkipped: "PDFs copied without details because they could not be opened: {count}.",
       toolbarImportFolder: '📂 Import a folder…', importModalTitle: 'Import a folder', importIntro: 'Adds every file in a folder you choose as a new document. If the folder has an index.csv (as Export writes it), each file listed there gets its title, date, category, tags and other details; other files go to the Inbox for review. The folder itself isn’t changed, and files already in the library are skipped.', importChooseFolderBtn: 'Choose folder…', importInsideLibrary: 'That folder is inside this library. Choose a folder outside it.', importNoFiles: 'There are no files to import in “{folder}”.', importIndexNoFileColumn: 'it has no File column', importIndexUnreadable: 'index.csv could not be used ({error}), so the files were added without its details.', importProgress: 'Importing {done} of {total}…', importDone: 'Imported from “{folder}”.', importCountAdded: 'Added: {count}', importCountWithDetails: 'With details from index.csv: {count}', importCountForReview: 'In the Inbox for review: {count}', importCountDuplicates: 'Already in the library, skipped: {count}', importCountFailed: 'Could not import: {count}', importCountUnmatched: 'Rows in index.csv without a file: {count}',
       toolbarButtonsMenu: '👁 Toolbar buttons…', toolbarButtonsTitle: 'Toolbar buttons', toolbarButtonsHint: "Untick the buttons you don’t use. Your choices are saved for this library; Add document and Tools always remain visible.",
+      toolbarDevices: "📱 iPhone & other devices…", devicesDialogTitle: "iPhone & other devices", devicesLooking: "Looking for Dossiary Sync…", devicesClose: "Close", devicesNotRunningTitle: "Dossiary Sync isn't running on this Mac.", devicesNotRunningText: "Dossiary Sync is a small separate app that shares your libraries with the Dossiary app on iPhone and iPad and with a Raspberry Pi copy. Install it, share a library with it, and look again.", devicesGetSync: "Get Dossiary Sync", devicesLookAgain: "Look again", devicesConnectText: "Connect once to manage your devices here. Dossiary Sync then shows a code in a notification on this Mac.", devicesConnectButton: "Connect", devicesConnectAgain: "Dossiary Sync no longer accepts this browser. Connect again.", devicesTooSoonSingular: "Dossiary Sync just showed a code. Try again in {seconds} second.", devicesTooSoonPlural: "Dossiary Sync just showed a code. Try again in {seconds} seconds.", devicesSyncUnreachable: "Dossiary Sync didn't answer. Is it still running?", devicesRequestFailed: "Dossiary Sync refused the request ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Enter the code shown in the notification", devicesCodeSubmit: "Connect", devicesCodeNoNotification: "No notification? Notifications for Dossiary Sync may be switched off in System Settings; the code is also in its log. A code is valid for 5 minutes.", devicesNewCode: "Show a new code", devicesCodeEmpty: "Enter the code first.", devicesWrongCode: "That code didn't work. It may have expired; show a new code and try again.", devicesRolePhone: "iPhone or iPad", devicesRoleMirror: "Raspberry Pi copy", devicesRoleRestore: "Restore", devicesNeverSeen: "Never seen", devicesLastSeen: "Last seen {when}", devicesListHeading: "Devices", devicesNone: "No devices are paired yet.", devicesRemove: "Remove", devicesNoLibraries: "No libraries are shared yet.", devicesLibrariesHeading: "Shared libraries", devicesLibraryNotAvailable: "not available", devicesShareNote: "To share another library: {command} (see the Dossiary Sync README).", devicesDisconnect: "Disconnect", devicesAllowed: "{device} can now see {library}.", devicesDenied: "{device} can no longer see {library}.", devicesChangeFailed: "Couldn't change {library} for {device}: {error}", devicesRemoveConfirm: "{name} can no longer fetch anything. Remove it?", devicesRemoved: "Removed {name}.", devicesRemoveFailed: "Couldn't remove {name}: {error}", devicesDisconnected: "Disconnected from Dossiary Sync.",
       splitsLabel: 'Split by category', splitsStart: '+ Split across categories', splitsAddLine: '+ Add a line', splitsCategoryPlaceholder: 'Category', splitsAmountPlaceholder: 'Amount', splitsNotePlaceholder: 'Note (optional)', splitsRemoveLine: 'Remove this line', splitsSummary: 'Split {split} of {amount}; {rest} stays with “{category}”.', splitsSummaryNoAmount: 'Enter the Amount above to split it.', splitsErrorTooMuch: 'The lines add up to more than the Amount.', splitsErrorLine: 'Every line needs a category and an amount.', splitsErrorNoAmount: 'Enter the Amount before splitting it.', detailSplits: 'Split',
       viewCalendar: '▤ Calendar', calPrevMonth: 'Previous month', calNextMonth: 'Next month', calThisMonth: 'Today', calMonthCountSingular: '1 document this month', calMonthCountPlural: '{count} documents this month', calUndated: 'No date ({count})',
       collectionsFoldersHeading: 'Folders', collectionsNewFolderPlaceholder: 'New folder name', collectionsNewFolderButton: '+ New folder', collectionsNoFolder: 'No folder', collectionsFolderSelectLabel: 'Folder for “{name}”', collectionsFolderDeleteConfirm: "Delete the folder “{name}”? Its collections will remain, but they will no longer be in a folder.",
@@ -1359,6 +1374,7 @@
       exportWriteDetails: 'Escribir título, categoría, tipo y etiquetas en los PDF exportados', exportDetailsSkipped: '{count} PDF copiados sin datos (no se pudieron abrir como PDF).',
       toolbarImportFolder: '📂 Importar una carpeta…', importModalTitle: 'Importar una carpeta', importIntro: 'Añade cada archivo de la carpeta que elijas como un documento nuevo. Si la carpeta tiene un index.csv (como el que escribe Exportar), cada archivo que aparece en él recibe su título, fecha, categoría, etiquetas y demás datos; los otros archivos van a la bandeja de entrada para revisarlos. La carpeta no se modifica y los archivos que ya están en la biblioteca se omiten.', importChooseFolderBtn: 'Elegir carpeta…', importInsideLibrary: 'Esa carpeta está dentro de esta biblioteca. Elige una carpeta fuera de ella.', importNoFiles: 'No hay archivos que importar en «{folder}».', importIndexNoFileColumn: 'no tiene columna Archivo', importIndexUnreadable: 'No se pudo usar index.csv ({error}), así que los archivos se añadieron sin sus datos.', importProgress: 'Importando {done} de {total}…', importDone: 'Importado de «{folder}».', importCountAdded: 'Añadidos: {count}', importCountWithDetails: 'Con datos de index.csv: {count}', importCountForReview: 'En la bandeja de entrada para revisar: {count}', importCountDuplicates: 'Ya en la biblioteca, omitidos: {count}', importCountFailed: 'No se pudieron importar: {count}', importCountUnmatched: 'Filas de index.csv sin archivo: {count}',
       toolbarButtonsMenu: '👁 Botones de la barra…', toolbarButtonsTitle: 'Botones de la barra de herramientas', toolbarButtonsHint: 'Desmarca los botones que no uses. Se guarda para esta biblioteca; Añadir documento y Herramientas siempre se quedan.',
+      toolbarDevices: "📱 iPhone y otros dispositivos…", devicesDialogTitle: "iPhone y otros dispositivos", devicesLooking: "Buscando Dossiary Sync…", devicesClose: "Cerrar", devicesNotRunningTitle: "Dossiary Sync no se está ejecutando en este Mac.", devicesNotRunningText: "Dossiary Sync es una pequeña aplicación aparte que comparte sus bibliotecas con la aplicación Dossiary en iPhone y iPad y con una copia en una Raspberry Pi. Instálela, comparta una biblioteca con ella y vuelva a buscar.", devicesGetSync: "Obtener Dossiary Sync", devicesLookAgain: "Buscar de nuevo", devicesConnectText: "Conéctese una vez para gestionar sus dispositivos aquí. Dossiary Sync mostrará entonces un código en una notificación en este Mac.", devicesConnectButton: "Conectar", devicesConnectAgain: "Dossiary Sync ya no acepta este navegador. Vuelva a conectarse.", devicesTooSoonSingular: "Dossiary Sync acaba de mostrar un código. Inténtelo de nuevo en {seconds} segundo.", devicesTooSoonPlural: "Dossiary Sync acaba de mostrar un código. Inténtelo de nuevo en {seconds} segundos.", devicesSyncUnreachable: "Dossiary Sync no respondió. ¿Sigue en ejecución?", devicesRequestFailed: "Dossiary Sync rechazó la solicitud ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Introduzca el código que aparece en la notificación", devicesCodeSubmit: "Conectar", devicesCodeNoNotification: "¿No ve ninguna notificación? Puede que las notificaciones de Dossiary Sync estén desactivadas en Ajustes del Sistema; el código también figura en su registro. Un código es válido durante 5 minutos.", devicesNewCode: "Mostrar un código nuevo", devicesCodeEmpty: "Introduzca primero el código.", devicesWrongCode: "Ese código no funcionó. Puede que haya caducado; muestre un código nuevo e inténtelo de nuevo.", devicesRolePhone: "iPhone o iPad", devicesRoleMirror: "Copia en Raspberry Pi", devicesRoleRestore: "Restauración", devicesNeverSeen: "Nunca visto", devicesLastSeen: "Visto por última vez {when}", devicesListHeading: "Dispositivos", devicesNone: "Aún no hay dispositivos emparejados.", devicesRemove: "Quitar", devicesNoLibraries: "Aún no hay bibliotecas compartidas.", devicesLibrariesHeading: "Bibliotecas compartidas", devicesLibraryNotAvailable: "no disponible", devicesShareNote: "Para compartir otra biblioteca: {command} (consulte el README de Dossiary Sync).", devicesDisconnect: "Desconectar", devicesAllowed: "{device} ya puede ver {library}.", devicesDenied: "{device} ya no puede ver {library}.", devicesChangeFailed: "No se pudo cambiar {library} para {device}: {error}", devicesRemoveConfirm: "{name} ya no podrá obtener nada. ¿Quitarlo?", devicesRemoved: "Se quitó {name}.", devicesRemoveFailed: "No se pudo quitar {name}: {error}", devicesDisconnected: "Desconectado de Dossiary Sync.",
       splitsLabel: 'Dividir por categoría', splitsStart: '+ Dividir entre categorías', splitsAddLine: '+ Añadir una línea', splitsCategoryPlaceholder: 'Categoría', splitsAmountPlaceholder: 'Importe', splitsNotePlaceholder: 'Nota (opcional)', splitsRemoveLine: 'Quitar esta línea', splitsSummary: 'Dividido {split} de {amount}; {rest} queda en «{category}».', splitsSummaryNoAmount: 'Introduce el importe arriba para dividirlo.', splitsErrorTooMuch: 'Las líneas suman más que el importe.', splitsErrorLine: 'Cada línea necesita una categoría y un importe.', splitsErrorNoAmount: 'Introduce el importe antes de dividirlo.', detailSplits: 'División',
       viewCalendar: '▤ Calendario', calPrevMonth: 'Mes anterior', calNextMonth: 'Mes siguiente', calThisMonth: 'Hoy', calMonthCountSingular: '1 documento este mes', calMonthCountPlural: '{count} documentos este mes', calUndated: 'Sin fecha ({count})',
       collectionsFoldersHeading: 'Carpetas', collectionsNewFolderPlaceholder: 'Nombre de la nueva carpeta', collectionsNewFolderButton: '+ Nueva carpeta', collectionsNoFolder: 'Sin carpeta', collectionsFolderSelectLabel: 'Carpeta de «{name}»', collectionsFolderDeleteConfirm: '¿Eliminar la carpeta «{name}»? Sus colecciones se conservan, sin carpeta.',
@@ -1580,6 +1596,7 @@
       exportWriteDetails: 'Écrire le titre, la catégorie, le type et les étiquettes dans les PDF exportés', exportDetailsSkipped: '{count} PDF copiés sans informations (impossible de les ouvrir comme PDF).',
       toolbarImportFolder: '📂 Importer un dossier…', importModalTitle: 'Importer un dossier', importIntro: 'Ajoute chaque fichier du dossier choisi comme nouveau document. Si le dossier contient un index.csv (tel qu’écrit par Exporter), chaque fichier qui y figure reçoit son titre, sa date, sa catégorie, ses étiquettes et ses autres informations ; les autres fichiers vont dans la boîte de réception pour vérification. Le dossier lui-même n’est pas modifié, et les fichiers déjà présents dans la bibliothèque sont ignorés.', importChooseFolderBtn: 'Choisir un dossier…', importInsideLibrary: 'Ce dossier se trouve dans cette bibliothèque. Choisissez un dossier en dehors.', importNoFiles: 'Aucun fichier à importer dans « {folder} ».', importIndexNoFileColumn: 'il n’a pas de colonne Fichier', importIndexUnreadable: 'index.csv n’a pas pu être utilisé ({error}) ; les fichiers ont été ajoutés sans ses informations.', importProgress: 'Importation de {done} sur {total}…', importDone: 'Importé depuis « {folder} ».', importCountAdded: 'Ajoutés : {count}', importCountWithDetails: 'Avec les informations d’index.csv : {count}', importCountForReview: 'Dans la boîte de réception à vérifier : {count}', importCountDuplicates: 'Déjà dans la bibliothèque, ignorés : {count}', importCountFailed: 'Non importés : {count}', importCountUnmatched: 'Lignes d’index.csv sans fichier : {count}',
       toolbarButtonsMenu: '👁 Boutons de la barre…', toolbarButtonsTitle: 'Boutons de la barre d’outils', toolbarButtonsHint: 'Décochez les boutons que vous n’utilisez pas. C’est enregistré pour cette bibliothèque ; Ajouter un document et Outils restent toujours.',
+      toolbarDevices: "📱 iPhone et autres appareils…", devicesDialogTitle: "iPhone et autres appareils", devicesLooking: "Recherche de Dossiary Sync…", devicesClose: "Fermer", devicesNotRunningTitle: "Dossiary Sync ne fonctionne pas sur ce Mac.", devicesNotRunningText: "Dossiary Sync est une petite application distincte qui partage vos bibliothèques avec l'application Dossiary sur iPhone et iPad et avec une copie sur un Raspberry Pi. Installez-la, partagez-y une bibliothèque, puis recherchez à nouveau.", devicesGetSync: "Obtenir Dossiary Sync", devicesLookAgain: "Rechercher à nouveau", devicesConnectText: "Connectez-vous une fois pour gérer vos appareils ici. Dossiary Sync affiche alors un code dans une notification sur ce Mac.", devicesConnectButton: "Se connecter", devicesConnectAgain: "Dossiary Sync n'accepte plus ce navigateur. Reconnectez-vous.", devicesTooSoonSingular: "Dossiary Sync vient d'afficher un code. Réessayez dans {seconds} seconde.", devicesTooSoonPlural: "Dossiary Sync vient d'afficher un code. Réessayez dans {seconds} secondes.", devicesSyncUnreachable: "Dossiary Sync n'a pas répondu. Fonctionne-t-il toujours ?", devicesRequestFailed: "Dossiary Sync a refusé la demande ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Saisissez le code affiché dans la notification", devicesCodeSubmit: "Se connecter", devicesCodeNoNotification: "Pas de notification ? Les notifications de Dossiary Sync sont peut-être désactivées dans les Réglages Système ; le code figure aussi dans son journal. Un code est valable 5 minutes.", devicesNewCode: "Afficher un nouveau code", devicesCodeEmpty: "Saisissez d'abord le code.", devicesWrongCode: "Ce code n'a pas fonctionné. Il a peut-être expiré ; affichez un nouveau code et réessayez.", devicesRolePhone: "iPhone ou iPad", devicesRoleMirror: "Copie sur Raspberry Pi", devicesRoleRestore: "Restauration", devicesNeverSeen: "Jamais vu", devicesLastSeen: "Vu pour la dernière fois {when}", devicesListHeading: "Appareils", devicesNone: "Aucun appareil n'est encore associé.", devicesRemove: "Retirer", devicesNoLibraries: "Aucune bibliothèque n'est encore partagée.", devicesLibrariesHeading: "Bibliothèques partagées", devicesLibraryNotAvailable: "indisponible", devicesShareNote: "Pour partager une autre bibliothèque : {command} (voir le README de Dossiary Sync).", devicesDisconnect: "Se déconnecter", devicesAllowed: "{device} peut maintenant voir {library}.", devicesDenied: "{device} ne peut plus voir {library}.", devicesChangeFailed: "Impossible de modifier {library} pour {device} : {error}", devicesRemoveConfirm: "{name} ne pourra plus rien récupérer. Le retirer ?", devicesRemoved: "{name} retiré.", devicesRemoveFailed: "Impossible de retirer {name} : {error}", devicesDisconnected: "Déconnecté de Dossiary Sync.",
       splitsLabel: 'Répartir par catégorie', splitsStart: '+ Répartir entre catégories', splitsAddLine: '+ Ajouter une ligne', splitsCategoryPlaceholder: 'Catégorie', splitsAmountPlaceholder: 'Montant', splitsNotePlaceholder: 'Note (facultatif)', splitsRemoveLine: 'Supprimer cette ligne', splitsSummary: 'Réparti {split} sur {amount} ; {rest} reste dans « {category} ».', splitsSummaryNoAmount: 'Saisissez le montant ci-dessus pour le répartir.', splitsErrorTooMuch: 'Les lignes dépassent le montant.', splitsErrorLine: 'Chaque ligne a besoin d’une catégorie et d’un montant.', splitsErrorNoAmount: 'Saisissez le montant avant de le répartir.', detailSplits: 'Répartition',
       viewCalendar: '▤ Calendrier', calPrevMonth: 'Mois précédent', calNextMonth: 'Mois suivant', calThisMonth: 'Aujourd’hui', calMonthCountSingular: '1 document ce mois-ci', calMonthCountPlural: '{count} documents ce mois-ci', calUndated: 'Sans date ({count})',
       collectionsFoldersHeading: 'Dossiers', collectionsNewFolderPlaceholder: 'Nom du nouveau dossier', collectionsNewFolderButton: '+ Nouveau dossier', collectionsNoFolder: 'Aucun dossier', collectionsFolderSelectLabel: 'Dossier de « {name} »', collectionsFolderDeleteConfirm: 'Supprimer le dossier « {name} » ? Ses collections sont conservées, sans dossier.',
@@ -1801,6 +1818,7 @@
       exportWriteDetails: 'Titel, Kategorie, Typ und Tags in die exportierten PDFs schreiben', exportDetailsSkipped: '{count} PDF(s) ohne Angaben kopiert (ließen sich nicht als PDF öffnen).',
       toolbarImportFolder: '📂 Ordner importieren…', importModalTitle: 'Ordner importieren', importIntro: 'Fügt jede Datei eines Ordners Ihrer Wahl als neues Dokument hinzu. Liegt im Ordner eine index.csv (wie sie der Export schreibt), erhält jede dort aufgeführte Datei Titel, Datum, Kategorie, Tags und weitere Angaben; alle anderen Dateien kommen zur Prüfung in den Posteingang. Der Ordner selbst wird nicht verändert, und Dateien, die schon in der Bibliothek sind, werden übersprungen.', importChooseFolderBtn: 'Ordner wählen…', importInsideLibrary: 'Dieser Ordner liegt in der Bibliothek. Wählen Sie einen Ordner außerhalb.', importNoFiles: 'In „{folder}“ gibt es keine Dateien zum Importieren.', importIndexNoFileColumn: 'es fehlt die Spalte Datei', importIndexUnreadable: 'Die index.csv war nicht verwendbar ({error}), deshalb wurden die Dateien ohne ihre Angaben hinzugefügt.', importProgress: 'Importiere {done} von {total}…', importDone: 'Aus „{folder}“ importiert.', importCountAdded: 'Hinzugefügt: {count}', importCountWithDetails: 'Mit Angaben aus der index.csv: {count}', importCountForReview: 'Zur Prüfung im Posteingang: {count}', importCountDuplicates: 'Schon in der Bibliothek, übersprungen: {count}', importCountFailed: 'Nicht importiert: {count}', importCountUnmatched: 'Zeilen der index.csv ohne Datei: {count}',
       toolbarButtonsMenu: '👁 Werkzeugleisten-Buttons…', toolbarButtonsTitle: 'Buttons der Werkzeugleiste', toolbarButtonsHint: 'Entferne den Haken bei Buttons, die du nicht nutzt. Das wird für diese Bibliothek gespeichert; Dokument hinzufügen und Werkzeuge bleiben immer.',
+      toolbarDevices: "📱 iPhone & andere Geräte…", devicesDialogTitle: "iPhone & andere Geräte", devicesLooking: "Suche Dossiary Sync…", devicesClose: "Schließen", devicesNotRunningTitle: "Dossiary Sync läuft auf diesem Mac nicht.", devicesNotRunningText: "Dossiary Sync ist eine kleine eigene App, die deine Bibliotheken mit der Dossiary-App auf iPhone und iPad und mit einer Raspberry-Pi-Kopie teilt. Installiere sie, teile eine Bibliothek damit und suche erneut.", devicesGetSync: "Dossiary Sync herunterladen", devicesLookAgain: "Erneut suchen", devicesConnectText: "Verbinde dich einmal, um deine Geräte hier zu verwalten. Dossiary Sync zeigt dann einen Code in einer Mitteilung auf diesem Mac.", devicesConnectButton: "Verbinden", devicesConnectAgain: "Dossiary Sync akzeptiert diesen Browser nicht mehr. Bitte neu verbinden.", devicesTooSoonSingular: "Dossiary Sync hat gerade einen Code gezeigt. Versuche es in {seconds} Sekunde erneut.", devicesTooSoonPlural: "Dossiary Sync hat gerade einen Code gezeigt. Versuche es in {seconds} Sekunden erneut.", devicesSyncUnreachable: "Dossiary Sync hat nicht geantwortet. Läuft es noch?", devicesRequestFailed: "Dossiary Sync hat die Anfrage abgelehnt ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Gib den Code aus der Mitteilung ein", devicesCodeSubmit: "Verbinden", devicesCodeNoNotification: "Keine Mitteilung? Vielleicht sind Mitteilungen für Dossiary Sync in den Systemeinstellungen ausgeschaltet; der Code steht auch in seinem Protokoll. Ein Code gilt 5 Minuten.", devicesNewCode: "Neuen Code zeigen", devicesCodeEmpty: "Gib zuerst den Code ein.", devicesWrongCode: "Dieser Code hat nicht funktioniert. Vielleicht ist er abgelaufen; lass einen neuen Code zeigen und versuche es erneut.", devicesRolePhone: "iPhone oder iPad", devicesRoleMirror: "Raspberry-Pi-Kopie", devicesRoleRestore: "Wiederherstellung", devicesNeverSeen: "Noch nie gesehen", devicesLastSeen: "Zuletzt gesehen {when}", devicesListHeading: "Geräte", devicesNone: "Noch keine Geräte gekoppelt.", devicesRemove: "Entfernen", devicesNoLibraries: "Noch keine Bibliotheken geteilt.", devicesLibrariesHeading: "Geteilte Bibliotheken", devicesLibraryNotAvailable: "nicht verfügbar", devicesShareNote: "Um eine weitere Bibliothek zu teilen: {command} (siehe die README von Dossiary Sync).", devicesDisconnect: "Trennen", devicesAllowed: "{device} sieht jetzt {library}.", devicesDenied: "{device} sieht {library} nicht mehr.", devicesChangeFailed: "{library} konnte für {device} nicht geändert werden: {error}", devicesRemoveConfirm: "{name} kann danach nichts mehr abrufen. Entfernen?", devicesRemoved: "{name} entfernt.", devicesRemoveFailed: "{name} konnte nicht entfernt werden: {error}", devicesDisconnected: "Von Dossiary Sync getrennt.",
       splitsLabel: 'Auf Kategorien aufteilen', splitsStart: '+ Auf Kategorien aufteilen', splitsAddLine: '+ Zeile hinzufügen', splitsCategoryPlaceholder: 'Kategorie', splitsAmountPlaceholder: 'Betrag', splitsNotePlaceholder: 'Notiz (optional)', splitsRemoveLine: 'Diese Zeile entfernen', splitsSummary: '{split} von {amount} aufgeteilt; {rest} bleibt bei „{category}“.', splitsSummaryNoAmount: 'Gib oben den Betrag ein, um ihn aufzuteilen.', splitsErrorTooMuch: 'Die Zeilen ergeben mehr als den Betrag.', splitsErrorLine: 'Jede Zeile braucht eine Kategorie und einen Betrag.', splitsErrorNoAmount: 'Gib den Betrag ein, bevor du ihn aufteilst.', detailSplits: 'Aufteilung',
       viewCalendar: '▤ Kalender', calPrevMonth: 'Vorheriger Monat', calNextMonth: 'Nächster Monat', calThisMonth: 'Heute', calMonthCountSingular: '1 Dokument in diesem Monat', calMonthCountPlural: '{count} Dokumente in diesem Monat', calUndated: 'Ohne Datum ({count})',
       collectionsFoldersHeading: 'Ordner', collectionsNewFolderPlaceholder: 'Name des neuen Ordners', collectionsNewFolderButton: '+ Neuer Ordner', collectionsNoFolder: 'Kein Ordner', collectionsFolderSelectLabel: 'Ordner für „{name}“', collectionsFolderDeleteConfirm: 'Ordner „{name}“ löschen? Seine Sammlungen bleiben erhalten, ohne Ordner.',
@@ -2022,6 +2040,7 @@
       exportWriteDetails: '将标题、分类、类型和标签写入导出的 PDF', exportDetailsSkipped: '{count} 个 PDF 未写入信息即复制（无法作为 PDF 打开）。',
       toolbarImportFolder: '📂 导入文件夹…', importModalTitle: '导入文件夹', importIntro: '将您选择的文件夹中的每个文件添加为新文档。如果文件夹中有 index.csv（由导出功能写入），其中列出的每个文件都会获得标题、日期、分类、标签和其他信息；其他文件会进入收件箱等待审阅。文件夹本身不会更改，资料库中已有的文件会被跳过。', importChooseFolderBtn: '选择文件夹…', importInsideLibrary: '该文件夹位于此资料库内。请选择资料库以外的文件夹。', importNoFiles: '“{folder}”中没有可导入的文件。', importIndexNoFileColumn: '缺少“文件”列', importIndexUnreadable: '无法使用 index.csv（{error}），因此添加文件时未包含其信息。', importProgress: '正在导入第 {done} 个，共 {total} 个…', importDone: '已从“{folder}”导入。', importCountAdded: '已添加：{count}', importCountWithDetails: '带有 index.csv 中的信息：{count}', importCountForReview: '在收件箱中等待审阅：{count}', importCountDuplicates: '已在资料库中，已跳过：{count}', importCountFailed: '无法导入：{count}', importCountUnmatched: 'index.csv 中没有对应文件的行：{count}',
       toolbarButtonsMenu: '👁 工具栏按钮…', toolbarButtonsTitle: '工具栏按钮', toolbarButtonsHint: '取消勾选你不使用的按钮。此设置按资料库保存；“添加文档”和“工具”始终保留。',
+      toolbarDevices: "📱 iPhone 和其他设备…", devicesDialogTitle: "iPhone 和其他设备", devicesLooking: "正在查找 Dossiary Sync…", devicesClose: "关闭", devicesNotRunningTitle: "Dossiary Sync 未在这台 Mac 上运行。", devicesNotRunningText: "Dossiary Sync 是一个独立的小应用，用于将你的资料库共享给 iPhone 和 iPad 上的 Dossiary 应用以及 Raspberry Pi 副本。请安装它，用它共享一个资料库，然后再次查找。", devicesGetSync: "获取 Dossiary Sync", devicesLookAgain: "再次查找", devicesConnectText: "连接一次即可在这里管理你的设备。随后 Dossiary Sync 会在这台 Mac 上以通知显示一个代码。", devicesConnectButton: "连接", devicesConnectAgain: "Dossiary Sync 不再接受此浏览器。请重新连接。", devicesTooSoonSingular: "Dossiary Sync 刚刚显示过代码。请在 {seconds} 秒后重试。", devicesTooSoonPlural: "Dossiary Sync 刚刚显示过代码。请在 {seconds} 秒后重试。", devicesSyncUnreachable: "Dossiary Sync 没有响应。它还在运行吗？", devicesRequestFailed: "Dossiary Sync 拒绝了请求（{status}）。", devicesRequestFailedWith: "{message}（{status}）", devicesCodeLabel: "输入通知中显示的代码", devicesCodeSubmit: "连接", devicesCodeNoNotification: "没有看到通知？可能在系统设置中关闭了 Dossiary Sync 的通知；代码也会写入它的日志。代码有效期为 5 分钟。", devicesNewCode: "显示新代码", devicesCodeEmpty: "请先输入代码。", devicesWrongCode: "该代码无效，可能已过期。请显示新代码后重试。", devicesRolePhone: "iPhone 或 iPad", devicesRoleMirror: "Raspberry Pi 副本", devicesRoleRestore: "恢复", devicesNeverSeen: "从未连接", devicesLastSeen: "上次连接：{when}", devicesListHeading: "设备", devicesNone: "尚未配对任何设备。", devicesRemove: "移除", devicesNoLibraries: "尚未共享任何资料库。", devicesLibrariesHeading: "已共享的资料库", devicesLibraryNotAvailable: "不可用", devicesShareNote: "要共享另一个资料库：{command}（参见 Dossiary Sync 的 README）。", devicesDisconnect: "断开连接", devicesAllowed: "{device} 现在可以查看 {library}。", devicesDenied: "{device} 不能再查看 {library}。", devicesChangeFailed: "无法为 {device} 更改 {library}：{error}", devicesRemoveConfirm: "{name} 将无法再获取任何内容。要移除吗？", devicesRemoved: "已移除 {name}。", devicesRemoveFailed: "无法移除 {name}：{error}", devicesDisconnected: "已与 Dossiary Sync 断开连接。",
       splitsLabel: '按分类拆分', splitsStart: '+ 拆分到多个分类', splitsAddLine: '+ 添加一行', splitsCategoryPlaceholder: '分类', splitsAmountPlaceholder: '金额', splitsNotePlaceholder: '备注（可选）', splitsRemoveLine: '删除此行', splitsSummary: '已拆分 {split}（共 {amount}）；{rest} 仍归入“{category}”。', splitsSummaryNoAmount: '请先在上方输入金额再拆分。', splitsErrorTooMuch: '各行合计超过了金额。', splitsErrorLine: '每一行都需要分类和金额。', splitsErrorNoAmount: '拆分前请先输入金额。', detailSplits: '拆分',
       viewCalendar: '▤ 日历', calPrevMonth: '上个月', calNextMonth: '下个月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文档', calMonthCountPlural: '本月 {count} 份文档', calUndated: '无日期（{count}）',
       collectionsFoldersHeading: '文件夹', collectionsNewFolderPlaceholder: '新文件夹名称', collectionsNewFolderButton: '+ 新建文件夹', collectionsNoFolder: '无文件夹', collectionsFolderSelectLabel: '“{name}”所在的文件夹', collectionsFolderDeleteConfirm: '删除文件夹“{name}”？其中的收藏集会保留，但不再属于任何文件夹。',
@@ -2243,6 +2262,7 @@
       exportWriteDetails: '將標題、分類、類型和標籤寫入導出的 PDF', exportDetailsSkipped: '{count} 個 PDF 未寫入信息即複製（無法作爲 PDF 打開）。',
       toolbarImportFolder: '📂 導入文件夾…', importModalTitle: '導入文件夾', importIntro: '將您選擇的文件夾中的每個文件添加爲新文檔。如果文件夾中有 index.csv（由導出功能寫入），其中列出的每個文件都會獲得標題、日期、分類、標籤和其他信息；其他文件會進入收件箱等待審閱。文件夾本身不會更改，資料庫中已有的文件會被跳過。', importChooseFolderBtn: '選擇文件夾…', importInsideLibrary: '該文件夾位於此資料庫內。請選擇資料庫以外的文件夾。', importNoFiles: '“{folder}”中沒有可導入的文件。', importIndexNoFileColumn: '缺少“文件”列', importIndexUnreadable: '無法使用 index.csv（{error}），因此添加文件時未包含其信息。', importProgress: '正在導入第 {done} 個，共 {total} 個…', importDone: '已從“{folder}”導入。', importCountAdded: '已添加：{count}', importCountWithDetails: '帶有 index.csv 中的信息：{count}', importCountForReview: '在收件箱中等待審閱：{count}', importCountDuplicates: '已在資料庫中，已跳過：{count}', importCountFailed: '無法導入：{count}', importCountUnmatched: 'index.csv 中沒有對應文件的行：{count}',
       toolbarButtonsMenu: '👁 工具欄按鈕…', toolbarButtonsTitle: '工具欄按鈕', toolbarButtonsHint: '取消勾選你不使用的按鈕。此設置按資料庫保存；「添加文檔」和「工具」始終保留。',
+      toolbarDevices: "📱 iPhone 和其他設備…", devicesDialogTitle: "iPhone 和其他設備", devicesLooking: "正在查找 Dossiary Sync…", devicesClose: "關閉", devicesNotRunningTitle: "Dossiary Sync 未在這臺 Mac 上運行。", devicesNotRunningText: "Dossiary Sync 是一個獨立的小應用，用於將你的資料庫共享給 iPhone 和 iPad 上的 Dossiary 應用以及 Raspberry Pi 副本。請安裝它，用它共享一個資料庫，然後再次查找。", devicesGetSync: "獲取 Dossiary Sync", devicesLookAgain: "再次查找", devicesConnectText: "連接一次即可在這裡管理你的設備。隨後 Dossiary Sync 會在這臺 Mac 上以通知顯示一個代碼。", devicesConnectButton: "連接", devicesConnectAgain: "Dossiary Sync 不再接受此瀏覽器。請重新連接。", devicesTooSoonSingular: "Dossiary Sync 剛剛顯示過代碼。請在 {seconds} 秒後重試。", devicesTooSoonPlural: "Dossiary Sync 剛剛顯示過代碼。請在 {seconds} 秒後重試。", devicesSyncUnreachable: "Dossiary Sync 沒有響應。它還在運行嗎？", devicesRequestFailed: "Dossiary Sync 拒絕了請求（{status}）。", devicesRequestFailedWith: "{message}（{status}）", devicesCodeLabel: "輸入通知中顯示的代碼", devicesCodeSubmit: "連接", devicesCodeNoNotification: "沒有看到通知？可能在系統設置中關閉了 Dossiary Sync 的通知；代碼也會寫入它的日誌。代碼有效期為 5 分鐘。", devicesNewCode: "顯示新代碼", devicesCodeEmpty: "請先輸入代碼。", devicesWrongCode: "該代碼無效，可能已過期。請顯示新代碼後重試。", devicesRolePhone: "iPhone 或 iPad", devicesRoleMirror: "Raspberry Pi 副本", devicesRoleRestore: "恢復", devicesNeverSeen: "從未連接", devicesLastSeen: "上次連接：{when}", devicesListHeading: "設備", devicesNone: "尚未配對任何設備。", devicesRemove: "移除", devicesNoLibraries: "尚未共享任何資料庫。", devicesLibrariesHeading: "已共享的資料庫", devicesLibraryNotAvailable: "不可用", devicesShareNote: "要共享另一個資料庫：{command}（參見 Dossiary Sync 的 README）。", devicesDisconnect: "斷開連接", devicesAllowed: "{device} 現在可以查看 {library}。", devicesDenied: "{device} 不能再查看 {library}。", devicesChangeFailed: "無法為 {device} 更改 {library}：{error}", devicesRemoveConfirm: "{name} 將無法再獲取任何內容。要移除嗎？", devicesRemoved: "已移除 {name}。", devicesRemoveFailed: "無法移除 {name}：{error}", devicesDisconnected: "已與 Dossiary Sync 斷開連接。",
       splitsLabel: '按分類拆分', splitsStart: '+ 拆分到多個分類', splitsAddLine: '+ 添加一行', splitsCategoryPlaceholder: '分類', splitsAmountPlaceholder: '金額', splitsNotePlaceholder: '備註（可選）', splitsRemoveLine: '刪除此行', splitsSummary: '已拆分 {split}（共 {amount}）；{rest} 仍歸入「{category}」。', splitsSummaryNoAmount: '請先在上方輸入金額再拆分。', splitsErrorTooMuch: '各行合計超過了金額。', splitsErrorLine: '每一行都需要分類和金額。', splitsErrorNoAmount: '拆分前請先輸入金額。', detailSplits: '拆分',
       viewCalendar: '▤ 日曆', calPrevMonth: '上個月', calNextMonth: '下個月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文檔', calMonthCountPlural: '本月 {count} 份文檔', calUndated: '無日期（{count}）',
       collectionsFoldersHeading: '文件夾', collectionsNewFolderPlaceholder: '新文件夾名稱', collectionsNewFolderButton: '+ 新建文件夾', collectionsNoFolder: '無文件夾', collectionsFolderSelectLabel: '「{name}」所在的文件夾', collectionsFolderDeleteConfirm: '刪除文件夾「{name}」？其中的收藏集會保留，但不再屬於任何文件夾。',
@@ -2697,6 +2717,7 @@
       importCountFailed: "Հնարավոր չեղավ ներմուծել՝ {count}",
       importCountUnmatched: "index.csv-ի տողեր առանց ֆայլի՝ {count}",
       toolbarButtonsMenu: "👁 Գործիքագոտու կոճակներ…",
+      toolbarDevices: "📱 iPhone և այլ սարքեր…", devicesDialogTitle: "iPhone և այլ սարքեր", devicesLooking: "Dossiary Sync-ի որոնում…", devicesClose: "Փակել", devicesNotRunningTitle: "Dossiary Sync-ը այս Mac-ում չի աշխատում։", devicesNotRunningText: "Dossiary Sync-ը փոքր առանձին հավելված է, որը ձեր գրադարանները կիսում է iPhone-ի և iPad-ի Dossiary հավելվածի և Raspberry Pi պատճենի հետ։ Տեղադրեք այն, կիսեք դրանով գրադարան և նորից որոնեք։", devicesGetSync: "Ստանալ Dossiary Sync-ը", devicesLookAgain: "Նորից որոնել", devicesConnectText: "Միացեք մեկ անգամ՝ ձեր սարքերն այստեղ կառավարելու համար։ Այնուհետև Dossiary Sync-ը այս Mac-ում ծանուցման մեջ ցույց կտա կոդ։", devicesConnectButton: "Միանալ", devicesConnectAgain: "Dossiary Sync-ն այլևս չի ընդունում այս դիտարկիչը։ Միացեք նորից։", devicesTooSoonSingular: "Dossiary Sync-ը հենց նոր կոդ է ցույց տվել։ Փորձեք նորից {seconds} վայրկյանից։", devicesTooSoonPlural: "Dossiary Sync-ը հենց նոր կոդ է ցույց տվել։ Փորձեք նորից {seconds} վայրկյանից։", devicesSyncUnreachable: "Dossiary Sync-ը չպատասխանեց։ Արդյո՞ք այն դեռ աշխատում է։", devicesRequestFailed: "Dossiary Sync-ը մերժեց հարցումը ({status})։", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Մուտքագրեք ծանուցման մեջ ցուցադրված կոդը", devicesCodeSubmit: "Միանալ", devicesCodeNoNotification: "Ծանուցում չկա՞։ Հնարավոր է՝ Dossiary Sync-ի ծանուցումներն անջատված են System Settings-ում. կոդը գրված է նաև նրա մատյանում։ Կոդը վավեր է 5 րոպե։", devicesNewCode: "Ցույց տալ նոր կոդ", devicesCodeEmpty: "Նախ մուտքագրեք կոդը։", devicesWrongCode: "Այդ կոդը չաշխատեց։ Հնարավոր է՝ ժամկետն անցել է. ցույց տվեք նոր կոդ և փորձեք նորից։", devicesRolePhone: "iPhone կամ iPad", devicesRoleMirror: "Raspberry Pi պատճեն", devicesRoleRestore: "Վերականգնում", devicesNeverSeen: "Երբեք չի միացել", devicesLastSeen: "Վերջին անգամ՝ {when}", devicesListHeading: "Սարքեր", devicesNone: "Դեռ զուգակցված սարքեր չկան։", devicesRemove: "Հեռացնել", devicesNoLibraries: "Դեռ կիսված գրադարաններ չկան։", devicesLibrariesHeading: "Կիսված գրադարաններ", devicesLibraryNotAvailable: "հասանելի չէ", devicesShareNote: "Մեկ այլ գրադարան կիսելու համար՝ {command} (տե՛ս Dossiary Sync-ի README-ն)։", devicesDisconnect: "Անջատվել", devicesAllowed: "{device}-ն այժմ տեսնում է «{library}»-ը։", devicesDenied: "{device}-ն այլևս չի տեսնում «{library}»-ը։", devicesChangeFailed: "Չհաջողվեց փոխել «{library}»-ը {device}-ի համար՝ {error}", devicesRemoveConfirm: "{name}-ն այլևս ոչինչ չի կարողանա ստանալ։ Հեռացնե՞լ։", devicesRemoved: "{name}-ը հեռացվեց։", devicesRemoveFailed: "Չհաջողվեց հեռացնել {name}-ը՝ {error}", devicesDisconnected: "Անջատվեցիք Dossiary Sync-ից։",
       toolbarButtonsTitle: "Գործիքագոտու կոճակներ",
       toolbarButtonsHint: "Հանեք նշումը այն կոճակներից, որոնք չեք օգտագործում։ Սա պահպանվում է այս գրադարանի համար․ «Ավելացնել փաստաթուղթ» և «Գործիքներ» կոճակները միշտ մնում են։",
       splitsLabel: "Բաժանում ըստ կատեգորիայի",
@@ -15753,6 +15774,319 @@
   el('manage-values-btn').addEventListener('click', openManageValuesModal);
 
   el('scan-btn').addEventListener('click', () => openScanDialog());
+
+  // ---- iPhone & other devices: Dossiary Sync's admin API ----
+  // Dossiary Sync (the dossiary-sync service on this Mac) shares libraries
+  // with phones and a Raspberry Pi copy. In origin mode on macOS it listens
+  // for Dossiary on http://127.0.0.1:8769 only (spec
+  // dossiary-ios/docs/superpowers/specs/2026-10-22-dossiary-devices-dialog-design.md).
+  // Connecting: POST /admin/connect/start shows a code as a macOS
+  // notification, POST /admin/connect swaps it for an admin token, kept in
+  // localStorage (per browser, like the scan helpers' pairing tokens). Every
+  // POST is JSON (the service answers 415 otherwise); protected routes send
+  // the token, and a 401 drops it and goes back to Connect.
+  const SYNC_ADMIN_URL = 'http://127.0.0.1:8769';
+  const SYNC_ADMIN_TOKEN_KEY = 'dossiary_sync_admin_token';
+  const SYNC_ADMIN_HEALTH_TIMEOUT_MS = 3000;
+  const SYNC_DOWNLOAD_URL = 'https://github.com/AarneAarebye/dossiary-sync';
+  let syncAdminTokenMemory = null;
+  function readSyncAdminToken(){
+    try{
+      const v = localStorage.getItem(SYNC_ADMIN_TOKEN_KEY);
+      return typeof v === 'string' && v ? v : null;
+    }catch(e){ return syncAdminTokenMemory; }
+  }
+  function setSyncAdminToken(token){
+    syncAdminTokenMemory = token || null;
+    try{
+      if(token) localStorage.setItem(SYNC_ADMIN_TOKEN_KEY, token);
+      else localStorage.removeItem(SYNC_ADMIN_TOKEN_KEY);
+    }catch(e){ /* in memory only */ }
+  }
+
+  // Returns {status, ok, body, retryAfter}, or null when nothing answered
+  // (not running, timed out, refused).
+  async function syncAdminFetch(path, opts = {}){
+    const method = opts.method || 'GET';
+    const headers = {};
+    const token = readSyncAdminToken();
+    if(token) headers.Authorization = `Bearer ${token}`;
+    const init = { method, headers };
+    if(method === 'POST'){
+      headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(opts.body || {});
+    }
+    let controller = null, timeoutId = null;
+    if(opts.timeoutMs){
+      controller = new AbortController();
+      init.signal = controller.signal;
+      timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs);
+    }
+    try{
+      const response = await fetch(SYNC_ADMIN_URL + path, init);
+      const body = await response.json().catch(() => null);
+      const retry = parseInt(response.headers && response.headers.get ? response.headers.get('Retry-After') : '', 10);
+      return { status: response.status, ok: response.ok, body, retryAfter: Number.isFinite(retry) ? retry : null };
+    }catch(e){
+      return null;
+    }finally{
+      if(timeoutId) clearTimeout(timeoutId);
+    }
+  }
+  function syncErrorText(res){
+    if(!res) return t('devicesSyncUnreachable');
+    const message = res.body && (typeof res.body.error === 'string' ? res.body.error : typeof res.body.message === 'string' ? res.body.message : '');
+    return message ? t('devicesRequestFailedWith', { status: res.status, message }) : t('devicesRequestFailed', { status: res.status });
+  }
+
+  const DEVICE_ROLE_LABEL_KEYS = { phone: 'devicesRolePhone', mirror: 'devicesRoleMirror', restore: 'devicesRoleRestore' };
+  function deviceRoleLabel(role){ return DEVICE_ROLE_LABEL_KEYS[role] ? t(DEVICE_ROLE_LABEL_KEYS[role]) : String(role || ''); }
+  function deviceLastSeenText(iso){
+    const when = iso ? Date.parse(iso) : NaN;
+    if(!Number.isFinite(when)) return t('devicesNeverSeen');
+    const seconds = Math.round((when - Date.now()) / 1000);
+    let rel;
+    try{
+      const rtf = new Intl.RelativeTimeFormat(DATE_LOCALE[currentLang] || 'en-US', { numeric: 'auto' });
+      const abs = Math.abs(seconds);
+      if(abs < 45) rel = rtf.format(0, 'second');
+      else if(abs < 3600) rel = rtf.format(Math.round(seconds / 60), 'minute');
+      else if(abs < 86400) rel = rtf.format(Math.round(seconds / 3600), 'hour');
+      else if(abs < 86400 * 30) rel = rtf.format(Math.round(seconds / 86400), 'day');
+      else if(abs < 86400 * 365) rel = rtf.format(Math.round(seconds / (86400 * 30)), 'month');
+      else rel = rtf.format(Math.round(seconds / (86400 * 365)), 'year');
+    }catch(e){ rel = formatDate(iso); }
+    return t('devicesLastSeen', { when: rel });
+  }
+
+  let devicesDialogSeq = 0;   // bumped on every open; a late answer for an older dialog is dropped
+  let devicesState = null;    // {libraries, devices} while connected
+  const devicesDialogOpen = (seq) => seq === devicesDialogSeq && !!el('devices-dialog-body');
+
+  function openDevicesDialog(){
+    const seq = ++devicesDialogSeq;
+    devicesState = null;
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal devices-dialog" role="dialog" aria-modal="true">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2>${t('devicesDialogTitle')}</h2>
+          <div id="devices-dialog-body"><p class="scan-dialog-text">${t('devicesLooking')}</p></div>
+          <div class="modal-actions" style="margin-top:16px;">
+            <button id="devices-close-btn">${t('devicesClose')}</button>
+          </div>
+        </div>
+      </div>`;
+    el('modal-close-btn').addEventListener('click', closeModal);
+    el('devices-close-btn').addEventListener('click', closeModal);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+    document.addEventListener('keydown', onModalKeydown);
+    return refreshDevicesDialog(seq);
+  }
+
+  async function refreshDevicesDialog(seq){
+    const body = el('devices-dialog-body');
+    if(!body) return;
+    body.innerHTML = `<p class="scan-dialog-text">${t('devicesLooking')}</p>`;
+    const health = await syncAdminFetch('/admin/health', { timeoutMs: SYNC_ADMIN_HEALTH_TIMEOUT_MS });
+    if(!devicesDialogOpen(seq)) return;
+    if(!health || !health.ok || !health.body || health.body.service !== 'dossiary-sync'){ renderDevicesNotRunning(seq); return; }
+    if(readSyncAdminToken() && health.body.connected === true){ await loadDevicesConnected(seq); return; }
+    // A token the service no longer knows (admin-revoke, a reinstall) is useless.
+    const hadToken = !!readSyncAdminToken();
+    if(hadToken) setSyncAdminToken(null);
+    renderDevicesConnect(seq, hadToken ? t('devicesConnectAgain') : '');
+  }
+
+  function renderDevicesNotRunning(seq){
+    el('devices-dialog-body').innerHTML = `
+      <p class="scan-dialog-text"><b>${t('devicesNotRunningTitle')}</b></p>
+      <p class="scan-dialog-text">${t('devicesNotRunningText')}</p>
+      <p class="scan-dialog-text"><a href="${SYNC_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer" id="devices-sync-link">${t('devicesGetSync')}</a></p>
+      <button id="devices-retry-btn">${t('devicesLookAgain')}</button>`;
+    el('devices-retry-btn').addEventListener('click', () => refreshDevicesDialog(seq));
+  }
+
+  function renderDevicesConnect(seq, note){
+    el('devices-dialog-body').innerHTML = `
+      ${note ? `<p class="scan-dialog-text" id="devices-connect-note">${escapeHtml(note)}</p>` : ''}
+      <p class="scan-dialog-text">${t('devicesConnectText')}</p>
+      <button id="devices-connect-btn">${t('devicesConnectButton')}</button>
+      <div id="devices-connect-status" class="doc-sub" style="margin-top:8px; min-height:1.2em;"></div>`;
+    el('devices-connect-btn').addEventListener('click', () => startDevicesConnect(seq));
+  }
+
+  // Asks Dossiary Sync to show a code; a 429 says how long until a new one.
+  async function startDevicesConnect(seq){
+    const btn = el('devices-connect-btn') || el('devices-new-code-btn');
+    if(btn) btn.disabled = true;
+    const res = await syncAdminFetch('/admin/connect/start', { method: 'POST', body: {} });
+    if(!devicesDialogOpen(seq)) return;
+    if(btn) btn.disabled = false;
+    const status = el('devices-connect-status') || el('devices-code-status');
+    if(res && res.ok){ renderDevicesCode(seq); return; }
+    if(res && res.status === 429){
+      const seconds = res.retryAfter || 30;
+      if(status) status.textContent = seconds === 1 ? t('devicesTooSoonSingular', { seconds }) : t('devicesTooSoonPlural', { seconds });
+      return;
+    }
+    if(status) status.textContent = syncErrorText(res);
+  }
+
+  function renderDevicesCode(seq){
+    el('devices-dialog-body').innerHTML = `
+      <div class="field">
+        <label for="devices-code-input">${t('devicesCodeLabel')}</label>
+        <div class="devices-code-row">
+          <input type="text" id="devices-code-input" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="11" placeholder="XXXX XXXX" />
+          <button id="devices-code-submit">${t('devicesCodeSubmit')}</button>
+        </div>
+      </div>
+      <p class="scan-dialog-text">${t('devicesCodeNoNotification')}</p>
+      <button id="devices-new-code-btn">${t('devicesNewCode')}</button>
+      <div id="devices-code-status" class="doc-sub" style="margin-top:8px; min-height:1.2em;"></div>`;
+    el('devices-code-submit').addEventListener('click', () => submitDevicesCode(seq));
+    el('devices-code-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') submitDevicesCode(seq); });
+    el('devices-new-code-btn').addEventListener('click', () => startDevicesConnect(seq));
+    el('devices-code-input').focus();
+  }
+
+  async function submitDevicesCode(seq){
+    const btn = el('devices-code-submit');
+    const status = el('devices-code-status');
+    if(!btn || btn.disabled) return;
+    const code = el('devices-code-input').value.toUpperCase().replace(/[\s-]+/g, '');
+    if(!code){ status.textContent = t('devicesCodeEmpty'); return; }
+    btn.disabled = true;
+    status.textContent = '';
+    const res = await syncAdminFetch('/admin/connect', { method: 'POST', body: { code, client: 'Dossiary' } });
+    const token = res && res.ok && res.body && typeof res.body.token === 'string' && res.body.token ? res.body.token : null;
+    // Keep the token even if the dialog closed meanwhile: the code is used up.
+    if(token) setSyncAdminToken(token);
+    if(!devicesDialogOpen(seq)) return;
+    btn.disabled = false;
+    if(token){ await loadDevicesConnected(seq); return; }
+    status.textContent = res && (res.status === 403 || res.status === 400) ? t('devicesWrongCode') : syncErrorText(res);
+  }
+
+  // A 401 on a protected route: the token is gone (revoked), so drop it.
+  function devicesTokenRejected(seq){
+    setSyncAdminToken(null);
+    devicesState = null;
+    if(devicesDialogOpen(seq)) renderDevicesConnect(seq, t('devicesConnectAgain'));
+  }
+
+  async function loadDevicesConnected(seq){
+    const [libs, devs] = await Promise.all([syncAdminFetch('/admin/libraries'), syncAdminFetch('/admin/devices')]);
+    if(!devicesDialogOpen(seq)) return;
+    if((libs && libs.status === 401) || (devs && devs.status === 401)){ devicesTokenRejected(seq); return; }
+    if(!libs || !devs){ renderDevicesNotRunning(seq); return; }
+    if(!libs.ok || !devs.ok || !Array.isArray(libs.body) || !Array.isArray(devs.body)){
+      el('devices-dialog-body').innerHTML = `<p class="scan-dialog-text">${escapeHtml(syncErrorText(libs.ok ? devs : libs))}</p>
+        <button id="devices-retry-btn">${t('devicesLookAgain')}</button>`;
+      el('devices-retry-btn').addEventListener('click', () => refreshDevicesDialog(seq));
+      return;
+    }
+    devicesState = {
+      libraries: libs.body.filter(l => l && typeof l.id === 'string').map(l => ({ id: l.id, name: typeof l.name === 'string' ? l.name : l.id, available: l.available !== false })),
+      devices: devs.body.filter(d => d && typeof d.id === 'string').map(normalizeSyncDevice),
+    };
+    renderDevicesConnected(seq);
+  }
+  function normalizeSyncDevice(d){
+    return { id: d.id, name: typeof d.name === 'string' && d.name ? d.name : d.id, role: d.role,
+             libraries: Array.isArray(d.libraries) ? d.libraries.filter(x => typeof x === 'string') : [],
+             lastSeen: typeof d.lastSeen === 'string' ? d.lastSeen : null };
+  }
+
+  function renderDevicesConnected(seq){
+    const { libraries, devices } = devicesState;
+    const libName = (id) => (libraries.find(l => l.id === id) || { name: id }).name;
+    const deviceHtml = (d) => `
+      <div class="devices-row" data-id="${escapeHtml(d.id)}">
+        <div class="devices-row-head">
+          <span class="devices-name">${escapeHtml(d.name)}</span>
+          <span class="devices-role">${escapeHtml(deviceRoleLabel(d.role))}</span>
+          <span class="devices-seen">${escapeHtml(deviceLastSeenText(d.lastSeen))}</span>
+          <button class="devices-remove-btn">${t('devicesRemove')}</button>
+        </div>
+        ${d.role === 'phone' ? (libraries.length ? `<div class="devices-libs">${libraries.map(l => `
+          <label><input type="checkbox" class="devices-lib-checkbox" data-library="${escapeHtml(l.id)}" ${d.libraries.includes(l.id) ? 'checked' : ''} /> ${escapeHtml(l.name)}</label>`).join('')}</div>`
+          : `<div class="devices-libs devices-unavailable">${t('devicesNoLibraries')}</div>`) : ''}
+        ${d.role !== 'phone' && d.libraries.length ? `<div class="devices-libs devices-unavailable">${escapeHtml(d.libraries.map(libName).join(', '))}</div>` : ''}
+      </div>`;
+    el('devices-dialog-body').innerHTML = `
+      <h3>${t('devicesListHeading')}</h3>
+      <div id="devices-list">${devices.length ? devices.map(deviceHtml).join('') : `<p class="scan-dialog-text">${t('devicesNone')}</p>`}</div>
+      <div id="devices-add-slot"></div>
+      <h3>${t('devicesLibrariesHeading')}</h3>
+      <div id="devices-libraries">${libraries.length ? `<ul class="devices-library-list">${libraries.map(l => `
+        <li>${escapeHtml(l.name)}${l.available ? '' : ` <span class="devices-unavailable">(${t('devicesLibraryNotAvailable')})</span>`}</li>`).join('')}</ul>`
+        : `<p class="scan-dialog-text">${t('devicesNoLibraries')}</p>`}</div>
+      <p class="scan-dialog-text">${t('devicesShareNote', { command: '<code>dossiary-sync share &lt;folder&gt;</code>' })}</p>
+      <button id="devices-disconnect-btn">${t('devicesDisconnect')}</button>`;
+    // #devices-add-slot: "Add iPhone or iPad…" and its QR code go here.
+    modalRoot.querySelectorAll('.devices-row').forEach(row => {
+      const id = row.dataset.id;
+      row.querySelectorAll('.devices-lib-checkbox').forEach(box => box.addEventListener('change', () => setDeviceLibrary(seq, id, box)));
+      row.querySelector('.devices-remove-btn').addEventListener('click', () => removeSyncDevice(seq, id));
+    });
+    el('devices-disconnect-btn').addEventListener('click', () => disconnectSyncAdmin(seq));
+  }
+
+  // Ticking allows the library at once, unticking denies it; a refusal undoes the tick.
+  async function setDeviceLibrary(seq, deviceId, box){
+    const library = box.dataset.library;
+    const allow = box.checked;
+    box.disabled = true;
+    const res = await syncAdminFetch(`/admin/devices/${encodeURIComponent(deviceId)}/${allow ? 'allow' : 'deny'}`, { method: 'POST', body: { library } });
+    if(!devicesDialogOpen(seq) || !devicesState) return;
+    if(res && res.status === 401){ devicesTokenRejected(seq); return; }
+    box.disabled = false;
+    const device = devicesState.devices.find(d => d.id === deviceId);
+    const libName = (devicesState.libraries.find(l => l.id === library) || { name: library }).name;
+    const name = device ? device.name : deviceId;
+    if(res && res.ok){
+      if(device){
+        if(res.body && typeof res.body === 'object' && Array.isArray(res.body.libraries)) Object.assign(device, normalizeSyncDevice({ ...device, ...res.body }));
+        else device.libraries = allow ? [...new Set([...device.libraries, library])] : device.libraries.filter(x => x !== library);
+      }
+      setStatusLive(() => t(allow ? 'devicesAllowed' : 'devicesDenied', { device: name, library: libName }), 'ok');
+      return;
+    }
+    box.checked = !allow;
+    const errText = syncErrorText(res);
+    setStatusLive(() => t('devicesChangeFailed', { device: name, library: libName, error: errText }), 'err');
+  }
+
+  async function removeSyncDevice(seq, deviceId){
+    const device = devicesState && devicesState.devices.find(d => d.id === deviceId);
+    if(!device) return;
+    if(!confirm(t('devicesRemoveConfirm', { name: device.name }))) return;
+    const res = await syncAdminFetch(`/admin/devices/${encodeURIComponent(deviceId)}`, { method: 'DELETE' });
+    if(!devicesDialogOpen(seq) || !devicesState) return;
+    if(res && res.status === 401){ devicesTokenRejected(seq); return; }
+    const name = device.name;
+    if(res && (res.ok || res.status === 404)){
+      devicesState.devices = devicesState.devices.filter(d => d.id !== deviceId);
+      renderDevicesConnected(seq);
+      setStatusLive(() => t('devicesRemoved', { name }), 'ok');
+      return;
+    }
+    const errText = syncErrorText(res);
+    setStatusLive(() => t('devicesRemoveFailed', { name, error: errText }), 'err');
+  }
+
+  async function disconnectSyncAdmin(seq){
+    // Revoke on the service if it answers; forget the token here either way.
+    await syncAdminFetch('/admin/connect', { method: 'DELETE' });
+    setSyncAdminToken(null);
+    devicesState = null;
+    if(devicesDialogOpen(seq)) renderDevicesConnect(seq, '');
+    setStatusT('devicesDisconnected', null, 'ok');
+  }
+
+  el('devices-btn').addEventListener('click', () => openDevicesDialog());
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a
