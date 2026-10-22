@@ -2518,30 +2518,87 @@ this repo's git tags.
   that dialog survives; Escape = Cancel, caught on `window` in the capture
   phase). Take over acquires with `takeOver: true` and writes; Cancel writes
   nothing and sets `syncUnsavedChanges` (marker "unsaved changes"), and the
-  next real save asks again and writes everything. **View preferences pass
+  next real save asks again and writes everything; a status line of its own
+  ("Not saved: …", posted with `setTimeout(0)` so it lands after the caller's
+  "Saved …") says so, `beforeunload` asks while such a change is held back,
+  and Switch library asks in a real dialog (`switchLibraryAsking()`,
+  `#sync-discard-dialog`) before discarding it. Both dialogs come from
+  `showSyncChoiceModal()`, whose promise also settles (Cancel) when anything
+  removes its layer (a `MutationObserver`). **View preferences pass
   `{viewOnly: true}`** and never take the lease: `saveNavStyle`,
   `saveSortState`, `saveDetailPanelExpanded`, `saveCollectionsNavExpanded`,
   `saveColumnSettings`, `saveViewMode`, the grid size slider,
   `toggleCollectionFolder()` and `saveLastScanSettings()` (the drag-open
-  folder restore only changes classes, it writes nothing). A view-only write
-  is skipped while a real change is held back or an acquire is pending, since
-  `db.export()` would carry the held-back change too. `syncTick()` (every 5 s
-  while a synced library is open) heartbeats every 60 s while holding --
-  `lost` with a holder → `other` ("editing on iMac"), `lost` with no holder
-  → re-acquire silently, a failed call → try again next tick -- retries an
-  acquire every 60 s while `offline`, and releases after 10 minutes without a
-  real save (`lastRealSaveAt`). `resetAll()` and `pagehide` release with
-  `fetch(..., {keepalive: true})`, unawaited. The marker (`#sync-marker`,
-  `.sub-sync-marker`) shares `#sub-label`'s non-wrapping header line and
-  truncates, so the header's height (part of `.table-wrap`'s budget) never
-  changes. `listLibraryFiles()` skips `.dossiary-sync.json` and `.kept-aside/`,
-  so a backup opened as a library isn't mistaken for the synced original.
-  Not here yet (part 2, task 2): polling the state, reloading on a newer
-  version (including after a granted acquire whose `version` is newer), the
-  kept-aside notice. `loadDb()`'s schema-upgrade write on open runs before
-  the sync file is read, so it is never gated. Tests: `tests/test_sync_lease.py`
-  (`__DEBUG_syncLease()`, `__DEBUG_syncNow(ms)` to advance the clock and run
-  a tick).
+  folder restore only changes classes, it writes nothing). **Background
+  writers pass `{background: true}`** -- the OCR job runner (`pollOcrJob`,
+  `switchToFallback`, `runOcrJobPass`, and the fallback's
+  `makeDocumentSearchable(…, {background: true})`), Library check's hash
+  backfill and "Check for text", and the preview jobs: they never open the
+  take-over dialog. While the state is `other` they don't ask at all; with
+  the lease free an acquire answering `busy` returns false without a dialog
+  (and a person's save that joined that acquire asks with one of its own).
+  Their change then waits in memory as held back (`syncHoldBack()`), for the
+  next real save or the job's next pass. **Real changes in memory are
+  tracked**: `trackDbChanges()` wraps the main database's `db.run` and counts
+  every statement except a view-preference settings write
+  (`SYNC_VIEW_PREF_KEYS`); `persistDb()` notes the count it exported, and
+  `syncDirty()` is true while something changed since. Without the lease a
+  view-only write is skipped while anything is dirty, held back, pending or
+  reloading, since `db.export()` would carry that change too -- and when a
+  newer `library.sqlite` is on disk (the last polled version, or the sync
+  file's own `version`, which Dossiary Sync updates when it pulls,
+  `syncNewerOnDisk()`) it isn't written but triggers a reload, after which
+  the preference is written. After an acquire that went unanswered
+  (`unsynced`), saves don't ask again for 60 s (`syncUnsyncedAt`); they
+  write meanwhile. `syncTick()` (every 5 s while a synced library is open)
+  heartbeats every 60 s while holding -- `lost` with a holder → `other`
+  ("editing on iMac"), `lost` with no holder → re-acquire silently, a failed
+  call → try again next tick -- retries an acquire every 60 s while
+  `offline`, releases after 10 minutes without a real save
+  (`lastRealSaveAt`), and polls `GET /admin/libraries/<id>/state`
+  (`pollSyncState()`, only with an admin token; 404/no answer is ignored).
+  **Staying current**: when not holding/offline and the polled `version` is
+  above `syncLibrary.version`, `maybeReload()` runs
+  `reloadLibraryKeepingView()` -- re-reads `library.sqlite`, runs `SCHEMA`
+  and the migrations in memory (nothing written; their changes don't count
+  as dirty), re-applies this window's view preferences from the old
+  database, reloads through `loadDocumentsFromDb()`, and puts back the
+  filter selects (rebuilt by `populateFilters()`), `selectedDocId`, and
+  `.table-wrap`'s scroll; `currentView`, the search box and the other static
+  toolbar inputs aren't touched by a reload. It never reloads while a dialog
+  is open (`#modal-root` or `#modal-root-over` non-empty), a save is in
+  flight (`syncPersistsInFlight`), an acquire is pending, a change is held
+  back or dirty, or a background job runs (`syncBackgroundJobRunning()`);
+  the next poll tries again. While holding, a newer polled version is this
+  Mac's own push and just moves `syncLibrary.version` along. A granted
+  acquire whose `version` is above the loaded one (the service pulled
+  first) writes this tab's change anyway -- Dossiary Sync keeps a version
+  with an old base aside -- and then reloads (`syncReloadWanted`, allowed
+  while holding); nothing is dropped. **Lease lost**: the state naming
+  another holder while holding → `other` and the status line "{device} took
+  over editing this library." (a builder, so it retranslates); while `none`
+  it just shows "editing on …", and back to `none` once the lease is free.
+  **Kept aside**: each `keptAside` entry not seen in this browser
+  (`localStorage` `dossiary_kept_aside_seen`, `<libraryId>/<stamp>`, every
+  access in try/catch) puts "Changes made on this Mac on {date} couldn't be
+  combined with {device}'s. …" on the status line once (the date parsed from
+  the stamp's `-yyyy-mm-dd-hhmm` tail, through `formatDate()`), and reloads,
+  since the folder was replaced. The devices dialog fetches each shared
+  library's state after rendering (`loadDevicesKeptAside()`) and shows the
+  same line under the library (`.devices-kept-aside`) while an entry exists.
+  **`lastError`** while holding turns the marker into "not synced yet" with
+  the error as its tooltip; saves go on. `resetAll()` and `pagehide` release
+  with `fetch(..., {keepalive: true})`, unawaited. The marker
+  (`#sync-marker`, `.sub-sync-marker`) shares `#sub-label`'s non-wrapping
+  header line and truncates, so the header's height (part of `.table-wrap`'s
+  budget) never changes. `listLibraryFiles()` skips `.dossiary-sync.json` and
+  `.kept-aside/`, so a backup opened as a library isn't mistaken for the
+  synced original. `afterDbReady()` starts reading the sync file first, so
+  any write while the library opens waits for it; `loadDb()`'s
+  schema-upgrade write on open runs before that, so it is never gated.
+  Tests: `tests/test_sync_lease.py` (`__DEBUG_syncLease()`,
+  `__DEBUG_syncState()`, `__DEBUG_persistDb(opts)`, `__DEBUG_syncNow(ms)` to
+  advance the clock and run a tick).
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default

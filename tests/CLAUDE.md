@@ -1218,7 +1218,34 @@ on iMac" and no more heartbeats); release after 10 quiet minutes, on Switch
 library and on `pagehide` (with keepalive), none without the lease; a backup
 without `.dossiary-sync.json` or `.kept-aside/`; German labels and the marker
 following a language switch; the header's height unchanged with the marker
-shown, also with a long library name, at 320 and 1440px).
+shown, also with a long library name, at 320 and 1440px. Part 2's second
+task added the `GET …/state` poll to the fake (`window.__SYNC.state`, and
+`acquireVersion` for a granted acquire's version), a `disk_change()` helper
+that rewrites `library.sqlite` and the sync file the way a pull does, without
+counting a write, and these scenarios: a newer version reloads once, with the
+new title in the table and panel, the Inbox view, search text, category
+filter, filtered list and selection kept, nothing written and no second
+reload; the scroll position kept (60 documents); no reload while the Edit form
+is open, then one once it closes; holding → no reload, the version taken as
+this Mac's push; a granted acquire with a newer version → the change written
+anyway, then a reload, still shown, nothing left unsaved; lease lost via the
+state → "editing on iMac", the status line, retranslated to German, then the
+iMac's newer version loaded; kept aside → one status line, a reload, the stamp
+in `localStorage`, not repeated on the next poll or after reopening the page,
+and the line under the library in the devices dialog; `lastError` while
+holding → "not synced yet" with the error as tooltip, back to "✎ editing";
+German kept-aside text. And Task 1's review follow-ups: a sort click with a
+newer version on disk leaving the pulled file alone, reloading, then saving
+the sort; after Cancel the "Not saved" status line, `beforeunload` asking,
+Switch library asking (Cancel keeps it, Switch anyway switches) and neither
+asking without a held-back change; background writes (a real "Create missing
+previews" run, and `__DEBUG_persistDb({background: true})`) never opening the
+dialog or acquiring while `other`, a view-only click then not writing their
+change, no reload over it, a busy acquire for a background write turning
+`other` silently while a person's save still asks; removing the take-over
+layer settling the dialog; a write right after opening waiting for a slow
+sync-file read and taking the lease; and no new acquire within a minute of an
+unanswered one).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

@@ -29,15 +29,24 @@ FAKE_SYNC = """
                               auth: headers.Authorization || null });
         const S = window.__SYNC;
         if(!url.startsWith(BASE + '/') || S.down) throw new TypeError('Failed to fetch');
+        const path = url.slice(BASE.length);
+        if(path === '/admin/health') return json(200, { service: 'dossiary-sync', version: '0.4.0', adminProtocol: 1, connected: headers.Authorization === `Bearer ${S.token}` });
         if(headers.Authorization !== `Bearer ${S.token}`) return json(401, { error: 'Unauthorized' });
-        const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(url.slice(BASE.length));
+        if(path === '/admin/libraries') return json(200, S.libraries || [{ id: 'lib-7f3a', name: 'Household', available: true }]);
+        if(path === '/admin/devices') return json(200, []);
+        const st = /^\\/admin\\/libraries\\/([^/]+)\\/state$/.exec(path);
+        if(st && (opts.method || 'GET') === 'GET'){
+            const s = (S.states || {})[decodeURIComponent(st[1])] || (decodeURIComponent(st[1]) === 'lib-7f3a' ? S.state : null);
+            return s ? json(200, s) : json(404, { error: 'Not found' });
+        }
+        const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(path);
         if(m && opts.method === 'POST'){
             if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
             const body = JSON.parse(opts.body);
             if(body.action === 'acquire'){
                 const result = body.takeOver ? (S.takeOver || 'granted') : (S.acquire || 'granted');
-                if(result === 'busy') return json(200, { result, lease: S.busyLease, version: 3 });
-                return json(200, { result, lease: result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null, version: 3 });
+                if(result === 'busy') return json(200, { result, lease: S.busyLease, version: S.acquireVersion || 3 });
+                return json(200, { result, lease: result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null, version: S.acquireVersion || 3 });
             }
             if(body.action === 'heartbeat'){
                 const result = S.heartbeat || 'granted';
@@ -66,9 +75,9 @@ BUSY_LEASE = {"holder": "other", "deviceName": "MacBook Pro", "since": TODAY_140
 LEASE_URL = f'http://127.0.0.1:8769/admin/libraries/{LIB_ID}/lease'
 
 
-async def open_app(p, sync=None, token='admin-tok', sync_file=True, lang=None, width=1440, extra_files=None):
+async def open_app(p, sync=None, token='admin-tok', sync_file=True, lang=None, width=1440, extra_files=None, seed=None, height=900):
     browser = await p.chromium.launch()
-    context = await browser.new_context(viewport={'width': width, 'height': 900}, timezone_id='UTC', locale='en-US')
+    context = await browser.new_context(viewport={'width': width, 'height': height}, timezone_id='UTC', locale='en-US')
     page = await context.new_page()
     errors = []
     page.on("pageerror", lambda exc: errors.append(str(exc)))
@@ -88,6 +97,11 @@ async def open_app(p, sync=None, token='admin-tok', sync_file=True, lang=None, w
     await page.wait_for_timeout(200)
     if token:
         await page.evaluate("([k, t]) => localStorage.setItem(k, t)", [TOKEN_KEY, token])
+    await seed_and_open(page, sync, sync_file, extra_files, seed)
+    return browser, page, errors
+
+
+async def seed_and_open(page, sync=None, sync_file=True, extra_files=None, seed=None):
     await page.evaluate(FAKE_SYNC, sync or {"token": "admin-tok"})
     files = dict(extra_files or {})
     if sync_file:
@@ -108,10 +122,9 @@ async def open_app(p, sync=None, token='admin-tok', sync_file=True, lang=None, w
         const h = root._children.get('library.sqlite');
         const orig = h.createWritable.bind(h);
         h.createWritable = async () => { window.__DB_WRITES++; return orig(); };
-    }""", [SEED, files])
+    }""", [seed or SEED, files])
     await page.click('#open-btn')
     await page.wait_for_timeout(400)
-    return browser, page, errors
 
 
 async def admin_calls(page):
@@ -410,13 +423,404 @@ async def scenario_header_height(p):
         await browser.close()
 
 
+# ---- Task 2: staying current, lease lost, kept-aside notice, and Task 1's review follow-ups ----
+
+def doc(id, title, **kw):
+    d = {"id": id, "title": title, "category": None, "document_type": None,
+         "date": "2026-03-01T00:00:00+00:00", "notes": None, "ocr_text": None, "ocr_language": None,
+         "file_path": f"files/{id}_a.pdf", "original_file_path": None,
+         "created_at": "2026-03-01T00:00:00+00:00", "source": "captured", "source_legacy_id": None,
+         "archived": 0, "needs_review": 0, "deleted": 0}
+    d.update(kw)
+    return d
+
+
+SEED2 = {"documents": [doc(1, "Invoice", category="Bills"), doc(2, "Receipt", category="Food"),
+                       doc(3, "Letter", category="Mail", needs_review=1), doc(4, "Leaflet", category="Mail", needs_review=1)]}
+
+
+def state(version=3, lease=None, kept=None, last_error=None, offline=False):
+    return {"libraryId": LIB_ID, "version": version, "hubReachable": True, "lease": lease, "offline": offline,
+            "keptAside": kept or [], "lastError": last_error}
+
+
+IMAC_LEASE = {"holder": "other", "deviceName": "iMac", "since": TODAY_1402}
+THIS_LEASE = {"holder": "this", "deviceName": "MacBook Pro", "since": TODAY_1402}
+KEPT = [{"stamp": "MacBook Pro-2026-05-03-1402", "otherDevice": "iMac"}]
+KEPT_TEXT = "Changes made on this Mac on May 03, 2026 couldn't be combined with iMac's. They're kept safe and will be merged by a later update."
+
+
+async def disk_change(page, titles=None, sync_version=None):
+    """What a pull by Dossiary Sync does: a new library.sqlite (and sync file) on disk, written without Dossiary."""
+    await page.evaluate("""async ([titles, v]) => {
+        const root = window.__TEST_ROOT;
+        const h = root._children.get('library.sqlite');
+        const data = JSON.parse(await (await h.getFile()).text());
+        for(const [id, title] of Object.entries(titles || {})){ const d = data.documents.find(x => x.id === Number(id)); if(d) d.title = title; }
+        h._bytes = new TextEncoder().encode(JSON.stringify(data));
+        if(v !== null){
+            const f = root._children.get('.dossiary-sync.json');
+            f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: v }));
+        }
+    }""", [{str(k): v for k, v in (titles or {}).items()}, sync_version])
+
+
+async def tick(page, ms=0):
+    await page.evaluate(f"window.__DEBUG_syncNow({ms})")
+    await page.wait_for_timeout(200)
+
+
+async def sync_state(page):
+    return await page.evaluate("window.__DEBUG_syncState()")
+
+
+async def status(page):
+    return await page.inner_text('#status')
+
+
+async def disk_doc_title(page, id):
+    return await page.evaluate("async (id) => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents.find(d => d.id === id).title", id)
+
+
+async def row_text(page, id):
+    loc = page.locator(f'tr[data-id="{id}"]')
+    return await loc.inner_text() if await loc.count() else ''
+
+
+async def scenario_reload_keeps_view(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.click('#nav-item-inbox')
+    await page.wait_for_timeout(150)
+    await page.select_option('#category-filter', 'Mail')
+    await page.fill('#search', 'Lette')
+    await page.wait_for_timeout(150)
+    await page.click('tr[data-id="3"]')
+    await page.wait_for_timeout(150)
+    await tick(page)
+    print("same version: no reload:", (await sync_state(page))['reloads'] == 0)
+    before = await writes(page)
+    await disk_change(page, {3: 'Letter from the bank'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("a newer version reloads once:", st['reloads'] == 1 and st['version'] == 4, st)
+    print("...the new title is in the table:", 'Letter from the bank' in await row_text(page, 3))
+    print("...and in the detail panel:", 'Letter from the bank' in await page.inner_text('#detail-panel-body'))
+    print("...the Inbox view is kept:", await page.evaluate("document.getElementById('nav-item-inbox').classList.contains('active')"))
+    print("...the search text is kept:", await page.input_value('#search') == 'Lette')
+    print("...the category filter is kept:", await page.input_value('#category-filter') == 'Mail')
+    print("...the filtered list still applies (Leaflet hidden):", await page.locator('tr[data-id="4"]').count() == 0)
+    print("...the selection is kept:", await page.evaluate("!!document.querySelector('tr[data-id=\"3\"].row-selected')"))
+    print("...a reload writes nothing:", await writes(page) == before)
+    await tick(page)
+    print("...and the next poll doesn't reload again:", (await sync_state(page))['reloads'] == 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_reload_keeps_scroll(p):
+    seed = {"documents": [doc(i, f"Document {i:02d}") for i in range(1, 61)]}
+    browser, page, errors = await open_app(p, seed=seed, sync={"token": "admin-tok", "state": state(3)}, height=700)
+    await page.evaluate("document.getElementById('table-wrap').scrollTop = 400")
+    await page.wait_for_timeout(100)
+    top = await page.evaluate("document.getElementById('table-wrap').scrollTop")
+    await disk_change(page, {1: 'Document one'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    after = await page.evaluate("document.getElementById('table-wrap').scrollTop")
+    print("reload keeps the table's scroll position:", top > 100 and abs(after - top) < 2 and (await sync_state(page))['reloads'] == 1, top, after)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_reload_waits_for_dialog(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.click('tr[data-id="1"]')
+    await page.wait_for_timeout(150)
+    await page.click('#edit-doc-btn')
+    await page.wait_for_timeout(200)
+    await disk_change(page, {1: 'Invoice B'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    print("Edit form open: no reload:", (await sync_state(page))['reloads'] == 0 and 'Invoice B' not in await row_text(page, 1))
+    print("...the form is still there:", await page.locator('#e-title').count() == 1)
+    await page.click('#cancel-edit-btn')
+    await page.wait_for_timeout(150)
+    await tick(page)
+    print("after it closes the next poll reloads:", (await sync_state(page))['reloads'] == 1 and 'Invoice B' in await row_text(page, 1))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_holding_no_reload(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await edit_title(page, 'Mine')
+    print("holding:", (await sync_state(page))['state'] == 'holding')
+    await disk_change(page, {2: 'Receipt pushed'}, sync_version=5)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(5, THIS_LEASE))
+    await tick(page)
+    st = await sync_state(page)
+    print("holding: a newer version doesn't reload:", st['reloads'] == 0 and 'Receipt pushed' not in await row_text(page, 2), st)
+    print("...it is taken as this Mac's own push:", st['version'] == 5)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_acquire_newer_version(p):
+    # Constraint (e): the service pulled first, so a granted acquire reports a newer version.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquireVersion": 4, "state": state(3)})
+    await edit_title(page, 'Edited here')
+    await page.wait_for_timeout(200)
+    st = await sync_state(page)
+    print("granted with a newer version: this tab's change is written anyway:", await disk_doc_title(page, 1) == 'Edited here')
+    print("...then the library reloads:", st['reloads'] == 1 and st['version'] == 4, st)
+    print("...and the change is still shown:", 'Edited here' in await row_text(page, 1))
+    print("...not left as unsaved:", not st['unsaved'])
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_lost_via_state(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await edit_title(page, 'Mine')
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, IMAC_LEASE))
+    await tick(page)
+    m = await marker(page)
+    print("lease lost (state shows the iMac): marker 'editing on iMac':", m['text'] == 'editing on iMac', m)
+    print("...state other:", (await sync_state(page))['state'] == 'other')
+    print("...status line says so:", await status(page) == 'iMac took over editing this library.', await status(page))
+    await page.select_option('#lang-select', 'de')
+    await page.wait_for_timeout(200)
+    print("...and retranslates:", await status(page) == 'iMac hat die Bearbeitung dieser Bibliothek übernommen.', await status(page))
+    await page.select_option('#lang-select', 'en')
+    await page.wait_for_timeout(100)
+    # The iMac's later version is then loaded.
+    await disk_change(page, {2: 'Receipt from iMac'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, IMAC_LEASE))
+    await tick(page)
+    print("...then the iMac's newer version is loaded:", 'Receipt from iMac' in await row_text(page, 2))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_kept_aside(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await disk_change(page, {1: 'Invoice (Pi)'})
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, None, KEPT))
+    await tick(page)
+    print("kept aside: one status line:", await status(page) == KEPT_TEXT, await status(page))
+    print("...and the library reloads (the folder was replaced):", 'Invoice (Pi)' in await row_text(page, 1))
+    seen = await page.evaluate("localStorage.getItem('dossiary_kept_aside_seen')")
+    print("...the stamp is remembered:", seen is not None and 'MacBook Pro-2026-05-03-1402' in seen, seen)
+    await page.evaluate("document.getElementById('status').textContent = ''")
+    await tick(page)
+    print("...not repeated on the next poll:", await status(page) == '')
+    # A fresh page (same browser): still not shown again.
+    await page.reload()
+    await page.wait_for_timeout(200)
+    await seed_and_open(page, {"token": "admin-tok", "state": state(3, None, KEPT)}, seed=SEED2)
+    await tick(page)
+    print("...not repeated after reopening the page:", 'kept safe' not in await status(page), await status(page))
+    # The devices dialog shows it under the library while the entry exists.
+    await page.click('#tools-btn'); await page.click('#devices-btn')
+    await page.wait_for_timeout(400)
+    libs = await page.inner_text('#devices-libraries') if await page.locator('#devices-libraries').count() else ''
+    print("the devices dialog shows it under the library:", 'Household' in libs and KEPT_TEXT in libs, repr(libs))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_last_error(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await edit_title(page, 'Mine')
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, THIS_LEASE, None, 'The Pi refused the upload (disk full).'))
+    await tick(page)
+    m = await marker(page)
+    print("lastError while holding: marker 'not synced yet':", m['text'] == 'not synced yet', m)
+    print("...with the error as its tooltip:", m['title'] == 'The Pi refused the upload (disk full).')
+    print("...still holding (saves go on):", (await sync_state(page))['state'] == 'holding')
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, THIS_LEASE))
+    await tick(page)
+    print("...back to '✎ editing' once it clears:", (await marker(page))['text'] == '✎ editing')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_german_task2(p):
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, None, KEPT)}, lang='de')
+    await tick(page)
+    print("German kept-aside line:", await status(page) == "Änderungen, die am 03. Mai 2026 auf diesem Mac gemacht wurden, ließen sich nicht mit denen von iMac zusammenführen. Sie sind sicher aufbewahrt und werden durch ein späteres Update zusammengeführt.", await status(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+# Task 1 review follow-ups.
+
+async def scenario_view_write_newer_on_disk(p):
+    # 1. A view-only write mustn't overwrite a newer library.sqlite that Dossiary Sync just pulled.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    before = await writes(page)
+    await disk_change(page, {2: 'Receipt (pulled)'}, sync_version=4)
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(400)
+    print("view-only write with a newer version on disk: the pulled file survives:", await disk_doc_title(page, 2) == 'Receipt (pulled)')
+    print("...the library reloads instead:", 'Receipt (pulled)' in await row_text(page, 2) and (await sync_state(page))['version'] == 4)
+    sort_saved = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).settings.some(r => r.key === 'sort_key' && r.value === 'title')")
+    print("...and the sort is applied and saved afterwards:", sort_saved and await page.evaluate("document.querySelector('th[data-key=\"title\"]').classList.contains('active')"))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_cancel_followups(p):
+    # 2. After Cancel: a status line of our own, beforeunload, and Switch library asks.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "busy", "busyLease": BUSY_LEASE})
+    await edit_title(page, 'Mine', wait=300)
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
+    print("Cancel: the status line says it isn't saved:", await status(page) == 'Not saved: MacBook Pro is editing this library. Your change stays in this window; your next change asks again.', await status(page))
+    prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
+    print("...closing the tab asks first (beforeunload):", prevented)
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    print("...Switch library asks in a dialog:", await page.locator('#sync-discard-dialog').count() == 1)
+    print("...the library is still open meanwhile:", await page.locator('tr[data-id="1"]').count() == 1)
+    await page.click('#sync-discard-cancel-btn')
+    await page.wait_for_timeout(150)
+    print("...Cancel keeps it open:", await page.locator('#sync-discard-dialog').count() == 0 and await page.locator('tr[data-id="1"]').count() == 1 and 'Mine' in await row_text(page, 1))
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(150)
+    await page.click('#sync-discard-btn')
+    await page.wait_for_timeout(200)
+    print("...Switch anyway switches:", await page.locator('#empty-state').is_visible())
+    prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
+    print("...and nothing is left to warn about:", not prevented)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+    # Without unsaved changes, Switch library doesn't ask.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    print("without unsaved changes Switch library doesn't ask:", await page.locator('#sync-discard-dialog').count() == 0 and await page.locator('#empty-state').is_visible())
+    prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
+    print("...and beforeunload doesn't ask:", not prevented)
+    await browser.close()
+
+
+async def scenario_background_writes_wait(p):
+    # 3. Background writers never open the take-over dialog.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, IMAC_LEASE)})
+    await tick(page)
+    print("the poll shows the iMac editing:", (await sync_state(page))['state'] == 'other' and (await marker(page))['text'] == 'editing on iMac')
+    before = await writes(page)
+    await page.evaluate("(l) => { window.__SYNC.acquire = 'busy'; window.__SYNC.busyLease = l; }", IMAC_LEASE)
+    # A real background writer: Create missing previews in Grid view.
+    await page.click('#view-grid-btn')
+    await page.wait_for_timeout(200)
+    w_after_view = await writes(page)
+    has_btn = await page.locator('#create-previews-btn').is_visible()
+    print("Create missing previews is offered:", has_btn)
+    if has_btn:
+        await page.click('#create-previews-btn')
+    await page.wait_for_timeout(500)
+    print("...and has run:", await page.evaluate("!document.getElementById('create-previews-btn').textContent.includes('Stop')"))
+    print("a background write while 'other': no dialog:", await page.locator('#sync-takeover-dialog').count() == 0)
+    print("...no acquire:", await lease_calls(page, 'acquire') == [])
+    print("...nothing written:", await writes(page) == w_after_view, before, w_after_view, await writes(page))
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    await page.wait_for_timeout(200)
+    print("...also through persistDb({background: true}):", await page.locator('#sync-takeover-dialog').count() == 0 and await writes(page) == w_after_view)
+    await page.click('#view-list-btn')
+    await page.wait_for_timeout(200)
+    print("a view-only click then doesn't carry the job's unleased changes:", await writes(page) == w_after_view)
+    await disk_change(page, {2: 'Receipt from iMac'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, IMAC_LEASE))
+    await tick(page)
+    print("...and a newer version doesn't reload them away:", (await sync_state(page))['reloads'] == 0 and (await sync_state(page))['unsaved'])
+    await browser.close()
+
+    # State none, lease busy: a background write asks nothing either and becomes 'other'.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "busy", "busyLease": IMAC_LEASE})
+    before = await writes(page)
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    await page.wait_for_timeout(300)
+    print("background write, lease busy: no dialog:", await page.locator('#sync-takeover-dialog').count() == 0)
+    print("...nothing written, state other:", await writes(page) == before and (await sync_state(page))['state'] == 'other')
+    # A person's save afterwards still asks.
+    await edit_title(page, 'Mine', wait=300)
+    print("...a person's save afterwards still asks:", await page.locator('#sync-takeover-dialog').count() == 1)
+    await page.click('#sync-takeover-btn')
+    await page.wait_for_timeout(300)
+    print("...and Take over writes:", await disk_doc_title(page, 1) == 'Mine')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_takeover_layer_removed(p):
+    # 4. The take-over promise settles when its layer goes away.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "busy", "busyLease": BUSY_LEASE})
+    await edit_title(page, 'Mine', wait=300)
+    print("dialog open:", await page.locator('#sync-takeover-dialog').count() == 1)
+    await page.evaluate("document.getElementById('sync-takeover-layer').remove()")
+    await page.wait_for_timeout(200)
+    print("removing its layer settles it (no acquire left pending):", not (await sync_state(page))['pending'])
+    print("...nothing written:", await disk_doc_title(page, 1) == 'Invoice')
+    await page.evaluate("document.getElementById('modal-root').innerHTML = ''")
+    await edit_title(page, 'Mine again', wait=300)
+    print("...the next save asks again:", await page.locator('#sync-takeover-dialog').count() == 1 and len(await lease_calls(page, 'acquire')) == 2)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_sync_read_before_writes(p):
+    # 5. A write right after opening waits for the sync file to be read (and takes the lease).
+    browser, page, errors = await open_app(p, seed=SEED2, sync_file=False)
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    await page.evaluate("""async () => {
+        const root = window.__TEST_ROOT;
+        const w = await (await root.getFileHandle('.dossiary-sync.json', { create: true })).createWritable();
+        await w.write(new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 3 }))); await w.close();
+        const orig = root.getFileHandle.bind(root);
+        root.getFileHandle = async (name, o) => { if(name === '.dossiary-sync.json') await new Promise(r => setTimeout(r, 400)); return orig(name, o); };
+    }""")
+    await page.click('#open-btn')
+    await page.wait_for_timeout(30)
+    await page.evaluate("window.__DEBUG_persistDb()")
+    await page.wait_for_timeout(600)
+    print("a real write right after opening waits for the sync file and takes the lease:", len(await lease_calls(page, 'acquire')) == 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_unanswered_backoff(p):
+    # 6. After an unanswered acquire, don't ask again for about a minute.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
+    await edit_title(page, 'One')
+    n1 = len(await lease_calls(page, 'acquire'))
+    await edit_title(page, 'Two')
+    print("unanswered acquire: the next save within a minute doesn't ask:", len(await lease_calls(page, 'acquire')) == n1 == 1 and await disk_doc_title(page, 1) == 'Two')
+    await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
+    await edit_title(page, 'Three')
+    print("...after a minute it asks again:", len(await lease_calls(page, 'acquire')) == 2 and await disk_doc_title(page, 1) == 'Three')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
-             scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height]
+             scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
+             scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
+             scenario_acquire_newer_version, scenario_lost_via_state, scenario_kept_aside, scenario_last_error, scenario_german_task2,
+             scenario_view_write_newer_on_disk, scenario_cancel_followups, scenario_background_writes_wait,
+             scenario_takeover_layer_removed, scenario_sync_read_before_writes, scenario_unanswered_backoff]
 
 
 async def main():
+    import sys
+    only = sys.argv[1:]
     async with async_playwright() as p:
         for scenario in SCENARIOS:
+            if only and not any(o in scenario.__name__ for o in only):
+                continue
             print(f"--- {scenario.__name__}")
             await scenario(p)
 
