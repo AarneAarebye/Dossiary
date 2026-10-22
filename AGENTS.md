@@ -1,0 +1,4490 @@
+# AGENTS.md
+
+Guidance for coding agents (Claude Code and others) when working in this repository.
+
+## What this project is
+
+A single-file, local-first, browser-based document archive app
+(`dossiary.html`). No server, no backend, no build step, no
+third-party install — open the file in Chrome or Edge and it reads/writes a
+folder you choose directly, via the File System Access API. Data lives in a
+SQLite database (`library.sqlite`, read/written via sql.js — SQLite compiled
+to WebAssembly) plus a `files/` folder, both inside the library folder the
+person picks.
+
+This project is a spinoff of
+[`LibraryLifeboat`](https://github.com/AarneAarebye/LibraryLifeboat):
+that repo's `migrate_to_new_library.py` produces the `library.sqlite` schema
+this app expects, as a one-time conversion from a discontinued Mariner
+Paperless library. But this app itself has no Mariner-specific logic or
+dependency — don't reintroduce Core Data / `.paperless` package assumptions
+here. If a change would only make sense for Mariner-migrated data, it
+probably belongs in the other repo instead.
+
+## Repository layout
+
+```
+dossiary.html            The entire app (single file: HTML + CSS + JS)
+scan_watch.py            Standalone watched-folder helper -- see its own note below
+packaging/macos/         Dossiary.app launcher (AppleScript) and its build
+                          script, build-launcher.sh -- see the spec
+                          docs/superpowers/specs/2026-10-15-applications-folder-layout-design.md
+README.md                Usage docs, schema, and known limitations
+README.de.md             German translation of README.md
+USER_GUIDE.md            Non-technical beginner guide, linked from README.md
+USER_GUIDE.de.md         German translation of USER_GUIDE.md
+USER_GUIDE.es.md         Spanish translation of USER_GUIDE.md
+USER_GUIDE.fr.md         French translation of USER_GUIDE.md
+USER_GUIDE.zh-Hans.md    Simplified Chinese translation of USER_GUIDE.md
+USER_GUIDE.zh-Hant.md    Traditional Chinese translation of USER_GUIDE.md,
+                          derived from USER_GUIDE.zh-Hans.md via OpenCC
+USER_GUIDE.hy.md         Armenian translation of USER_GUIDE.md
+docs/user-guide/         Screenshots for each USER_GUIDE.<lang>.md, one
+                          subfolder per language (en/, de/, es/, fr/,
+                          zh-Hans/, zh-Hant/, hy/), plus capture.py and the
+                          fabricated demo/ images it captures from -- see
+                          that section's own note below
+MIGRATION.md             Migrating from Mariner Paperless, linked from README.md
+MIGRATION.de.md          German translation of MIGRATION.md
+AGENTS.md                This file (tool-agnostic agent guidance)
+CLAUDE.md                Imports AGENTS.md
+CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
+LICENSE                  MIT
+.gitignore               Excludes personal library data from commits
+tests/                   Playwright regression suite (105 scripts) + shared
+                          browser-API stub — see "How this was tested" below
+```
+
+There's intentionally no `package.json`, bundler, or build step for the app
+itself. Keep `dossiary.html` that way — the whole point is "download
+one file, open it, it works." External libraries (sql.js, Tesseract.js) are
+loaded from CDN at runtime via `<script src>`, not vendored or bundled.
+`scan_watch.py` is the one deliberate exception to "single file" in this
+repo: it's a separate, optional, stdlib-only companion script that never
+gets loaded by the app and has no effect if you never run it — see its own
+architecture note below for why it exists outside `dossiary.html`
+rather than being folded into it.
+
+## User Guide vs. README
+
+`USER_GUIDE.md`/`USER_GUIDE.de.md` exist because `README.md`/`README.de.md`
+are, deliberately, written for people who want to understand the
+internals (schema, architecture, testing, known limitations) — not for
+someone who just wants to start using the app. That's the right audience
+for the README (a technical document for a technical project), but it
+left no on-ramp for a non-technical first-time user, so the User Guide
+was added as a separate, narrower document rather than trying to soften
+the README's own tone in place. The two READMEs gained a one-line pointer
+near the top rather than being restructured, so neither document's own
+scope changed.
+
+The User Guide's scope is deliberately narrow: a first-time user starting
+from physical paper with no existing digital archive, covering the core
+capture/find/Inbox loop plus a brief, screenshot-light tour of
+Collections/Reports/Archive/custom fields — not a Mariner Paperless
+migration guide (that stays `MIGRATION.md`'s job, linked from the User
+Guide's own "Where to go next" section) and not a replacement for the
+README's own feature-by-feature depth.
+
+**Screenshots are static PNGs under `docs/user-guide/en/` and
+`docs/user-guide/de/`, each guide showing its own language's UI** (the
+German guide's screenshots show the German-toggled app, not reused
+English images) — captured from a small, fabricated demo library (a
+synthetic invoice, letter, and receipt, generated as plain images with no
+real personal data) driven through the actual app via browser automation,
+toggling Dossiary's own in-app language control between passes rather
+than needing two separate app builds. `file://` pages can't be scripted
+by the browser-automation tooling used to capture them (a security
+boundary of the automation layer itself, not something particular to
+this app), so capture was done by serving the repo directory over
+`python3 -m http.server` and driving `http://localhost:<port>/dossiary.html`
+instead — the File System Access API works identically over a `localhost`
+origin, which counts as a secure context the same way `file://` does, so
+this required no code changes to test against. The native
+"choose a folder" picker can't be automated by design (same reasoning as
+this file's own "no direct scanner integration" note — a browser
+extension has no path to script a native OS dialog); a person had to
+click through it once per capture session, after which everything else
+was scripted. These screenshots are manually refreshed if the UI changes
+meaningfully — same maintenance model as any other static doc image in
+this repo, no visual-regression tooling involved.
+
+**Practical notes from the v1.27 recapture (Claude in Chrome, all six
+languages in one session)**, worth reusing next time: serve a scratch
+folder holding a copy of `dossiary.html` *plus* the demo images on one
+localhost origin, so in-page JavaScript can `fetch()` a demo image and
+hand it to `#file-input` via `DataTransfer` (the browser tool can't drive
+a native file chooser either); inject `translate="no"`/`<meta
+name="google" content="notranslate">` after each page load, or Chrome's
+own page translator kicks in once the page language changes and mangles
+the UI (it rewrote "DOSSIERS" to "FILES" and the language menu's native
+names); hide `.scanline` so the sweeping line doesn't cross controls;
+blank `#status` for shots whose last status message doesn't retranslate;
+and switch language via `#lang-select`'s `change` event between shots,
+reopening any modal afterward, since the language switch is blocked while
+a modal is open. **The English guide has 12 images, the six translated
+guides 9, with their own numbering** (`02-table`, `03-capture-blank`, …,
+`09-reports` — no empty-folder, library-ready, or collections images),
+so a capture has to be saved under each guide's own filenames, not
+English's.
+
+**Since v1.37 the capture is a script: `docs/user-guide/capture.py`**
+(Playwright for Python, headless, no browser extension and no person
+clicking a picker). It serves the repo on `localhost:8833` (bound to
+127.0.0.1 only: on all interfaces the macOS firewall silently dropped the
+connections), blocks the scan-helper ports 8765/8766 so a scanix500
+running on the machine can't change the toolbar in the shots, and replaces
+only `showDirectoryPicker()`, which returns a `Documents` folder in the
+origin-private file system (OPFS) -- a real `FileSystemDirectoryHandle`,
+so the real app code runs unchanged against real sql.js, Tesseract.js and
+pdf.js from the CDN. Each language gets a fresh browser context (its
+`localStorage` language preset, a matching `locale` so date inputs format
+the same way), creates "<My Documents>.dossiary" through the real
+new-library form, adds Amount/Currency to the three demo types via
+`__DEBUG_dbRun()` and reopens the library, captures the three fabricated
+demo documents from `docs/user-guide/demo/` with real OCR, stages the
+inbox scan by writing into OPFS, and saves every shot under that guide's
+own filenames. `python3 docs/user-guide/capture.py all` rewrites all 66
+images; pass `en,de` to limit languages, or an output folder to review
+first. Bump `APP_VERSION` before capturing for a release, since the
+footer shows it.
+
+**This same per-language screenshot pattern extended to four more guides**
+once Spanish, French, and both Chinese scripts joined English/German as UI
+languages — `USER_GUIDE.es.md`, `USER_GUIDE.fr.md`, `USER_GUIDE.zh-Hans.md`,
+and `USER_GUIDE.zh-Hant.md`, each showing its own language's UI under its
+own `docs/user-guide/<lang>/` folder, captured the same server-and-toggle
+way described above. The two Chinese guides in particular get fully
+independent screenshot sets rather than sharing one — see the OpenCC-
+derivation note under "UI language support" further below for why a
+`zh-Hans` screenshot can't stand in for `zh-Hant`, or vice versa, the way
+it safely could between, say, two regional variants of the same script.
+
+**The footer's own "User Guide" link (`#user-guide-link`,
+`updateUserGuideLink()`) resolves to a per-language file via a second,
+deliberately separate array — `USER_GUIDE_LANGS`, currently `['de', 'es',
+'fr', 'zh-Hans', 'zh-Hant', 'hy']`** — not `SUPPORTED_LANGS` itself.
+`userGuideUrl()` appends `.${currentLang}` to the linked filename only
+when `currentLang` is in `USER_GUIDE_LANGS`; otherwise the link points at
+plain `USER_GUIDE.md` (English, suffix-less, matching the file-naming
+convention every other translated doc in this repo already uses —
+`README.de.md`, `MIGRATION.de.md`, etc.). The two arrays are kept
+separate on purpose: `SUPPORTED_LANGS` is "languages the *app's UI* can
+render in," `USER_GUIDE_LANGS` is "languages that additionally have their
+*own guide file* to link to" — a UI language could in principle ship
+before its guide does (or a guide could theoretically lag behind, if one
+were ever retired or delayed), and the fallback exists specifically to
+keep the footer link never broken in that gap, rather than assuming the
+two lists always match. With all four new guides landing in the same
+project that added their languages, there's no currently-live language
+that actually falls into the fallback case today — but the fallback
+branch is still real, exercised code (`tests/test_i18n.py`'s own coverage
+of the footer link), not dead weight to prune, since a future language
+added with its guide following in a later change would hit it again.
+
+## Versioning
+
+See the `cutting-a-release` skill (`.claude/skills/cutting-a-release/SKILL.md`)
+for the version-sync convention between `dossiary.html`/`scan_watch.py` and
+this repo's git tags.
+
+## Architecture notes
+
+- **`<!DOCTYPE html>` and `<meta charset="UTF-8">` at the very top are
+  load-bearing, not boilerplate** — don't remove them thinking they're
+  unnecessary for a file that isn't a "real" full HTML document. Without
+  the DOCTYPE, the browser renders in quirks mode, which has an obscure
+  legacy behavior where `<table>` elements don't inherit `color` from
+  ancestors — this made every table cell render invisible (black text on
+  the dark background) until it was diagnosed and fixed. Without the
+  charset declaration, special characters (the footer's `©`/`·`, the
+  `＋`/`✕` used elsewhere in the UI) rely on browser encoding-sniffing
+  instead of a guarantee. Both bugs are the kind that "work fine" in quick
+  testing and then fail unpredictably for someone else — keep both lines.
+  **`<html translate="no">` and `<meta name="google" content="notranslate">`
+  right after them are load-bearing too**: the app translates itself, and
+  without them Chrome's own page translator kicks in as soon as the UI
+  language changes and machine-translates the page on top of it
+  ("DOSSIERS" became "FILES", the language menu's native names became
+  "German"/"Spanish").
+- **The status line retranslates on a language change via a remembered
+  *builder*, not a key** (`setStatusLive(build, kind)`, `lastStatusBuild`;
+  `setStatusT(key, params, kind)` is the one-key shorthand). Composite
+  messages -- several `t()` results joined, like the Inbox/drag-and-drop
+  "Added N documents… N skipped as duplicates…" reports -- pass their own
+  builder closure so they retranslate too; they used to go through plain
+  `setStatus()` and stayed in the old language. Plain `setStatus()` is now
+  only for clearing the line.
+- **`.table-wrap` is a deliberate, bounded scroll container** (`overflow:auto`
+  + `max-height:calc(100vh - Xpx)`, `X` now nav-style- and footer-dependent —
+  see below), not just "the table with horizontal scroll" it looks like at a
+  glance. This exists specifically so `thead th`'s `position:sticky; top:0;`
+  has something correct to stick to. The original version only had
+  `overflow-x:auto` (no `overflow-y` set at all) — which looks harmless, but
+  per the CSS Overflow spec, if one axis is anything other than `visible` and
+  the other is left as `visible`, the browser silently forces the `visible`
+  one to compute as `auto` too. That turned `.table-wrap` into an unintended
+  vertical scroll container, which broke the sticky header — it stuck to the
+  top of `.table-wrap`'s own (never-scrolling, since the *page* was
+  scrolling instead) box rather than the viewport, so it just scrolled away
+  like nothing was sticky at all. Setting `overflow-y: visible` explicitly
+  does **not** fix this — the spec doesn't allow "one visible, one not" as a
+  computed combination, so the browser overrides it back to `auto`
+  regardless of what's literally written. The actual fix was to stop
+  fighting that rule and lean into it: make `.table-wrap` an intentional,
+  bounded scroll container for both axes, so sticky has exactly one clear,
+  correctly-scrolling ancestor. **`X` is `414` by default (top-tab nav),
+  `374` with `.nav-style-sidebar`, `488` with `.bulk-bar-visible`, and `448`
+  with both** (see the "Top-level nav" and "Collections" notes below for the
+  nav-style/bulk-bar dimensions) — the bulk-action bar adds its own
+  **74px** on desktop (`488 - 414 = 74`, `448 - 374 = 74`) and **102px** on
+  mobile (`494 - 392 = 102`, `518 - 416 = 102`) whenever any row is
+  selected, regardless of nav style — derivable directly from the constants
+  quoted here and in the mobile note below, not a separately-measured
+  figure. **These four desktop numbers were bumped a second time (from
+  `364`/`370`/`438`/`444` to `410`/`370`/`484`/`444`) by the Amount-range/
+  Currency-filter branch**,
+  and the relationship between the tabs and sidebar pair is no longer the
+  simple "tab strip sits above `.table-wrap`, adding real height; sidebar
+  sits beside it, adding none" story the original numbers told. That
+  branch's new toolbar controls can push `.toolbar` onto an extra wrapped
+  row at certain viewport widths, and which widths trigger that differs
+  between the two nav styles (tabs' toolbar spans the full content width;
+  sidebar's is squeezed narrower by the sidebar itself, so it wraps at
+  different breakpoints) — so each nav style's pair of constants is now
+  independently calibrated to its own worst-case width across a
+  700-1600px sweep (`getBoundingClientRect()` on `#table-wrap` and
+  `footer`, same 60-document seed and methodology as always), not derived
+  from the other by a fixed structural offset. It happened that tabs'
+  worst case (an extra wrapped row appearing only around 1000-1100px,
+  absent at other tabs widths) needed a bigger bump than sidebar's did
+  this round, landing tabs' numbers above sidebar's again — but that's
+  incidental to where each style's own toolbar happens to wrap this time,
+  not a re-assertion of the old structural rule; a future toolbar change
+  could easily flip it back. **These four desktop numbers were bumped a
+  third time (from `410`/`370`/`484`/`444` to the current
+  `414`/`374`/`488`/`448` — a uniform +4px across all four) by the
+  reminders feature's own toolbar button**: Task 6's new "🔔 Check
+  reminders" button (see the reminder-type custom fields note further
+  below) pushed `.toolbar` onto an extra wrapped row at two more
+  nav-style-specific desktop widths (~1050-1100px for tabs, ~1280-1350px
+  for sidebar), breaking the sticky-header calibration by exactly 2px at
+  each — the same class of regression the Amount-range/Currency-filter
+  branch caused above, just from one more toolbar button crossing the
+  same wrapping threshold. Re-verified the same empirical way as every
+  prior bump: worst-case gap for every nav-style/bulk-bar combination went
+  from `-3.0px` (a real overlap) back to `+1.0px` (just past the `-2px`
+  accepted bound, not a large overshoot). Sidebar mode is left with
+  roughly `50px` of
+  known, accepted dead space at viewport widths `≥1440px` (up from the
+  `46px` this note previously quoted, by the same uniform +4px this
+  round's bump added — the underlying worst-case width didn't move, so
+  the overshoot at the wide end grew by exactly the same amount as the
+  constant itself did) — its own
+  worst-case width is narrower than that, so the constant that closes the
+  worst case necessarily overshoots at the wide end — deliberately not
+  tightened further, per the "accept extra gap, never accept overlap"
+  principle repeated throughout this note: the potential savings were
+  small relative to the risk of reopening a real overlap at a
+  narrower width. **A fourth bump was tried, then reverted, over the
+  Scan/Scan Multi toolbar buttons — worth recording in full, since it's
+  the one case in this note's history where the "just bump the constants"
+  playbook turned out to be the wrong fix.** Those two new buttons (see
+  the scanix500 HTTP-bridge spec under `docs/superpowers/`) pushed
+  `.toolbar` onto an extra wrapped row across a noticeably wider
+  tabs-mode desktop band than any prior bump — `test_footer_pin.py`'s own
+  fixed 720px-viewport sweep (800/1000/1100/1280/1440px) reported a real
+  `AssertionError` at exactly 1000px (`nav=tabs`, both bulk-bar states,
+  gap `-43.0px`, far past the accepted `-2px` bound). A first pass
+  applied the same uniform-bump playbook every prior round in this note
+  used (`414`/`374`/`488`/`448` → `456`/`416`/`530`/`490`, +42px across
+  all four, chasing a finer-swept worst case of `-45.0px`) and it did
+  make the suite pass — but a follow-up check using
+  `measure_last_row_not_clipped()` (the real, content-based check this
+  file's own "in-between width band" section already relies on, rather
+  than the coarser `measure()` box-edge proxy) across the *entire*
+  700-1600px range, both nav styles, both bulk-bar states, found the real
+  last table row was **never** actually clipped behind the footer
+  anywhere in that sweep, even against the *original*, never-bumped
+  constants. The `-43px`/`-45px` `measure()` was reporting was the same
+  "`.table-wrap`'s own generous `70px` padding-bottom absorbs the
+  difference" artifact this note's "in-between width band" section
+  already documents — just larger this time because the two new buttons
+  widened the width band where the toolbar wraps onto extra rows, pushing
+  that band out past the `900px` width `test_footer_pin.py`'s own
+  `tabs_tight` flag assumed was safely past the artifact zone. **The real
+  fix was correcting that stale threshold, not spending table height on a
+  CSS bump the actual content never needed.** A fresh 700-1600px sweep
+  (20px steps) against the original, un-bumped constants found the
+  box-edge proxy's own gap only turns reliably non-negative starting at
+  1020px for tabs (sidebar's own transition, 1240px, hadn't moved past
+  its existing 1280px threshold at all) — `test_footer_pin.py`'s
+  `tabs_tight` flag was moved from `width >= 900` to `width >= 1050`
+  (~30px of margin above the measured 1020px transition; `sidebar_tight`
+  left unchanged at `1280`), the CSS bump was reverted back to
+  `414`/`374`/`488`/`448`, and the full sweep re-verified green against
+  *both* changes together — including the 1000px-tabs case that
+  originally failed, which the corrected threshold now correctly routes
+  through the real-content check instead of the stale proxy. **One
+  genuine implementation slip surfaced while reverting the bump, worth
+  keeping as institutional memory**: a blind find-and-replace on the
+  pixel values (`456`→`414`, `416`→`374`, `530`→`488`, `490`→`448`)
+  silently corrupted the *mobile* breakpoint's own, entirely unrelated
+  `416px` constant (`nav-style-sidebar`'s mobile `bulkbar=hidden` value,
+  never touched by the desktop bump in the first place) purely because it
+  happened to share a literal numeric value with one of the desktop
+  constants being reverted — caught immediately by a resulting mobile
+  320px test failure that had no business appearing from a desktop-only
+  change, fixed by hand, and confirmed independently correct once the
+  full 67-file suite went green again. The lesson: even a numeric,
+  seemingly mechanical revert needs to be scoped to the right selectors,
+  not just the right numbers — two CSS rules can share a literal value by
+  pure coincidence. `test_collections.py`'s own Scenario 30 calibration
+  check and `test_detail_panel.py`'s full suite (the panel reuses these
+  same four constants — see its own paragraph further below) were
+  re-verified passing against the final, reverted-and-corrected state,
+  not just `test_footer_pin.py` alone. **The same thing happened again
+  with the "💾 Storage stats" toolbar button, and got the same fix**: it
+  widened the wrap band once more, so `test_footer_pin.py` failed at
+  1100px (tabs) and `test_collections.py`'s Scenario 30 at 1280px
+  (sidebar), both at the proxy's `-48px`. A fresh 700-1600px sweep (20px
+  steps, both nav styles, both bulk-bar states) found the real last row
+  never clipped anywhere (`<= -4px`), while the proxy only turns reliable
+  from 1160px (tabs) / 1380px (sidebar) — so `tabs_tight` moved
+  `1050`→`1190`, `sidebar_tight` `1280`→`1410`, Scenario 30 now runs at
+  1440x720 instead of 1280x720, and the four CSS constants stayed
+  untouched. The "🛠 Tools" dropdown (see its own note below) and the
+  header's "⇄ Switch library" link moved five occasional-use buttons off
+  the toolbar, which shortened it by a row at
+  most desktop widths -- new occasional actions belong in that menu, not
+  on the toolbar. Expect this to recur with every new toolbar button; re-run
+  that sweep rather than bumping the constants. **Since the
+  footer became fixed, permanently-visible chrome (`position: fixed; bottom:
+  0;`, see the footer's own note elsewhere in this file), all four numbers
+  above also include its rendered height (62px at normal widths)** — the
+  footer now consumes part of this budget exactly the way the header/nav/
+  toolbar/bulk-bar already did. **At the app's one mobile breakpoint
+  (`max-width: 640px`) there are four further `.table-wrap` max-height
+  overrides scoped to that media query, and their constants (`392`/`416`/
+  `494`/`518`) are NOT simply the four desktop base numbers plus a mobile
+  footer-height delta** — an earlier attempt at this calibration made
+  exactly that mistake (reusing `302`/`262`/`376`/`336` plus a ~97px footer
+  delta, giving `399`/`359`/`473`/`433`) and it was wrong, because it never
+  re-measured how much taller the header/toolbar/nav chrome itself renders
+  at mobile widths. The correct `392`/`416`/`494`/`518` were measured
+  as the actual combined "everything above `.table-wrap`, plus the mobile
+  footer's own height" total, directly via `getBoundingClientRect()`, not
+  derived from the desktop numbers at all. These four also use the
+  **worst-case (320px-width) measurement across the whole 320–640px
+  breakpoint range** — both the chrome height and the footer's own height
+  shrink as the viewport widens within that range, so a single constant
+  picked from the narrowest, tallest-chrome end of the range means growing
+  extra room (not overlap) toward the wider end of it — the same "accept
+  extra gap, never accept overlap" principle already established above for
+  the nav-style/bulk-bar desktop numbers. **Re-measured after the toolbar
+  was capped to a single horizontally-scrollable row** (see that fix's own
+  note just below): at 640px width (the wide end of the mobile range)
+  `.table-wrap` now renders at 408px tall with the tabs nav / 384px tall
+  with the sidebar nav (60-doc seed, 800px-tall viewport, both measured via
+  `getBoundingClientRect()`) — several rows' worth of real table, not the
+  ~58px/one-row sliver an earlier version of this note described against
+  the old, pre-toolbar-fix constants. The extra room toward the wide end of
+  the range is real and intentional (per the "accept extra gap, never
+  accept overlap" principle above), but no longer the "close to unusable"
+  problem it once was; the toolbar fix substantially improved this
+  specific consequence as a side effect, not just moved the number
+  slightly. A real intermediate breakpoint (or a continuous/`clamp()`-based
+  constant) would still shrink that extra room further, but it's no longer
+  a correctness or usability gap worth tracking as one. Worth keeping in
+  proportion, though: the File System Access API this whole app depends on
+  (see that note further below) isn't available on iOS Safari or Chrome
+  for Android, so this mobile breakpoint mostly matters for someone
+  narrowing a desktop browser window, not an actual phone.
+  **`.table-wrap` also has its own mobile `padding-bottom` (`32px`), and
+  CSS padding can't be compressed below its declared value by `max-height`**
+  — a box whose `max-height` computes smaller than its own padding sum
+  still renders at (at least) that padding sum, never the smaller
+  `max-height` value (confirmed directly: a minimal `overflow:auto;
+  padding-bottom:32px; max-height:6px` box renders at `32px`, not `6px`).
+  This mattered concretely for the `.bulk-bar-visible` mobile variants, so
+  `#main-layout.bulk-bar-visible .table-wrap` and
+  `#main-layout.nav-style-sidebar.bulk-bar-visible .table-wrap`'s mobile
+  rules also set `padding-bottom: 0` (overriding the general mobile
+  `32px`), removing that floor so the box can actually shrink all the way
+  down to whatever `max-height` says.
+  **The mobile calibration used to have one further, genuinely unavoidable
+  wrinkle at the single narrowest, shortest corner (320px width, ~800px-or-
+  shorter viewport height, bulk-action bar visible)**: the header+toolbar+
+  nav+bulk-bar chrome *by itself*, before `.table-wrap` rendered anything
+  at all, used to be taller (measured `723px` tabs / `747px` sidebar at
+  320px width) than the room left once the fixed footer reserved its own
+  space in a viewport that short, producing a small, structural overlap no
+  `.table-wrap` CSS alone could fix. **This corner was closed outright**
+  by capping `.toolbar` to a single horizontally-scrollable row
+  (`flex-wrap:nowrap` plus `flex-shrink:0` on its children — see the
+  `.toolbar` CSS and its own comment in `dossiary.html`'s mobile media
+  query) rather than by further `.table-wrap` tuning: `.toolbar` wrapping
+  onto many rows at narrow widths, not the bulk-action bar, was the real
+  driver of the old worst-case mobile chrome height, and pinning it to one
+  row shrank that chrome enough that the corner no longer occurs — verified
+  empirically (see below) at `gap=0.0px`, not overlapping, across all four
+  nav-style × bulk-bar combinations at 320px width. Worth keeping as
+  institutional memory in case a future change to the toolbar's contents
+  (e.g. adding enough new buttons that even a single scrollable row grows
+  taller than expected) reintroduces tall chrome here and this needs
+  revisiting. **The real trade-off of this fix**: at narrow widths, toolbar
+  controls are no longer all visible at once the way they were when the
+  row wrapped onto several lines — they're still reachable, but only via
+  horizontal scroll, with no visible scroll affordance on platforms that
+  use overlay scrollbars (e.g. macOS), so a person may not immediately
+  realize there's more toolbar to scroll to.
+  All of these numbers were verified empirically
+  (`getBoundingClientRect()` on `#table-wrap` and `footer`, confirming
+  `#table-wrap`'s rendered bottom edge lands exactly at the *footer's* top
+  edge in every case where there's actually enough room for it to) — worth
+  restating since that same class of check has already caught real drift
+  more than once: the *sidebar* nav-style's inherited value silently going
+  stale (real value `256`, not the `230` a straight "no extra height, so
+  reuse the old number unchanged" assumption would have kept) from
+  unrelated header/toolbar changes made well before the nav existed; this
+  file's own `295`/`256` figures, quoted in an earlier version of this
+  note, having drifted from the code's actual `302`/`262` by the time the
+  footer-pinning feature touched this area; and the mobile constants
+  described just above being derived from the wrong base entirely on the
+  first attempt at this same feature, only caught by re-measuring rather
+  than trusting the earlier arithmetic. If you ever adjust the
+  header/toolbar/nav/footer layout, recalibrate the same way — verify
+  empirically, e.g. checking `getBoundingClientRect()` on `thead th`
+  before/after a large internal scroll stays roughly constant, or that
+  `#table-wrap`'s own bottom edge lands at the fixed footer's top edge —
+  rather than assuming a nearby value, or an old comment's value, is still
+  correct.
+- **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
+  link/modal) lists exactly the CDN dependencies this file actually loads
+  (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, `ensurePdfLib()`,
+  `ensureQrCode()`,
+  plus sql.js loaded unconditionally for the database itself) — keep it in sync if a
+  dependency is added, removed, or swapped. The license for each was
+  verified directly against its own repo's `LICENSE` file when this was
+  written (sql.js MIT, Tesseract.js Apache-2.0, jsPDF MIT, pdf.js
+  Apache-2.0, pdf-lib MIT -- checked against Hopding/pdf-lib's LICENSE.md,
+  qrcode-generator MIT -- checked against kazuhikoarase/qrcode-generator's
+  LICENSE), not assumed from general familiarity — if any of these
+  ever change their license, or a new dependency gets added, verify the
+  same way rather than guessing; this is exactly the kind of detail
+  that's easy to get subtly wrong from memory.
+- **File System Access API** (`showDirectoryPicker({mode: 'readwrite'})`)
+  gives a `FileSystemDirectoryHandle` for the chosen library folder. This
+  only works in a real top-level page — it's blocked inside cross-origin
+  iframes (e.g. an embedded chat preview pane), which is why the README
+  explicitly tells people to open the file directly rather than view it in
+  an embedded frame. Don't "fix" a report of this failing by changing app
+  code; it's a browser security restriction, not a bug, and the fix is
+  "open the file outside the iframe."
+- **sql.js** is used with two calling conventions, kept consistent
+  throughout: `db.exec(sql)` for parameter-free `SELECT ... FROM <table>`
+  reads (no `WHERE` clauses are used anywhere — the whole table is read
+  into JS and filtered/sorted client-side), and `db.run(sql, params)` with
+  `?` placeholders for all `INSERT`s. Don't introduce `db.prepare()`/bind
+  patterns or parameterized `SELECT`s without a reason; the simpler
+  convention has been deliberately kept uniform.
+- **IDs are assigned in JS, not via `AUTOINCREMENT`/`last_insert_rowid()`.**
+  `nextDocId`/`nextTagId` counters are initialized from `MAX(id)+1` when a
+  library is opened, then incremented locally on each insert, and the
+  explicit id is passed into the `INSERT` statement. This mirrors
+  `migrate_to_new_library.py`'s approach in the sibling repo — keep both
+  consistent if either changes, since a person could reasonably use both
+  tools against the same library lineage.
+- **Stable uids** (`uid TEXT` on `documents`, `tags`, `people`, `fields`,
+  `collections`, `collection_folders`, `document_splits`, `reminder_snoozes`;
+  `derivedUid()`, `newUid()`, `migrateStableUids()`; spec
+  `docs/superpowers/specs/2026-10-22-stable-uids-design.md`) give every record
+  an identity that survives two Macs editing copies of one library, where the
+  integer ids above collide. Existing rows get a UUID v5 of `<table>:<key>`
+  (`documents:12`, `document_splits:12:0`, `reminder_snoozes:12:7`) in
+  `DOSSIARY_UID_NAMESPACE`, so every copy computes the same value; new rows
+  get `crypto.randomUUID()` (`newUid()`) in every INSERT -- except the built-in
+  fields the migrations add, which get their derived uid, and reminder snoozes,
+  always derived since the (document, field) pair is their identity. Export as
+  library and "Copy the setup of" keep a row's uid (`withUid()` selects it only
+  when the source has the column). `migrateStableUids()` runs on every open, after
+  the other migrations, filling any missing uid with its derived value --
+  also a row an older Dossiary on another Mac wrote without one -- and sets
+  the `stable_uids_migrated` marker. **The namespace never changes**: a new
+  one would give every existing row a different id. Integer ids stay the
+  keys everything references; nothing looks rows up by uid yet. Saving the
+  Edit form rewrites a document's split lines but keeps each kept position's
+  uid. Accepted gap: an *older* Dossiary that deletes a tag/person and reuses
+  its integer id leaves a row the next open derives the old uid for -- only
+  this version's own inserts are guaranteed distinct.
+- **Tag deduplication** happens via an in-memory `tagNameToId` map built at
+  load time and updated on every new tag insert — not a `SELECT ... WHERE
+  name = ?` round-trip per tag. This assumes single-writer, single-tab
+  usage (true for this app's design); don't add multi-tab sync assumptions
+  without addressing that this map can go stale across tabs.
+- **People is a real, generic `fields` row now (`type: 'person'`), not a
+  hardcoded sentinel** — `migratePeopleToGenericField()` promoted it the
+  same way `migrateSentinelFieldsToGeneric()` promoted Payment method/
+  Amount/Currency (see that note below), and for the same underlying
+  reason: what used to be a special case turned out to generalize cleanly
+  once there was a real second use for it — specifically, wanting
+  independent multi-valued person-list fields beyond just "People" (e.g.
+  "Author", "Collaborator"). A document can relate to more than one person
+  **per person-type field**, backed by `document_field_people
+  (document_id, field_id, person_id)` — a per-field generalization of the
+  old singleton `document_people (document_id, person_id)`, which is now
+  vestigial (see the migration note below for why it's kept, never
+  dropped). `personNameToId`/the `people` table itself are unchanged and
+  still shared globally across every person-type field — "Arne" as an
+  Author and "Arne" in People are the same person, so autocomplete and
+  search both work across all of them, not just whichever field a name
+  first appeared in. Comma-separated input, found-or-created by name on
+  save, same as it always worked for the one People field — multi-valued
+  "&"-splitting (e.g. "Arne & Jana") only ever happened once, historically,
+  in `migrate_to_new_library.py`'s own Python-side migration; this app's UI
+  has only ever used commas. Don't regress any of this to a single
+  `person TEXT` column on `documents`; an earlier version of this app did
+  that for People specifically, and it was wrong for the same reason it
+  would be wrong for Author or Collaborator now: Mariner's own source data
+  has multi-person values, and a single string field makes "find every
+  document Arne is part of" impossible for anything he shares with someone
+  else. `renderPersonFieldHtml()` (generalized from a People-only
+  `renderPeopleFieldHtml()`) follows `renderGenericFieldHtml()`'s id/
+  data-attribute conventions exactly (`${prefix}-field-${field.id}`,
+  `data-field-id`), so the generic clear-button wiring, `getShownFieldIds()`,
+  and orphaned-field marking in `applyDynamicFieldsForType()` all apply to
+  a person-type field automatically, with zero special-casing needed
+  anywhere else in the form-handling code. People keeps its own
+  permanently-fixed table column and filter dropdown exactly as before (it
+  gets no Column checkbox, and `dynamicColumnDefs()` skips it by name even
+  if its flag were set). **Every other person-type field (Author,
+  Collaborator, ...) can be a table column and filter** via the ordinary
+  `show_as_column` flag -- Field Settings offers it the Column checkbox
+  (never Autocomplete, which stays text-only). `dynamicColumnDefs()` carries
+  each field's `type`, so the table cell renders its names as pills, the
+  filter lists each distinct name once (`personNamesFor(d, name)`, the one
+  reader of `d.personFieldValues`), and `matchesCriteria()` treats a
+  person-type dynamic filter as "includes this name", with "— Not set —"
+  meaning no names at all -- the same semantics as the fixed People filter.
+  The type is resolved by field name from `fieldDefs` there, since saved
+  Smart Collection criteria store only `{label, value}`, so an author
+  filter saved as a Smart Collection keeps working. Sorting compares the
+  joined names; Reports already had a multi-valued breakdown path for
+  person-type fields, which now simply gets reached once the column is on.
+- **`subcategory` is a flat, independent field, not nested under
+  `category`** — despite the name, and despite what a naive redesign might
+  assume. This matches Mariner's own schema (`ZSUBCATEGORY` has no foreign
+  key to `ZCATEGORY`) and the real data (the same subcategory name appears
+  under different categories on different documents). Don't build a
+  category → subcategory cascading dropdown or similar hierarchy UI on the
+  assumption that one is scoped to the other; it isn't, in the source data
+  or here.
+- **Custom fields (`fields` + `document_field_values`) are fully generic —
+  not a fixed set of hardcoded columns.** This replaced an earlier design
+  that had dedicated `organization`/`organization_to` columns on
+  `documents`; that approach didn't scale once it became clear Mariner
+  libraries can have 15+ real custom fields (Organization, Year, Date
+  From, Paid, Reimbursable, ...), not just those two. `fields.type` is one
+  of `'text'`/`'number'`/`'date'`/`'checkbox'`, confirmed empirically
+  against real `ZCUSTOMRECEIPTITEM` data (see `migrate_to_new_library.py`'s
+  own notes for how) — `renderGenericFieldHtml()` picks the input type
+  from this, and `formatCustomFieldValue()` formats stored values for
+  display accordingly (checkbox `'1'`/`'0'` → `Yes`/`No`, date → a
+  readable date rather than the raw ISO string). `fields` also has
+  `show_as_column`/`autocomplete` capability flags (0/1) — see the
+  generalized column/filter/sort/autocomplete system and per-field
+  capability checkboxes described further below.
+  **Do not apply people-style `&`-splitting to generic field values.**
+  `people` is genuinely multi-valued in Mariner's own data (`"Arne &
+  Jana"` means two people); most other fields aren't — real values like
+  `"Dres. Ernestus & Cop, Sandhausen"` legitimately contain `&` as part of
+  one name, and splitting would corrupt them. If a future field needs
+  backfilling, check its actual `&`-containing values against real data
+  before assuming either pattern.
+- **Document previews** (`generateThumbnail()`, `writeThumbnail()`,
+  `regenerateThumbnail()`) are stored as PNG files in a `thumbnails/`
+  folder at the library root (`thumbnails/<id>.png`), not as BLOBs in
+  `library.sqlite` — deliberately, to keep the database small and mirror
+  the `files/`/`thumbnails/` split Mariner itself used. `migrate_to_new_library.py`
+  populates `thumbnail_path` by copying Mariner's own `ZTHUMBNAILPATH` file
+  directly during migration — it does **not** render anything client-side
+  for migrated documents, and this app doesn't either unless someone
+  explicitly clicks "Generate"/"Regenerate" preview. Don't add automatic
+  bulk preview generation on library open; across several libraries with
+  potentially thousands of documents each, silently rendering every
+  missing preview on open would be slow and surprising. `generateThumbnail()`
+  handles two input types only: `image/*` (direct canvas downscale) and
+  `application/pdf` (first page rendered via pdf.js) — anything else
+  returns `null`, which is an expected, non-error outcome, not something
+  to add more format branches for without being asked. The pdf.js main
+  library and its worker script **must be the exact same pinned CDN
+  version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
+  mismatch, so don't update one without the other.
+  **The detail panel's own display of this preview is currently hidden
+  behind `SHOW_DOCUMENT_PREVIEW` (`const`, declared right after
+  `APP_VERSION`), a hardcoded developer-facing toggle, not a user-facing
+  setting.** Off until there's a carousel/gallery-style view that would
+  make a single static thumbnail worth its 110x140px of panel space
+  again — see the `docs/superpowers/specs/2026-08-26-hide-document-preview-design.md`
+  spec for the full reasoning. It gates exactly two things: the block in
+  `openDetail()` that builds `thumbHtml` (when off, `thumbHtml` is `''`,
+  not even the "no preview yet" empty-state placeholder, since that would
+  still cost the same panel space), and the `regen-thumb` action
+  descriptor in `buildDetailActions()` (when off, it's never added to the
+  actions array, so "Generate preview"/"Regenerate preview" doesn't
+  appear in the panel — it was already `panelOnly: true`, so it was never
+  reachable from the row context menu regardless). Generation itself —
+  `generateThumbnail()`/`writeThumbnail()` on capture and Inbox-add — is
+  completely untouched by this flag and keeps running exactly as before,
+  so `thumbnail_path` stays populated for every document captured while
+  the toggle is off; reactivating the feature later needs no backfill,
+  just flipping the constant back to `true`.
+- **Dynamic per-type fields** (`typeFieldOrder`, `loadTypeFieldOrder()`,
+  `applyDynamicFieldsForType()`, `renderGenericFieldHtml()`,
+  `renderPersonFieldHtml()`) fully rebuild the capture/edit forms'
+  `dynamic-fields-f`/`dynamic-fields-e` container's HTML from scratch
+  whenever the document type changes, based on `document_type_fields` — a
+  table this app only *reads*, never writes; `migrate_to_new_library.py`
+  is the sole writer, populated by decoding Mariner's own
+  `ZDATATYPE.ZFIELDORDERARRAY` (see that script's own notes for the
+  decoding details). A document type **absent** from `document_type_fields`
+  (a brand new type, or one from a library where this wasn't tracked)
+  shows **none** of its custom fields, People included (People is a
+  plain custom field now — see its own note above) — this deliberately
+  matches Mariner's own behavior (a type shows nothing until fields are
+  explicitly assigned to it), and is not a bug to "fix" with a
+  show-everything fallback; an earlier version of this feature did exactly
+  that (with a fixed 3-field set) and it was changed on purpose once the
+  field set became fully generic and type-dependent.
+  **Known, accepted limitation:** because the container is rebuilt from
+  scratch (not just shown/hidden) on every type change, switching document
+  types mid-capture does **not** preserve anything already typed into
+  fields that get removed — this is a real regression from the old fixed
+  3-field version (which could hide-without-losing since there were only
+  ever 3 possible elements), traded off deliberately for supporting an
+  arbitrary, type-dependent field set. Don't "fix" this without a real
+  reason to invest in cross-rebuild value preservation; it wasn't judged
+  worth the complexity for how the app is actually used (pick a type near
+  the start of a capture, not partway through). The **edit** form doesn't
+  have this problem in the same way — `saveEditedDocument()` always reads
+  `d.customFields` (the document's actual persisted values) fresh on every
+  type-change re-render, not values typed during the current edit session,
+  so switching types back and forth during an edit correctly restores
+  previously-saved values for fields that reappear.
+  Saving reads the rendered form via `readDynamicFieldValues()` (skips
+  blank text/number/date fields, but always includes checkboxes — an
+  unchecked box is meaningful data, not "empty"; also skips any
+  person-type field, deferring to `readPersonFieldValues()` instead, since
+  those are multi-valued rather than a single string) and `getShownFieldIds()`
+  (every field currently rendered, regardless of value or type, needed so
+  editing correctly clears a field the person emptied out —
+  `readDynamicFieldValues()` alone can't tell "never had a value" apart
+  from "just cleared it", and person-type fields need the same treatment).
+  `readPersonFieldValues()` reads every rendered person-type field (People,
+  Author, Collaborator, ...) as `[{fieldId, names}]` — generalized from a
+  People-only `readDynamicPeopleValue()` the same way `renderPersonFieldHtml()`
+  generalized from `renderPeopleFieldHtml()`. Like any other dynamic field,
+  a given person-type field may not exist in the DOM at all if it isn't
+  configured for the current type.
+- **The capture form's date field is preset to today (`todayIsoDate()`,
+  the local day -- it used the UTC day until v1.49, so just after midnight
+  in Europe it pre-filled yesterday), but only in the capture form** — not the edit form, which correctly
+  pre-fills with the document's own existing date, a real value, not a
+  guess. The preset is intentionally visually flagged (`.field-guess`
+  class + `#f-date-hint`), cleared on the field's first `input` event,
+  because `date` is the document's own content date (e.g. an invoice
+  date), which is very often *not* today for anything that isn't
+  freshly-received mail — unlike `import_date`, which genuinely is "now"
+  and doesn't need a field or a guess at all. Don't extend this
+  preset-and-flag pattern to `import_date` (it's already correct without
+  one) or remove the visual flag thinking it's unnecessary friction — an
+  unflagged default here would be a silently wrong date more often than
+  a right one, for anyone working through a backlog of older documents.
+- **Keyboard shortcuts** (`KEYBOARD_SHORTCUTS`, `openShortcutsModal()`,
+  `markDoneAndAdvance()`, one `document` keydown listener) are aimed at
+  working through the review queue: J/K or ↓/↑ move the selection (via the
+  row's own click handler, so selection/highlight/panel stay one code
+  path), Enter/O opens the file (the panel's own `open-file` action from
+  `buildDetailActions()`), E edits, D is Done-and-next (only for a document
+  still in review -- in the Inbox the finished one leaves the list, so
+  "next" is whatever took its place), ? shows the list. Table keys never
+  fire with a dialog open, in the Reports view, with a modifier held, or
+  when focus is in a field, button or link (those keep their own
+  Enter/Space). The Edit form adds Ctrl/⌘+Enter (Save) and
+  Ctrl/⌘+Shift+Enter (Save & Done), which do work from inside its fields.
+  The list lives behind "?" rather than a footer link, since the footer's
+  height is part of `.table-wrap`'s max-height budget.
+- **Suggested values from OCR text** (`suggestFromOcrText()`,
+  `applyGuess()`, `applyOcrSuggestions()`) offer a likely date, amount
+  and currency, read from a document's OCR text, as guesses with the same
+  amber `.field-guess` look as the date preset above (plus an
+  `.ocr-guess-hint` note), cleared on first edit. **When**: in the Edit form
+  only for review-queue (`needs_review`) documents -- where fields are
+  expected to be empty; an ordinary edit never quietly gains values -- and
+  re-applied after a type change rebuilds the dynamic fields; and right
+  after OCR runs, in both capture and Edit. **Never over a real value**: a
+  guess only fills an empty field or replaces another guess (capture's
+  "today", the default-currency guess, whose note it hides). Kept guesses
+  save like typed values, the same as the date preset. **Deliberately
+  conservative parsing**: the first plausible date in the text (ISO,
+  `dd.mm.yyyy`/`yy`, `dd/mm/yyyy` -- day-first unless a part is > 12 or the
+  UI language is English -- and de/en/fr/es/hy month names (Armenian also in its official
+  `2026 թ. հոկտեմբերի 17` order), impossible dates
+  skipped); an amount only from a line naming a total ("Gesamt", "Summe",
+  "Total", "Betrag", "Amount due", "Ընդամենը", ... or the line after it, since OCR
+  often splits label and figure), the largest such figure, with
+  `1.234,56`/`1,234.56` both understood; the currency from that figure or
+  the text, written the way the library already writes it (`€` vs `EUR`,
+  `currencyInLibraryStyle()`). No sender/organization: too unreliable from
+  free text. `window.__DEBUG_suggestFromOcrText` exposes the parser to
+  `tests/test_ocr_suggestions.py`.
+- **Autofill from earlier documents** (`findEarlierDocByTitle()`,
+  `applyHistoryAutofill()`), Mariner Paperless's own "Auto fill receipt
+  information from previous files": changing the Title to one an earlier,
+  non-deleted document has (compared trimmed and case-insensitively, the
+  way a merchant or sender name repeats) fills the empty fields from the
+  most recently imported match -- Document Type first, via a real `change`
+  event so the type's fields exist, then Category, Subcategory, Payment
+  method and Currency -- each marked as a guess naming the source
+  (`autofillHint`). Only fields that genuinely repeat per sender: never
+  amounts, dates, notes or tags. Same scope rule as the OCR suggestions:
+  always in capture (where the untouched default document type counts as
+  replaceable), and in Edit only for review-queue documents. Both features
+  share `applyGuess()`/`markGuess()`; a capture type change re-applies the
+  OCR suggestions its rebuild would otherwise drop.
+- **`.field input[type=date]{ color-scheme:dark; }`** exists for the same
+  reason the DOCTYPE/quirks-mode note above does — an obscure default that
+  "works fine" until someone actually looks closely. Without it, Chrome/
+  Edge render the native calendar-picker icon (and the picker popup itself)
+  using their light-mode default styling, since the browser has no way to
+  know this page is dark themed otherwise — nothing else in this file sets
+  `color-scheme` anywhere. The result is a dark-gray icon sitting directly
+  on the date field's own dark `--ink-2` background: technically present,
+  but close to invisible, reported as "the Date pickers are barely
+  visible." `color-scheme: dark` tells the browser to draw its native
+  form-control chrome (this icon, and the day-grid/month/year picker that
+  opens from it) in dark mode instead, which is enough on its own — no
+  `::-webkit-calendar-picker-indicator` filter hack needed. Scoped to
+  `input[type=date]` specifically, not applied page-wide via `:root`; this
+  app's dark theme is already handled by explicit CSS custom properties
+  everywhere else, so a global `color-scheme: dark` would only be doing
+  something for the handful of native browser controls (this icon, plus
+  scrollbars) that don't already read from `--ink`/`--text` — narrower is
+  safer than reaching for a page-wide flip that has no other purpose here.
+- **`wireClearButton(inputId, clearBtnId)`** is a small, generic helper,
+  wired to Category, Subcategory, Document Type, Payment method, People,
+  Tags, Amount, and the toolbar's own search box in both forms (`f-*`/`e-*`
+  + matching `*-clear` button) — clears an input and refocuses it,
+  dispatching both a real `input` **and** `change` event, so whatever
+  listener is already on the input fires exactly as it would from a manual
+  edit regardless of which of the two it happens to listen for (Document
+  Type's `applyDynamicFieldsForType()` listens for `change`; the search box
+  listens for `input`, so results update live while typing, not just on
+  blur — dispatching only one or the other would leave one of these two
+  silently stale after a clear). Works the same for plain fields with no
+  such listener (Amount, Category) — the dispatched events are just a
+  no-op there. The search box's clear button (`#search-clear`, wrapped in
+  the same `.field-with-clear`/`.clear-btn` markup as any other field, via
+  a dedicated `.search-wrap` class carrying the toolbar's own
+  `flex:1 1 240px` sizing since `.field-with-clear` itself has none) is
+  wired with a plain one-off `wireClearButton('search', 'search-clear')`
+  call — unlike the per-document-field ones, it isn't rebuilt per type
+  change, so it doesn't need the re-wire-after-rebuild treatment every
+  dynamic field does. **Every dynamic per-type field's clear button — text/
+  number/date/checkbox fields and person-type fields (People, Author,
+  Collaborator, ...) alike — gets re-wired the same generic way**: since
+  `dynamic-fields-f`/`dynamic-fields-e`'s whole HTML is rebuilt from
+  scratch on every document-type change (not fixed DOM elements), a single
+  `container.querySelectorAll('.clear-btn')` pass at the end of
+  `applyDynamicFieldsForType()` re-wires whatever's currently rendered,
+  regardless of field type — there's no per-field-type special-casing
+  needed here at all, and in particular no dedicated People-only re-wiring
+  path (an earlier version of this note described one; it was already
+  inaccurate even before People was generalized into a real field — the
+  generic pass has covered People the same as everything else for a
+  while). A field simply isn't in that `querySelectorAll` result at all if
+  it isn't currently rendered (not configured for the selected type), same
+  as any other dynamic field.
+- **Document Type is deliberately positioned right after the file/OCR
+  section, styled via `.field-prominent`, in both forms** — not with
+  Category, and not further down the form. This is intentional: it's the
+  one field `applyDynamicFieldsForType()` actually depends on, so putting
+  it early means the form's shape (which custom fields appear) is
+  established before someone's deep into filling out the rest, rather
+  than fields suddenly appearing below content they've already entered.
+  If you reorder the form again, keep Document Type near the top — this
+  was a deliberate UX fix, not an arbitrary ordering.
+- **Field settings modal** (`openFieldSettingsModal()`, `manage-fields-btn`
+  in the toolbar) manages `document_type_fields` directly, mirroring
+  Mariner's own Document Types / Fields / Display Fields screen: pick a
+  type (`getUsedDocumentTypes()` — union of types actually on a document
+  and types already in `typeFieldOrder`, deliberately *not* every type
+  that could theoretically exist), add/remove/reorder its fields
+  (`addFieldToType()`/`removeFieldFromType()`/`moveFieldInType()`, each
+  saving immediately via `persistTypeFieldOrder()` — delete-then-reinsert
+  for that type, not a diff). **Still deliberately doesn't create new
+  custom fields itself** — only toggles/reorders existing `fields` rows.
+  Field *creation* lives in the capture/edit forms instead (see
+  `addInlineCustomField()` below) — a version that created fields here
+  too was tried and deliberately reverted in favor of that, since it
+  didn't fix the actual reported gap (an empty library has no document
+  type to select here either, so this dialog's Fields column is stuck
+  behind the same "select a type" gate no matter what). `default_document_type`
+  (in `settings`) pre-fills `f-type` and immediately shows that type's
+  configured fields when "Add document" opens
+  (`applyDynamicFieldsForType('f', defaultDocumentType || '')` instead of
+  always starting blank).
+- **"Set up fields for this type…" in the capture and Edit forms**
+  (`#f-type-fields-btn`/`#e-type-fields-btn`, under Document Type) opens
+  Field Settings *above* the form rather than replacing it:
+  `openFieldSettingsModal({selectType, onClose})` renders into a second
+  layer, `#modal-root-over` (`modalOverRoot`), with its own
+  `fs-modal-backdrop`/`fs-modal-close-btn` ids since the form underneath
+  keeps `modal-backdrop`/`modal-close-btn`. The typed type is preselected and
+  listed even when no document has it yet (`fsExtraType`,
+  `fieldSettingsTypes()`), which the Tools-menu entry can't do for a
+  brand-new type. Escape is caught in the capture phase
+  (`stackedFieldSettingsKeydown`) so it closes only this layer (a field
+  rename input still handles its own Escape first); `closeModal()` clears
+  the layer without rebuilding anything. Closing runs the form's own
+  rebuild through `rebuildDynamicFieldsKeepingInput()`: it snapshots every
+  dynamic input by field id, rebuilds, and puts typed values back -- a guess
+  stays a guess with its note, except the default-currency guess, which
+  takes the rebuild's value since the default may just have changed. A field
+  the new setup drops disappears (Edit still shows it as orphaned if the
+  document has a saved value, with the typed value). Opened from the Tools
+  menu, Field Settings behaves exactly as before.
+- **Creating a brand new custom field happens inline in the capture/edit
+  forms** (`addInlineCustomField()`, `updateAddFieldVisibility()`,
+  `wireAddFieldControls()`) — a "+ Add a custom field" toggle below the
+  dynamic-fields container, hidden until a document type is entered (same
+  gating as every other dynamic field: a custom field is always attached
+  to *some* type). This is the one place in the app that creates a
+  `fields` row from scratch outside of `migrate_to_new_library.py`, and it
+  does so in the same motion as attaching it to whichever type is
+  currently entered — unlike Field Settings' add-to-type flow (which
+  operates on fields that already exist), creating and attaching aren't
+  separate steps here, since the whole reason to reach for this instead
+  of Field Settings is "I'm filling out this type right now and need a
+  field for it." Type choices are Text/Number/Date/Checkbox/Person —
+  deliberately no "Currency" option; a field needing a monetary value
+  should use the built-in Amount field (with its own linked Currency, see
+  below) instead of a second, disconnected custom field, and the mini-form
+  shows a hint saying exactly that. A name collision with an existing
+  field (or one of the built-in field names — People, Amount, Payment
+  method) is rejected with a message pointing at Field Settings rather
+  than silently attaching the existing field or creating a confusing
+  duplicate — Field Settings' own Fields column already lists every
+  existing field with a "+" for exactly that case, so duplicating that
+  logic here wasn't worth it for what should be a rare collision.
+  Dispatches to `renderPersonFieldHtml()` instead of
+  `renderGenericFieldHtml()` when the chosen type is Person, same as
+  `applyDynamicFieldsForType()`'s own dispatch. **Critical correctness
+  property, tested explicitly**:
+  adding a field appends only the new field's own input via
+  `insertAdjacentHTML` — it deliberately does NOT call
+  `applyDynamicFieldsForType()` to refresh the whole container, which
+  would wipe out anything already typed into the *other* dynamic fields on
+  the same in-progress document (capture has no saved values to fall back
+  to at all; edit's rebuild always re-reads the original persisted
+  `d.customFields`, discarding in-session edits, not what's currently on
+  screen). Don't "simplify" this back to a full re-render without
+  preserving that distinction. **A new Text-type field created this way
+  defaults to `autocomplete: 1`** (`const autocomplete = type === 'text' ? 1
+  : 0;` right before the `INSERT`) — it immediately gets the same
+  suggestions-dropdown behavior Category/Type/Payment method already have
+  (see `renderGenericFieldHtml()`/`populateDatalists()`), matching the
+  built-in fields' UX without an extra trip to Field Settings. Number/Date/
+  Checkbox fields get no such default — see
+  `migrateTextFieldsAutocompleteDefault()` below for why a distinct-values
+  dropdown doesn't suit those types.
+- **`migrateTextFieldsAutocompleteDefault()`** (called from both
+  `initNewLibrary()` and `loadDb()`, right after
+  `migrateSentinelFieldsToGeneric()`) is a one-time-per-library backfill
+  that flips `autocomplete` on for every already-existing Text-type field,
+  so a library created before this default existed gets the same
+  suggestions-dropdown UX a brand new custom text field gets automatically
+  now (see the note above). Deliberately Text-only, for the same reason
+  Amount/Date table columns never got filter dropdowns — a dropdown of
+  distinct values doesn't suit Number/Date, and Checkbox is already a
+  plain yes/no. **Tracked via an explicit `settings` row**
+  (`text_autocomplete_default_migrated`), not an implicit data-shape check
+  like `migrateSentinelFieldsToGeneric()` uses (`fieldNameToId['Payment
+  method'] !== undefined`) — unlike that migration, there's no reliable way
+  to tell "this field's autocomplete was never touched" apart from "a
+  person deliberately switched it back off in Field Settings" just by
+  looking at the `fields` table, since both look identical (`autocomplete =
+  0`). Running this unconditionally on every open would silently re-enable
+  a field someone had intentionally turned off; the explicit marker is what
+  makes it safe to call unconditionally instead.
+- **Amount, Currency, and Payment method used to be "sentinel" dynamic
+  fields with dedicated `documents` columns (`amount`/`currency`/
+  `payment_method`) and bespoke rendering — they're all plain rows in
+  `fields` now** (`migrateSentinelFieldsToGeneric()`, run once per library
+  open, idempotent by checking whether a `'Payment method'` row already
+  exists). This was a real architectural shift, not just a rename: the old
+  design made sense when this schema descended from Mariner's own
+  receipt-centric `ZRECEIPT` table (`payment_method`/`amount` came straight
+  from `ZRECEIPT.ZPAYMENTMETHOD`/`ZAMOUNT`, never through Mariner's generic
+  `ZCUSTOMITEM` system — confirmed directly in `migrate_to_new_library.py`),
+  but Dossiary itself isn't receipt-specific, so hardcoding them
+  stopped making sense. **Payment method is now a completely ordinary
+  field** — `renderPaymentFieldHtml()` is gone; it flows through
+  `renderGenericFieldHtml()` and `applyDynamicFieldsForType()`'s generic
+  per-field loop exactly like "Organization" would, with `show_as_column:1,
+  autocomplete:1` set by the migration so it keeps its table column/filter/
+  autocomplete (see the generalized column system below) without any
+  Payment-method-specific code anywhere. **Amount alone keeps one
+  deliberate, narrow exception**: `show_as_column:0, autocomplete:0` (it
+  opts OUT of the generic column system), because its *table column and
+  detail-view line* stay intentionally combined with Currency into one
+  "123.45 EUR" display (`formatAmount()`, reading
+  `d.customFields['Amount']`/`['Currency']`, `parseFloat`'d since
+  `document_field_values.value` is always text) rather than becoming its
+  own independent column. **Currency itself has since opted INTO the
+  generic column system** (`show_as_column:1, autocomplete:1`, same as
+  Payment method) — it gets its own optional table column, filter
+  dropdown, and autocomplete datalist, entirely independent of the
+  combined Amount/Currency display above, which keeps working unchanged
+  regardless of whether Currency's own column happens to be toggled on.
+  Both capture/edit form inputs are NOT specially paired — each is a normal,
+  independently-positioned `renderGenericFieldHtml()` field with its own
+  clear button; the old side-by-side `.field-row` layout from
+  `renderAmountFieldHtml()` is gone. Two narrow exceptions specifically for
+  the field named `'Currency'` remain inside `renderGenericFieldHtml()`
+  itself: it reuses the long-standing `currency-list` datalist (rather than
+  the generic per-field `field-${id}-list` mechanism, which still also
+  gets generated for it as a harmless unused side effect of opting into
+  the generic column system), and it still pre-fills from `defaultCurrency`
+  as a dismissible guess on capture (amber `.field-guess` + hint, cleared
+  on first `input`/`change`) — both are single `field.name === 'Currency'`
+  checks, not the general mechanism. **The value-preservation
+  correctness property is now free**: since all three fields flow through
+  the same `readDynamicFieldValues()`/`document_field_values` save loop and
+  `applyDynamicFieldsForType()`'s generic orphaned-field handling as any
+  other custom field, "reclassifying to a type where a field isn't
+  configured doesn't discard its value" falls out of existing, already-
+  tested generic-field code — no more `el('e-amount') ? ... : d.amount`-
+  style fallback needed anywhere.
+- **The one-time backfill (`migrateSentinelFieldsToGeneric()`) was the
+  first in-app data migration this codebase ever had** (every prior
+  `SCHEMA_MIGRATIONS` entry was purely additive — `ALTER TABLE ... ADD
+  COLUMN`, no data movement). Called from both `initNewLibrary()` (so a
+  brand new library starts with Payment method/Amount/Currency pre-defined,
+  exactly as they were always implicitly available before — nothing to
+  backfill, just the field definitions) and `loadDb()` (so an existing
+  library's real `documents.payment_method`/`amount`/`currency` values get
+  copied into `document_field_values`). **Critical backward-compatibility
+  step**: for every existing `document_type_fields` row where `field_name
+  = 'Amount'`, it also inserts one for `field_name = 'Currency'` at the
+  same type if not already present — Currency previously had no
+  independent per-type configuration at all (it rode along with Amount
+  implicitly), so without this, every already-migrated library would
+  suddenly lose the ability to *edit* Currency for types that could edit
+  it before (display would still work, since display doesn't consult
+  `document_type_fields` — only the edit/capture forms do). The old
+  `documents.payment_method`/`amount`/`currency` columns are deliberately
+  **never dropped or cleared** after backfilling — left as permanently
+  unused, vestigial columns, matching this app's additive-only migration
+  philosophy and avoiding any risk of silent data loss if a backfill step
+  ever no-ops on some edge case. The sibling `migrate_to_new_library.py`
+  was deliberately left untouched (still writes directly to the old
+  columns) — this backfill runs on every library open regardless of how
+  the old-shape data got there, so a fresh Mariner migration gets promoted
+  to the generic system on first open in Dossiary exactly the same
+  as a library that's had Dossiary's own old sentinel-field code
+  write to it directly.
+- **`migratePeopleToGenericField()` followed the same precedent shortly
+  after, promoting the 'People' sentinel into a real `fields` row
+  (`type: 'person'`)** — the second in-app data migration this codebase
+  has had, structured the same way (idempotent, checked via
+  `fieldNameToId['People'] !== undefined`, called from both
+  `initNewLibrary()` and `loadDb()`) but simpler in one respect and
+  trickier in another. Simpler: unlike Amount/Currency, `document_type_fields`
+  needed **no** migration of its own — its `field_name` column already
+  stored the literal string `'People'` as a sentinel even before this
+  change, and that string keeps matching unchanged now that `'People'` is
+  a real field name instead of a special-cased one, so the generic
+  per-field lookup in `applyDynamicFieldsForType()` just starts resolving
+  it correctly the moment the old `if(fieldName === 'People')` branch is
+  gone. Trickier: this promotes a many-to-many relationship, not a
+  single-valued column, so the backfill copies `document_people`'s rows
+  into a new, per-field `document_field_people (document_id, field_id,
+  person_id)` table under the new field's id, rather than copying a
+  scalar value into `document_field_values`. `document_people` itself is
+  left in place afterward, unused — vestigial, same additive-only
+  philosophy as the old `documents.payment_method`/`amount`/`currency`
+  columns, never dropped in case a backfill step ever no-ops on some edge
+  case. Idempotency relies on `'People'` already being a name
+  `addInlineCustomField()` has always refused to let anyone create a
+  same-named custom field with, even before this migration existed — so
+  there's no need to guard against `fieldNameToId['People']` already
+  pointing at some unrelated, wrong-typed field from before this feature
+  existed; that was never possible.
+- **`default_currency` (a `settings` row, exactly like `default_document_type`
+  — `loadDefaultCurrency()`/`saveDefaultCurrency()`, configured via the same
+  Field Settings modal) pre-fills new captures' Currency field as a
+  dismissible guess, but stays unset until someone configures one.** Don't
+  hardcode a literal currency (e.g. `'€'`) as the fallback instead of this
+  setting, even though it might seem like a harmless convenience default —
+  this app is a general-purpose, single-file, downloadable tool that
+  anyone can grab, not code scoped to one person's library, so a fixed
+  default would be silently wrong for anyone whose library isn't in that
+  one currency, with no way to change it short of editing source. The
+  guess treatment itself (`renderGenericFieldHtml()`'s `isCurrencyGuess =
+  isCurrency && !existingValue && !!defaultCurrency && (prefix === 'f' ||
+  (prefix === 'e' && amountFilled))`, where `isCurrency = field.name ===
+  'Currency'`) mirrors the Date field's today-default exactly: `.field-guess`
+  amber styling + a dismissible `.field-guess-hint`, cleared on the first
+  `input` or `change` event on the currency input (both, since — unlike Date —
+  Currency has its own clear button, whose `wireClearButton()` dispatches a
+  `change` event that must also count as "touched"). **Edit guesses too, but
+  only in one narrow case**: the document has a real, non-zero Amount already
+  saved and no Currency saved — typically a document captured before a
+  default currency was ever configured, or whose capture-time guess got
+  cleared. `amountFilled` is computed once per `applyDynamicFieldsForType()`
+  call from the document's own persisted `Amount` value (`existingValues['Amount']`,
+  mirroring `formatAmount()`'s own `amount != 0` check almost exactly — `'0'`
+  typed explicitly counts as "no real amount," same as blank), independent of
+  whether Amount itself is currently configured/orphaned for the type being
+  edited, and threaded through to both the normally-configured and orphaned
+  `renderGenericFieldHtml()` call sites so an orphaned Currency field can
+  still guess correctly. **Any other blank Currency in edit — no Amount
+  saved at all, or Amount is `0`/blank — still never guesses**: that blank
+  is the document's real, saved state, not something to paper over. This was
+  a deliberate, explicit reversal of an earlier version of this same note
+  ("Edit never guesses under any circumstances") — the earlier blanket rule
+  turned out to be stricter than actually useful once real usage surfaced
+  amount-only documents predating `default_currency`'s existence; the
+  amount-gated version keeps the original "don't paper over real blank
+  state" intent while actually closing that gap.
+- **The detail view's header (`openDetail()`'s `modal-meta` block) shows
+  Payment and Amount conditionally, not as always-present placeholder
+  lines.** Computed just before the template string
+  (`amountForHeader`/`hasAmountForHeader`/`paymentMethodForHeader`, read
+  from `d.customFields` since both are plain generic fields now — see the
+  sentinel-fields note above): `<b>Amount</b>` only appends onto the Date
+  line when `hasAmountForHeader` is true; the whole `<b>Payment</b>` line
+  only renders when `paymentMethodForHeader` is truthy. This intentionally
+  differs from Category/Type/Date/Imported/ID, which always show (with a
+  `—` placeholder when empty) — those aren't newly-optional per-type
+  fields the way Amount/Payment are, so an empty placeholder there is
+  still informative, whereas an empty Payment/Amount line would just be
+  noise for a document whose type doesn't use them. The generic "Fields"
+  section further down explicitly excludes `'Amount'`/`'Currency'`/
+  `'Payment method'` from its own `Object.entries(d.customFields)` loop
+  (they'd otherwise now show up there too, duplicating the header line).
+- **The detail view also shows `File`/`Original` lines with each file's
+  path**, prefixed with `rootDirHandle.name` — the same "as far as it can
+  go" pattern as the Inbox status message's own folder label (see the Inbox
+  note below): there's no browser API to reveal a file in the OS's file
+  manager (Finder/Explorer/whatever Linux distro is running) or expose its
+  absolute filesystem path, so a person who wants to find it manually gets
+  the next best thing, a path they can navigate to themselves. `File` shows
+  whenever `d.file_path` is set (effectively always, for anything with a
+  file at all); `Original` shows whenever `d.original_file_path` is set —
+  see "Preserving an original file on ingestion" below, this is now true
+  for essentially every document captured or added via Inbox by this app
+  (not just ones that went through searchable-PDF processing), since
+  `writeOriginalToSubfolder()` preserves a raw original unconditionally.
+  A document with no distinct original at all (e.g. a migrated document
+  whose Mariner-sourced record never had one) simply has
+  `original_file_path` left `NULL`, and the line doesn't render.
+  Each line also gets a small
+  **"Copy" button** (`copyPathToClipboard()`) next to the path, wired only
+  when that path exists — unlike revealing a file in the OS's file manager
+  or reading an absolute filesystem path (impossible from a browser tab,
+  see above), the
+  Clipboard API (`navigator.clipboard.writeText()`) has no such
+  restriction from a regular page context, so this is a real, working
+  affordance rather than another "as far as it can go" compromise.
+  `fileFullPath`/`originalFullPath` are computed once and used for both
+  the displayed text and the copied value, so they can't drift apart. The
+  button shows "Copied!" for 1.5s (`.copy-path-btn.copied`, phosphor-green)
+  before reverting to "Copy" — purely a UI nicety, not persisted anywhere.
+  **Each line also shows its file's size** (`formatBytes()`, the same
+  formatter Storage stats uses, in a `.path-size` span after the path's
+  own Copy button -- Copy belongs to the path, so it stays right next to it) -- `File.size` from the same `getFile()` lookup
+  `openDetail()` already makes for the PDF page count, plus one more for
+  the original; a metadata read, not a content read. A path that's set
+  but doesn't resolve shows `detailFileMissing` ("missing", `.path-missing`,
+  red) instead -- the same condition Library check's broken-links section
+  flags. Shown for both lines, not just the original, because the
+  interesting comparison is usually active copy vs. original (a
+  searchable PDF can be much larger or smaller than the scan it came
+  from). Panel only -- a table column would mean a file lookup per row.
+- **`applyDynamicFieldsForType()`'s `isEdit` parameter controls whether
+  "orphaned" fields render** — a field with a real value in
+  `d.customFields`/`d.personFieldValues` that isn't in the current type's
+  `document_type_fields` configuration (removed from that type's setup
+  after the fact, or the document was reclassified to a type that never
+  had it). Only the edit form passes `isEdit=true`; capture never has
+  pre-existing values to orphan in the first place, so passing it there
+  would be a no-op at best and confusing if it weren't. Orphaned fields
+  are appended after the normally-configured ones and rendered with the
+  same functions (`renderPersonFieldHtml()` / `renderGenericFieldHtml()`,
+  each now taking a trailing `orphaned` boolean) so they behave identically
+  once on screen — same input types, same `data-field-id`/`data-dynamic-field`
+  attributes, same save-time handling — the only difference is the
+  `.field-orphaned` class and the `.field-orphaned-hint` note. Person-type
+  fields (People included, now that it's a real field — see its own note
+  above) get their own orphaned-detection loop over `existingPersonFieldValues`,
+  parallel to but separate from the `existingValues`/`d.customFields` loop
+  every other field type uses, since a person-type field's "does it have
+  real data" check is "does its name array have entries", not "is its
+  string value non-blank." **This is
+  deliberate: an orphaned field needs to be exactly as editable/clearable
+  as a configured one**, not a special read-only or half-functional
+  state, since the entire point is giving someone the chance to actually
+  fix or clear the data, not just see that it exists. This falls out of
+  the existing save logic (`getShownFieldIds()`'s generic `[data-field-id]`
+  query) for free, precisely because orphaned fields use the same
+  rendering and the same DOM attributes as configured ones — don't add
+  separate handling for them in the save path; if saving ever needs to
+  special-case orphaned fields, something about this design has gone
+  wrong. Re-selecting a type mid-edit re-evaluates which fields are
+  orphaned against the *original* document's persisted values (`d.*`),
+  not whatever's currently typed into the form — switching types back
+  and forth during a single edit session doesn't lose track of what the
+  document actually has.
+- **A real debugging lesson from building this feature, worth remembering
+  for future large refactors**: an earlier, incomplete attempt at this
+  exact feature had left dead scaffolding in the file (a duplicate
+  `defaultDocumentType` declaration, an unused `document_types` table, a
+  `knownDocumentTypes` loader, a stray call to a function that no longer
+  existed). The stray call caused `loadDocumentsFromDb()` to throw and
+  silently abort partway through — breaking the columns menu and, for
+  libraries loaded via `loadDb()` rather than a fresh `initNewLibrary()`,
+  breaking the initial `render()` call too. **This did not show up in
+  `pageerror`/`console` listeners in every test**, and a manual
+  step-by-step reproduction of the *same* actions succeeded — because the
+  manual repro didn't happen to trigger the one code path (loading an
+  existing/seeded library, or opening the columns menu) that touched the
+  broken line. The lesson: after deleting a function or variable during a
+  refactor, grep the whole file for its name before trusting that syntax
+  validation + a few manual clicks means it's fine — a stray reference
+  can silently break a code path that isn't the one you happened to test
+  by hand, and passing tests that route through a different, less-current
+  stub file can mask it further (see the next note).
+- **Not every test file was using the shared `stub_studio2.js`.**
+  `test_studio.py` (the oldest test in this suite) had its own fully
+  embedded, increasingly-stale copy of the fake File System Access API,
+  missing tables added to the schema long after it was written. It's
+  since been switched to use `stub_studio2.js` like every other test.
+  If a new test file ever gets created by copying an old one, check it's
+  reading `stub_studio2.js` rather than embedding its own stub — a
+  second stale copy would silently stop testing against current behavior
+  the same way this one did.
+- **`runOcrForEdit()` is deliberately separate from `runOcr()`, not a
+  shared function with a flag.** `runOcr()` (capture) operates on
+  `pendingFile`, a not-yet-saved in-memory File, and requests
+  `{blocks:true}` output because its result may get baked into a
+  searchable PDF on save (see `buildSearchablePdf()`). `runOcrForEdit()`
+  (now reached from the Edit form's "Make searchable" only for a document that
+  is already searchable; otherwise the button queues background OCR, see the
+  Background OCR note) operates on a document's actual saved file (resolved fresh via
+  `resolveFileHandle(d.file_path)`), only refreshes `e-ocr-text`, and
+  deliberately does **not** request word-position data or touch
+  `file_path`/rebuild any PDF — consistent with editing being
+  metadata-only (see the "Editing" note above). **Both `runOcrForEdit()`
+  and `runOcr()` handle PDFs now** (see the "Searchable PDF generation"
+  note's own 2026-09-22 PDF capture OCR amendment for `runOcr()`'s own PDF
+  path) — the real remaining difference between them isn't PDF support
+  itself, it's what each one does with the result: `runOcr()` requests the
+  per-word position data and can rebuild the file into a searchable PDF at
+  Save, `runOcrForEdit()` stays plain-text/metadata-only, exactly as the
+  paragraph above already describes. `runOcrForEdit()`'s own PDF handling
+  renders every page via `renderPdfPageToCanvas()` (a higher-resolution
+  sibling of `generateThumbnail()`'s PDF path; OCR accuracy degrades badly
+  at thumbnail resolution, so this is intentionally a separate function
+  with its own `scale` parameter, not a shared one with a size flag),
+  called once per page in a loop (`for(let pageNum = 1; pageNum <=
+  pdf.numPages; pageNum++)`), with each page's recognized text joined
+  together — not just the first page, see the "How this was tested"
+  section's note on multi-page PDF OCR — and passes each resulting
+  canvas straight to Tesseract, which accepts canvas elements directly
+  as an image source. Capture-mode OCR was later extended to support PDFs
+  too (the 2026-09-22 amendment referenced above), and it does exactly
+  what this note used to only suggest doing: it reuses this same
+  `renderPdfPageToCanvas()` helper rather than duplicating the pdf.js
+  rendering logic a third time.
+- **Editing** (`openEditForm()` / `saveEditedDocument()`) updates metadata
+  only — `title` through `ocr_text` via a plain `UPDATE`, and tags/people
+  via delete-then-reinsert of that document's links (not a diff), reusing
+  the same find-or-create pattern as capture. It never touches `file_path`,
+  `original_file_path`, `created_at`, `import_date`, `source`, or
+  `source_legacy_id` — there's no file-replacement feature, deliberately
+  out of scope so far. After saving, the sidecar `.txt` is rewritten via
+  `sidecarBaseNameFromFilePath()`, which derives the base filename from the
+  existing `file_path` rather than storing it separately — if the
+  file-naming scheme in `saveNewDocument()` ever changes, this derivation
+  needs to change with it, or edited documents will silently write their
+  sidecar to the wrong name. Orphaned `tags`/`people` rows (a tag or person
+  removed from every document that used it) are left in place rather than
+  pruned — they're harmless unused lookup entries and still useful for
+  datalist autocomplete; don't add *automatic* cleanup logic for this
+  without a reason. The one sanctioned way to remove them is the explicit,
+  `confirm()`-gated "Orphaned tags"/"Orphaned people" sections of the
+  Library check modal (see that note further below) — a person-triggered
+  action, never something saving an edit does on its own.
+  **Every table row has a hover-revealed `.row-edit-btn` (✎)** next to its
+  checkbox (`.row-edit-col`, a narrow column added specifically for it — see
+  `applyColumnVisibility()`'s sibling `data-field` columns, this one has no
+  `data-field` and is never hideable via the Columns menu) that jumps
+  straight to `openEditForm()`, skipping `openDetail()` entirely — a
+  same-view shortcut for the common case of wanting to edit right away,
+  without a separate click through the detail view first. Present in every
+  nav view uniformly (not just Inbox, where the idea originally came from —
+  editing directly is generically useful regardless of a document's review
+  state; and, since the panel follow-up, only below the 640px breakpoint —
+  see the detail-panel note below), **except deleted documents**, where it's
+  absent entirely, matching
+  the detail view's own precedent of dropping Edit (not just disabling it)
+  for anything already in the Waste bin. The button's own `<td>` carries
+  `onclick="event.stopPropagation()"`, the same pattern the select-checkbox
+  column already uses, so clicking it doesn't also fire the row's own
+  click-to-`openDetail()` handler. **Cancel from an edit reached this way
+  still lands on the detail view**, not back on the table — a deliberate,
+  simplest-option choice: `openEditForm()`/`saveEditedDocument()` don't
+  track how the form was opened, so Cancel keeps its one existing behavior
+  (always `openDetail(id)`) regardless of entry point, rather than adding
+  new state just to make Cancel's destination conditional.
+- **Archiving** (`documents.archived`, `toggleArchived()`, the "Show
+  archived" toolbar checkbox) is a reversible "no longer needed" flag, not
+  deletion — **this app has no *permanent* delete feature at all** (see the
+  Waste bin note below for the one, still-non-destructive, exception), and
+  archiving isn't a step toward adding one; it exists specifically so a
+  document a person doesn't want cluttering their view anymore doesn't have
+  to be destroyed to get out of the way. An archived document is hidden
+  from the All Documents nav view by default — `matchesView()` (see the
+  "Top-level navigation" note below) checks `d.archived && !showArchived`
+  for the `'all'` view, before any category/search filter, so an archived
+  document can't leak into a match by accident — until someone checks
+  "Show archived" in the toolbar (only shown for the `'all'` view — see
+  below), at which point it reappears with a small `archived` pill next to
+  its title (same spot as the existing "new"/"from inbox" pills). Nothing
+  else about the document changes; toggling it is a single `UPDATE
+  documents SET archived = ?` from the detail panel's Archive/Unarchive
+  button, mirroring `regenerateThumbnail()`'s own update-in-memory →
+  persist → `render()` → re-open-the-modal pattern. Deliberately a
+  dedicated `documents` column, not a generic custom checkbox field — the
+  generic fields system (see below) has no concept of "hidden from the
+  view by default," only optional columns/filters that are always visible
+  once configured, which doesn't fit what an archive needs to do.
+  **The "📦 Archive" nav view** (`#nav-item-archive`, `data-view="archive"`,
+  `matchesView()`'s `'archive'` branch: `!!d.archived`, after the shared
+  deleted check) lists every archived document, flagged for review or not,
+  with its own badge. Added because the badges didn't add up: an archived
+  document counted in none of All Documents / Inbox / Waste bin, so a
+  library of 1,355 showed 1333 + 7 + 14. Now All + Inbox + Archive + Waste
+  bin equals the total (with "Show archived" off, which is only offered in
+  All Documents). The bulk-action bar's Archive button reads Unarchive in
+  this view and clears the flag (`bulkSetArchived(ids, currentView !==
+  'archive')`). "Show archived" stays, for searching active and archived
+  documents together.
+- **Review queue** (`documents.needs_review`, `toggleNeedsReview()`, the
+  Inbox nav item — `#nav-item-inbox`, `data-view="inbox"`) is a second,
+  independent staging flag, built as a direct structural mirror of
+  `archived` above — same `documents` column pattern, same `SCHEMA`/
+  `SCHEMA_MIGRATIONS` treatment, same detail-panel toggle-button pattern
+  (`review-toggle-btn`, "Flag for review" / "Done") — but serving a
+  different purpose: not "no longer needed," but "not yet reviewed." This
+  is the second stage of a two-stage lifecycle for inbox-imported
+  documents — see the Inbox note further below for the first stage (raw
+  files sitting in the `inbox/` folder, before they're documents at all;
+  that feature's own "📥 Check inbox" button is deliberately unrelated to
+  this Inbox *nav item*, down to the icon choice — see the "Top-level
+  navigation" note for why 🚩, not 📥, was picked for this one, precisely
+  to avoid the two being conflated). `addInboxFile()` sets `needs_review =
+  1` on every document it creates, since an inbox-imported document
+  deliberately has category, type, date, etc. left `NULL` rather than
+  guessed (seeing "not listed at the top of the table" for an inbox import
+  with no date was the original bug report that led to this feature — the
+  fix isn't to guess a date, it's to put unreviewed documents somewhere a
+  person actually notices them). Any document can be flagged, not just
+  inbox-imported ones — the "Flag for review" button in the detail panel
+  works on anything, mirroring the "mark all documents as needs_review"
+  scope the person who requested this feature specifically asked for.
+  **Only the explicit Done action clears the flag — saving an edit never
+  does**, even though `openEditForm()` is reachable directly from a row's
+  own detail view; this was a deliberate design call (not a limitation)
+  specifically so someone doing an intermediate save on a document they're
+  not fully done reviewing yet doesn't lose their place in the queue. A
+  flagged document is excluded from the `'all'` nav view by `matchesView()`
+  and shown instead when `currentView === 'inbox'`, via the same real
+  `<table>` every other view renders through — see the "Top-level
+  navigation" note below for how view membership, badge counts, and
+  rendering all work; this note only covers `needs_review`'s own semantics
+  and its interaction with `archived`.
+  **`toggleNeedsReview()` has two call sites**: the detail panel's own
+  toggle button (`async () => { await toggleNeedsReview(id); openDetail(id);
+  }`, which refreshes in place), and the edit form's own "Save & Done"
+  button (see its own note below, which closes the modal entirely instead)
+  — the function itself doesn't need to guard against being invoked with
+  no modal open either way, since both callers already handle their own
+  post-toggle UI update. (An earlier version of this note said "a single
+  call site now," true when the old review-queue UI's standalone Done
+  button went away — no longer accurate once "Save & Done" added a second,
+  legitimate one.)
+  **"Save & Done" (`#save-done-btn`, only rendered inside `openEditForm()`
+  when `d.needs_review` is true — same condition the detail view's own
+  button already uses to decide "Flag for review" vs "Done")** lets someone
+  finish a review in one click instead of two separate actions (Edit →
+  Save changes → back to detail → Done) — and, unlike the standalone
+  "Done" button (which reopens the detail view in place), it closes the
+  modal entirely on success, revealing whatever table was already showing
+  underneath (typically the Inbox queue, since `toggleNeedsReview()`'s own
+  `render()` has already removed the now-finished document from it by the
+  time the modal closes) — deliberately no forced navigation to the Inbox
+  view specifically, so someone reviewing from a Collection view or
+  elsewhere isn't yanked away from it. It does not weaken the "only an
+  explicit action clears the flag, never an implicit save" rule above —
+  it's a second, distinct explicit action a person chooses instead of
+  plain "Save changes," not saving silently clearing the flag as a side
+  effect; plain "Save changes" still never touches `needs_review`, exactly
+  as before. Critically, it only clears the flag if the save actually
+  succeeded: `saveEditedDocument()` used to swallow its own errors
+  internally with no way for a caller to tell success from failure (every
+  existing call site just fired it and moved on) — it now `return`s
+  `true`/`false` from its existing success/catch paths, and "Save & Done"'s
+  own handler checks that before calling `toggleNeedsReview()`, so a failed
+  save leaves the document exactly as a failed plain "Save changes" already
+  did: still flagged, still in the edit form, with the same error message.
+  **`needs_review` and `archived` are fully independent flags, with zero
+  automatic interaction in either direction** — flagging a document for
+  review doesn't touch `archived`, and archiving one doesn't touch
+  `needs_review`; per the explicit design call this was built to ("Archived
+  is archived. If one wants to edit it, it would have to be brought back
+  from archive."), un-archiving is the only sanctioned way back to an
+  archived document, flagged or not. This has one real consequence worth
+  being deliberate about: the `'inbox'` view's own `matchesView()` branch
+  excludes archived documents — the queue is specifically for documents
+  someone should be actively working through, and an archived one isn't
+  that — so a document that's *both* archived and flagged would be
+  reachable from **neither** the `'all'` view nor the `'inbox'` view if the
+  `'all'` view's own exclusion of flagged documents were as unconditional
+  as it first looks. The `!d.archived` carve-out in `matchesView()`'s
+  `'all'`-view exclusion of `needs_review` documents is what prevents
+  that: an archived+flagged document is governed by the archived check
+  alone once "Show archived" is on, same as any other archived document,
+  so un-archiving (the one sanctioned way back) still actually works
+  instead of leading to a document nothing can reach. Don't simplify that
+  condition without re-deriving this — it looks redundant with the
+  `'inbox'` branch's own archived exclusion at a glance, but the two
+  branches are guarding different views (`'inbox'` vs. `'all'`) and only
+  one of them has the archived carve-out.
+- **Waste bin** (`documents.deleted`, `toggleDeleted()`, the Waste bin nav
+  item — `#nav-item-trash`, `data-view="trash"`) is a third independent
+  staging flag, added on explicit request to give "delete" a real UI
+  affordance without actually adding permanent deletion to an app that
+  otherwise never destroys a person's data. It's a soft delete only —
+  toggling it just flips the column, exactly like `archived`/`needs_review`;
+  nothing on disk (`files/`, `thumbnails/`, the sidecar `.txt`) is ever
+  touched, and **there is deliberately no "empty bin" action anywhere in
+  this app** — the waste bin is the permanent, sole home for a deleted
+  document, not a staging area with its own expiry.
+  **`deleted` is the strongest of the three flags**, unlike the
+  `archived`/`needs_review` relationship above, which is genuinely
+  symmetric (each has its own carve-out for the other). A deleted document
+  is unconditionally excluded from the `'all'` view — `matchesView()`
+  checks `d.deleted` first, before any other view's logic, so it stays
+  hidden from `'all'` **even with "Show archived" checked** — and from the
+  `'inbox'` view too, regardless of `needs_review`. This is a deliberate
+  asymmetry from the archived+needs_review case: there, "Show archived"
+  had to be preserved as the one sanctioned way back to a document,
+  because nothing else could reach it. Deletion doesn't need that same
+  escape hatch, because it gets its own dedicated one instead — the
+  `'trash'` nav view itself — so there's no equivalent risk of a document
+  becoming unreachable from everywhere.
+  `openDetail()` reflects this by degree, not just visibility: a deleted
+  document's action bar drops Edit/Regenerate preview/Archive/Flag for
+  review entirely (not shown disabled — genuinely absent from the DOM) and
+  offers only Restore, since none of those other actions mean anything for
+  a document that isn't reachable anywhere they'd matter until it's
+  restored. `toggleDeleted()`, like `toggleNeedsReview()` above, now has a
+  single call site — the detail panel's own button — and always refreshes
+  in place; restoring from a `'trash'`-view row works by opening that
+  row's detail view (the same `openDetail()` every other view's rows use)
+  and clicking Restore there, rather than a dedicated inline restore
+  button. The `'trash'` view is reached the same way as `'inbox'` or
+  `'all'` — a click on its nav item, not a separate modal — see the
+  "Top-level navigation" note below for why all three views were unified
+  onto one shared table rather than each keeping its own bespoke
+  rendering, as this feature and the review queue originally did. (A
+  fourth nav view, Reports, was added later — see its own note below —
+  but it deliberately renders its own aggregate view rather than sharing
+  this table, so it isn't part of the three unified here.)
+- **Top-level navigation** (`#main-layout`, `#app-nav`, `.nav-item`,
+  `currentView`, `matchesView()`, `renderNav()`, `setView()`) unifies
+  All Documents/Inbox/Waste bin — previously an always-visible Review
+  Queue banner above the table plus a separately-modal Waste Bin reached
+  via its own toolbar button — into one persistent nav switching between
+  three views of the exact same real `<table>` (same columns, sorting,
+  search, category/type/dynamic filters), directly modeled on Mariner
+  Paperless's own "Everything"/"Inbox" sidebar. Clicking a row in any view
+  opens the same `openDetail()` modal used everywhere else, which already
+  renders the correct action set per document state (see the Archiving/
+  Review queue/Waste bin notes above) — this is why unifying onto one
+  table needed no new per-row action buttons at all, unlike the old
+  review-queue rows' own inline Edit/Done buttons or the waste-bin modal's
+  own inline Restore button, both now gone.
+  **`matchesView(d, view, showArchived)`** is the single function
+  encoding view membership, extracted from what used to be `applyFilters()`'s
+  own inline logic: `'trash'` → `!!d.deleted`; `'inbox'` → (after excluding
+  deleted) `!!d.needs_review && !d.archived`; `'all'` → (after excluding
+  deleted) the pre-existing default-table rules, `archived && !showArchived`
+  excluded and `needs_review && !archived` excluded. `applyFilters()` now
+  reads `if(!matchesView(d, currentView, showArchived)) return false;`
+  before its unchanged category/type/person/dynamic/search filters — so
+  those filters compose correctly with whichever view is active for free,
+  which the old separate Review Queue/Waste Bin renderers never supported
+  (neither had its own search or category filtering at all).
+  **`currentView`** (`'all'` | `'inbox'` | `'trash'` | `'reports'` |
+  `'report-drilldown'` | `'collection-<id>'`) is session-only,
+  never persisted — always starts `'all'` on every library open, via
+  `resetAll()`. Switching views does **not** reset search text, filter
+  selects, or "Show archived" — only the document set changes.
+  **`renderNav()` replaces `renderReviewQueue()` in `render()`'s "always
+  call this first" slot** (`render()`'s first statement, so every existing
+  call site — initial load, post-edit, post-inbox-add, post-toggle — picks
+  it up automatically): it computes `navCounts` (one `matchesView()` filter
+  pass per view, against the *current* `showArchivedToggle` state),
+  updates each `.nav-item`'s badge and `.active` class, and shows/hides
+  `showArchivedWrap` (`currentView === 'all'` only — "Show archived" only
+  means anything for the `'all'` view; `'inbox'` already excludes archived
+  unconditionally, and `'trash'`'s `deleted` flag trumps `archived`
+  regardless, so showing the checkbox in those views would just be inert
+  UI). Badges reflect **view membership only**, not the live search/filter
+  text — recomputing per keystroke would make navigation counts flicker
+  while typing, and the existing `countLine` ("Showing X of Y", its
+  denominator now `navCounts[currentView]` rather than `allDocs.length`)
+  already covers the filtered-count case. `setView(view)` sets
+  `currentView` and calls `render()`; wired from each `.nav-item[data-view]`'s
+  click handler.
+  **Visual style is a persisted, user-configurable setting**
+  (`navStyle`, `'tabs'` | `'sidebar'`, default `'sidebar'`), toggled via a
+  `#nav-style-toggle` button living inside the nav itself — no general
+  settings-modal infrastructure exists in this app, so the control sits
+  spatially attached to what it controls, the same reasoning behind where
+  `default_document_type`/`default_currency` live in Field Settings.
+  `loadNavStyle()`/`saveNavStyle()`/`applyNavStyle()` follow the exact
+  existing `settings`-table `key`/`value` pattern used by
+  `loadDefaultCurrency()`/`saveDefaultCurrency()` — `applyNavStyle()`
+  just toggles a `nav-style-sidebar` class on `#main-layout`; one shared
+  markup structure and one CSS class flips between a horizontal tab strip
+  and a vertical sidebar, not two divergent markups. `loadNavStyle()` is
+  called from `loadDocumentsFromDb()` alongside `loadDefaultCurrency()`.
+  **Icons were chosen to avoid a real collision**: All Documents is 📁,
+  Waste bin is 🗑 (already used elsewhere in the app), and Inbox is
+  deliberately **🚩**, not 📥 — 📥 is already the separate, pre-existing
+  "Check inbox" toolbar button for raw staged files (see the Inbox note
+  below), and reusing it here would visually conflate two unrelated
+  features; 🚩 instead matches the existing "Flag for review" button label
+  already used for this exact `needs_review` concept.
+  **`.table-wrap`'s sticky-header max-height calibration is nav-style-
+  dependent** — see that note near the top of this file for the current
+  values and the empirical-verification story, including why the two
+  styles' constants are each independently calibrated to their own
+  worst-case toolbar-wrapping width rather than related by a fixed
+  structural offset.
+- **Reports** (`#nav-item-reports`, `data-view="reports"`, `reportBreakdownFields()`,
+  `reportBreakdownFieldInfo()`, `computeReportGroups()`, `renderReportsView()`) is a
+  4th top-level nav view alongside All Documents/Inbox/Waste bin, giving totals
+  for tax prep and expense reimbursement workflows Dossiary previously had no way
+  to support. **`matchesView()`'s `'reports'` branch always includes archived and
+  needs-review documents** — a report is about real financial history, not about
+  what's currently decluttered out of the browse view; only `deleted` (Waste bin)
+  documents are excluded, same as every other view. Totals are grouped by Currency
+  first and never summed across different currency labels
+  (`customFields['Currency']`, blank treated as its own "No currency set" group) —
+  Dossiary never assumes a single-currency library. Within each currency group,
+  documents are further grouped by a chosen breakdown field (`#report-breakdown-field`,
+  populated from `reportBreakdownFields()`: Category/Type/People/Tags from `FIELD_DEFS`,
+  plus any custom field flagged `show_as_column` via the same `dynamicColumnDefs()`
+  table columns/filters already use — deliberately excludes `date`/`import_date`
+  (near-unique per document, not a meaningful grouping key) and `amount` (the value
+  being summed, not a grouping key). Tags joined later, as a multi-valued
+  breakdown exactly like People (label `tableColTags`, "Tags includes: …" on
+  its drill-down banner). **A document with more than one value for a multi-valued
+  breakdown field (People, Tags, or a custom person-type field) contributes its full
+  Amount to every value's row** — `renderReportsView()` shows an explicit caption
+  when this applies, since row totals then legitimately don't sum to the currency
+  group's own Grand total; that Grand total (`computeReportGroups()`'s `grandTotal`/
+  `documentCount`) is deliberately computed independently over every document in
+  the currency group, not by summing the rows above it, so it stays a reliable
+  "true total" regardless. A separate, Reports-only date-range filter
+  (`#report-date-from`/`#report-date-to`, `currentReportDateRange()`) filters on
+  the document's own `date` field (its content date, not `import_date`) —
+  `applyFilters()` only applies this filter when `currentView === 'reports'`; the
+  existing search/category/type/dynamic-field filters continue to apply unchanged
+  in this view too. No new dependency, no schema change — this is a pure
+  read/aggregate view over `allDocs`. Printing (`#reports-print-btn` →
+  `window.print()`) is the first `@media print` stylesheet in this app, hiding
+  `#app-nav`/`.toolbar`/etc.; the browser's own print dialog already offers "Save
+  as PDF" on every platform this app targets, so no separate PDF-generation path
+  was needed.
+  **Report drill-down (2026-09-22 amendment)**: every Reports row -- each
+  breakdown value, the "(none)" row, and each currency group's own Grand
+  Total row -- is clickable, jumping to an ordinary, filtered view of the
+  real document table showing exactly the documents that contributed to it.
+  `computeReportGroups()` gained a `docIds` array per row (and a
+  `grandTotalDocIds` array on the group, computed the same
+  independently-of-the-rows way `grandTotal` itself already is) --
+  `renderReportsView()` wires a click handler on each `<tr>` (breakdown rows
+  and the `<tfoot>` Grand Total row alike, both carrying `.report-row` plus
+  `data-group-idx`/`data-row-idx` attributes so the listener can look the
+  right row back up in `groups`, which stays in closure scope) that calls
+  `drillIntoReportRow(docIds, label)`. This reuses the exact same
+  `currentView`/`matchesView()`/`setView()` machinery every other nav view
+  already runs through, rather than a bespoke rendering path: a new
+  `'report-drilldown'` value added to `setView()`'s allowlist, and a new
+  `matchesView()` branch (`reportDrilldownIds.has(d.id)`, same
+  archived/needs-review-inclusive semantics as Reports and Collections,
+  since this is conceptually the same kind of saved/curated view) is all it
+  took to get the detail panel, right-click context menu, and bulk actions
+  working here for free -- none of them needed to change at all.
+  `reportDrilldownIds` (a `Set`) and `reportDrilldownLabel` (a string) are
+  session-only module-level state, reset in `resetAll()` -- there is
+  deliberately no persistence here, matching the spec's explicit scope cut
+  ("this is an ephemeral, per-click state -- not a saved Collection").
+  **`docIds` is a frozen snapshot, not a live filter**: it's captured once,
+  at the moment a row is clicked, from whichever documents
+  `computeReportGroups()` happened to iterate into that row at that moment
+  -- editing a document afterward (e.g. changing its Category away from the
+  value just drilled into) doesn't remove it from the still-open drill-down;
+  only a *future* click on a freshly-rendered report produces a new
+  snapshot. Deleting a document (Waste bin) still removes it immediately,
+  since `matchesView()`'s existing `deleted` exclusion runs before every
+  other branch, including this new one, exactly like every other view.
+  A banner (`#report-drilldown-banner`, reusing the `.inbox-banner` CSS
+  class verbatim for identical styling -- deliberately not a new CSS block)
+  shows the row's label, a document count (`reportDrilldownCountSingular`/
+  `Plural`, the same count-dependent key-pair convention every other
+  count-dependent string in this app uses), and a "← Back to Reports" link
+  that calls `setView('reports')` -- the same conditional-banner pattern
+  `#inbox-banner`/`updateInboxBanner()` already established for the Inbox
+  view's own staged-files notice, right down to being driven from
+  `render()`'s own normal document-table path via a new
+  `updateReportDrilldownBanner()` call. Because `setView()` only resets
+  `currentView`/`selectedDocIds` -- never search text, the breakdown-field
+  dropdown, or the Reports-only date-range filter -- "Back to Reports"
+  naturally restores the Reports view exactly as it was left, with no extra
+  state-preservation code needed. **The Grand Total row's own label**
+  (`reportDrilldownGrandTotalLabel`, e.g. "Grand total (EUR)") and a
+  **multi-valued breakdown row's label** (`reportDrilldownMultiValueLabel`,
+  e.g. "People includes: Jana" -- distinct from
+  `reportDrilldownRowLabel`'s plain "Category: Mail" for a single-valued
+  breakdown) are two separate i18n keys, chosen by the same `group.multiValued`
+  flag `renderReportsView()`'s own caption already reads, so a multi-valued
+  drill-down's banner is explicit that the shown set isn't an exclusive
+  partition -- the same document can legitimately appear in more than one
+  row's drill-down (e.g. a document with both "Alice" and "Bob" values
+  appears in both people's drill-downs), mirroring the existing "counted
+  once per name" caption Reports already shows for multi-valued
+  breakdowns. See
+  `docs/superpowers/specs/2026-09-22-reports-drilldown-design.md` for the
+  full design.
+  **Pie chart** (`reportPie()`, `reportPieSvg()`,
+  `REPORT_PIE_COLORS`): each currency group gets a hand-built SVG pie of
+  its row totals beside the table (`.report-group-body`, a wrapping flex
+  row) -- no charting dependency. The table is the legend: a row with a
+  slice gets a `.report-swatch` in its colour (`print-color-adjust:exact`,
+  since browsers drop background colours when printing). Rows are already
+  sorted by total, so the 7 largest positive values get their own colour
+  and any further ones share one grey "Other" slice; with 8 or fewer, every
+  value gets a colour. Only positive totals are drawn -- a pie can't show a
+  refund -- with `reportsPieNegativeNote` when any row is negative; a group
+  with no positive total gets no pie, and neither does a multi-valued
+  breakdown (People, Tags, person fields), whose rows overlap. A slice is a
+  focusable `role="button"` drilling down exactly like its row (Enter/Space
+  too), "Other" into the union of its rows' documents; each has a
+  `<title>` with value and share. A lone value draws a `<circle>`, since an
+  arc from a point back to itself renders nothing.
+- **Collections** (`collections` + `collection_documents` tables,
+  `openManageCollectionsModal()`, `createManualCollection()`,
+  `addDocumentsToCollection()`) are user-created document groupings, manually
+  curated or automatically matching your current search/filter state as a
+  live view. The schema stores only two tables: `collections` (name, `kind`,
+  criteria JSON for smart collections) and `collection_documents` (the
+  manual join for non-smart collections). Smart collections store no rows in
+  `collection_documents` — instead, `matchesCriteria()` re-evaluates their
+  filter criteria against each document on every `render()` call, the same
+  criteria grammar `currentFilters()` extracts from the toolbar (Category,
+  Type, Person dropdowns, dynamic-field filters, search text), so a smart
+  collection always stays synchronized with new documents without any
+  background sync logic. Manual collections are static rosters you build by
+  selecting documents in the table and clicking "Add to Collection" (via the
+  bulk-action toolbar that appears when checkboxes are checked), or one at a
+  time from a document's own detail-panel action buttons ("Add to Collection"
+  picks which one; "Remove from Collection" appears only when viewing from
+  inside a specific manual collection). Removing a document from a collection
+  and deleting a collection are both inline `DELETE FROM` statements in their
+  respective click handlers, not named functions; deleting the collection
+  currently being viewed (via its own nav item) falls back `currentView` to
+  `'all'` first, so the person isn't left in a now-nonexistent view with
+  nothing highlighted. The Collections nav section
+  expands and collapses via a toggle button (`#nav-collections-toggle` →
+  `saveCollectionsNavExpanded()`), defaulting to **expanded**
+  (`collectionsNavExpanded = true` unconditionally at startup and in `resetAll()`)
+  and staying expanded until the user explicitly collapses it, with that choice
+  then persisted via the `collections_nav_expanded` setting. **That setting
+  is the sidebar nav's only.** In the tabs nav the list is an absolutely
+  positioned dropdown hanging over `.toolbar`, and left open it covered
+  toolbar controls (🛠 Tools included, at 1280x720 with four collections),
+  so there it's a real dropdown: closed by default and after every nav-style
+  switch (`collectionsTabsOpen`, session-only), opened by the Collections
+  toggle, and closed again by an outside click, Escape, or choosing a
+  collection (`setCollectionsTabsOpen()`; `applyCollectionsNavExpanded()`
+  picks the right flag for the current style). Closed, it adds no height, so
+  `.table-wrap`'s calibration is untouched. Tests that pick a collection in
+  tabs mode open the dropdown first (`test_collections.py`'s
+  `click_collection()`); the list itself
+  (`#nav-collections-list`) is rebuilt on **every `render()` call** (it lives
+  inside `renderNav()`, called from `render()`'s "always call this first" slot —
+  see the Top-level navigation note above), not just when a collection is
+  created, deleted, or renamed — the same delete-then-reinsert-from-scratch
+  pattern this app already uses for other dynamic containers, though those
+  rebuild on their own separate triggers rather than every `render()` call
+  (`renderDynamicTableHead()`'s `<th>`s rebuild when the columns menu
+  changes, `populateFilters()`'s dynamic filters rebuild from their own
+  explicit call sites — neither is invoked from inside `render()` itself).
+  Smart collections
+  are created only via the "☆ Save as Smart Collection" button
+  (visible only in the All Documents view) — the Manage Collections modal's
+  "+ New collection" creates manual collections only, never smart ones: a
+  Smart Collection is only ever created by capturing a real, live filter
+  snapshot at the moment "Save as Smart Collection" is clicked (its criteria
+  coming straight from `currentFilters()`), and the Manage Collections modal
+  has no filter state of its own to capture — a smart collection created
+  there would have no criteria, which has no meaning for a collection whose
+  entire membership is defined by its criteria. **"Save as Smart Collection"
+  lives in the Collections nav section itself, not `.toolbar`** — moved there
+  to fix a real toolbar-wrap regression (two new buttons pushed `.toolbar`
+  from 2 rows to 3, landing `#reload-btn` directly under the open Columns
+  dropdown); "⚙ Manage collections" stayed in the toolbar, since removing
+  just the one button was already enough to restore the original 2-row
+  layout (it has since moved into the "🛠 Tools" dropdown with the other
+  occasional-use actions -- see that note). Multi-select
+  checkboxes (`#select-all-checkbox`, per-row checkboxes with class
+  `row-select-checkbox` and `data-id="${d.id}"`) reset whenever you switch views
+  (`setView()` clears `selectedDocIds` and re-renders the table) or close the
+  library — the selection state never persists across sessions and is scoped to a
+  single view, so switching to a Smart Collection and back to All Documents doesn't
+  retain your old All Documents selection. Creating a new manual collection
+  and adding its first documents happen as one action via the same
+  `addDocumentsToCollection()` and `createManualCollection()` functions that
+  the detail-panel single-document action buttons use — no special
+  code-path difference between a bulk add and a single add.
+  **Bulk archive/delete/flag-for-review actions** (`bulkSetArchived()`,
+  `bulkSetDeleted()`, `bulkSetNeedsReview()`, `renderBulkActionBar()`)
+  extend the bulk-action bar with view-aware buttons for applying state
+  changes to multiple documents at once. Button visibility and labels are
+  context-sensitive: the Waste bin view shows only "Restore"; the Inbox
+  view relabels "Flag for review" to "Done" (unflag); every other view
+  (All Documents, Collections, Reports) shows Archive, Delete, and "Flag
+  for review" alongside the existing "Add to collection" — but Reports
+  view shows neither checkboxes nor a bulk bar at all. All three functions
+  use **unconditional-set semantics** (not per-document toggle): "Archive
+  selected" always sets `archived=1` for every selected document regardless
+  of its current state, enabling correct behavior for mixed-state selections
+  (e.g., selecting both archived and unarchived documents from a Collection
+  view and clicking Archive leaves both archived, not toggling the already-
+  archived one back to unarchived). Crucially, all database UPDATEs are
+  queued first (`forEach`), then persisted and rendered exactly once via a
+  single `persistDb()` / `render()` call, not per-document — unlike looping
+  the single-document toggle functions, this avoids wasteful
+  re-serialization of the entire SQLite database for bulk operations on
+  multiple documents.
+  **A collection view (`matchesView()`'s `'collection-<id>'` branch, both
+  manual and smart) deliberately includes archived and needs-review
+  documents** — the same choice, and the same reasoning, as the Reports view
+  above: a collection is a saved/curated view (a manually-built roster, or a
+  saved filter snapshot), conceptually closer to a report than to the
+  day-to-day `'all'` browse view, so a document someone explicitly added to
+  a collection — or that matches a Smart Collection's saved criteria —
+  shouldn't silently vanish from that collection just because it got
+  archived or flagged for review elsewhere. Only `deleted` (Waste bin) is
+  excluded, via the same shared check every other view uses.
+  **The bulk-action bar's height is part of `.table-wrap`'s sticky-header
+  calibration too** — see that note near the top of this file. Selecting any
+  row shows `#bulk-action-bar` (~74px of real page height above
+  `.table-wrap`), so `renderBulkActionBar()` toggles a `.bulk-bar-visible`
+  class on `#main-layout` and the CSS has dedicated `max-height` rules for
+  all four combinations of nav style × bulk-bar visibility — don't assume
+  the two nav-style constants alone are enough; selecting documents (this
+  feature's own core workflow) is exactly the case that needs the other two.
+- **The detail view is a persistent side panel (`#detail-panel`), not a
+  modal** — `openDetail(id)` keeps its name (it still means "show this
+  document's detail content") but now renders into `#detail-panel-body`
+  instead of `#modal-root`, and drops the backdrop/close-button/Escape
+  chrome that made it a modal (a panel isn't dismissed, it's collapsed).
+  This replaced a full-screen modal that hid the table entirely while
+  open, matching legacy Mariner Paperless's own persistent "Details" side
+  panel instead. **`selectedDocId`** (module-level, distinct from
+  `selectedDocIds`, the multi-select `Set` bulk actions use) tracks which
+  single row the panel is showing, `null` meaning nothing selected — the
+  panel then shows a plain empty-state message rather than blank content.
+  Row click sets it, applies a `.row-selected` highlight to that `<tr>`,
+  and calls `openDetail(id)`; `render()`'s own rebuild of `tbody` on every
+  call means the highlight has to be reapplied after each rebuild (a
+  `tbody.querySelector('tr[data-id=...]')` lookup right after the rows are
+  rendered), and `render()` also invalidates `selectedDocId` back to
+  `null` — refreshing the panel to its empty state — whenever the
+  currently-selected document falls out of the active view's filtered/
+  sorted set (deleted, archived out of view, or excluded by a filter/
+  search change). **`openDetail(id)` itself is the authoritative setter of
+  `selectedDocId`**, not just a content-rendering function — it sets
+  `selectedDocId = d ? d.id : null` from whatever document it actually
+  finds (or fails to find), right after its own `allDocs.find()` lookup.
+  This means `render()`'s own invalidation above doesn't always have the
+  last word: several action handlers (e.g. `toggleArchived()`) call
+  `render()` first — which zeroes `selectedDocId` if the acted-on document
+  fell out of the current filtered/sorted view — and then call
+  `openDetail(id)` again afterward with that same original id purely to
+  refresh the panel's displayed content. Because `openDetail()` re-asserts
+  `selectedDocId` unconditionally, that trailing call re-selects the
+  document too, re-highlighting its row if one still exists and leaving
+  the panel showing its content even if the row doesn't (e.g. it just got
+  archived out of the currently-visible view). This is intentional —
+  quick "undo" reachability right after an action, not a bug — not an
+  invalidation loophole to close. **`openDetail()` is async and can be
+  superseded mid-flight** -- it awaits file reads (thumbnail, PDF page count)
+  before writing the panel, and on a slow filesystem (a library in iCloud
+  Drive) a newer call such as `render()`'s `openDetail(null)` can finish
+  first. `detailRenderSeq` makes an older call drop its late write instead
+  of putting a no-longer-selected document back into the panel. **Clicking a row never auto-expands a collapsed
+  panel** — selection, highlighting, and content-refresh all happen
+  unconditionally on every row click, but panel *visibility* is
+  controlled only by the toolbar's own `#detail-panel-toggle-btn`,
+  deliberately: if a row click also expanded the panel, the panel's own
+  collapsed-by-default setting (see below) would stop mitigating anything
+  — it would spring open on literally the first row click anyone ever
+  makes.
+  **The panel's expanded/collapsed state is a per-library `settings` row**
+  (`detail_panel_expanded`), following `nav_style`'s exact
+  `loadNavStyle()`/`saveNavStyle()`/`applyNavStyle()` pattern
+  (`loadDetailPanelExpanded()`/`saveDetailPanelExpanded()`/
+  `applyDetailPanelExpanded()`, toggling a `detail-panel-expanded` class on
+  `#main-layout`) — except the default is collapsed (`false`) rather than
+  one of two named states, since defaulting to expanded would undercut the
+  entire reason this shipped collapsed-by-default: an always-visible panel
+  costs real horizontal table width, and the person who raised this
+  feature (comparing it to Mariner's own panel) explicitly worried about
+  losing that space — **this default was later reversed to expanded; see
+  below**. Below the app's one mobile breakpoint
+  (`max-width:640px`), the panel force-collapses regardless of the saved
+  preference — `#main-layout.detail-panel-expanded .detail-panel{
+  display:none; }` inside the media query, matched in selector specificity
+  to the base `#main-layout.detail-panel-expanded .detail-panel{
+  display:flex; }` rule it overrides (a lower-specificity `.detail-panel{
+  display:none; }` there would lose to the more specific rule and fail to
+  collapse anything) — a true side panel doesn't fit a phone-width
+  viewport any better than a full sidebar nav does (see that note's own
+  mobile-collapse precedent above). The toggle button itself is hidden
+  (not disabled) in Reports view, since that view renders its own
+  aggregate content rather than the shared document table — there's no
+  row for the panel to ever reflect there, same "hidden when the control
+  is inert for this view" pattern already used for "Show archived".
+  **The panel deliberately reuses `.table-wrap`'s own four `max-height`
+  calibration constants (414/374/488/448, plus their nav-style/bulk-bar
+  combinations) for its own `max-height`, rather than introducing new
+  ones** — the panel is a flex sibling of `.table-wrap` inside a new
+  `.table-detail-row` wrapper, sitting at exactly the same vertical offset
+  under exactly the same header/toolbar/nav/bulk-bar/footer chrome, so the
+  same "how much vertical room is left below that chrome" figure applies
+  to both; the reasoning is sound and was spot-checked the same empirical
+  way as everything else in this section at authoring time
+  (`getBoundingClientRect()`, confirming the panel's own bottom edge lands
+  at the fixed footer's top edge with no overlap), not assumed just
+  because the numbers happened to match structurally. **It's now guarded
+  by `tests/test_footer_pin.py`** (`measure_panel_not_clipped()`, run at
+  every width/nav-style/bulk-bar combination of the desktop sweep), which
+  checks the panel's real last visible line against the footer's top edge
+  rather than its box edge -- and caught a real bug on its first run: at
+  the widths where the toolbar wraps onto an extra row (about <=900px with
+  tabs, <=1100px with the sidebar) the panel's last ~30px stayed hidden
+  behind the footer even fully scrolled, because the panel had only 20px
+  of bottom padding where `.table-wrap` has 70px to absorb exactly this
+  (see the calibration note near the top). The panel now has the same
+  70px. This is
+  purely a **horizontal** layout change — the panel sits *beside* the
+  table, not above or below it — so none of `.table-wrap`'s own four
+  constants needed to move; reusing them for a same-height sibling is not
+  the same thing as touching them.
+  **Two call sites that used to rely on an implicit trick no longer can.**
+  Before this change, `openEditForm()`'s Cancel button and
+  `saveEditedDocument()`'s success path both called `openDetail(id)`,
+  which — since the detail view and the edit form shared the same
+  `#modal-root` — implicitly closed the edit modal *and* reopened detail
+  content in one call, just by overwriting the same container. With the
+  panel and the edit modal now separate, simultaneously-existing elements,
+  that implicit behavior is gone: **Cancel** now just calls `closeModal()`
+  and does nothing else — the panel, if open, already shows whatever
+  document Edit was opened from, and Cancel deliberately does not force a
+  collapsed panel open or re-render content that didn't change. **Save**'s
+  success path now does two explicit things the old single call used to
+  do for free: `closeModal()` to dismiss the edit modal, and
+  `selectedDocId = id` (before the `render()` call that reapplies row
+  highlighting) so the just-saved document becomes the new panel
+  selection — this specifically covers editing reached via the row-level
+  `.row-edit-btn` shortcut (see its own note above), which bypasses row
+  selection entirely on the way in, so without this the panel would still
+  be pointing at whatever (if anything) was selected before, not the
+  document that was just edited.
+  **The default flipped from collapsed to expanded** — `loadDetailPanelExpanded()`
+  now treats "no saved `detail_panel_expanded` row at all" as expanded
+  (`detailPanelExpanded = rows.length === 0 || rows[0][0] !== '0';`) rather
+  than collapsed; an explicit saved `'0'` still means collapsed (a person
+  who deliberately toggles the panel off keeps that choice across reopens),
+  and an explicit `'1'` still means expanded, unchanged from the original
+  design. This is a genuine reversal of the collapsed-by-default reasoning
+  above, not a contradiction of it left unresolved: two of the panel's own
+  original reasons for *duplicated* chrome — the row-level Edit shortcut
+  competing with the panel's own Edit button, and no double-click
+  file-open forcing a trip through the panel just to open a file — are
+  gone now (see the next two paragraphs), so a collapsed-by-default panel
+  no longer pays for itself the way it did at launch. The horizontal-space
+  cost that originally justified collapsing by default hasn't changed;
+  what changed is how much redundant UI the person was trading that space
+  against.
+  **Double-click a row opens its file.** A `dblclick` listener, added
+  immediately after the existing per-row `click` listener in `render()`'s
+  row-wiring pass, reuses the panel's own "Open file" logic verbatim
+  (`resolveFileHandle` → `getFile` → `window.open`). It deliberately
+  doesn't duplicate any selection/highlight logic of its own, because
+  browsers fire two ordinary `click` events before a `dblclick` fires — by
+  the time the `dblclick` handler runs, the existing single-click listener
+  has already set `selectedDocId`, applied `.row-selected`, and called
+  `openDetail()` for that row, twice over. A document with no `file_path`
+  is a silent no-op, not an error. The panel's own "Open file" button
+  stays exactly as it was — double-click isn't a discoverable gesture on
+  its own, so the button remains the reliable, visible way to do the same
+  thing; this is a shortcut for someone who already knows it's there, not
+  a replacement for the button.
+  **`.row-edit-btn` is now hidden except below the mobile breakpoint.** At
+  normal widths it duplicated the panel's own Edit button, and that
+  duplication only made sense back when the panel defaulted to collapsed
+  and so wasn't reliably on screen — now that the panel defaults to
+  expanded (see above), the panel's Edit button is reliably reachable, so
+  `.row-edit-btn`/`.row-edit-col` are base-styled `display:none` (a
+  CSS-only change; the button's own row-level rendering and click-wiring,
+  described in the Editing note above, are untouched). It's restored
+  inside the app's one mobile breakpoint (`@media (max-width:640px)`)
+  specifically because that's the one place the panel is structurally
+  unreachable regardless of the toggle: the existing
+  `#main-layout.detail-panel-expanded .detail-panel{ display:none; }` rule
+  inside that same media query force-hides the panel unconditionally (see
+  the panel's own mobile-collapse paragraph above) — without restoring
+  `.row-edit-btn` there, Edit would be completely unreachable from the
+  table at that width. The one accepted trade-off: this reasoning holds for
+  the *default* expanded state, not for someone who's deliberately
+  collapsed the panel at desktop width — for them, reaching Edit now takes
+  two clicks (re-expand the panel via the toolbar toggle, then click the
+  row) instead of the old hover shortcut's one, a minor, honest regression
+  for that specific case rather than something silently glossed over.
+  **Right-click context menu** (`showRowContextMenu(id, x, y)`, the
+  `contextmenu` listener on table rows, `.row-context-menu`/`.row-context-menu-item`)
+  offers the same actions the panel does, rooted in a shared `buildDetailActions(id, d)`
+  function — one source of truth for which actions apply to a document right now
+  (deleted-document Restore-only, Add/Remove Collection's view-dependent visibility,
+  etc.) and what each one does, so the two surfaces can't drift out of sync.
+  **`buildDetailActions()` includes all actions** but marks "Regenerate preview"
+  with `panelOnly: true` — the context menu filters these out via
+  `.filter(a => !a.panelOnly)`, keeping that action panel-exclusive since it's
+  an interactive process with explicit feedback, not a one-shot operation the way
+  every context-menu action is. The `contextmenu` listener reuses the exact same
+  `.select-col, .row-edit-col` opt-out guard the `dblclick` listener already
+  established, for the same reason: those cells' `onclick="event.stopPropagation()"`
+  only covers the `click` event, not right-click or double-click. **The "Detail"
+  menu item toggles the panel's visibility** — it calls `saveDetailPanelExpanded(!detailPanelExpanded)`
+  without touching `selectedDocId`, so it's orthogonal to which document is currently
+  selected, the same "selection and visibility are independent" principle the
+  "row click never auto-expands" rule already established from the opposite direction:
+  selecting a document never touches panel *visibility*, and now, symmetrically,
+  toggling panel *visibility* never touches which document is *selected*.
+- **Configurable columns/filters** (`FIELD_DEFS`, `visibleColumns`,
+  `renderColumnsMenu()`, `applyColumnVisibility()`) work by toggling
+  `display` on any element carrying a matching `data-field="<id>"`
+  attribute — table headers, table cells (added fresh in every `render()`
+  call, so `applyColumnVisibility()` runs again at the end of `render()`
+  to reapply to the new cells), and the `<span class="filter-wrap">`
+  wrapping each filter `<select>`. `FIELD_DEFS` only holds the fixed,
+  built-in columns (Category, Type, People, Date, Imported, Amount, Tags)
+  now — Payment method was removed from it and, since it's a plain
+  `fields` row with `show_as_column:1`, flows through `dynamicColumnDefs()`
+  instead: any field with `show_as_column` set gets appended as a dynamic
+  tail after the fixed ones, id `field-${id}`, everywhere `FIELD_DEFS` is
+  consulted (`[...FIELD_DEFS, ...dynamicColumnDefs()]` in
+  `loadColumnSettings()`/`renderColumnsMenu()`). `applyColumnVisibility()`
+  needed **no changes** to support this — it was already fully generic
+  (`[data-field]` query), which is exactly why the split works. Dynamic
+  `<th>`s are (re)built by `renderDynamicTableHead()` (called from
+  `renderColumnsMenu()`) by removing any previous `[data-dynamic-column]`
+  headers and appending fresh ones; there's deliberately **no per-header
+  click wiring** for these — sort-on-click is delegated once, on
+  `#doc-thead-row` itself (`e.target.closest('th[data-key]')`), specifically
+  so newly-appended dynamic headers sort correctly without needing to be
+  individually wired at creation time. `populateFilters()` similarly
+  rebuilds an entire `<span id="dynamic-filters">` container every call
+  (dynamic filters only for `show_as_column` fields where `hasFilter` is
+  true — i.e. `type === 'text' || type === 'checkbox' || type === 'person'`, the
+  last shown as name pills (see the People note); Number/Date fields
+  get a column but no filter dropdown, same reasoning as Date/Amount never
+  having had one: a dropdown listing every distinct number/date isn't
+  useful) -- and ends by calling `applyColumnVisibility()` itself, since a
+  filter's visibility follows its column's and the Reports view's
+  `render()` returns before applying it (a language switch on Reports
+  used to expose hidden-column filters) -- and `currentFilters()`/`applyFilters()` read whatever dynamic
+  `<select>`s currently exist via `document.querySelectorAll('#dynamic-filters select')`
+  rather than named consts, so no code changes are needed as fields are
+  flagged/unflagged. `sortDocs()` has a `sortKey.startsWith('field-')`
+  branch: numeric compare for `type==='number'` fields, case-insensitive
+  string compare otherwise. `populateDatalists()` follows the identical
+  pattern for `autocomplete:1` text fields, rebuilding
+  `<div id="dynamic-datalists">` with one `<datalist id="field-${id}-list">`
+  per field; `renderGenericFieldHtml()` adds the matching `list=` attribute
+  when `field.autocomplete` is set. If you add a new *fixed* (non-field-
+  table) configurable column, you still need all three pieces the old note
+  described: an entry in `FIELD_DEFS`, a `data-field` on the `<th>` (and
+  matching `<td>`), and — if it has a filter — a `data-field`-wrapped
+  `<span>` in the toolbar; missing any one means the toggle silently does
+  nothing for that piece. The preference itself is stored in
+  `library.sqlite`'s `settings` table (`INSERT OR REPLACE`, not the
+  `ON CONFLICT ... DO UPDATE` upsert syntax — deliberately, since upsert
+  support depends on the SQLite version sql.js happens to bundle, and
+  `INSERT OR REPLACE` has been supported forever), not browser storage —
+  keep it that way so the preference travels with the library folder.
+- **The "🛠 Tools" toolbar dropdown** (`#tools-btn`, `#tools-menu`,
+  `.tools-menu-item`, `toggleToolbarMenu()`) holds the occasional-use
+  actions -- Manage fields, Manage collections, Library check, and Storage
+  stats -- so the toolbar itself
+  keeps only daily ones (Check inbox, Check reminders, Scan,
+  Add document, Details, Columns). Moved there on request, and it also
+  eases the recurring toolbar-wrap/`.table-wrap` calibration problem (see
+  that note near the top): the toolbar got a row shorter at most desktop
+  widths. **Each menu item keeps its original button id**
+  (`#manage-fields-btn`, `#storage-stats-btn`, ...), so every existing click
+  listener is untouched -- the menu only changes where the button lives;
+  tests click `#tools-btn` first to reveal it. It reuses the Columns
+  dropdown's markup/CSS (`.columns-menu-wrap`/`.columns-menu`), and
+  `toggleToolbarMenu(e, menu)` is now shared by both: it closes any other
+  open toolbar dropdown first (only one open at a time), keeps the
+  existing mobile `position:fixed` promotion for when `.toolbar` becomes a
+  scroll container, sets `aria-expanded`, and -- desktop only -- flips a
+  right-aligned menu to open rightward (`left:0`) when its button sits at
+  the start of a wrapped toolbar row, where it would otherwise spill over
+  the nav sidebar. Choosing an item closes the menu (a delegated click
+  listener that doesn't stop propagation, so the item's own listener
+  still runs); Escape closes it and returns focus to `#tools-btn`; an
+  outside click closes it like Columns. **Put new occasional actions in
+  this menu rather than on the toolbar.** **"👁 Toolbar buttons…"**
+  (`openToolbarButtonsModal()`, `OPTIONAL_TOOLBAR_BUTTONS`,
+  `hidden_toolbar_buttons` setting, a JSON key list) lets a library hide
+  daily buttons it doesn't use -- Check inbox, Check reminders, Scan,
+  Details, Columns (its `.columns-menu-wrap`); never Add document or
+  Tools, so nothing becomes unreachable. Hiding only, deliberately: a
+  shorter toolbar can only free height, while adding or reordering buttons
+  is what keeps breaking the `.table-wrap` calibration. `.toolbar-hidden`
+  is `display:none !important`, because other code sets these buttons'
+  inline display (Details is hidden in Reports and shown again after);
+  hidden buttons keep their listeners. Copying a library's setup copies
+  the choice (it's a `settings` row). **"Switch library"
+  (`#reload-btn`) is not in this menu -- it's a small `.sub-switch-btn`
+  text link right after the library's name (`#sub-label`) in the
+  header**, where "which library am I in" and "change it" read together;
+  shown only while a library is open (toggled alongside `toolbar` in
+  `resetAll()` and `loadDocumentsFromDb()`, since `#sub-label` shows the
+  empty-state prompt otherwise), and its "⇄" comes from CSS `::before` so
+  it reuses the existing `toolbarSwitchLibrary` string. **Clicking it only
+  calls `resetAll()`** -- back to the start screen's recent-libraries list
+  and "Open library folder" button -- and deliberately does not also call
+  `openLibrary()` the way it used to: the folder picker popping up on top
+  of the recent-libraries list forced an extra cancel whenever the person
+  just wanted a recent library (reported directly). Tests that used Switch
+  library as a "reopen the re-seeded library" shortcut now click
+  `#open-btn` right after it. **The header's
+  height must not change** -- it's part of `.table-wrap`'s max-height
+  budget -- so the name and link share one non-wrapping line
+  (`header .sub:has(#reload-btn)` is a no-wrap flex row, and
+  `header > div:first-child{ max-width:100% }` lets a long library name
+  truncate with an ellipsis instead of pushing the link onto a second
+  line). Verified at 320/640/1440px widths with a long name: header height
+  identical to before the move.
+- **Every filter dropdown built by `populateFilters()`** (Category, Type,
+  People, and any dynamic custom-field filter) also carries a "— Not set —"
+  option, right after "All X," so a document missing that field entirely
+  can be filtered to directly. It's driven by a dedicated sentinel,
+  `FILTER_UNSET` (`'__unset__'`), deliberately distinct from the plain
+  empty string `populateFilters()`'s own "All X" option already uses to
+  mean "this filter isn't active" — reusing the empty string for both
+  would make "not set" indistinguishable from "no filter selected."
+  `matchesCriteria()` — the single predicate both the live toolbar and
+  saved Smart Collection criteria already share (see the Collections note
+  above) — is the only place that interprets the sentinel, so this works
+  everywhere filtering already composes (the toolbar, Smart Collections,
+  Reports' own filter composition) with no separate code path: a scalar
+  field (category/type) checks `!!d.category`, the multi-valued People
+  field checks `(d.people||[]).length > 0`, and a dynamic field checks
+  `actual !== undefined` against `d.customFields`. That last check is
+  deliberately `!== undefined`, not a falsy check — a checkbox field
+  explicitly saved as unchecked is stored as the string `'0'`, which is
+  real, meaningful data, not "unset," matching
+  `readDynamicFieldValues()`'s own existing rule for the save path (an
+  unchecked box is meaningful data, not "empty"); only a field with no
+  saved value at all should match "— Not set —".
+- **Persisted default sort order** (`sortKey`, `sortDir`, `loadSortState()`,
+  `saveSortState()`) mirrors the `nav_style`/`default_currency` pattern exactly:
+  a per-library setting stored in the `settings` table, loaded once on library
+  open via `loadDocumentsFromDb()`, and persisted back on every column-header
+  click via the click handler's fire-and-forget call to `saveSortState()` —
+  the async `persistDb()` happens in the background without blocking `render()`.
+  **Defaults to `import_date` descending (newest-imported-first), not `date`
+  descending**, because `date` (a document's own content date, e.g. invoice date)
+  can be `NULL` for Inbox-imported documents until they're reviewed — sorting
+  by a field that's `NULL` for a significant portion of a library would bury
+  unreviewed documents in raw insertion order at the bottom of the table,
+  making a review queue invisible. `import_date` (when the library imported the
+  file) is always populated. **The "Imported" column is visible by default**
+  specifically so this sort choice has a visible, highlighted header on first
+  open — without seeing `th[data-key="import_date"]` highlighted in
+  phosphor-green, a person has no way to know the table is already sorted. If
+  the person never opens the Columns menu, they never disable this column, so
+  the header stays visible and the sort stays legible. Clicking the header
+  toggles direction (ascending on subsequent clicks); clicking a different
+  column header sets that column as the new sort and defaults `date`/`import_date`
+  to descending, all other columns to ascending — matching the existing click
+  logic for those two special-case columns. `loadSortState()` validates the
+  persisted `sort_key` against every currently-sortable column — `'title'`
+  (sortable but deliberately absent from `FIELD_DEFS`, see that field's own
+  note above), the rest of `FIELD_DEFS`, and `dynamicColumnDefs()`'s own ids
+  (already in `'field-<id>'` form — don't re-prefix them, that was a real bug
+  caught in review: re-prefixing produces `'field-field-<id>'`, which never
+  matches anything, silently discarding every custom-field sort on reopen) —
+  falling back to `import_date` for a stale or removed key, the same
+  graceful-degradation convention `loadColumnSettings()` already uses.
+- **Per-field capability checkboxes** (`toggleFieldCapability()`,
+  `capabilitiesHtml()`/`wireCapabilities()` shared helpers inside
+  `renderFieldSettingsFieldColumns()`) let a person flip a field's
+  `show_as_column`/`autocomplete` flags directly in Field Settings — two
+  small checkboxes ("Column", and "Autocomplete" for text-type fields
+  only) rendered next to the field's name. **Deliberately shown in BOTH
+  the Fields (available) and Display Fields (already-attached-to-this-type)
+  columns**, via the same shared `capabilitiesHtml()`/`wireCapabilities()`
+  helpers rather than only the Fields column — `show_as_column`/
+  `autocomplete` are properties of the field itself, independent of
+  `fsSelectedType`, so a field already attached to whichever type happens
+  to be selected still needs a reachable way to toggle its own flags; the
+  first version of this only rendered checkboxes in the Fields column and
+  a field attached to every type in the library would have had no way to
+  ever reach them. Not offered for People by name (it keeps its own fixed
+  column -- other person-type fields get the Column checkbox but never
+  Autocomplete, see the People note above) or for `'Amount'` by name (its flags
+  are deliberately kept off — see the sentinel-fields note above — so an
+  editable checkbox that visibly did nothing would just be confusing).
+  Currency is no longer excluded here — it's a completely ordinary field
+  for capability purposes now, same as Payment method, and gets these
+  checkboxes like any other text field.
+- **Schema upgrades for already-existing libraries.** `SCHEMA` uses
+  `CREATE TABLE IF NOT EXISTS`, which is a no-op for a table that already
+  exists — it does **not** retroactively add new columns to someone's
+  existing `library.sqlite`. Any column added after the initial release
+  needs a corresponding entry in `SCHEMA_MIGRATIONS` (an `ALTER TABLE ...
+  ADD COLUMN ...` string), applied via `applySchemaMigrations()` right
+  after opening an existing library, with the failure path (column already
+  exists) silently ignored. `loadDb()` also immediately persists the
+  upgraded schema back to disk rather than leaving the upgrade only in
+  memory. If you add a new column, add the migration in the same change —
+  don't just add it to `SCHEMA` and assume everyone's starting fresh;
+  people have real libraries with real captured documents already.
+- **OCR now runs on both images and PDFs** — see the 2026-09-22 PDF capture
+  OCR amendment under "Searchable PDF generation" further below for the PDF
+  path's own details (page-by-page rendering via `renderPdfPageToCanvas()`,
+  the already-has-real-text skip check, and the multi-page searchable-PDF
+  rebuild). This used to be images-only, with the OCR button hard-disabled
+  for any PDF upload; don't reintroduce that restriction or assume a PDF
+  file object silently fails OCR — it doesn't anymore.
+- **OCR language options** (`#ocr-lang` in capture, `#e-ocr-lang` in edit —
+  kept in sync, same option list in both) are just language codes passed to
+  `Tesseract.createWorker(lang.split('+'))`; Tesseract.js resolves each code
+  to a `.traineddata` file it downloads on demand, so adding a language is
+  purely an `<option>` addition, no worker/recognition logic changes. `Auto`
+  (`eng+deu`) recognizes against both trained models in one pass — deliberately
+  **not** expanded to include French/Spanish/Chinese too, since combining more
+  languages into one `recognize()` call means downloading and running against
+  every model in the combo on every scan; the other languages are
+  single-language-only options instead. `chi_tra` (Traditional Chinese) is
+  labeled "Chinese (Traditional / Cantonese)" — verified directly against the
+  `tesseract-ocr/tessdata`/`tessdata_fast` repos that there is **no** separate
+  Cantonese (`yue`) trained model to add; Cantonese text uses the same
+  traditional-character script `chi_tra` already covers. Don't add a `yue`
+  option from memory/assumption — it would silently fail to download.
+- **No direct scanner integration in the app itself** (`#scan-hint-toggle` /
+  `#scan-hint` in the capture form only, not edit — editing never adds a new
+  source file, see below). A browser has no API to control scanner hardware
+  or launch a native app like Image Capture — this is a hard web-platform
+  boundary, not something to "fix" by trying to shell out or invoke a URL
+  scheme. The toggle only reveals static instructions (use Image Capture or
+  Preview's Import from Scanner, save the result, then use the existing
+  "click to choose a file" control) — it doesn't touch the filesystem itself,
+  so it reuses `handlePickedFile()` with zero new file-handling code. For a
+  more automated path, see the Inbox feature and `scan_watch.py` below — that
+  helper is a separate native process, not something loaded into this page,
+  precisely because a browser tab can't watch a folder in the background the
+  way it does.
+- **The scan-hint text is OS-aware** (`detectOS()`, `scanHintHtml()`) —
+  it used to hardcode macOS instructions (Image Capture / Preview)
+  unconditionally, which is simply wrong advice for anyone running Chrome or
+  Edge on Windows, even though the app itself works there just as well (no
+  native-code dependency at all — see "What this project is" above).
+  `detectOS()` checks `navigator.userAgentData.platform` first (a clean,
+  non-deprecated string on every Chromium build, and this app already
+  requires Chrome/Edge), falling back to `navigator.platform`/
+  `navigator.userAgent` substring matching for any Chromium build that
+  hasn't rolled that API out yet. Returns `'macOS'`/`'Windows'`/`'Linux'`,
+  or `''` if neither signal says anything recognizable — `scanHintHtml()`
+  treats `''` and `'Linux'` the same way, a generic "use your scanner's own
+  software" fallback, deliberately **not** guessing at a specific Linux
+  scanning app (e.g. `simple-scan`) by name, since which one (if any) is
+  installed varies far more on Linux than the reliably-present Image
+  Capture/Windows Scan on their respective platforms. Computed once per
+  `openCaptureModal()` call (OS doesn't change mid-session, so there's no
+  need for this to be reactive) and interpolated directly into the
+  `#scan-hint` template — the toggle-visibility wiring itself
+  (`#scan-hint-toggle`'s click listener) is unchanged.
+- **Inbox** (`checkInbox()`, `addInboxFile()`, `addAllInboxFiles()`,
+  `addAllInboxFilesAndShowStatus()`, the `#inbox-banner` element) reads a
+  library's `inbox/` folder (a sibling of `library.sqlite` and `files/` at
+  the library root) and adds everything currently staged there directly,
+  with no per-file review step — mirroring legacy Mariner Paperless's own
+  ScanSnap watch-folder integration (a scanned file showing up already
+  filed, with the rest of the metadata left for later cleanup), but
+  deliberately split into two pieces rather than a single background
+  auto-import, for two reasons documented in more detail in "Working
+  conventions" below: (1) this app is meant to be the library's sole
+  writer to `library.sqlite` — it loads the whole database into memory
+  and only writes it back out on an explicit save, so a second process
+  inserting rows directly risks silently losing work to whichever side
+  saved last; (2) every write is supposed to come from an explicit click,
+  never from data that just showed up on disk. So `inbox/` is populated by
+  something else entirely outside this file (see `scan_watch.py` below,
+  though nothing stops a person from just dragging a file into that folder
+  by hand — **the folder itself is created for you** by both
+  `initNewLibrary()` and `openLibrary()`'s existing-library path, right
+  alongside the equivalent `files/` call; a real gap reported against an
+  earlier version of this app, since `checkInbox()`'s own `getDirectoryHandle('inbox',
+  { create: false })` deliberately never creates it — that's correct for
+  *checking* (a missing folder just means "nothing to add, not an
+  error"), but nothing else ever brought it into existence either, so a
+  person couldn't actually drag a file in by hand, or point
+  `scan_watch.py`'s `--drop-folder` at it directly, without first manually
+  creating it in Finder/Explorer/their file manager. Creating an empty
+  folder here doesn't conflict with the "no silent writes" principle
+  below — no data is written, it's the same "ensure the expected
+  structure exists" role `files/`'s own `{ create: true }` already plays)
+  and this app never watches or polls it — `checkInbox()` only runs once,
+  right after `afterDbReady()`, or when the toolbar's always-visible
+  **"📥 Check inbox" button** (`#inbox-check-btn`) is clicked. That toolbar
+  button exists specifically because the automatic once-at-open call is
+  the *only* other thing that ever triggers a scan — a file a
+  watched-folder helper (e.g. `scan_watch.py`) stages *after* someone
+  already has the library open in their browser (the normal way people
+  actually use it — leaving the tab open while scanning throughout the
+  day) would have no visible way to be noticed short of fully reopening
+  the library. This is still a single explicit click, not automatic
+  polling — same "no silent writes" principle as everything else in this
+  section.
+
+  **Both entry points add everything staged, immediately, with no
+  intermediate review step** — clicking `#inbox-check-btn` (after its own
+  fresh `checkInbox()` scan) or the banner's own `#inbox-add-all-btn`
+  ("Add all") both call the same `addAllInboxFilesAndShowStatus()`, which
+  adds every currently-staged file via `addAllInboxFiles()`/`addInboxFile()`,
+  and reports what happened on the status line
+  (`"Added N document(s) to the review queue from <folder>/inbox/."`, with
+  an error indicator and partial-failure message if any files failed to add).
+  If at least one file was actually added, it also jumps to the 🚩 Inbox nav
+  view so the newly needs-review-flagged documents are immediately visible
+  (subject to any active search/filter text that might hide them, same as
+  any other view — see the Top-level navigation note for how filters
+  compose); a `checkInbox()` scan that finds nothing staged, or where every
+  staged file fails to add, reports the appropriate status message instead
+  without navigating anywhere — there's nothing new to look at in either
+  case.
+  This intentionally removed what used to be a review modal
+  (`openInboxModal()`, listing each staged file with its own "Add" button
+  plus an "Add all with defaults" button) — that extra confirmation step
+  existed specifically so nothing got written without a person looking at
+  it first, but now that the Waste bin (see its own note above) gives
+  every write a safe, fully reversible undo path, it stopped pulling its
+  weight: the click on "Check inbox" or "Add all" is already the explicit
+  gesture that satisfies principle (2) above, a second confirming click on
+  top of it was redundant. An inbox-added document gets
+  `source = 'scan-inbox'` (distinct from `'captured'` and `'migrated'`)
+  and only two things set beyond the file itself: a filename-derived
+  title, and `document_type` prefilled from `default_document_type` if
+  one's configured (same intent as the capture form's own default-type
+  prefill) — category, subcategory, payment method, amount, date, and
+  notes are all left `NULL` rather than guessed, and no OCR runs
+  automatically (that stays an explicit action from the Edit dialog's
+  existing `runOcrForEdit()`, so a bulk add doesn't silently kick off a
+  slow OCR pass per file). **A PDF's own text layer is read, though**:
+  `createReviewDocumentFromFile()` opens an added PDF with pdf.js from the
+  bytes already in hand and runs `recordPdfTextLayer()`, so a scan a helper
+  already OCR'd (scanix500 runs ocrmypdf) or a digital PDF arrives with its
+  `ocr_text` filled and `text_checked`/`has_text_layer` set -- searchable
+  and in its sidecar at once. Before this, every scanned PDF landed with
+  empty OCR text until Library check's "Check for text" ran. Best-effort:
+  a PDF pdf.js can't open is left unchecked. This mirrors `saveNewDocument()`'s file-copy/
+  thumbnail/sidecar logic closely but isn't a shared function with it,
+  since the two have different inputs (a form's DOM fields vs. nothing but
+  a filename) and different defaults for nearly every column. The folder
+  being read from is surfaced in the status-line message itself now
+  (`${rootDirHandle.name}/inbox/`, plain text, not a link — the File
+  System Access API exposes no absolute filesystem path for a
+  `FileSystemDirectoryHandle`, only its own name, and there's no API to
+  launch a native file manager from a browser tab, so this is
+  deliberately as far as it can go) rather than a dedicated modal line,
+  since there's no modal anymore; still useful to confirm at a glance that
+  `scan_watch.py --library` is pointed at the folder you expect,
+  especially with more than one library folder in play.
+- **Drag-and-drop** (`createReviewDocumentFromFile()`, `addDroppedFiles()`,
+  the `dragenter`/`dragover`/`dragleave`/`drop` listeners on `document`,
+  `#drop-overlay`) is a third way to add a needs-review document, alongside
+  capture and Inbox — drop one or more files anywhere on the page (while a
+  library is open) and each becomes its own document with the exact same
+  defaults Inbox uses: filename-derived title, `document_type` prefilled
+  from `default_document_type` if configured, `needs_review = 1`, no OCR.
+  The per-file creation logic (id reservation, file copy, original
+  preservation, thumbnail, sidecar, `INSERT`, `allDocs` push) used to live
+  entirely inside `addInboxFile()`; it's now `createReviewDocumentFromFile
+  (file, source)`, a shared helper both `addInboxFile()` (passing
+  `'scan-inbox'`) and `addDroppedFiles()` (passing `'dropped'`) call —
+  `source` is the one thing that differs between an Inbox-staged file and a
+  dropped one, and keeping it a real, distinct value (not reusing
+  `'scan-inbox'`) keeps the two origins distinguishable in the data, the
+  same reasoning `source` already gets applied for elsewhere (`'captured'`
+  vs `'migrated'` vs `'scan-inbox'`). `addInboxFile()` itself is now a thin
+  wrapper: call the shared helper, then do its own Inbox-specific cleanup
+  (`inboxDirHandle.removeEntry()`, `pendingInboxFiles` filtering,
+  `updateInboxBanner()`) that a dropped file has no equivalent of. A
+  multi-file drop adds every file in one pass, `persistDb()`/`render()`
+  reserved for the very end rather than once per file, for the same reason
+  the bulk-action functions (see their own note above) skip a per-document
+  round-trip. On any success it jumps to the 🚩 Inbox nav view, mirroring
+  `addAllInboxFilesAndShowStatus()`; a drop that adds nothing (an empty
+  drop, or every file failing) reports on the status line without
+  navigating anywhere. **`#drop-overlay` is `pointer-events:none`** —
+  deliberately, so it's purely visual and never itself becomes the
+  `dragleave`/`drop` target instead of the real page underneath it, which
+  is also why the show/hide logic uses a counter (`dragCounter`) rather
+  than a plain boolean: `dragenter`/`dragleave` fire on every element
+  boundary a dragged item crosses, including descendants, so naively
+  showing on enter and hiding on leave flickers the overlay off every time
+  the drag passes over a child element — counting enters against leaves
+  and only hiding at zero is the standard fix. The whole feature is gated
+  on `rootDirHandle` being set (a library open) — dragging over the
+  empty-state screen is a deliberate no-op, not an error, since there's
+  nowhere to save the file yet.
+- **scan_watch.py** is the other half of Inbox, and is intentionally *not*
+  part of `dossiary.html` — a stdlib-only Python script (no
+  dependency to `pip install`), run separately, that watches a folder your
+  scan software saves into (e.g. ScanSnap Home's own "save to folder"
+  destination) and moves each file into a library's `inbox/` folder once its
+  mtime has held steady for `--settle-seconds`, purely as a filesystem move.
+  It never opens `library.sqlite`, assigns a document ID, or sets any
+  metadata — see the Inbox note above for why that split matters. Its
+  "stable" check is deliberately stateless across polls (just `now -
+  mtime >= settle_seconds`, re-checked fresh every pass) rather than
+  comparing against a previous poll's reading — that was a real bug caught
+  while building this: an earlier version tracked "unchanged since last
+  poll" in an in-memory dict, which meant a single `--once` invocation could
+  never stage anything, since every fresh process starts with an empty dict
+  and therefore always treats every file as newly-seen on its first (and
+  only) pass.
+- **Scanning: the scan dialog and its helpers** (`openScanDialog()`,
+  `discoverScanHelpers()`, `startScanFromDialog()`; spec
+  `docs/superpowers/specs/2026-10-09-system-scanner-helper-design.md`,
+  section 2; wire format in dossiary-scan-helper's `PROTOCOL.md`). A browser
+  can't reach a scanner (see "No direct scanner integration" above), so a
+  small helper app on the computer does the scanning and Dossiary talks to
+  it over `fetch()`: scanix500 on `localhost:8765` (version 2 since
+  scanix500 0.4.0, its iX500 listed as `sane:ix500` with its real settings;
+  a scanix500 before 0.4.0 speaks version 1 and gets one fixed "ScanSnap
+  iX500" entry, `V1_SCANNER`) and dossiary-scan-helper on `localhost:8766`
+  (version 2: `GET /scanners`, JSON `POST /scan`). The Field Settings address (`scan_bridge_url`) is
+  probed too, for a helper on another port. **Only loopback addresses
+  count** (`normalizeHelperUrl()`: `http://localhost`, `http://127.0.0.1` or
+  `http://[::1]`, optional port 1-65535; anything else is `null`): helpers
+  listen on 127.0.0.1 only, and a pairing token and scanned pages travel
+  over plain HTTP, so an address on another machine -- typed in Field
+  Settings, or copied with a library's setup -- is never contacted, and the
+  dialog's "Look again" refuses it. **Discovery**
+  (`probeScanHelper()`, `loadHelperScanners()`) uses a 3 s `/health`
+  timeout; a health with `protocol: 2` is version 2, one with
+  `service: 'scanix500-bridge'` version 1, anything else is ignored.
+  **📷 Scan opens the dialog**: every found scanner (a duplicated name gets
+  its helper in brackets), and only the settings the chosen one supports --
+  source, two-sided (only a duplex feeder), color, resolution, and the
+  extras Dossiary knows (`splitOnBlank`, `skipBlankPages`; unknown ones are
+  never shown or sent). Without remembered settings for the chosen scanner,
+  two-sided and skip blank pages start ticked where offered -- what
+  scanix500 always did before the dialog (the protocol's own defaults are
+  both off). The last scanner and settings are remembered per
+  library (`scan_last_settings`); a gone scanner falls back to the first.
+  **The scan request has no timeout** (a feeder batch can take minutes);
+  while it runs the dialog's button reads "Scanning…", the dialog and the
+  status line count the time up ("Scanning… 1:12", with a note that big
+  batches and OCR take minutes -- the request gives no progress, so this is
+  what keeps a long scan from looking stuck; real step-by-step progress would
+  need a protocol endpoint), and Escape, backdrop and close are blocked
+  (`scanDialogRunning`). Results, in either wire
+  format (`decodeScanFiles()`), go through `writeScanFilesToInbox()` →
+  `checkInbox()` → `addAllInboxFilesAndShowStatus()`, like any staged file;
+  a `partial` result does the same, then shows the helper's message. A
+  failure keeps the dialog open with the helper's message. **The files are
+  written before the dialog closes**: a version 2 helper keeps no copy, so
+  if `inbox/` can't be written the dialog stays open with
+  `fileErrorText()`'s message naming the file and the reason, and nothing
+  is lost that a second scan can't redo. Remembering the settings
+  (`saveLastScanSettings()`) is best-effort -- a read-only `library.sqlite`
+  doesn't stop the scan -- and any other error ends as a "Scan failed"
+  message, never a status line stuck on "Scanning…". A pairing token is
+  stored as soon as `/pair` answers, even if the dialog was redrawn
+  meanwhile (another helper's pairing, a 401), since the code is used up by
+  then. **Background OCR (2026-10-11)**: when `scan_auto_ocr` is on (default;
+  Field Settings, with `scan_ocr_language`, default Auto = eng+deu), a scan
+  asks a helper that offers `ocr` to make the pages searchable
+  (`ocr: true`, `ocrLanguages` the setting's codes the scanner supports) and
+  returns at once; each file's `ocrJob` goes into `ocr_jobs (document_id,
+  helper_url, job_id, file_hash, created_at)` by `queueScanOcr()`. `job_id`
+  NULL means "waiting for Dossiary's own OCR": a scan with no `ocrJob` and no
+  text layer of its own. The runner (`startOcrJobRunner()`, a 3 s timer, one
+  `runOcrJobPass()` at a time, one fallback OCR at a time) starts after a
+  scan and when a library opens with rows, and stops in `resetAll()` or when
+  the last row goes. A pass polls `GET /ocr/<job>`: 202 keeps waiting; 200
+  swaps the searchable PDF in through `replaceActiveFile()` (the original is
+  kept) -- but only if the active file still has the job's `file_hash`,
+  otherwise "Edit pages…"/"Combine…" changed it and the result is discarded
+  for the fallback. Fallback triggers: 404/500, a bad answer, a failed swap,
+  and a helper unreachable (network error or 401) for 10 minutes
+  (`ocrUnreachableSince` is in memory, so polling never rewrites
+  `library.sqlite`; that is why there is no `last_reached_at` column). The
+  fallback is `makeDocumentSearchable()` with the row's `ocr_language` (else
+  the setting's language), run only while the setting is on -- for scan rows;
+  the pill "Making searchable…" (`ocrPendingDocIds`) marks pending documents
+  in table, grid and panel. **The Edit form's "Make searchable" button
+  (`#e-run-ocr-btn`, formerly "Run OCR") queues a row too**
+  (`queueEditOcr()`: `job_id` NULL, `requested_by = 'edit'`, `ocr_language`
+  = the form's language; `ocr_jobs` gained both columns, with
+  `SCHEMA_MIGRATIONS` entries; scan rows are `requested_by = 'scan'`).
+  `isActiveOcrRow()`: an `'edit'` row runs and shows whatever the scan
+  setting says, since it was asked for; the setting governs scans only.
+  The form locks the OCR text box with `editOcrQueuedNote` (also when
+  reopened while a row exists) and `saveEditedDocument()` keeps the saved
+  `ocr_text` while a row is pending, so the stale box can't erase what the
+  job writes. A document that is already searchable (`canMakeSearchable()`
+  false) keeps the instant `runOcrForEdit()` read. A deleted document's row
+  is dropped (panel/bulk Delete, and by a pass for raw updates like
+  Combine's). Every await checks `rootDirHandle` is still the starting
+  library, and the fallback passes `isStale` into `makeDocumentSearchable()`
+  so a library switch writes nothing. **Why this doesn't break "every write
+  is an explicit action"**: the work starts from an explicit Scan or Make
+  searchable click, the scan part is governed by a setting, it only touches
+  files that scan created or the document that was clicked, the original is
+  always kept, and a queued Edit job resumes after reopening the library.
+  A helper swap leaves `searchable_pdf_built` 0 on purpose (that flag means
+  Dossiary built the file); `has_text_layer` marks it searchable. **Guards**:
+  `performScanRequest()` remembers the library root before its awaits and
+  neither queues nor continues if it changed (`queueScanOcr()` takes the root
+  too and returns 0 on a mismatch, since the ids belong to the old library);
+  `canEditPages()`, `canCombine()` and `canMakeSearchable()` refuse a
+  document with an active `ocr_jobs` row (`isOcrPendingDoc()`, which also
+  consults the table, since the in-memory set can lag a freshly queued row),
+  because the job's later result would rebuild from the old pages and undo
+  the edit -- the fallback itself uses `canMakeSearchableBase()`;
+  `saveEditedDocument()` with the OCR box locked leaves `ocr_text` out of the
+  UPDATE and the in-memory copy, so a job finishing during Save's awaits
+  isn't overwritten; the fallback's `persistDb()` is try/catch'd (read-only
+  `library.sqlite`). Spec
+  `docs/superpowers/specs/2026-10-11-background-scan-ocr-design.md`, wire
+  format in dossiary-scan-helper's `PROTOCOL.md`. **Pairing**:
+  `Origin: null` can't tell this `file://` page from a sandboxed iframe on
+  any website, so each browser pairs once per helper: a helper whose
+  `/health` says `paired: false` shows a code field in the dialog
+  (`submitInlinePairing()`, `POST /pair` `{code, client: 'Dossiary'}`), and
+  the token is kept in `localStorage` (`dossiary_scan_tokens`, keyed by the
+  helper's address -- per browser, not per library). `Authorization:
+  Bearer <token>` is only sent when there is a token: a pre-0.3.0
+  scanix500 (no `paired` field, counts as paired) rejects the preflight for
+  that header. A 401 drops the token and brings the code field back.
+  **One Scan button since v1.51** -- the separate 📸 Scan Multi button
+  (the dialog with split on blank pages ticked, shown only while a scanner
+  could split) was merged into the dialog's own checkbox: it differed from
+  Scan only in that one tick. The option reads "Split the stack at blank
+  sheets" (a whole blank sheet, not a blank page, is the separator), and
+  its always-visible hint (`#scan-split-hint`) starts with "Scan Multi:"
+  for former Mariner Paperless users (the hint doesn't name Paperless); "Skip blank pages" has its own hint
+  (`#scan-skip-hint`, the blank backs of one-sided letters). Ticking split also ticks
+  "Skip blank pages" (untickable again), because in scanix500
+  (`blank_filter.py`) a sheet blank on every side is the separator and is
+  dropped, while other blank pages -- the blank backs of one-sided
+  letters -- are kept unless skip is on; split alone is rarely what anyone
+  wants. A scanner offering both gets a folded "What do these options
+  do?" table of the four combinations (`#scan-options-help-toggle`,
+  `#scan-options-help`; its CSS overrides the document table's global
+  `table`/`thead th` rules, whose `min-width:800px` and sticky header
+  would otherwise leak in). While split is ticked the start button reads "Scan and split"
+  (`syncScanStartLabel()`/`scanStartLabel()`), since split is remembered
+  with the scanner's settings and quietly turns one stack into several
+  documents. A library whose `hidden_toolbar_buttons` still lists
+  `scan-multi` is unaffected (unknown keys are ignored). With Scan Multi's
+  availability check gone, opening a library no longer contacts any scan
+  helper; discovery happens only when the dialog opens. **Nothing found** explains what to
+  install, links dossiary-scan-helper's releases and scanix500, and offers
+  the address field with "Look again". **Tests**: the shared stub fails
+  every request to another localhost origin, so no test reaches a real
+  helper on the machine; `tests/test_scan_dialog.py` fakes helpers per
+  scenario, and `tests/manual_scan_reference_helper.py` checks against the
+  real reference helper by hand.
+- **iPhone & other devices** (`openDevicesDialog()`, `syncAdminFetch()`,
+  Tools → `#devices-btn`, and `#empty-devices-btn` on the start screen,
+  since it needs no open library; spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-22-dossiary-devices-dialog-design.md`)
+  manages Dossiary Sync's paired devices through its loopback-only admin
+  API on `http://127.0.0.1:8769` (3 s health timeout, 15 s for every other
+  call, so a hung service never leaves a button disabled). Not answering → an
+  explanation and the dossiary-sync link; otherwise Connect asks the service
+  to show a code as a macOS notification (a 429 names the wait) and swaps
+  the typed code for an admin token, kept per browser in `localStorage`
+  (`dossiary_sync_admin_token`, every access in try/catch; when
+  `localStorage` refuses to store it, the in-memory copy is used for the
+  rest of the session). **Every POST carries `Content-Type:
+  application/json` and a JSON body** (`{}` when there's nothing to say):
+  the service answers 415 otherwise, and the fake in the tests does the
+  same, so a missing header fails the suite. A token the service no longer
+  knows (`connected: false`, or a 401) is dropped and Connect comes back.
+  Connected: devices with role labels (phone/mirror/restore), relative
+  last-seen (`Intl.RelativeTimeFormat`), one checkbox per shared library
+  for phones (allow/deny at once, status line, a refusal undoes the tick),
+  Remove behind `confirm()`, shared libraries read-only with the
+  `dossiary-sync share <folder>` note, Disconnect. An answer in the wrong
+  shape says so (`devicesUnexpectedAnswer`), and when libraries and devices
+  are fetched together the error shown is the one that actually failed.
+  **"Add iPhone or iPad…"** (`#devices-add-slot`, `renderDevicesAddSlot()`,
+  `requestPairCode()`, state in `devicesPair`, which survives a re-render of
+  the list such as Remove): library checkboxes, none ticked, and "Show QR
+  code" disabled until one is; `POST /admin/pair-code {libraries}` →
+  `{code, expires, fingerprint, addresses, link}`. The QR code of `link`
+  (`dossiary-sync://pair?v=1&f=…&c=…&a=…`) is drawn locally as an SVG
+  (`qrSvgMarkup()`, one `<path>`, black on white with a 4-module quiet zone
+  whatever the theme) by **qrcode-generator 1.4.4** (Kazuhiko Arase, MIT,
+  checked against its repo's LICENSE), loaded from cdnjs on demand by
+  `ensureQrCode()` like pdf-lib (skipped when `window.qrcode` already
+  exists, which is how the tests' fake takes over) and listed in
+  `OPEN_SOURCE_LIBRARIES`; nothing is sent anywhere. Beside it: the
+  instructions, a "Valid for m:ss" countdown (`devicesPairTimer`, stopped
+  when the dialog closes or the section re-renders), the code (grouped
+  `XXXX XXXX`) and fingerprint as text. Expired → the QR is cleared and
+  "New code" asks again; Done folds the section and reloads the devices so
+  the new phone shows. Closing the dialog doesn't cancel the code (it
+  expires on its own; a new one replaces it on the service). A QR library
+  that can't load still shows code and fingerprint, with a note. A 401
+  anywhere drops the token. `devicesDialogSeq` drops answers for a dialog
+  that was closed or reopened meanwhile. Every service-supplied string
+  (device, library, code, fingerprint) is escaped; tests feed `<img
+  onerror>` names. Tested by `tests/test_devices_dialog.py` (a fake `fetch`
+  per scenario plus a fake `window.qrcode`; the shared stub blocks the real
+  service, and the cdnjs QR request is aborted). The real library was
+  checked once by rendering a link and decoding the screenshot with
+  OpenCV.
+- **Searchable PDF generation** (JPEG/PNG images, and — as of the
+  2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
+  Tesseract's `{blocks: true}` output specifically — the default
+  `recognize()` call only returns plain text, not per-word bounding boxes.
+  `flattenOcrWords()` flattens the `blocks -> paragraphs -> lines -> words`
+  tree. `buildSearchablePdf()` then uses jsPDF to place the source image as
+  a full-page background with each word rendered as invisible
+  (`renderingMode: 'invisible'`) text positioned at its bounding box — the
+  same technique tools like `ocrmypdf` use. Two jsPDF unit gotchas that are
+  easy to reintroduce as bugs if this code is touched:
+  - jsPDF's `unit: 'px'` does **not** default to a 1:1 pixel mapping; the
+    `hotfixes: ['px_scaling']` constructor option is required to make 1 unit
+    equal 1 real image pixel, matching the coordinates `addImage()` and
+    Tesseract's `bbox` both use. Without it, all text lands in the wrong
+    place.
+  - `setFontSize()` **always** takes points, regardless of the document's
+    configured unit. Word heights from Tesseract are in pixels, so they're
+    converted via `wordHeightPx * 0.75` (96 CSS px per inch ÷ 72 pt per
+    inch) before being passed to `setFontSize()`.
+  - Horizontal scaling to exactly match each word's bbox width is
+    deliberately not attempted (would need jsPDF's transform-matrix text
+    API); only x/y position and approximate font size are set. This was a
+    deliberate scope cut for robustness, not an oversight — don't add
+    matrix-based scaling without a way to visually verify it, since it
+    can't be checked in this project's offline test setup (see below).
+  - When a searchable PDF is built, the *processed* file is the generated
+    PDF (`file_path`), and the *original* upload is preserved untouched in
+    a subfolder next to it (`original_file_path`) — mirroring the layout
+    `migrate_to_new_library.py` produces for migrated documents and that
+    Mariner Paperless itself used. See "Preserving an original file on
+    ingestion" below for what happens when a searchable PDF *isn't* built.
+  **PDF capture OCR (2026-09-22 amendment)**: the capture form's "Make searchable" (formerly "Run OCR")
+  button and language selector, previously hard-disabled for any non-image
+  upload, now also work for PDFs — an opt-in click before Save, at parity
+  with images, not an automatic zero-click process. Clicking it on a PDF
+  first checks every page for real, pre-existing text via pdf.js's
+  `page.getTextContent()`; if any page has substantial real text, the whole
+  document is treated as already-searchable and OCR is skipped entirely —
+  the file saves completely untouched, since rebuilding an already-digital
+  PDF through the rasterize-and-overlay technique below would only degrade
+  it for no benefit. Otherwise, every page is rendered via
+  `renderPdfPageToCanvas()` (the same helper `runOcrForEdit()` already
+  uses) and OCR'd individually with `{blocks: true}` — unlike
+  `runOcrForEdit()`'s own PDF path, which only needs plain text, capture-time
+  OCR also needs each page's word-position data, since it feeds the
+  searchable-PDF rebuild at Save. **Rendered pages go to jsPDF as JPEG
+  (quality 0.9), never PNG** (`ocrPdfPagesWithWords()`, shared with "Make
+  searchable"): jsPDF stores a PNG as a predictor-compressed image, and
+  Chrome's PDF viewer showed a large one -- a 72-ppi Image Capture scan
+  rendered at scale 2 to 4288x6282 -- as coloured noise, though other
+  readers decoded it fine; it was also ~6x the size. `buildSearchablePdf()` itself was
+  generalized from a single-page function to `buildSearchablePdf(pages)`,
+  taking an array of `{dataUrl, imageFormat, dims, words}` entries and
+  looping `addPage()` for entries after the first — every existing
+  image-capture call site now passes a single-element array, reusing the
+  exact same per-page placement logic and the same two jsPDF unit gotchas
+  documented above, rather than a second parallel implementation. The
+  resulting rebuilt PDF is, necessarily, a rasterized copy of the original
+  scanned pages (an image background per page, same as the image-capture
+  case) — there is no code path anywhere in this app for merging a new text
+  layer into an existing PDF's own vector/text content, which is exactly
+  why the already-has-real-text check above exists: to make sure this
+  rasterize-and-rebuild path is only ever taken for PDFs that didn't have
+  real content worth preserving in the first place. See
+  `docs/superpowers/specs/2026-09-22-pdf-capture-ocr-design.md` for the
+  full design.
+- **Preserving an original file on ingestion** (`writeOriginalToSubfolder()`,
+  called unconditionally from both `saveNewDocument()` and `addInboxFile()`)
+  reverses what used to be true only for the searchable-PDF path above:
+  every new document, regardless of file type or whether OCR ever runs,
+  gets its raw, untouched bytes written into `files/<id>_<baseName>/` and
+  `original_file_path` set to that — before any processing happens.
+  `file_path` keeps meaning the same *concept* it always has — whatever's
+  currently active (the searchable PDF when one was built, otherwise a
+  plain copy of the same content) — but its *naming scheme* changed for
+  `saveNewDocument()`'s plain-save branch specifically: the active copy is
+  now named `<id>_<baseName><ext>`, using the same title-or-filename-derived
+  `baseName` computed once and reused for the original's subfolder, rather
+  than being purely filename-derived as it was before this feature (`ext`
+  is extracted directly from the raw uploaded filename, not re-run through
+  `safeFilename()`, since `baseName` already went through it). This is a
+  real, user-visible change — documents captured after this ships are named
+  differently than ones captured before. `addInboxFile()` was always
+  filename-derived (no title field exists at Inbox-add time) and still is;
+  only the capture form's plain-save path changed. LibraryLifeboat-migrated
+  documents are untouched by this — their `original_file_path` reflects
+  Mariner's own historical layout via `migrate_to_new_library.py`, not this
+  app's own ingestion.
+  **This means `original_file_path IS NOT NULL` can no longer be read as
+  "this document went through searchable-PDF processing"** — a new
+  `searchable_pdf_built` column (`documents.searchable_pdf_built`, `0`/`1`)
+  is the explicit signal for that now, set to `1` only in
+  `saveNewDocument()`'s searchable-PDF branch, `0` everywhere else
+  (including every Inbox add, since Inbox never runs OCR automatically).
+  A one-time backfill migration (`migrateSearchablePdfBuiltFlag()`, same
+  settings-row-tracked-once pattern as `migrateTextFieldsAutocompleteDefault()`
+  below) sets `searchable_pdf_built = 1` for existing documents where
+  `original_file_path IS NOT NULL AND source = 'captured'` — the same
+  predicate that uniquely identified the old rule — deliberately excluding
+  `source = 'migrated'` documents, whose `original_file_path` predates and
+  is unrelated to this app's own OCR pipeline. Every new document now
+  permanently uses roughly double the disk space (an original plus an
+  active copy, even when nothing is ever processed) — an accepted
+  tradeoff, not an oversight. `searchable_pdf_built` is loaded into
+  `allDocs` (as a boolean) and gates the "Make searchable" action below.
+- **"Make searchable"** (`makeDocumentSearchable()`,
+  `openMakeSearchableModal()`, the panel-only `'make-searchable'` action in
+  `buildDetailActions()`) builds a searchable PDF for an already-saved
+  document -- the same OCR-plus-invisible-text-layer rebuild capture does
+  when OCR runs before Save, after the fact. Offered only for a non-deleted
+  document whose active file ends in `.pdf`/`.jpg`/`.jpeg`/`.png` and whose
+  `searchable_pdf_built` is still `0`; panel-only (like "Regenerate
+  preview"), since it's a long, progress-reporting run rather than a
+  one-shot context-menu action. A small dialog picks the OCR language
+  (defaulting to the document's own `ocr_language`, else Auto) and blocks
+  Escape/backdrop/close while running (`makeSearchableRunning`, checked by
+  `onModalKeydown()` alongside the Library check backfill flag). It shares
+  its OCR steps with capture: `pdfHasRealText()` (a PDF with real text is
+  left completely untouched and reported as such -- same reason capture
+  skips it) and `ocrPdfPagesWithWords()` were pulled out of `runOcr()`, and
+  `ocrLanguageOptionsHtml()` now builds all three OCR language dropdowns.
+  **The untouched original is always kept**, by one of two rules:
+  - The document has its own preserved original (everything this app
+    captured or added via Inbox): the active *copy* is replaced -- a PDF is
+    overwritten in place, an image gets a new `<stem>.pdf` next to it. The
+    superseded image copy is removed only when its bytes hash-match
+    `file_hash` (which is computed on the original), so a copy that
+    somehow differs from the original is never deleted.
+  - No original, or the original's file is missing on disk: the current
+    file *becomes* `original_file_path` and the searchable PDF is written
+    next to it as `<stem>.pdf` (image) or `<stem>_searchable.pdf` (PDF) --
+    never overwriting what might be the only copy.
+  `file_hash` needs no update under either rule: it's derived from the
+  original, which never changes. Existing non-empty `ocr_text` is kept
+  (it may have been corrected by hand), otherwise the fresh OCR text and
+  language are stored. The sidecar is rewritten under the new file stem
+  (best-effort) and the old one removed when the stem changed -- it's
+  derived output, not user data.
+  **Bulk "Make searchable"** (`#bulk-make-searchable-btn` in the
+  bulk-action bar's More menu -- see the page tools note) opens the same dialog: `openMakeSearchableModal(ids)`
+  takes a list, filters it through `canMakeSearchable(d)` (the one
+  eligibility rule, shared with the panel action), and a single remaining
+  id takes the original single-document path and messages. The button only
+  shows when at least one selected document is eligible (never in the
+  Waste bin), and the dialog says how many it will process. Documents run
+  one after another, each persisted as it finishes (`makeDocumentSearchable()`
+  already calls `persistDb()` per document -- a long batch is exactly where
+  a closed tab or crash should keep what's done, the same reasoning as the
+  Library check backfill's periodic saves). "Stop after this document"
+  lets the current one finish. The summary counts made searchable /
+  already had text / could not be processed / not processed (stopped),
+  phrased as "Label: N" so no singular/plural key pairs are needed, and
+  lists each failed document with its reason. A failed document stays
+  eligible, so the bulk button remains for a retry.
+  **Failures say which file and why**: `withFileOp(op, path, fn)` wraps a
+  file read or write and rethrows with `fileOp`/`filePath`/`errorName`
+  attached, and `fileErrorText(e, fallbackKey)` turns that into plain words
+  -- a read-only file (Chrome's `NoModificationAllowedError`, e.g. a file
+  locked in Finder) gets "Could not save "<library>/<path>": the file is
+  read-only" plus how to unlock it, a missing file points at Library check's
+  re-link, anything else names the path and the browser's message. It used
+  to be "OCR failed: Failed to execute 'createWritable'...", although OCR
+  had worked and only saving failed. Make searchable, Edit pages and
+  Combine use it. **"OCR found no text" isn't a failure**: OCR ran and
+  recognized nothing (blank page, photo, handwriting, wrong language). A
+  single run shows it in the neutral status colour; the bulk summary counts
+  it on its own ("No text found: N. Try another OCR language."), lists those
+  documents apart from real failures (`#make-searchable-notext-list`), and
+  they stay eligible for a retry.
+  **`has_text_layer`** (`documents.has_text_layer`, `0`/`1`, added via
+  `SCHEMA_MIGRATIONS`) records a PDF found to already contain real text --
+  by capture-time OCR (`pendingPdfHasText`) or by "Make searchable" -- so
+  `canMakeSearchable()` stops offering it. Kept separate from
+  `searchable_pdf_built` on purpose: that flag means "this app built the
+  file", this one "the file was searchable as it came". Without it, every
+  digital PDF (a downloaded bill) would count as not searchable forever.
+  **"Not searchable yet" in Library check** (`renderNotSearchableSection()`
+  filling `#not-searchable-slot`, last in the list since it's not a
+  problem, just what OCR hasn't reached) shows two counts, from
+  `notSearchableBuckets()`: PDFs **not checked for text yet**, and
+  documents that **need OCR** (images, which never have a text layer, and
+  PDFs checked without one -- `text_checked` = 1, `has_text_layer` = 0),
+  **leaving out any document that already has OCR text** (typed in by hand
+  or from an earlier OCR run): search and the sidecar read `ocr_text`, not
+  the file, so it's findable already. Reported after a person typed the
+  text of a document OCR couldn't read and Library check kept listing it.
+  The panel still offers "Make searchable" for such a document.
+  The split exists because a single "not searchable" count was reported as
+  wildly wrong: a Mariner-migrated library arrived with ~1,340 documents
+  counted, since none of its PDFs (most of which already carry a text
+  layer from Mariner/ScanSnap) had ever been opened to look. Whether a PDF
+  has text is only knowable by opening it -- Mariner's stored OCR text
+  lives apart from the file. **"Check for text"** (`runTextLayerCheck()`)
+  opens each unchecked PDF with pdf.js and runs `pdfHasRealText()`, no
+  OCR, shaped like the duplicate backfill for the same iCloud reason: 4
+  files at a time, a chained save every 25, a Stop that lets in-flight
+  files finish (then a note saying how far it got), and the modal's close
+  controls gated on `findDuplicatesBackfillRunning` while it runs. A file
+  that can't be read stays unchecked, so the next run retries it. Each
+  count comes with its own actions: "Check for text" for the first; "Show
+  in table" (the same Reports drill-down the duplicate groups use, back
+  link returning to Library check) and "Make all searchable" (the bulk
+  dialog, for the needs-OCR bucket only -- not a way to start OCR on
+  hundreds of unchecked PDFs by accident) for the second. "Make
+  searchable" also records `text_checked` when it finds no text.
+  **A found text layer also becomes searchable text**: `recordPdfTextLayer()`
+  (the one place that records a check, used by "Check for text", "Make
+  searchable", and the duplicate backfill) copies the PDF's own text
+  (`pdfExtractText()`) into `ocr_text` when that's empty, and the caller
+  refreshes the sidecar -- the app's search and Spotlight only ever see
+  `ocr_text`, so before this a digital PDF (or a Mariner PDF whose text
+  never reached the database) wasn't findable by its contents at all.
+  Existing `ocr_text` is never replaced. A third count, **"Text not in
+  search yet"** (`notSearchableBuckets().textMissing`: non-deleted PDFs with
+  `has_text_layer` = 1 but empty `ocr_text`), catches PDFs checked before
+  the text was copied over (v1.30.1); "Check for text" includes them in the
+  same pass, and since `recordPdfTextLayer()` copies into any empty
+  `ocr_text`, no separate code path was needed. Capture does the same: a PDF found
+  to have text fills the empty OCR text box. **The duplicate backfill
+  checks for text from the same read** (`backfillFileHash()`): when the
+  file it hashes is the document's active PDF (no separate original, as for
+  every Mariner-migrated document), it opens those bytes with pdf.js too,
+  so on iCloud Drive a file downloads once for both checks; a document
+  hashed from a separate original is left for "Check for text". It's the
+  one place to find these documents without a toolbar filter, which would
+  have reopened the toolbar-wrap calibration problem described near the
+  top of this file.
+- **Sidecar `.txt` files** (`buildSidecarText()` / `writeSidecarFile()`) are
+  written next to every captured document's primary file, containing the
+  fields that only live in `library.sqlite` (category, tags, notes, OCR
+  text, etc.) so Spotlight/Finder search can find them — Spotlight has no
+  visibility into a SQLite file's rows otherwise, and there is no way to
+  register a real Spotlight importer from a browser context. If the
+  metadata fields captured in `saveNewDocument()` change, update
+  `buildSidecarText()`'s field list to match — it's easy for these to drift
+  out of sync since nothing enforces they stay identical. The sidecar's
+  base filename always matches the primary file's stem (without extension),
+  never the original's — so it's discoverable sitting right next to what a
+  person would actually open. `migrate_to_new_library.py` in the sibling
+  repo does the equivalent thing in Python (`build_sidecar_text()`) for
+  migrated documents; keep both in sync if the sidecar format changes,
+  since a person migrating and then capturing should get consistent files.
+- **New libraries are `<Name>.dossiary` folders** (`createLibraryFolder()`,
+  `libraryFolderName()`, `showNewLibraryForm()`, the `#new-library-form`
+  on the init-state screen). When a picked folder has no `library.sqlite`,
+  the screen offers a name (default `newLibraryDefaultName`, "My
+  Documents") with a live preview of the folder it will create, and
+  **Create library in this folder** makes `<Name>.dossiary` inside the
+  picked folder and runs `initNewLibrary()` there (`rootDirHandle` is
+  switched to the new folder first, so recent libraries record it). The
+  same naming LibraryLifeboat's migration uses, so a library folder is
+  recognisable. It's a convention only: a browser app can't register a
+  package type, and opening never requires the extension. A name already
+  ending in `.dossiary` (any case) isn't doubled; names with `/ \ : * ? "
+  < > |` or a leading dot are refused; an existing folder of that name is
+  never reused. **"Use this folder as the library" (`#init-btn`, the old
+  "Initialize a new library here") still sets up the picked folder itself**
+  and becomes the main action -- the name form hidden -- when that folder
+  already ends in `.dossiary`. A language switch on this screen swaps an
+  untouched default name and rebuilds the preview (`setLang()`).
+  **"Copy the setup of"** (`#copy-setup-select`, `renderCopySetupOptions()`,
+  `readSetupSourceOrShowError()`, `copySetupFrom()`) starts either path
+  with another library's setup: its `fields` (ids kept, since
+  `visible_columns`, `sort_key` and Smart Collection rules refer to
+  `field-<id>`/`field:<id>`), `document_type_fields`, `field_descriptions`,
+  smart `collections`, and every `settings` row except
+  `SETUP_SETTINGS_NOT_COPIED` (`last_backup_at`) -- the migration markers
+  included, so `migrateTextFieldsAutocompleteDefault()` doesn't switch a
+  copied field's deliberately-off autocomplete back on. Never documents,
+  tags, people or manual collections. The source comes from Recent
+  libraries or "Another library folder…" (`showDirectoryPicker({mode:
+  'read'})`), and is read into a separate in-memory sql.js database, never
+  written. It's read *before* the new folder is created, so an unreadable
+  source (no permission, no `library.sqlite`) is reported in
+  `#copy-setup-error` and leaves nothing half-made. `copySetupFrom()` runs
+  in `initNewLibrary(setup)` right after `SCHEMA` and before the field
+  migrations, which find the copied built-in fields by name and add only
+  what's missing. Columns are listed explicitly (`SELECT id, name, ... FROM
+  fields`, not `SELECT *`), per the sql.js convention above and so the test
+  stub's `FakeDatabase` can serve it; a table an older source lacks is
+  skipped. The status line adds `statusSetupCopiedFrom`
+  (`setupCopiedFromName`, read by `afterDbReady()`).
+- **Recent libraries** (`renderRecentLibraries()`, `recordRecentLibrary()`,
+  `reconnectRecentLibrary()`, `#recent-libraries` on the empty-state screen)
+  reverses what an earlier version of this note called an unavoidable
+  browser limitation. `FileSystemDirectoryHandle` objects are structured-
+  cloneable, so they can be stored directly in IndexedDB (database
+  `dossiary-app-db`, object store `recentLibraries`) and later
+  re-authorized with a single click via `handle.requestPermission()` — no
+  fresh `showDirectoryPicker()` dialog needed, just a user gesture. This is
+  still FSA's own handle object being persisted, not a `localStorage`-style
+  workaround around FSA. `afterDbReady()` (the single point both
+  `loadDb()` and `initNewLibrary()` funnel through) calls
+  `recordRecentLibrary(rootDirHandle)` as a fire-and-forget best-effort
+  call, same pattern as its neighboring `checkInbox()` call — a failure to
+  record history should never block a library from actually opening.
+  Dedup uses `handle.isSameEntry()` (folder *identity*, not name — a
+  folder can be renamed, and two different folders can share a name), not
+  a string comparison; a re-opened library updates its existing entry's
+  `lastOpenedAt` rather than creating a duplicate row. Capped at 5 entries,
+  oldest evicted first. On by default (matches Finder/Explorer "Recent
+  Files" conventions) — a person on a shared computer who doesn't want a
+  library remembered removes it via the row's own ✕; there's no separate
+  opt-out setting. **One real caveat worth being explicit about**: all
+  `file://` pages share a single IndexedDB origin, so this isn't isolated
+  to Dossiary the way it would be if this app were served from a real
+  origin — any other local HTML file a person happens to open in the same
+  browser can enumerate `indexedDB.databases()`, read `dossiary-app-db`'s
+  stored records back (live `FileSystemDirectoryHandle` objects included),
+  and call `requestPermission()` on them itself. The native OS/browser
+  permission prompt — which still names the real folder — is the only
+  remaining gate at that point, not origin isolation; there's no way to
+  scope `file://` storage per-page, and this is empirically confirmed
+  behavior in real Chromium, not a hypothetical. `openLibrary()`'s original body (given a granted
+  handle, check for `library.sqlite` and proceed) is now the shared
+  `proceedWithRootDirHandle(handle)` helper, called both from the fresh-
+  picker path and from a successful reconnect — so there's exactly one
+  place that knows what "given a folder handle, open it" means. Tested via
+  `tests/test_recent_libraries.py`; `tests/stub_studio2.js` needed a
+  from-scratch in-memory `indexedDB` fake for this (storing values by
+  reference, not a real structured-clone round-trip) since a real
+  browser's IndexedDB would silently strip our fake `FileSystemDirectoryHandle`
+  class down to a plain data object, unlike what happens to a *real* handle.
+- **UI language support (started as English/German, later generalized to
+  seven languages — English, German, Spanish, French, Chinese Simplified,
+  Chinese Traditional, Armenian)** is a flat per-language dictionary (`STRINGS.en` /
+  `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
+  `STRINGS['zh-Hant']` / `STRINGS.hy`, 720 keys each), a lookup helper (`t(key,
+  params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
+  full i18n library, ICU message format, or per-string `.po`/`.json` files;
+  the app's single-file constraint (see "What this project is") rules out
+  pulling in a real i18n framework, and a handful of hardcoded languages
+  don't need one. `t()` falls back `STRINGS[currentLang][key] ?? STRINGS.en[key] ??
+  key` — an unknown/missing key renders as its own literal key string
+  rather than throwing or going blank, so a typo'd or forgotten key is
+  loud and visible in the UI instead of silently disappearing. `params` is
+  a plain `{needle: value}` object, substituted via repeated
+  `replaceAll('{needle}', value)` calls — no positional/plural ICU
+  grammar, deliberately (see the singular/plural note below for how
+  count-dependent strings are handled instead).
+  **Static markup vs. dynamically-built markup use two different
+  mechanisms, split along the same line the rest of this app already
+  splits on** (compare the Configurable columns/dynamic filters notes
+  above, or `renderDynamicTableHead()`): HTML that exists in the page's
+  own source — labels, buttons, modal headings that are always present in
+  the DOM, just hidden/shown — carries a `data-i18n`(`-placeholder`|
+  `-title`|`-aria-label`) attribute naming its key, and `applyI18n()`
+  walks all four attribute kinds once (`textContent`, `.placeholder`,
+  `.title`, `aria-label` respectively) to fill them in. Anything rebuilt
+  from scratch in JS on every render — table rows, the dynamic-fields
+  container, status-line messages, the recent-libraries list, modal
+  bodies assembled via template strings — has no stable DOM node for an
+  attribute to survive on, so those call `t()` directly inline wherever
+  the template string is built, re-evaluated fresh every time that code
+  runs anyway. Neither mechanism is "more correct" than the other; using
+  attributes for content that gets discarded and rebuilt on every
+  `render()` call would be silently inert (the attribute would exist for
+  a few milliseconds before the element carrying it is thrown away), and
+  inline `t()` calls for genuinely static markup would just be more code
+  than a declarative attribute for no benefit.
+  **A handful of elements landed on the wrong side of this split in the
+  original translation pass and were corrected in a later final-review
+  fix round**: the modal close button's `aria-label`, the capture/edit
+  forms' built-in (non-dynamic) field clear buttons' `title`/`aria-label`,
+  and the file/thumbnail preview `<img alt>` all live inside `modalRoot`
+  template strings rebuilt fresh on every modal open — `applyI18n()` is
+  only ever called at page-init and from `setLang()` (and, per the toggle-
+  guard note above, `setLang()` now never runs while a modal is open at
+  all), so a `data-i18n-aria-label`/`data-i18n-title` attribute on one of
+  these would never actually get resolved; the fix was inline `t()` calls
+  at template-build time, matching what the detail modal's own close
+  button and the dynamic per-field clear buttons already did correctly
+  from the start. All of them **reuse existing keys** rather than minting
+  near-duplicates — `detailCloseAriaLabel` (despite its name, a generic
+  "Close" label, not detail-modal-specific) for every modal's close
+  button, and `fieldClearTitle`/`fieldClearAriaLabel` (the same pair
+  `renderGenericFieldHtml()`'s dynamic fields already use) for the 8
+  built-in clear buttons, substituting each field's own existing label key
+  (`captureDocTypeLabel`/`editCategoryLabel`/etc., or `tableColTags` for
+  the two Tags clear buttons, which have no dedicated plain-"Tags" label
+  key of their own) as `{name}`. `FIELD_DEFS`' own `label` values (feeding
+  the Columns menu and the Reports breakdown dropdown) got the same
+  reuse-not-duplicate treatment: each entry gained a `labelKey` pointing
+  at the exact same `tableColCategory`-family keys the static `<th>`
+  headers already carry as `data-i18n`, rather than new `columnLabel*`
+  keys with identical English/German text. `dynamicColumnDefs()` entries
+  (real user-typed field names, e.g. "Organization") deliberately have no
+  `labelKey` at all and must never get one — `fieldDefLabel(f)` (shared by
+  both display sites) falls back to the raw `label` for those. Because the
+  Columns menu is only otherwise rebuilt at library-open time and from
+  Field Settings' own field-list-changed call sites — neither of which
+  fires on a language toggle — `renderColumnsMenu()` was added to
+  `setLang()`'s own follow-up-calls list (see above) so these labels
+  retranslate live, the same reasoning that already justified
+  `populateFilters()`'s presence there.
+  **Persistence is `localStorage` (`dossiary_lang` key), not the
+  per-library `settings` table every other per-library preference in this
+  app uses** (`nav_style`, `default_currency`, sort order, column
+  visibility, ...) — a deliberate exception, not an oversight: the
+  empty-state "Open library folder" screen (`#empty-state`) has to render
+  in the right language *before* any library folder has been picked, so
+  there's no `library.sqlite` open yet for a `settings` row to live in.
+  `localStorage` is the one piece of persisted app state that predates
+  and outlives any single library, the same reason `dossiary-app-db`
+  (IndexedDB, see the Recent libraries note just above) was chosen for
+  recent-library history rather than a `settings` row — both need to
+  exist before/across library selection, not scoped to one library.
+  **Language choice auto-detects once, then a manual toggle permanently
+  overrides it**: `loadLang()` only consults `navigator.language`/
+  `navigator.languages` (checking whether any reported locale starts with
+  `de`) when `localStorage.getItem('dossiary_lang')` has never been set;
+  the moment someone clicks `#lang-toggle` once, `saveLang()` writes an
+  explicit `'en'`/`'de'` value that short-circuits the browser-locale
+  check on every future load, even if the browser's own locale disagrees.
+  This mirrors the general "an explicit person action beats a computed
+  guess" pattern already used elsewhere in this app (compare the Date/
+  Currency `.field-guess` pattern — both are dismissible defaults, not
+  permanent inferences), just at the whole-UI-language level instead of a
+  single form field. `setLang()` (the toggle's click handler) has its own
+  small set of hand-rolled follow-up calls — `applyI18n()`, then
+  conditionally `renderStats()`/`populateFilters()`/`renderColumnsMenu()`/
+  `render()` (library open, `subLabel.textContent = rootDirHandle.name` set
+  separately by those same call sites) or `subLabel.textContent =
+  t('emptyTitle')` plus `renderRecentLibraries()` (empty-state) — because
+  none of those functions/assignments is invoked from inside `render()`'s
+  own "always run this" chain (see the Collections nav section's own note
+  above for the general pattern of "which dynamic container rebuilds on
+  which trigger" in this codebase); without them, filter-dropdown option
+  text, the Columns menu's own built-in-field checkbox labels, the
+  empty-state screen's subtitle, and the recent-libraries list would each
+  keep showing whichever language they were last rendered in until the
+  next unrelated document mutation (or, for `#sub-label` specifically, the
+  next `resetAll()`/library-open) forced a rebuild. `#sub-label` itself
+  deliberately carries no `data-i18n="emptyTitle"` attribute — it's reused
+  for the folder name once a library is open, and `applyI18n()`'s own
+  blind textContent walk would clobber that name the next time language is
+  toggled while a library happens to be open; setting it explicitly here,
+  gated on "no library open", avoids that collision the same way the
+  Amount/Currency header-line and conditional-field notes elsewhere in
+  this file avoid overreaching a general mechanism into a case it doesn't
+  fit. **"A library is open" means `rootDirHandle && db`, not
+  `rootDirHandle` alone** (`setLang()`'s `libraryOpen`): while the
+  init-state ("no library.sqlite found — Initialize?") prompt is showing,
+  a folder is already picked but no database is loaded, and keying on
+  `rootDirHandle` alone rendered an empty document table and stats under
+  that prompt on a language change and left `#sub-label` untranslated
+  (found while recapturing the User Guide screenshots).
+  **A mouse click on `#lang-toggle` is already blocked by a modal's own
+  backdrop while a modal is open, but keyboard Tab-through can still reach
+  and activate it** (Enter/Space fires a real `click` event without any of
+  the backdrop's spatial hit-testing) — and no modal's content re-renders
+  in place when that happens, since none of `setLang()`'s follow-up calls
+  above touch `modalRoot`. Re-rendering the open modal to fix that isn't
+  safe in general: capture/edit would discard whatever's already been
+  typed into the form, the exact same in-progress-work hazard
+  `applyDynamicFieldsForType()`'s own note above documents for switching
+  document types mid-edit, and there's no reliable way to tell which
+  modal is open or safely rebuild it in place from `setLang()` alone. The
+  resolution is a **toggle guard, not a re-render**: `#lang-toggle`'s
+  click handler returns early — no language change, `saveLang()` never
+  called — whenever `modalRoot.innerHTML !== ''` (the same "is a modal
+  open" signal `closeModal()`'s own `modalRoot.innerHTML = ''` implies),
+  making the toggle inert for the keyboard path too, matching what a
+  mouse user already experiences via the backdrop rather than attempting
+  a re-render that would be safe for some modals and destructive for
+  others. **The persistent detail panel doesn't need an equivalent guard**
+  — `setLang()` calls `openDetail(selectedDocId)` (when set) unconditionally
+  after `render()`, with no modal-open check at all, because the panel is
+  read-only display content, not an in-progress form; unlike capture/edit,
+  there's nothing typed-but-unsaved for a re-render to discard.
+  **`loadLang()`/`saveLang()` wrap their `localStorage` calls in their own
+  try/catch, independently of each other** — `localStorage` access can
+  throw (blocked by browser privacy settings, enterprise policy, private-
+  browsing quota edge cases), and `let currentLang = loadLang()` runs at
+  module-init time, before `#open-btn` or anything else in the app is
+  wired up; an uncaught throw here would abort the entire top-level IIFE,
+  not just language detection, taking the whole app down before it ever
+  renders. A blocked read falls through to the existing
+  `navigator.language` auto-detect (skipping only the stored-preference
+  check, not detection itself); a blocked write fails silently, so the
+  language still works correctly for the rest of that session, purely
+  in-memory — it just won't survive a reload, same as if the browser had
+  never stored a preference at all.
+  **Count-dependent strings use an explicit singular/plural key pair per
+  language** (e.g. `sharedPageCountSingular`/`sharedPageCountPlural`,
+  `dragdropAddedToReviewQueueSingular`/`...Plural`), picked by the same
+  `count === 1 ? t('xSingular', {count}) : t('xPlural', {count})` ternary
+  the English-only code already used before translation — not a real
+  ICU/CLDR plural-rules engine (which would need a real dependency this
+  single-file app doesn't have, and would be overkill for a two-language,
+  binary-plural app in the first place; German, like English, only
+  distinguishes singular from "everything else," so the same ternary that
+  was already correct for English needed no restructuring, just a second
+  language's worth of correctly-inflected phrasing supplied for both
+  branches).
+  **Tested by a deliberate two-file split, one dynamic and one static**:
+  `tests/test_i18n.py` is a real Playwright suite exercising actual toggle
+  behavior across the app — default/auto-detected/manually-overridden
+  language on load and across a reload, date formatting following UI
+  language rather than OS locale, and translated content across the nav,
+  toolbar, table, detail modal, capture/edit forms, Field Settings, Manage
+  Collections, Reports, the Libraries/licenses modal, and drag-and-drop —
+  the same kind of real-browser-driven coverage every other feature in
+  this suite gets. A later final-whole-branch-review fix round added
+  Scenarios 18-22, each targeting a gap the review found via manual/live
+  testing rather than a failing automated check: 18 blocks
+  `window.localStorage` entirely (`getItem`/`setItem` both throwing) and
+  confirms the app still renders and `#open-btn` is still wired, rather
+  than the whole top-level IIFE having silently aborted at
+  `loadLang()`/`saveLang()`; 19 confirms `#sub-label` retranslates live on
+  the empty-state screen, not just the neighboring recent-libraries list
+  Scenario 7 already covers; 20 confirms `FIELD_DEFS`' new `labelKey`
+  wiring (Columns menu, Reports breakdown dropdown, tolerant of the
+  migration-added "Payment method" dynamic column riding along
+  untranslated) and the `#ocr-lang`/`#e-ocr-lang` `<option>` lists in both
+  forms; 21 confirms `#lang-toggle` is a genuine no-op while a modal is
+  open (dispatched via `force=True`, since a real un-forced click already
+  correctly times out against the backdrop — the same protection this fix
+  doesn't touch) and works again once the modal closes; 22 sweeps the
+  remaining minor gaps (modal close-button `aria-label`s across 5 modals,
+  the 8 built-in clear buttons' `title`/`aria-label`, the file-preview
+  `<img alt>`, and the footer's "Libraries" link) in one pass over freshly
+  rebuilt forms and modals. `tests/test_i18n_coverage.py` is a different
+  kind of check entirely: a plain Python script (no Playwright, no
+  browser) that greps `dossiary.html` for every `data-i18n*` attribute
+  value and every `t('key')`/`t("key")` call, and asserts each referenced
+  key exists in *every* supported language's own `STRINGS` block (looped
+  over `SUPPORTED_LANGS` itself, not a hardcoded language pair — see the
+  "Generalized from two languages to six" note just below), and that each
+  language's key set matches `STRINGS.en`'s exactly, not just "referenced
+  key present" — a static safety net against the one mistake
+  `test_i18n.py`'s scenario-by-scenario clicking can't exhaustively rule
+  out (a key added to English but never given a translation in some other
+  language, or vice versa, anywhere in this ~720-key, hand-maintained
+  dictionary that no single Playwright run touches every corner of).
+  Its own key-extraction regex needed to be **more careful than a naive
+  "key starts a line" pattern**: `STRINGS.en`/`STRINGS.de` pack several
+  `key: 'value',` pairs onto one source line throughout (matching this
+  file's existing dense, wrapped style elsewhere, e.g. `FIELD_DEFS`), so a
+  key is only recognized when it's immediately preceded by `{`, `,`, or a
+  line start *and* immediately followed by `:` plus a quote — otherwise
+  either most keys sharing a line with another key go undetected, or text
+  sitting inside a string *value* that happens to end in `word:` right
+  before that value's own closing quote (e.g. the literal English value
+  `'Important:'`) gets misread as a second, bogus key. The `t()` call-site
+  regex has the same kind of trap: matching bare `t\(` catches any
+  function call whose name simply ends in the letter "t" followed by a
+  quoted argument (`createElement('div')`, `getContext('2d')`,
+  `dispatchEvent(new Event('change'))`, `closest('th...')`, all real calls
+  elsewhere in this file) — a leading `\b` word-boundary before the `t`
+  is what keeps the match scoped to the actual `t()` helper. Both were
+  real false-positive floods hit and fixed while building this check, not
+  hypothetical — worth remembering if this regex is ever extended, since
+  the failure mode (a flood of *fake* missing-key reports burying any
+  *real* one) is the opposite of the usual silent-gap risk this kind of
+  check exists to catch.
+  **Generalized from two languages to six, later seven** (`SUPPORTED_LANGS = ['en', 'de',
+  'es', 'fr', 'zh-Hans', 'zh-Hant', 'hy']`, plus `NATIVE_LANG_NAMES` — each code's
+  own name for itself, `简体中文`/`繁體中文` etc., deliberately never run
+  through `t()`, since a language's name for itself in its own script is
+  what belongs in a language picker no matter which language is currently
+  active — `LANG_AUTODETECT`, and `DATE_LOCALE`) once Spanish, French, and
+  both Chinese scripts were added on top of the original English/German
+  implementation described above. None of the dictionary/lookup-helper/
+  `applyI18n()` shape above had to change to support this: `STRINGS` simply
+  grew from two top-level keys to six, then seven (720 keys apiece now,
+  not ~260), and
+  `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
+  fallback chain already generalizes for free, since it was never
+  hardcoded to specifically `en`/`de` in the first place.
+  `tests/test_i18n_coverage.py` loops over `SUPPORTED_LANGS` the same
+  way now, rather than a hardcoded `STRINGS.en`/`STRINGS.de` pair — going
+  from two languages to six changed that check's loop bound, not its
+  underlying logic.
+  **Armenian (`hy`) is the seventh language**, translated independently
+  (not derived from another block) and shipped in v1.49.0 before a native
+  speaker's review; corrections from that review page follow in an update. It auto-detects from a bare `hy` or any
+  `hy-*` locale, formats dates with `hy-AM`, and adds Tesseract's `hye` to
+  the OCR language lists (`ocrLangArmenian`). `test_i18n_coverage.py` also
+  checks that every translation keeps exactly English's `{placeholders}`.
+  **The old `EN | DE` two-state `#lang-toggle` button was replaced by a
+  `<select id="lang-select">`** listing all seven languages via
+  `NATIVE_LANG_NAMES`, since a two-state toggle has no way to generalize
+  past two options. `setLang(lang)` itself didn't change — same
+  signature, same conditional follow-up calls described above — only the
+  control invoking it did, from a click handler alternating between two
+  hardcoded values to a `change` handler reading `event.target.value`.
+  This forced a real fix to the existing modal-open guard, not just a
+  handler rewire: the old button's guard could get away with simply
+  skipping `setLang()` and doing nothing else while a modal was open,
+  because a *button* has no displayed state of its own to desync from
+  `currentLang` — nothing on screen changes until the click handler
+  actually runs. A native `<select>` is a strictly harder case: choosing a
+  new option visually commits that option as the control's own displayed
+  value *immediately* and *synchronously* — mouse or keyboard — before any
+  `change` handler even runs, and nothing can intercept that part. So
+  `#lang-select`'s guard has to do more than the old button's guard did:
+  when a modal is open, it actively resets `e.target.value = currentLang`
+  back to the still-active language, on top of skipping `setLang()` —
+  otherwise the dropdown would sit there visibly showing a language the
+  app never actually switched to, silently lying about the current state
+  until the next real change goes through. The keyboard-Tab-through hazard
+  and the reasoning for why re-rendering the open modal in place isn't a
+  safe alternative (both described above for the old button) carry over
+  unchanged to the new control.
+  **Chinese does not inflect for grammatical number**, so the existing
+  singular/plural key-pair convention (`sharedPageCountSingular`/
+  `...Plural`, picked by the same `count === 1 ? t('xSingular', {count}) :
+  t('xPlural', {count})` ternary described above) needed no new no-plural
+  code path for `zh-Hans`/`zh-Hant` — both simply carry *identical* text in
+  both slots of every existing pair. This is the same "only distinguishes
+  singular from everything else" reasoning already noted above for German,
+  taken one step further: Chinese doesn't distinguish grammatical number at
+  all, so its two slots just happen to always agree.
+  **Chinese needs real region disambiguation that German/Spanish/French
+  don't**, because `navigator.language`/`navigator.languages` report a
+  region code (`zh-CN`, `zh-TW`, ...) or occasionally an explicit script
+  subtag (`zh-Hans`, `zh-Hant`), not something that reliably indicates
+  simplified vs. traditional on its own the way a bare `de`/`es`/`fr`
+  prefix check already does for those. `LANG_AUTODETECT` (an ordered array
+  of `{code, test}` rules, first match wins) resolves this: a `CN`/`SG`/
+  `MY` region or explicit `Hans` script → `zh-Hans`; a `TW`/`HK`/`MO`
+  region or explicit `Hant` script → `zh-Hant`; a bare `zh` with no
+  recognizable region or script at all defaults to `zh-Hans` (more widely
+  read globally — the same "best guess, dismissible by the existing
+  manual-override-wins rule" spirit as every other auto-detect default in
+  this app, e.g. the Date/Currency `.field-guess` pattern noted elsewhere
+  in this file). **`loadLang()` is locale-major, not rule-major**: it
+  iterates the user's own `navigator.languages` array in order (outermost
+  loop), and for each locale string in turn checks it against every
+  `LANG_AUTODETECT` rule (innermost loop), returning on the first rule
+  that matches — so the user's own preference order decides ties between
+  languages, and no `LANG_AUTODETECT` rule can shadow another rule against
+  a *different* locale string earlier in the user's own list. (An earlier
+  version of `loadLang()` was rule-major instead — checking each rule
+  against the *whole* array before moving to the next rule — which broke
+  in two ways: `navigator.languages = ['zh-TW', 'zh']` could pick
+  `zh-Hans` over `zh-Hant` depending on which rule happened to be listed
+  first, and, worse, a browser reporting `['en-US', 'zh-CN', 'zh']` — an
+  ordinary machine with Chinese added as a secondary input language —
+  auto-detected Chinese over the user's own first-listed English, since
+  there was no explicit `en` rule participating in the same matching loop
+  at all, only an implicit final fallback. Both were real, fixed
+  regressions, not hypothetical.) `zh-Hant`'s rule is still listed before
+  `zh-Hans`'s purely for readability now — the two rules test disjoint
+  locale strings (a `TW`/`HK`/`MO` region or explicit `Hant` script vs.
+  bare `zh`/`CN`/`SG`/`MY`/`Hans`), so within a single locale string
+  there's no shadowing risk left to order around either way. This was
+  verified two ways, not just asserted: a direct code trace during
+  review, and `tests/test_i18n.py`'s own Scenario 27 (`navigator.languages
+  = ['zh-TW', 'zh']` still correctly lands on Chinese Traditional, not
+  Simplified) plus the new Scenario 28 (`['en-US', 'zh-CN', 'zh']`
+  correctly lands on English, not Chinese).
+  **`STRINGS['zh-Hant']` is derived programmatically from the finished
+  `STRINGS['zh-Hans']` block, not translated independently a second time**
+  — using `opencc-python-reimplemented`'s `s2t` (Simplified→Traditional)
+  conversion profile, the same OpenCC engine Wikipedia and other major
+  projects use for this exact conversion, run once at authoring time as a
+  local script whose *output* (the literal `STRINGS['zh-Hant']` object)
+  was committed to `dossiary.html` as plain text — a one-time authoring
+  tool, never a runtime dependency; the app itself has no OpenCC
+  dependency, and nothing about its zero-dependency, single-file nature
+  changed. Simplified and Traditional Chinese are the same language with
+  two different character sets, not two different languages, which is
+  what makes derivation the right call specifically here — nothing else in
+  `SUPPORTED_LANGS` has an equivalent relationship; Spanish and French were
+  each translated independently, the ordinary way. Converting is both
+  faster than a second from-scratch translation pass and, more
+  importantly, *guarantees* the two scripts stay in lockstep — no risk of
+  `zh-Hans` and `zh-Hant` drifting to say subtly different things for the
+  same key over time, the way two independently-maintained translations
+  could. The accepted tradeoff is that `zh-Hant`'s wording is exactly
+  `zh-Hans`'s wording rendered in a different script, with no room for
+  Traditional-specific phrasing choices (e.g. regional vocabulary
+  differences between Taiwan and mainland usage) that an independent
+  translation might have made — judged acceptable for this app's UI
+  strings, which lean short and functional rather than idiomatic prose.
+  `USER_GUIDE.zh-Hant.md` (see the User Guide vs. README note above) was
+  derived the same way, for the same lockstep-consistency reason, from the
+  finished `USER_GUIDE.zh-Hans.md` prose — with its embedded image paths
+  corrected afterward by hand (from `docs/user-guide/zh-Hans/` to
+  `docs/user-guide/zh-Hant/`, since converting prose doesn't touch
+  relative image links correctly on its own) and its own
+  independently-captured screenshot set, **not** shared with the
+  Simplified guide's own screenshots — the running app renders different
+  characters in each language state, so a screenshot captured under
+  `zh-Hans` would show the wrong script if reused under `zh-Hant`.
+- **Field descriptions** (`field_descriptions`, `loadFieldDescriptions()`/
+  `saveFieldDescription()`, the "Field Descriptions" section in Field
+  Settings — `.fs-descriptions`, `renderFieldDescriptionsList()`) let a
+  person attach a short, optional hint to any field — the five built-ins
+  (Category, Subcategory, Document Type, Date, Tags) plus every generic
+  custom field — shown as a `.field-hint` line under the field's label in
+  both the capture and edit forms. **`field_descriptions` is keyed by
+  `field_name TEXT PRIMARY KEY`, not `fields.id`**, deliberately — the
+  five built-ins have no `fields`-table row at all (they're real `<input>`s
+  hardcoded into the capture/edit form markup, not part of the generic
+  fields system — see the Custom fields note above), so a `fields.id`
+  foreign key simply couldn't reach them. Keying by name instead covers
+  both groups — built-ins and generic custom fields — with one uniform
+  table and one uniform `fieldDescriptions[name]` lookup, rather than a
+  built-in-only mechanism plus a second, `fields.id`-keyed one for custom
+  fields. **`FIELD_DESCRIPTION_BUILTIN_NAMES`** (`['Category',
+  'Subcategory', 'Document Type', 'Date', 'Tags']`) is a hardcoded array
+  for the same reason it can't be derived from anything: unlike
+  `dynamicColumnDefs()` or `getUsedDocumentTypes()`, there's no table row
+  or other in-memory list that already enumerates "fields with a real form
+  input but no `fields` row" — Amount, Currency, and Payment method used
+  to be in that category too, but aren't anymore (see the sentinel-fields
+  note above), so this array is exactly, and only, the five names left
+  over after that migration. **A custom field can share a built-in's exact
+  name** (e.g. a Mariner-migrated library with a custom "Date" field, since
+  the sibling migration script copies field names generically with no
+  reserved-word check) — `renderFieldDescriptionsList()` filters
+  `fieldDefs` against `FIELD_DESCRIPTION_BUILTIN_NAMES` before appending
+  the custom-fields tail, so the built-in always wins the single shared
+  row and the list never shows the same name twice; `addInlineCustomField()`'s
+  own reserved-name list was deliberately left alone rather than extended
+  to also block this collision, since doing so would change behavior for
+  existing libraries that already have such a field, a bigger change than
+  this feature warranted.
+  **`renderFieldDescriptionsList()` is deliberately NOT re-rendered when
+  the selected document type changes in Field Settings**, unlike
+  `renderFieldSettingsFieldColumns()` (the Fields/Display Fields columns,
+  which are genuinely scoped to `fsSelectedType`) — a description belongs
+  to the field itself, independent of which type(s) it happens to be
+  attached to, the same "property of the field, not of its relationship to
+  `fsSelectedType`" reasoning the Per-field capability checkboxes note
+  above already established for `show_as_column`/`autocomplete`. The list
+  is built once per modal open and stays correct regardless of which type
+  is subsequently selected in the other two columns.
+  **The save-on-blur handler has no revert-on-empty guard**, unlike the
+  Collections rename input it's modeled on (the Manage Collections modal's
+  own rename input resets back to the collection's real name on an empty
+  blur, rather than saving a blank one — see `tests/CLAUDE.md`'s Collections
+  entry) — because an empty description is a
+  valid, meaningful value here (it just means "show no hint for this
+  field"), not an error state to reject the way an empty collection name
+  would be. Blurring an emptied input saves the empty string via the same
+  `INSERT OR REPLACE` path as any other value, and the corresponding
+  `.field-hint` line correctly disappears from the capture/edit forms.
+  **Description text is never run through `t()`** — like a field's own
+  name, it's free-form content someone typed for their own library, not
+  app chrome; running it through the translation lookup would be wrong
+  twice over — it isn't one of this app's ~720 known UI strings in the
+  first place, so `t()`'s fallback would just echo it back unchanged, and
+  passing it through `t(key, params)` at all would risk a literal `{...}`
+  substring in someone's own description being misread as a substitution
+  placeholder (`test_field_descriptions.py`'s own Scenario 9 checks
+  exactly this: a description containing a literal `{label}` renders
+  verbatim). **Document Type is the one built-in field that already had
+  its own permanent `.field-hint` line before this feature** (the "Not in
+  the list? Type a new one — it'll be created." autocomplete hint) — its
+  new description hint is a SECOND, separate `.field-hint` div appended
+  after the existing one, not a replacement; a configured description
+  shows both, stacked, and a field with no description set continues
+  showing just the original hint exactly as before.
+- **Renaming a custom field** (`renameField(oldName, newName)`,
+  `startFieldRename()`, the ✎ `.fs-rename` button on each custom-field row
+  of Field Settings' Field Descriptions list -- that list, unlike the
+  Fields/Display Fields columns, shows every field regardless of the
+  selected type, so it's the one place every field is reachable). Needed
+  because a field's *name*, not just its id, is a key in several places,
+  all of which move together in one save: `fields.name`,
+  `document_type_fields.field_name`, `field_descriptions.field_name`, and
+  Smart Collection criteria JSON (`currentFilters()` saves dynamic filters
+  by `label`, the field name) -- plus their in-memory mirrors
+  (`fieldDefs`, `fieldNameToId`, `typeFieldOrder`, `fieldDescriptions`,
+  `collections[].criteria`) and every document's `customFields`/
+  `personFieldValues` map. Column visibility, sort order, datalists, and
+  the Reports breakdown are keyed by `field-<id>` and need nothing.
+  **`NON_RENAMEABLE_FIELD_NAMES`** (`People`/`Amount`/`Currency`/
+  `Payment method`/`Reminder`) get no rename button, since code resolves
+  them by literal name (`fieldNameToId['Reminder']`, `formatAmount()`, the
+  migrations' idempotency checks); those names plus
+  `FIELD_DESCRIPTION_BUILTIN_NAMES` are also rejected as rename *targets*,
+  along with any existing field name. Inline edit follows the Collections
+  rename input's convention (Enter/blur saves, Escape cancels -- with
+  `stopPropagation()` so Escape doesn't also close Field Settings), except
+  a rejected name keeps the input open with the reason shown in
+  `.fs-rename-status`. Sidecar `.txt` files carry field names
+  ("Organization: ..."), so after the rename is saved every document with a
+  value in that field gets its sidecar rewritten (`writeSidecarForDoc()`,
+  best-effort per file -- one unwritable sidecar mustn't undo a rename
+  that's already persisted). `writeSidecarForDoc(d)` is the shared "rewrite
+  from in-memory state" helper; bulk edit and "Make searchable" use it too.
+- **Reminder-type custom fields** (`fields.type === 'reminder'`, a fifth
+  value alongside `text`/`number`/`date`/`checkbox`/`person`) let a
+  person turn any custom field — Renewal Date, Warranty End, Policy
+  Expiry, whatever name they give it — into a source the app proactively
+  surfaces as it comes due, without a fixed, single "the one reminder
+  field" concept anywhere. **It's deliberately not a new input shape at
+  all**: `renderGenericFieldHtml()`'s `inputType`/value-slicing logic
+  checks `field.type === 'date' || field.type === 'reminder'` (picking
+  the native `<input type="date">` and slicing `existingValue` to its
+  first 10 characters exactly as `date` already does), and
+  `formatCustomFieldValue()`'s display formatter has the identical
+  `field.type === 'date' || field.type === 'reminder'` check routing both
+  through `formatDate()` — a reminder field captures, stores
+  (`document_field_values.value`, a plain ISO date string, same column
+  every other field type shares), and displays exactly like a Date field
+  in every respect except the one flag `checkReminders()` reads. Creating
+  one works through the same inline "+ Add a custom field" flow as any
+  other type (`addInlineCustomField()`'s type dropdown gains a `Reminder`
+  option next to Text/Number/Date/Checkbox/Person) — it gets no
+  autocomplete default the way a new Text field does (`autocomplete =
+  type === 'text' ? 1 : 0`, unchanged), and in Field Settings'
+  per-field capability checkboxes it's offered the **Column** checkbox
+  like almost any field (`capabilitiesHtml()`'s guard excludes only
+  People and the field literally named `'Amount'` — a
+  reminder field isn't either) but never the **Autocomplete** checkbox
+  (that one's gated on `field.type === 'text'` specifically, same as
+  Date/Number/Checkbox always were) — a dropdown of distinct dates isn't
+  a useful autocomplete any more for a reminder than it ever was for a
+  plain date.
+  **Any field with `type: 'reminder'`, on any document, is automatically
+  a reminder source — there is no hardcoded field name anywhere in this
+  feature.** `checkReminders()` starts from `fieldDefs.filter(f => f.type
+  === 'reminder')`, so a library can have zero, one, or several such
+  fields (a document can even carry more than one at once — an
+  insurance-policy document with both a Renewal Date and a separate
+  Inspection Due field), and every one of them participates identically.
+  **`reminder_lookahead_days`** (a `settings` row, `reminderLookaheadDays`
+  in JS, defaulting to **30** — `loadReminderLookaheadDays()` falls back
+  to 30 for a missing row or anything that doesn't parse as a
+  non-negative integer, `saveReminderLookaheadDays()` applies the same
+  validation on write) controls how far into the future a reminder counts
+  as "coming up soon," and lives in the Field Settings modal right
+  alongside `default_document_type`/`default_currency` — same
+  `settings`-table `key`/`value` pattern, same per-library scope, same
+  reason for living there (no general settings-modal infrastructure
+  exists in this app; a control sits spatially attached to what it
+  configures). **`reminder_snoozes` (`document_id INTEGER, field_id
+  INTEGER, snoozed_until TEXT, PRIMARY KEY (document_id, field_id)`) is
+  keyed by a compound `(document_id, field_id)` pair, not just
+  `document_id`** — necessarily, since a single document can carry more
+  than one reminder-type field (see the two-reminder-field case just
+  above), and each needs its own independent snooze state; a
+  `document_id`-only key would silently conflate them. Loaded once per
+  library open into an in-memory `reminderSnoozes` map keyed by the
+  string `` `${documentId}:${fieldId}` `` (`loadReminderSnoozes()`,
+  called from `loadDocumentsFromDb()` alongside `loadReminderLookaheadDays()`).
+  **What counts as "due"** (`checkReminders()`, a pure, synchronous,
+  in-memory scan over `allDocs` — no filesystem or network I/O, matching
+  this app's "no silent/background work" principle) is: the document
+  isn't `deleted` or `archived`; a reminder-type field on it has a
+  non-blank value; that value's date-only portion is on or before
+  `addDaysToIsoDate(todayIsoDate(), reminderLookaheadDays)` (so an
+  already-overdue date is included with no lower bound, not just ones
+  landing inside the window ahead); and, if `reminderSnoozes` has an
+  entry for that exact `documentId:fieldId` pair, its `snoozed_until`
+  must **not** be strictly after today (an active, still-in-the-future
+  snooze excludes the reminder; an expired one — `snoozed_until` today or
+  earlier — no longer does, so a snoozed reminder resurfaces on its own
+  once the snooze lapses, without anyone having to un-snooze it
+  manually). Results are sorted by date ascending, most overdue first.
+  **Two explicit trigger points only, no live badge, no background
+  polling** — `afterDbReady()` calls `checkReminders()` synchronously
+  right after a library finishes loading (safe to do inline, unlike
+  `checkInbox()`'s own fire-and-forget call just above it in the same
+  function, precisely because this is an in-memory scan with no I/O to
+  await) and opens the reminders modal automatically only if anything
+  came back due, staying silent otherwise; and the always-visible
+  toolbar's **"🔔 Check reminders" button** (`#check-reminders-btn` →
+  `checkRemindersAndShowStatus()`) re-runs the same scan on demand,
+  reporting `t('reminderNoneDue')` ("No reminders due.") on the status
+  line when nothing's due or opening the modal when something is. This
+  mirrors `checkInbox()`'s own precedent exactly (see the Inbox note
+  above) and for the same reason: the automatic on-open check alone can't
+  notice a reminder that becomes due while a library is already sitting
+  open in a tab (the same gap `#inbox-check-btn` exists to close for
+  staged files), so a manual re-check button is the fix rather than
+  polling in the background.
+  **`openRemindersModal(dueReminders)`** renders one `.reminder-row` per
+  due reminder (via `renderReminderRowHtml()`, called from
+  `wireReminderRows()`), each showing the document's title, the
+  reminder's field name, its formatted date, and a due/overdue label from
+  **`reminderDueLabel(dateIso, todayIso)`** ("Due today" / "N days
+  overdue" / "Due in N days", singular/plural handled the same
+  ternary-and-key-pair way every other count-dependent string in this app
+  is — see the i18n note's own explanation of that pattern). Every row
+  offers all four snooze choices (1 week / 1 month / 3 months / a custom
+  date via a `<select>` plus a normally-hidden `<input type="date">` that
+  only appears once "Custom date…" is chosen) — **`addDaysToIsoDate(iso,
+  days)`** is the one shared date-math helper behind both the 1w/1m/3m
+  offsets here and the lookahead cutoff above, so there's exactly one
+  place that knows how to add N days to an ISO date string.
+  **`snoozeReminder(documentId, fieldId, snoozedUntil)` writes only to
+  `reminder_snoozes` (`INSERT OR REPLACE`, keyed by the same compound
+  pair) — it never touches the reminder field's own stored date.**
+  Snoozing is purely "stop bothering me about this until then," not a
+  rescheduling of the underlying event; the document's actual Renewal
+  Date/Warranty End/etc. value is completely unaffected, and un-snoozing
+  early isn't even a feature — the snooze simply expires on its own once
+  `snoozed_until` is no longer in the future. Snoozing a row removes it
+  from the open modal immediately (`removeReminderRow()`), and once every
+  row has been snoozed away the modal closes itself automatically rather
+  than sitting open and empty. Clicking a row anywhere outside its
+  snooze controls closes the modal, selects that document
+  (`selectedDocId = documentId`), re-renders the table so the row
+  highlights, and opens its detail panel — the same four operations
+  `saveEditedDocument()`'s own success path performs (see the persistent
+  detail panel note's "Two call sites that used to rely on an implicit
+  trick" paragraph above), just in a different order here (`closeModal()`
+  runs first, before `selectedDocId` is even set, since closing the modal
+  doesn't depend on which document ends up selected).
+  **Dismiss and Delete** (`dismissReminder()`, `reenableReminder()`,
+  `clearReminderFieldValue()`) extend the Reminders modal with two more
+  per-row actions alongside Snooze. Dismiss is the permanent form of a
+  snooze — "stop reminding me about this field on this document,
+  indefinitely" rather than "until a date" — sharing the exact same
+  `reminder_snoozes` row (same compound `(document_id, field_id)` key) via
+  a new `dismissed INTEGER DEFAULT 0` column rather than a separate table;
+  the two states are mutually exclusive on a given row, so setting either
+  one always clears the other (`dismissReminder()` writes `snoozed_until =
+  NULL`; `snoozeReminder()` writes `dismissed = 0`). `checkReminders()`
+  checks `dismissed` before it ever looks at `snoozed_until` — an active
+  dismissal excludes a reminder unconditionally, with no expiry, unlike an
+  ordinary snooze which resurfaces once `snoozed_until` passes.
+  **Dismissal is scoped to the field on the document, never to a specific
+  value** — editing "Renewal Date" to a brand-new date after dismissing it
+  does not un-dismiss it, matching the same `(document_id, field_id)`
+  granularity snoozing already uses. Delete
+  (`clearReminderFieldValue(documentId, fieldId)`) is the generalized form
+  of `clearDefaultReminder()` below, driven by an explicit field id instead
+  of the one reserved `'Reminder'` field name, so it works for any
+  reminder-type field. **`reminderSnoozes`'s in-memory shape changed** from
+  a bare `snoozed_until` string per key to `{snoozedUntil, dismissed}`, to
+  carry both pieces of state — `loadReminderSnoozes()`, `checkReminders()`,
+  `snoozeReminder()`, and the `__DEBUG_reminderSnoozes`/
+  `__DEBUG_reminderSnoozesRawRows` test hooks all moved together.
+  **`reenableReminder()` does a full `DELETE FROM reminder_snoozes`, not a
+  flag flip** — once re-enabled there's no other state worth keeping on
+  that row, so "re-enabled" and "a field that was never snoozed or
+  dismissed at all" end up in the identical, simplest state. Since a
+  permanent dismissal has no natural expiry the way a snooze does, the Edit
+  form shows a small hint under a dismissed reminder-type field ("Reminders
+  are dismissed for this field.") with a Re-enable link — this needed
+  `documentId` threaded as a new trailing parameter through
+  `applyDynamicFieldsForType()` and `renderGenericFieldHtml()`, neither of
+  which previously received it; the capture form's own two call sites pass
+  `null`, since there's no document yet for a dismissal to apply to, so the
+  hint never renders there. **The Re-enable link's own click handler removes
+  only its own hint `<div>`** (`btn.closest('.field-hint').remove()`),
+  deliberately NOT by calling `applyDynamicFieldsForType()` again to rebuild
+  the whole dynamic-fields container — an earlier version of this feature did
+  exactly that, and it was a real bug (caught and fixed in this feature's own
+  review): that rebuild reads the document's *originally-persisted* values
+  (see the orphaned-field note above), so it would silently discard whatever
+  someone had already typed into any *other* field on the same, still-open
+  Edit form — the same class of hazard `addInlineCustomField()`'s own
+  "critical correctness property" note above exists to prevent for a
+  different action (adding a new custom field mid-edit). **`clearReminderFieldValue()` calls `render()`
+  but deliberately not `openDetail()`** — unlike `clearDefaultReminder()`,
+  which is only ever reached from a context already focused on one specific
+  document, Delete can be clicked repeatedly for several different
+  documents while working through the Reminders modal's list, and forcing
+  the persistent detail panel to jump to each one in turn would be a
+  jarring side effect of what's meant to be a quick cleanup action; if the
+  panel already happens to be open on the affected document, its displayed
+  value may lag until the next unrelated render/selection change, an
+  accepted, narrow tradeoff rather than a correctness issue.
+  **Clearing a reminder-type field's value (Delete in the Reminders modal, or
+  "Clear reminder" in the row context-menu flyout — `clearDefaultReminder()`
+  now delegates straight to `clearReminderFieldValue()`, differing only in
+  resolving `fieldNameToId['Reminder']` and its own trailing `openDetail()`
+  call) also deletes any lingering `reminder_snoozes` row for that exact
+  `(document_id, field_id)` pair**, dismissal included — the same "no stored
+  value left means there's nothing left to stay dismissed about" reasoning
+  `reenableReminder()` already uses, inlined rather than calling
+  `reenableReminder()` itself to avoid a second, redundant `persistDb()`.
+  Without this, a dismissed reminder whose value gets cleared and later
+  re-set to a brand-new value would stay silently, invisibly dismissed —
+  `checkReminders()` would never surface it and no UI would show it as
+  dismissed anymore, since the Edit-form hint above only renders for a field
+  that still has a stored value.
+- **The default-reminder context menu** (`migrateDefaultReminderField()`,
+  `buildDetailActions()`'s `'default-reminder'` action, `.reminder-flyout`)
+  extends the Reminder-type custom fields note above with a single,
+  reserved, always-available reminder every document can carry, reachable
+  directly from a right-click without first configuring a reminder-type
+  field for that document's type at all. **`'Reminder'` is an ordinary
+  `fields` row with `type: 'reminder'`** — `migrateDefaultReminderField()`
+  (called from both `initNewLibrary()` and `loadDb()`, the same
+  idempotent-by-name-check pattern as `migrateSentinelFieldsToGeneric()`/
+  `migratePeopleToGenericField()` above: it returns immediately once
+  `fieldNameToId['Reminder']` is already set) inserts it once per library,
+  with `show_as_column: 0, autocomplete: 0`. It's a real reserved name too
+  — `addInlineCustomField()`'s reserved-name check (`['People', 'Amount',
+  'Payment method', 'Reminder', ...FIELD_DESCRIPTION_BUILTIN_NAMES]`)
+  rejects anyone trying to create a colliding custom field by that name.
+  **Deliberately never added to `document_type_fields` for any type** —
+  nothing in this feature auto-attaches it, so `checkReminders()`'s "any
+  field with `type === 'reminder'`" scan and the Edit form's
+  orphaned-field display (see the "orphaned" paragraph above) already
+  cover it with zero code changes to either: since it's never configured
+  for a type, any document holding a value for it shows that value as an
+  orphaned field in Edit, exactly like a reminder-type field removed from
+  its type's own configuration would. A person can still manually attach
+  it via Field Settings if they want it to render as a normal,
+  non-orphaned field for some type — this app just never does that
+  automatically.
+  **`buildDetailActions(id, d)` is the single function shared between the
+  row context menu (`showRowContextMenu()`) and the persistent detail
+  panel (`openDetail()`)** — see that function's own note above — so the
+  new `'default-reminder'` action (inserted right after `'edit'`, before
+  the `SHOW_DOCUMENT_PREVIEW`-gated `'regen-thumb'` entry) appears in both
+  places automatically. Its label has two states, computed from
+  `d.customFields['Reminder']`: `t('contextMenuAddReminder')` ("Add
+  reminder") when unset, `t('contextMenuReminderSet', {date:
+  formatDate(...)})` ("Reminder: <date>") when set. Because the panel's
+  own rendering reads a separate, hardcoded `actionIdByKey` map
+  (`openDetail()`'s own `const actionIdByKey = {...}`) rather than the
+  context menu's fully generic iteration, the action needed an explicit
+  `'default-reminder': 'default-reminder-btn'` entry there too — without
+  it the panel button would render as `id="undefined"`, a real bug the
+  branch's own review caught, now guarded by `test_default_reminder.py`'s
+  own Scenario 10.
+  **The quick-pick flyout is a separate floating `<div
+  class="reminder-flyout">` appended to `document.body`, not a child of
+  `.row-context-menu`** — the same pattern `'add-to-collection'`'s own
+  picker (`.bulk-collection-menu`) already established just below it in
+  `buildDetailActions()`: `showRowContextMenu()`'s generic `closeMenu()`
+  only ever removes its own `.row-context-menu` element, so a
+  picker/flyout that lived inside it would vanish the instant the action
+  that opened it finishes running. Being a sibling element tracked by its
+  own module-level `openReminderFlyout` variable and its own
+  outside-click listener is what lets it survive that auto-close. Offers
+  **Today**/**Tomorrow**/**Next week** (`todayIsoDate()`,
+  `addDaysToIsoDate(todayIsoDate(), 1)`, `addDaysToIsoDate(todayIsoDate(),
+  7)` — the same shared date-math helper the reminders modal's own snooze
+  offsets use, see above), **Custom date** (reveals it by replacing the
+  flyout's whole `innerHTML` with a fresh `<input type="date"
+  class="reminder-flyout-custom-date">` — there's no pre-existing hidden
+  element the way the reminders modal's own `.reminder-snooze-custom-date`
+  has, since this flyout swaps its entire content per view rather than
+  toggling `display`. The resulting input still has `min` set
+  to tomorrow and `color-scheme: dark`, mirroring the reminders modal's
+  own `.reminder-snooze-custom-date` input's own behavior, and the same
+  defensive re-check of `input.value <= todayIsoDate()` for the same
+  reason that modal's own handler has one — a native date input's `min` can be
+  bypassed by a manually typed value in some browsers), and **Clear
+  reminder**, rendered only when `d.customFields['Reminder']` already has
+  a value — there's nothing to clear otherwise.
+  **`setDefaultReminder(documentId, dateIso)`/`clearDefaultReminder(documentId)`
+  write via the exact delete-then-insert pattern `saveEditedDocument()`
+  already uses for every other field's `document_field_values` row** —
+  `DELETE FROM document_field_values WHERE document_id = ? AND field_id =
+  ?` followed by a fresh `INSERT` (set) or nothing (clear), against
+  `fieldNameToId['Reminder']`. Both also mutate `d.customFields` directly
+  on the same object `allDocs` already holds (matching `toggleArchived()`'s
+  own in-place-mutation approach) before calling
+  `persistDb()`/`render()`/`openDetail(documentId)`, so the panel and any
+  reopened context menu reflect the new value with no extra DB round-trip
+  needed to redisplay it. **This is completely unrelated to
+  `reminder_snoozes`** (see above) — snoozing/clearing the default
+  reminder never touches that table; `reminder_snoozes` exists
+  specifically for postponing a reminder-type field's own due date without
+  touching its stored value, a concept this feature has no equivalent of
+  — clearing the default reminder means deleting its
+  `document_field_values` row outright, not writing a snooze.
+  **A real click-bubbling bug, caught and fixed during this feature's own
+  review**: the flyout option buttons' click handler calls
+  `evt.stopPropagation()` — without it, choosing "Custom date…" (whose
+  handler synchronously reassigns `flyout.innerHTML` to swap in the date
+  input, detaching the very button that was just clicked, before that
+  click event finishes bubbling to `document`) let the bubbled click reach
+  the flyout's own `outsideClick` listener, whose `flyout.contains(evt.target)`
+  check then saw a no-longer-attached target and immediately removed the
+  flyout it had just switched to the custom-date view. The other four
+  choices don't hit this race (they `await` before touching the DOM, so
+  the bubble finishes first) — an obscure default (a synchronous DOM
+  mutation racing an in-flight event's own bubble phase) that "works fine"
+  right up until the one branch that doesn't take the `await`-first path,
+  the same spirit as this file's own DOCTYPE/quirks-mode note above.
+- **Comma-aware autocomplete for multi-valued fields** (`wireCommaAutocomplete()`)
+  fixes a real limitation of native `<input list="...">`: the browser only
+  ever matches suggestions against the *whole* input value, never a
+  substring of it, so a comma-separated field (People/Author/Collaborator/
+  any other person-type field, and Tags) only ever offered suggestions for
+  the *first* entry typed — after "Birgit, " and starting a second name,
+  nothing suggested, since no datalist option's value literally starts
+  with "Birgit, A". `wireCommaAutocomplete(input, datalistId)` replaces the
+  native mechanism by hand: on every keystroke it takes the text after the
+  last comma, filters the given datalist's own `<option>` values by it
+  (case-insensitive substring, excluding names already used earlier in the
+  same input), and renders a small clickable/keyboard-navigable suggestion
+  list (`.comma-autocomplete-dropdown`) positioned under the input via the
+  existing `.field-with-clear` wrapper's `position:relative` — the same
+  wrapper every comma-separated field already had for its clear button, so
+  no new markup was needed there. The native `list` attribute is removed
+  once this takes over (`input.removeAttribute('list')`), so the browser's
+  own broken-for-this-case popup never appears alongside the real one.
+  Selecting a suggestion (click, or Enter on a keyboard-highlighted item)
+  replaces just the current segment and appends `", "` so typing the next
+  entry can continue immediately. Wired from three places: the generic
+  `applyDynamicFieldsForType()` rebuild pass (covers every person-type
+  field, People included, the same way its clear-button rewiring already
+  does), `addInlineCustomField()`'s own insert path (a newly-created
+  person-type field, appended without a full container rebuild), and two
+  one-off calls for `#f-tags`/`#e-tags` (Tags isn't part of the dynamic
+  fields system at all, same as its clear button). A
+  `dataset.commaAutocompleteWired` guard makes the function idempotent,
+  though in practice every one of these three call sites only ever wires a
+  freshly-rendered element, so the guard is defensive rather than
+  load-bearing.
+- **Bulk edit** (`openBulkEditForm(ids)`, `saveBulkEdit(ids)`, reachable via a
+  new "Edit" button in the bulk-action bar and a minimal right-click context
+  menu on checked rows) lets someone set field values across every currently
+  selected document in one save. It's structurally parallel to the
+  single-document Edit form but with two deliberate differences forced by
+  operating on many documents at once instead of one: every field starts
+  genuinely blank (there's no single correct document to pre-fill from), and
+  every **replace-semantics** field (Document Type, Category, Subcategory,
+  Date, Notes, every generic custom field) carries its own "Apply to all"
+  checkbox, unchecked by default — only checked fields are written to any
+  document, and checking one with a blank value is a valid, explicit "clear
+  this on every selected document." This is necessary, not just a UX nicety:
+  "blank" already means different things per field type elsewhere in this app
+  (an unchecked checkbox field is real data, not "unset" — see
+  `readDynamicFieldValues()`'s own rule), so there's no value-based way to
+  distinguish "leave this alone" from "clear it" that works uniformly across
+  every field type; the explicit checkbox is the one mechanism that does.
+  **Tags and every person-type field (People, Author, Collaborator, …) get an
+  "Add to existing"/"Replace existing" mode toggle instead of an Apply
+  checkbox** — the toggle itself is the explicit opt-in (Add, the default, is
+  already a safe no-op on a blank input), so no separate checkbox is needed;
+  Replace mode reuses the exact delete-then-reinsert `saveEditedDocument()`
+  already does for a single document's Tags/People, looped per selected
+  document, and — like the scalar fields above — a blank input on Replace
+  mode is a deliberate, explicit "clear this on every selected document."
+  **Title and the OCR-text box are deliberately excluded** — bulk-setting
+  every selected document's title to the identical string has no sensible use
+  case (and would actively harm the table's own scannability), and OCR text
+  is per-file extracted content tied to that document's own file, not
+  metadata in the sense the rest of this form edits.
+  **`computeBulkFieldUnion(ids)`** computes, once per modal open, the union
+  of every field configured for *any* selected document's Document Type plus
+  any field *any* selected document currently holds a value for — since
+  selected documents can span different types with different
+  `document_type_fields` configurations. A field not common to *every*
+  selected document's type renders with the same `.field-orphaned`
+  class/hint the single-document Edit form already uses for a field no
+  longer configured for a document's current type — here it signals "this
+  field doesn't belong to every selected document's type, but applying it
+  here still writes it for all of them" (the same underlying mechanic as
+  editing a genuinely orphaned field on one document already does), a
+  related but distinct meaning from that form's own use of the same class,
+  worth keeping straight if this is ever touched again. The union is fixed
+  for the life of the form — it is **not** recomputed if the form's own
+  Document Type field is changed mid-edit, a deliberate scope cut to avoid
+  reconciling against the original per-document union for what would be a
+  rare case (changing Document Type as part of the same bulk edit that's
+  also setting other fields). **`saveBulkEdit()` snapshots this same union
+  exactly once, as `const fieldUnion = computeBulkFieldUnion(ids)` at the
+  very top of its `try{}` block, before any write runs** — not because the
+  form's own field set can change mid-save (it can't; the form is already
+  closed by the time this runs), but because the scalar-field write block
+  immediately below it can mutate a selected document's in-memory
+  `d.document_type` (when Document Type's own Apply box is checked in the
+  same save), and `document_type` is exactly what `computeBulkFieldUnion()`
+  groups by. A live-reproduced bug during this feature's own review called
+  a fresh `computeBulkFieldUnion(ids)` *after* that mutation for the
+  person/generic write loops that follow — which then silently dropped any
+  other checked field not configured for a document's *new* type, discarding
+  a write the person had explicitly asked for with no error or indication
+  anything was skipped. Snapshotting once up front, before the mutation, is
+  what keeps every later write block acting on the same field set the form
+  actually rendered and the person actually saw when they checked those boxes.
+  **The mixed-value indicator** (`bulkScalarMixed()`, `bulkSetMixed()`,
+  `refreshBulkMixedHints()`) flags, per field, whether the selected
+  documents' *current* values for it already disagree (blank/unset counts as
+  one shared value for this comparison — "all blank" isn't mixed, "some set,
+  some blank" is) — a field where everyone already agrees gets no hint at
+  all. Wording depends on semantics: an additive field on its default Add
+  mode gets a purely informational note ("what you enter is added on top,
+  nothing is removed"); a replace-semantics field, or an additive field
+  switched to Replace mode, gets a real overwrite warning ("checking Apply
+  will overwrite ALL of them with the value you enter") — re-evaluated live
+  whenever a Tags/person-field mode toggle changes, via a `change` listener
+  on every `input[name^="bulk-tags-mode"], input[name^="bulk-field-"]`
+  radio, so the hint's wording never lags behind the currently-selected mode.
+  **Every DB write for a bulk-edit save is batched into exactly one
+  `persistDb()`/`render()` call**, following the same reasoning
+  `bulkSetArchived()`/`bulkSetDeleted()`/`bulkSetNeedsReview()` already
+  document: looping per-document save functions would re-serialize the whole
+  SQLite database once per selected document, which bulk actions exist
+  specifically to avoid. Unlike those three functions, though, **a bulk-edit
+  save does NOT clear `selectedDocIds`** — editing field values doesn't
+  remove a document from the current view the way archiving/deleting/
+  flagging can, so keeping the selection lets someone chain a further bulk
+  action against the same documents without re-checking every row.
+  `saveBulkEdit()` also rewrites every affected document's sidecar `.txt`
+  (`sidecarBaseNameFromFilePath()`/`buildSidecarText()`/`writeSidecarFile()`,
+  the same three functions `saveEditedDocument()` already uses) from each
+  document's complete post-edit in-memory state, not just the fields that
+  changed — this has to run after every write block above has already
+  updated `d.customFields`/`d.personFieldValues`/`d.tags`/etc. in place, for
+  the same reason `saveEditedDocument()`'s own sidecar rewrite is its
+  next-to-last step, right before `persistDb()`.
+  **The right-click entry point (`showBulkRowContextMenu()`) is mutually
+  exclusive with the existing single-document context menu
+  (`showRowContextMenu()`) on a per-row basis, not a per-selection one**: the
+  existing row `contextmenu` listener branches to the bulk menu only when the
+  specific row that was right-clicked is itself checked AND `selectedDocIds`
+  has 2+ members — right-clicking an *unchecked* row still shows today's
+  single-document menu even while other rows are checked elsewhere, matching
+  Finder/Explorer/Gmail's own convention for this exact ambiguity. Unlike
+  `showRowContextMenu()`, the bulk branch deliberately does **not** touch
+  `selectedDocId`, the detail panel's content, or the single-row `.row-selected`
+  highlight — the action targets the whole multi-selection, not specifically
+  whichever row happened to be right-clicked, and that row's own checkbox
+  already reflects its membership in the selection the menu is about to act
+  on. The bulk menu itself is deliberately minimal — just "Edit" — since
+  Archive/Delete/Flag for review already have their own buttons in the
+  bulk-action bar; duplicating them in the context menu wasn't judged worth
+  the extra code for what's already one click away.
+  **Dragging documents onto a collection** (`startDocDrag()`,
+  `endDocDrag()`, `dropDocsOnCollection()`): rows and grid tiles are
+  `draggable` (not in the Waste bin), and every *manual* collection in the
+  nav accepts the drop -- a smart collection's rules decide its membership,
+  so it doesn't. A checked row carries the whole checked selection (shown
+  as an "N documents" drag image), an unchecked one only itself; the drop
+  goes through `addDocumentsToCollection()`, and the status line counts
+  only documents that weren't in the collection yet ("Already in …"
+  otherwise). `draggedDocIds` is set only while one of our own items is
+  being dragged, and the page-wide file-drop listeners (drag-and-drop
+  import, `#drop-overlay`) return early while it is, so an internal drag
+  never shows the import overlay or imports anything. Dragging over a
+  collapsed Collections header opens it for the drag only
+  (`dragOpenedCollections`, restored without saving the setting). A
+  `document`-level `dragend` also ends the drag, since a `render()` during
+  the drop can replace the source row before its own `dragend` fires.
+  **Collection folders** (`collection_folders (id, name)`,
+  `collections.folder_id` via `SCHEMA_MIGRATIONS`, `collectionFolders`,
+  `toggleCollectionFolder()`, `renderManageFoldersList()`) only group
+  collections in the nav: each folder is a foldable `.nav-folder-header`
+  with its collections indented under it, then the unfiled collections.
+  Which folders are folded is the `collapsed_collection_folders` setting
+  (a JSON id list). Folders are created, renamed and deleted in Manage
+  collections, where every collection gets a folder `<select>` (only once a
+  folder exists); deleting a folder sets its collections' `folder_id` to
+  NULL rather than deleting anything, and a `folder_id` pointing at a
+  missing folder reads as unfiled. Dragging documents over a folded folder
+  opens it for the drag (`dragOpenedFolders`). "Copy the setup of" copies
+  the folders and each smart collection's `folder_id` -- checked with a
+  probe `SELECT folder_id`, since an older source library lacks the column
+  and a failing SELECT would otherwise skip every smart collection.
+- **Duplicate detection** (`documents.file_hash`, `computeFileHash()`,
+  `openLibraryCheckModal()`) flags two kinds of likely-duplicate document:
+  an exact match on the file's own bytes, and a heuristic match on
+  Title + Date. **The hash is computed on the original uploaded bytes, not
+  the active `file_path`** -- `buildSearchablePdf()` can rasterize-and-rebuild
+  a captured file during OCR, and two byte-identical source scans processed
+  through that pipeline at different moments can produce slightly different
+  output bytes (embedded timestamps and similar); hashing the *processed*
+  file would silently defeat exact-duplicate detection for exactly the case
+  it exists to catch. Since `writeOriginalToSubfolder()` already
+  unconditionally preserves every new document's raw upload, the hash is
+  computed on that same original, at the same moment it's written --
+  falling back to hashing `file_path` only for a document with no preserved
+  original (a LibraryLifeboat-migrated document, predating this app's own
+  ingestion pipeline).
+  **New documents get their hash computed and stored at creation time**
+  (`saveNewDocument()`, `createReviewDocumentFromFile()`) -- one file,
+  already being read at that moment anyway. **Existing documents are
+  backfilled lazily**: the first time "Library check" (originally "Find
+  duplicates" — see the rename note below) is opened, it reads
+  and hashes every not-yet-hashed document's file once, with a progress
+  indicator (the same spinner-plus-status-text treatment `runOcr()`'s own
+  PDF-page-by-page progress already uses), so every later scan and every
+  capture-time check is instant. Until that first backfill runs, the
+  capture-time warning can only catch matches against documents that
+  already happen to have a hash. **The first backfill can be very slow on a
+  cloud-synced library folder** (reported on a 1,345-document library on
+  iCloud Drive: an evicted file has to be downloaded before it can be
+  read, so hashing means downloading), which shaped three properties of
+  the loop: it reads **4 files concurrently** (`BACKFILL_CONCURRENCY`),
+  mostly to overlap those downloads; it **persists every 25 hashes**
+  (`BACKFILL_PERSIST_EVERY`, plus once at the end) rather than only at the
+  end -- `persistDb()` calls are chained through one promise so two
+  workers never race on `library.sqlite`'s `createWritable()` -- so a
+  closed tab or reload keeps what's done; and it shows a **Stop** button
+  (`#duplicates-stop-btn`) that lets in-flight reads finish, persists,
+  and shows the results with a note (`#duplicates-stopped-note`) that the
+  exact-duplicate section is incomplete. The next Library check resumes
+  naturally, since it only ever backfills documents whose `file_hash` is
+  still unset. The modal's own close control, backdrop-click, and Escape
+  key stay gated on the in-progress backfill flag -- the same "disable,
+  only re-enable on completion" treatment the scan dialog uses while a scan
+  runs (`scanDialogRunning`, set by `startScanFromDialog()`) -- so Stop is the one sanctioned way out
+  mid-pass. A failed mid-pass save sets the same stop flag, so the other
+  workers don't keep hashing after the error has already propagated.
+  **The capture form warns, non-blocking, the moment a file is picked**
+  (`handlePickedFile()`), checking the picked file's hash against every
+  non-deleted document's `file_hash` in `allDocs` (the same `!d.deleted`
+  exclusion every other duplicate-detection pass in this feature uses) and
+  showing a dismissible
+  `.field-guess-hint`-style line naming the matched document, with a link
+  to open its detail panel -- Save stays enabled regardless. This checks
+  the exact-hash case only, never Title+Date -- form fields may still be
+  blank at pick time, so a heuristic warning that early would just be
+  noise. The hash computed at pick time (`pendingFileHash`/
+  `pendingFileHashFile`) is cached and reused at Save rather than
+  recomputed, since nothing about the file changes in between.
+  **Inbox and drag-and-drop bulk adds silently skip (with explicit
+  reporting) a staged file whose hash exactly matches an existing
+  document**, via the shared `createReviewDocumentFromFile(file, source)`
+  helper both already call -- no document is created for it, its staged
+  copy is removed from `inbox/` exactly like a normal successful add
+  (an identical copy already lives safely in `files/`, so nothing unique
+  is lost), and it's counted toward a new "N skipped as duplicates" clause
+  on the status line, alongside the existing "Added N document(s)..."
+  report. This is a genuine behavior change -- Inbox had never silently
+  not-added a staged file before -- and the explicit status-line reporting
+  is what keeps it from being *silent*, per this app's own "no silent
+  writes" working convention: nothing here omits information from the
+  person, it just avoids creating a redundant document.
+  `createReviewDocumentFromFile()` computes the hash and checks for a
+  duplicate match **before** writing the file copy or preserving the
+  original — not after — specifically so a skipped duplicate never
+  writes anything to `files/` at all: an earlier version of this function
+  hashed after both writes, which left an orphaned file copy and preserved
+  original behind under the reserved id every time a duplicate was
+  skipped, and — because the id counter was also rolled back — the *next*
+  genuinely-new document then reused that same id, landing its own real
+  files right next to those orphans. Checking first avoids that scenario
+  outright rather than tolerating it.
+  **"Find duplicates"** (a new toolbar button, since renamed "Library
+  check" — see the next note — alongside `🔔 Check
+  reminders`/`📥 Check inbox` -- the same family of explicit, on-demand
+  maintenance actions) opens a modal structured like the Reminders modal:
+  after any needed backfill, `allDocs` (deleted documents excluded from
+  every grouping pass; archived and needs-review documents included, same
+  "tells the truth about the whole non-deleted library" reasoning
+  Reports/Collections already use) is grouped two independent ways --
+  `computeExactHashDuplicateGroups()` and `computeMetadataDuplicateGroups()`
+  -- each producing its own rows, tagged "Exact file match" or "Likely
+  duplicate (title + date)"; a document that happens to satisfy both
+  passes simply appears in both groups' own rows, rather than being
+  deduplicated across the two pass types. A document with a blank Title or
+  blank Date is excluded from the Title+Date pass entirely, since matching
+  against an empty string would produce meaningless mass-groupings.
+  Clicking a document in a group closes the modal, selects that document,
+  and opens its detail panel -- the same click-through pattern the
+  Reminders modal's own rows already use -- where the existing
+  Archive/Delete/Edit actions do the actual resolving; this feature adds
+  no bespoke delete or merge action of its own. **The click also filters
+  the table down to that whole group**, so the copies sit side by side
+  instead of being scattered through (or hidden from) the current view:
+  it reuses the Reports drill-down (`drillIntoReportRow(docIds, label,
+  'library-check')`, `currentView = 'report-drilldown'`), whose
+  archived/needs-review-inclusive, deleted-exclusive membership is exactly
+  what duplicate detection counts, so the banner's count always matches
+  the group. A new `reportDrilldownReturnTo` state (`'reports'` |
+  `'library-check'`, reset in `resetAll()`) picks the banner's back-link
+  label (`reportDrilldownBackLink` vs `libraryCheckBackLink`, set in
+  `updateReportDrilldownBanner()` on every render rather than only via
+  `data-i18n`) and target: for Library check it returns to All Documents
+  and reopens the modal, recomputed fresh so a just-deleted duplicate is
+  gone, and instant since every document is hashed by then. A
+  broken-link row has no group, so clicking it only selects the document,
+  as before. Like a Reports drill-down, the group is a snapshot taken at
+  click time. **"Not a duplicate" marks** (`not_duplicate_groups
+  (group_key TEXT PRIMARY KEY)`, `notDuplicateKeys`, `duplicateGroupKey()`,
+  `setNotDuplicate()`, the `.not-duplicate-checkbox` in each group's
+  heading) let a person record that a group isn't really a duplicate
+  without resolving anything: the group stays listed -- ticked, dimmed,
+  `.not-duplicate` -- and sorts after the still-undecided groups of its
+  kind the next time the check opens (not immediately, so the list
+  doesn't jump under the pointer). The key is the group's kind plus its
+  sorted document ids (`exact:1,2`, `metadata:5,6`), stored rather than a
+  per-document flag, so a mark means "these exact documents, judged
+  together": if another document joins the group (or one leaves), the key
+  changes and the group comes back unmarked, a new candidate. A stale key
+  left behind that way is a harmless unused row. The table is created by
+  `SCHEMA`'s `CREATE TABLE IF NOT EXISTS`, which runs on every library
+  open, so existing libraries need no migration entry. **Each group is
+  `display:block`** even though it also carries `.fs-list-item` (a
+  horizontal flex row) -- without that override every group, and the
+  broken-links section, laid its heading and document rows out side by
+  side, squeezing titles and overlapping the Re-link buttons (a
+  pre-existing bug found while building this). See
+  `docs/superpowers/specs/2026-09-24-duplicate-detection-design.md` for
+  the full design.
+- **The "Find duplicates" modal was renamed to "Library check"
+  (`#library-check-btn`, `openLibraryCheckModal()`)** and gained a third,
+  persistence-free section: broken file links. `computeBrokenFileLinks(docs)`
+  checks every non-deleted document's set `file_path`/`original_file_path`
+  via `resolveFileHandle(path, false)`, catching any error (not narrowly
+  `NotFoundError`) — unlike the exact-hash duplicate check's `file_hash`,
+  this needs no persisted state and no lazy backfill, since an existence
+  check never reads a file's bytes; it runs fresh on every modal open. A
+  `NULL` path was simply never given one and is never flagged — only a path
+  that's actually *set* but fails to resolve counts as broken. Archived and
+  needs-review documents are included (same "tells the truth about the
+  whole non-deleted library" reasoning duplicate detection's own checks
+  already use); only `deleted` documents are excluded.
+  **Only the button/modal-open-function/three directly-associated i18n keys
+  were renamed** (`toolbarFindDuplicates`→`toolbarLibraryCheck`,
+  `duplicatesModalTitle`→`libraryCheckModalTitle`,
+  `duplicatesNoneFound`→`libraryCheckNoneFound`, now covering all three
+  sections' combined empty state) — the internal DOM ids/classes/i18n keys
+  specific to the duplicate-checking sections (`#duplicates-list`,
+  `#duplicates-progress`, `.duplicate-group`, `duplicatesBackfillProgress`,
+  `duplicatesExactMatchLabel`, `duplicatesMetadataMatchLabel`, and the
+  `findDuplicatesBackfillRunning` variable/its own debug hook) are
+  deliberately unchanged, since they still describe exactly what they did
+  before.
+  **Each broken document renders its own row** (`.broken-link-row`, reusing
+  `.duplicate-row`'s own click-to-detail-panel wiring for free — its
+  `.broken-link-indicators` span stops click propagation, the same
+  `onclick="event.stopPropagation()"` pattern the Reminders modal's own
+  `.reminder-snooze` wrapper already uses, so clicking "Re-link…" doesn't
+  also open the detail panel), showing independent "File"/"Original"
+  indicators only for whichever path(s) actually failed to resolve.
+  **Re-linking** (`triggerRelink()`/`performRelink()`) opens a plain,
+  dynamically-created `<input type="file" accept="application/pdf,image/*">`
+  per click — the same accept restriction the capture form's own
+  `#file-input` uses, but a fresh element each time rather than a shared
+  static one, since each click needs to carry which document and which path
+  field it's repairing. The picked file's bytes are written directly into
+  the document's **exact existing stored path** via
+  `resolveFileHandle(path, true)` (creating whatever directories/file are
+  missing) — no database path or row changes at all, since the path itself
+  was already correct; only the missing file at it is restored. **Hash
+  correctness**: if the just-repaired path is the one `file_hash` was
+  derived from — `original_file_path` when the document has one, otherwise
+  `file_path`, the same fallback rule `backfillFileHash()` already uses —
+  the hash is recomputed via the existing `computeFileHash()` helper and
+  persisted (`UPDATE documents SET file_hash = ? WHERE id = ?`); re-linking
+  the *other* path leaves `file_hash` untouched, since it was never derived
+  from that path. A successful re-link removes just that one indicator from
+  the DOM in place (or the whole row, if it was the document's only broken
+  one) — no full re-scan of the other two sections, since nothing about
+  duplicate grouping changed. A failed write (permission revoked mid-session,
+  disk full) is caught and shown as an inline `.relink-error` next to the
+  still-present Re-link button, clearing any earlier error on retry, so
+  nothing silently looks fixed when it isn't. **Cancelling the picker
+  doesn't fire `change`** in most browsers, so the dynamically-created input
+  used to be orphaned in the DOM on every cancelled attempt (caught in this
+  feature's own final review) — `triggerRelink()` now removes it on the
+  `cancel` event current Chromium fires for a dismissed picker, and also
+  sweeps up any leftover `input.relink-file-input` at the start of each new
+  attempt for browsers that fire neither event (only one native picker can
+  be open at a time, so nothing live is ever swept). Headless Chromium
+  auto-dismisses an unanswered picker the same way, firing `cancel` — which
+  is why `tests/test_broken_links.py` answers every real re-link through
+  Playwright's `expect_file_chooser()` rather than `set_input_files()` on
+  the input directly (the input is already gone by the time the latter
+  would run). **Known, accepted limitation**: a document that was never
+  hashed (one predating duplicate detection) and whose hash-deriving path is
+  broken can never be backfilled, so it stays in the lazy backfill's
+  "unhashed" set and re-triggers that pass (briefly disabling the modal's
+  close control) on every Library check open until it's re-linked — cheap,
+  since the pass skips a missing file immediately, but worth knowing if the
+  progress spinner ever seems to appear on every open.
+- **Orphaned tags/people cleanup** (`computeOrphanedTags()`, `computeOrphanedPeople()`,
+  `deleteOrphanedTags()`, `deleteOrphanedPeople()`) adds two more sections to the
+  "Library check" modal: any `tags`/`people` row not referenced by any non-deleted
+  document. Detection is entirely in-memory — every document already carries
+  `d.tags` and `d.personFieldValues` (the latter covering *every* person-type
+  field, not just the built-in People field, since `personNameToId` is one
+  global name registry shared across all of them) — so no new database query,
+  no persisted state, and no backfill are needed; both run fresh on every
+  modal open, the same reasoning `computeBrokenFileLinks()` already uses.
+  **A document sitting in the Waste bin doesn't count as "using" its
+  tags/people** — a tag/person referenced only by a deleted document is
+  flagged as orphaned — with one accepted, documented consequence: if such a
+  tag/person is deleted while orphaned and the document is later restored, it
+  comes back silently missing that tag/person, since its join row
+  (`document_tags`/`document_field_people`) was cascade-deleted along with
+  the tag/person row itself (see below) — no dangling reference is left
+  behind. (The design spec described the join row as surviving as harmless
+  dead weight; the shipped code deletes it instead, which is strictly
+  cleaner and has the same user-visible result.) **Deleting
+  a name also scrubs it out of `allDocs`'s own in-memory copies**
+  (`d.tags`/`d.people`/every array inside `d.personFieldValues`, across
+  *every* document including ones in the Waste bin) — necessary because this
+  app never reloads `allDocs` from disk mid-session (every mutation path
+  updates the in-memory document objects in place and persists, the same
+  update-in-memory → persist → `render()` pattern the Archiving note above
+  describes for `toggleArchived()`), so without this scrub a Waste-bin document's
+  own in-memory arrays would go stale after the cascade `DELETE` and show the
+  just-deleted name again if viewed or restored before the next reload, even
+  though the database itself no longer has any row backing it.
+  **Orphaned rows deliberately don't reuse `.duplicate-row`** — unlike every
+  other row in this modal, an orphaned tag/person doesn't represent a
+  document, so there's nothing to click through to a detail panel for; they
+  get their own non-clickable `.orphaned-row` markup instead, just a name and
+  a Delete button. **Deletion cascades into the relevant join table** —
+  `DELETE FROM document_tags WHERE tag_id = ?` / `DELETE FROM
+  document_field_people WHERE person_id = ?` — before removing the row
+  itself, and refreshes every autocomplete datalist via the existing
+  `populateDatalists()` so a deleted name stops being suggested immediately.
+  **This is the first destructive action this maintenance-feature family has
+  added** (duplicate detection and broken-file-links never destroy data), and
+  correspondingly the first `confirm()` dialog anywhere in this app's own UI —
+  both the per-row Delete and the per-section "Delete all orphaned" bulk
+  action require one. The bulk action follows this app's existing
+  bulk-action convention exactly: one shared `confirm()` for the whole
+  section (not one per row), every `DELETE` queued first, and exactly one
+  `persistDb()` at the end — `deleteOrphanedTags(names)`/
+  `deleteOrphanedPeople(names)` take an array specifically so a single-row
+  delete and a many-row bulk delete are the same function call with a
+  1-element array, not two separate code paths.
+- **Unused custom fields** (`computeUnusedFields()`, `deleteFields()`,
+  `smartCollectionsFilteringOn()`, the "Unused fields" section of the
+  Library check modal, `#unused-fields-section`) are the one way to delete
+  a custom field in this app. **"Unused" means no non-deleted document has
+  a value** (`customFields[name] !== undefined`, or a non-empty
+  `personFieldValues[name]`) -- deliberately regardless of per-type setup:
+  a field that's set up for some type but never filled in is still listed,
+  with a "Set up for: <types>" note so a deliberately prepared field is
+  recognizable, and a field whose only values sit on Waste-bin documents
+  is listed with its own note (the same "a Waste-bin document doesn't count
+  as using it" rule the orphaned tags/people cleanup above uses).
+  `NON_RENAMEABLE_FIELD_NAMES` (People/Amount/Currency/Payment method/
+  Reminder) are never listed: the migrations recreate them on every
+  library open, so deleting one would be pointless. **`deleteFields(ids)`
+  removes everything that refers to the field**: `document_field_values`,
+  `document_field_people`, `reminder_snoozes` (by `field_id`),
+  `document_type_fields`, `field_descriptions` (by name), the `fields`
+  row, their in-memory mirrors, every document's `customFields`/
+  `personFieldValues` entry, and the field's own entry in any Smart
+  Collection's saved `dynamic` criteria -- left in place, a filter on a
+  field that no longer exists would silently match nothing (or
+  everything, for a "— Not set —" filter). The `confirm()` names the
+  affected Smart Collections so that side effect isn't a surprise. A sort
+  on the deleted field's column resets to the default (`import_date`,
+  descending) and is persisted; stale `field-<id>` entries in
+  `visible_columns` are harmless, since `loadColumnSettings()` already
+  drops unknown ids. Single and bulk delete are the same call with a 1-
+  or many-element id array, one `persistDb()` at the end, mirroring
+  `deleteOrphanedTags()`.
+- **Grid view** (`viewMode`, `loadViewMode()`/`saveViewMode()`/
+  `applyViewMode()`, `renderGrid()`, `loadTileThumb()`,
+  `runPreviewJob()`) is a per-library choice (`view_mode` setting,
+  `'list'` | `'grid'`) between the table and preview tiles. **Grid is the
+  default** for a library that never chose (only a saved `'list'` gives
+  List). Because nearly every test drives the table, the test stub's
+  `FakeDatabase` adds `view_mode = 'list'` to any library without one,
+  unless a test sets `window.__STUB_KEEP_DEFAULT_VIEW` (as
+  `test_grid_view.py` does to check the real default). The
+  grid (`#doc-grid`) is a second rendering of the same filtered, sorted
+  list inside `.table-wrap`, toggled by a `view-grid` class on
+  `#main-layout` that hides `#doc-table`, so `.table-wrap`'s height
+  calibration is untouched. Since the table's select-all checkbox lives in
+  that hidden header, the grid starts with its own
+  (`#grid-select-all-checkbox`, a full-width `.grid-select-all` row), and
+  `render()` wires and syncs both. **Tiles share every row handler**: `render()`
+  wires click/dblclick/contextmenu over `docItems` (rows plus tiles,
+  highlighted together by `highlightDoc()`), tiles carry the same
+  `.row-select-checkbox` (bulk selection), and `tableRows()` returns tiles
+  in grid mode, so J/K/D/Enter keep working. **The switch lives on the
+  count line** (`.count-row` = `#count-line` + `#view-controls`), not the
+  toolbar, to stay clear of the toolbar-wrap calibration -- and
+  `.view-controls` is pinned to the count line's own 13px height, its 16px
+  buttons overflowing slightly, because the first version made the row
+  3px taller and `test_footer_pin.py`/`test_collections.py` caught the
+  table sliding behind the footer. `#count-line` itself still holds only
+  the "Showing N of M" text (several tests read it). The tile size
+  (`grid_tile_size`, 140-360px, a `--tile-w` CSS variable) has a slider
+  shown only in grid mode. **Previews load lazily** (an
+  `IntersectionObserver` on `.table-wrap`, 400px margin) and are cached as
+  object URLs per path (`thumbUrlCache`, cleared on library switch and by
+  `writeThumbnail()` for the path it rewrites), so a 1,300-document grid
+  doesn't read every thumbnail from iCloud at once. Nothing is generated
+  automatically, in line with the "no automatic bulk preview generation"
+  note under Document previews: **"Create missing previews (N)"** appears
+  when listed documents lack one and makes them on click, one at a time,
+  saving every 25 and stoppable by clicking again. `THUMB_MAX_DIM` went
+  from 320 to 640 so large tiles stay sharp, and **previews are JPEG now**
+  (`canvasToThumbBytes()`, quality 0.82, drawn onto white since JPEG has
+  no transparency; `writeThumbnail()` writes `thumbnails/<id>.jpg`): a
+  640px PNG of a scanned page ran to several hundred KB. **"Recreate older
+  previews (N)"** (`runPreviewJob(docs, 'upgrade')`, the same runner as
+  'missing') covers previews this app didn't make at full size --
+  Mariner's, and its own earlier 320px PNGs -- tracked by a new
+  `documents.thumbnail_hd` column (`SCHEMA_MIGRATIONS`), set by
+  `writeThumbnail()` (and by the capture/Inbox INSERTs, whose rows don't
+  exist yet when the preview is written). For each one it reads the
+  existing preview's size first (`createImageBitmap`, `THUMB_SHARP_MIN` =
+  480px longest side): a large enough one is only marked, without opening
+  the document -- which on iCloud Drive would mean downloading it -- and a
+  small or unreadable one is recreated from the document's file. The new
+  preview replaces the old path only once written; an unreadable document
+  keeps its old preview and stays counted for the next run. The old
+  preview file is left on disk (Storage stats lists it as untracked);
+  **Library check's "Unused preview files"** (`computeUnusedPreviewFiles()`,
+  `deleteUnusedPreviewFiles()`, `renderUnusedPreviewsSection()`) removes
+  them: every file under `thumbnails/`, subfolders included, that no
+  document's `thumbnail_path` names -- a Waste-bin document still counts as
+  using its preview -- listed as a count and total size, deleted after a
+  `confirm()`. Walked fresh on every check like the broken-links section;
+  `.DS_Store`/`._*` are ignored. Only files under `thumbnails/` are ever
+  considered, never documents. The
+  status line reports "Previews recreated: N. Already sharp: M.", or that
+  it was stopped. `SHOW_DOCUMENT_PREVIEW` (the panel's own preview slot)
+  is unchanged.
+- **Line-item splits** (`document_splits (document_id, position, category,
+  amount, note)`, `d.splits`, `wireSplitsEditor()`, `readSplits()`,
+  `allCategoryNames()`): Mariner's split receipts, in both the capture
+  and the Edit form (`splitsFieldHtml(p)`/`wireSplitsEditor(p, d)` with the
+  `f`/`e` prefix; `d` is null in capture). Lines need a category and an amount
+  (`,` or `.` decimals, stored as 2-decimal text); blank lines are
+  skipped; `readSplits()` refuses lines that add up to more than the
+  Amount (read from the form's own Amount input, so a just-typed Amount
+  counts), and `saveNewDocument()`/`saveEditedDocument()` check that before
+  writing anything -- in capture before the id is reserved or any file is
+  copied, so a refused split leaves nothing behind.
+  The rest of the Amount stays with the document's own category -- it is
+  never stored as a line. Saving replaces the document's lines
+  (delete-then-insert). **Where lines count**: `computeReportGroups()`
+  with the `category` breakdown puts each line under its category and the
+  rest under the document's (a document counted once per row it touches;
+  `grandTotal` unchanged); other breakdowns ignore splits. The toolbar
+  Category filter (`matchesCriteria()`) matches a document's category or
+  any line's; a Smart Collection `category` rule tests each of them -- a
+  positive operator needs any to match, `is_not`/`not_contains` all
+  (`empty`/`not_empty` look at the document's own category only). Category
+  option lists (filter, datalist, Rename or merge values counts) include
+  line categories via `allCategoryNames()`/`valuesForKind()`, and
+  `renameValue('category', …)` renames them in `document_splits` too. The
+  detail panel shows a "Split" line and `buildSidecarText()` a `Splits:`
+  line (`writeSidecarForDoc()` passes `d.splits`). The table is created by
+  `SCHEMA`'s `CREATE TABLE IF NOT EXISTS` on every open, so no migration
+  entry; copying a library's setup doesn't copy it (it's document data).
+- **Calendar view** (`viewMode === 'calendar'`, `renderCalendar()`,
+  `calendarMonth`, `calendarWeekStart()`, `shiftMonth()`, `#doc-calendar`)
+  is the third value of the same `view_mode` setting and switch: a third
+  rendering of the filtered, sorted list inside `.table-wrap` (hidden
+  table, `view-calendar` class), so its height calibration is untouched.
+  Documents go on their own `date` (first 10 characters, so a stored time
+  doesn't matter), never `import_date`; undated ones are listed under the
+  month. The grid starts on the locale's first weekday
+  (`Intl.Locale#getWeekInfo()`, falling back to Sunday for English and
+  Monday otherwise) and leaves days outside the month empty. Each document
+  is a `.cal-chip` with a `data-id`, added to `render()`'s `docItems` so it
+  gets the same click/dblclick/contextmenu/drag handlers as rows and
+  tiles, and `tableRows()` returns the chips so J/K/D work; there's no
+  checkbox, so bulk selection stays a List/Grid thing. `calendarMonth`
+  ('YYYY-MM') is session state, reset by `resetAll()`, starting at the
+  newest dated document listed or else this month; the head shows the
+  month's document count. A day with many documents scrolls inside its
+  cell (`max-height`).
+- **Page tools** (`openPageToolsModal()`, `openCombineModal()`,
+  `buildPdfFromPages()`, `replaceActiveFile()`, `refreshAfterPdfChange()`,
+  `createSplitDocument()`) are built on **pdf-lib** (`ensurePdfLib()`,
+  1.17.1 from cdnjs, MIT), the one dependency added for them -- it copies
+  pages between PDFs as they are, text layers included, so nothing is
+  re-rendered or re-compressed. `ensurePdfLib()` skips loading when
+  `window.PDFLib` already exists, which is how the test stub's fake takes
+  over. **"Edit pages…"** is a panel-only action for a non-deleted document
+  whose active file is a PDF (`canEditPages()`): a grid of page thumbnails
+  (pdf.js) where each page can be rotated, moved, removed (dimmed, and
+  restorable until Save) and split after (✂ between cards); "+ Add pages
+  from file…" appends a PDF's pages or an image as a page (an A4-wide page
+  with the image's proportions). Save is disabled until something changed.
+  **The original always survives** (`replaceActiveFile()`, the same two
+  rules "Make searchable" uses): with a separate original on disk the active
+  copy is overwritten in place; without one the current file becomes
+  `original_file_path` and the result goes next to it as `<stem>_edited.pdf`
+  (`_combined.pdf` for Combine). `file_hash` stays valid either way, since
+  it's derived from the original. Each part after the first becomes a new
+  document (`createSplitDocument()`, `source = 'split'`, title "<title>
+  (2)" etc.) with the source's category, subcategory, type, date, notes,
+  tags, custom fields, people, review flag and manual collections, its own
+  hash, and no separate original (the source's original already holds
+  those pages). After every write, `refreshAfterPdfChange()` regenerates
+  the preview, re-records the text layer (`recordPdfTextLayer()`, so a part
+  of a digital PDF gets its own OCR text) and rewrites the sidecar -- all
+  best-effort. Existing OCR text on the edited document is kept even if
+  pages were removed (it may be hand-corrected). **Combine…**
+  (`canCombine()`: non-deleted PDF/JPEG/PNG, 2+ selected) joins the
+  selected documents' pages in an order the dialog lets you change; the
+  document whose details you keep gets the combined file and the joined OCR
+  text, and the others go to the Waste bin with their files untouched, so
+  restoring them undoes it by hand. Both dialogs block
+  Escape/backdrop/close while writing (`pageToolsRunning`). **The bulk-action
+  bar gained a "More ▾" menu** (`#bulk-more-btn`/`#bulk-more-menu`, reusing
+  the Add-to-collection menu's CSS) holding Make searchable, Combine… and
+  Export…, each keeping its id and listener: adding Combine as one more bar
+  button made the button labels wrap to two lines at 1440px in tabs layout,
+  growing the bar and pushing `.table-wrap` 16px behind the footer
+  (`test_collections.py` Scenario 30 caught it). Occasional bulk actions go
+  in that menu, the same rule as the toolbar's Tools menu. Items are shown
+  or hidden by `renderBulkActionBar()` as before; the whole menu is hidden in
+  the Waste bin.
+- **Smart Collection rules and editor** (`matchesRules()`, `matchesRule()`,
+  `criteriaToRules()`, `smartRuleFields()`, `openSmartCollectionEditor()`,
+  Tools → Manage collections → "+ New smart collection" / "Edit rules…").
+  Smart Collection criteria now come in two shapes. The original toolbar
+  snapshot (`currentFilters()`'s shape) is still evaluated exactly as
+  before, so existing collections behave the same until someone saves them
+  from the editor. The rule shape is `{match: 'all'|'any', rules: [{field,
+  op, value, value2}]}`; `matchesCriteria()` hands anything with a `rules`
+  array to `matchesRules()`. The editor and "Save as Smart Collection"
+  both store rules (the latter converting the toolbar via
+  `criteriaToRules()`, which also turns an old snapshot into rules when it
+  is opened in the editor). **A custom field is referenced by id**
+  (`field:<id>`), so renaming a field needs no criteria update; built-ins
+  are `any` (the same search text as the toolbar box), `title`,
+  `category`, `subcategory`, `document_type`, `tags`, `date`,
+  `import_date`, `notes`, `ocr_text` and `status`. Operators depend on the
+  field's kind (`SMART_OPS_BY_KIND`): text compares case-insensitively and
+  trimmed; tags and person fields use includes/excludes; numbers use
+  inclusive gte/lte/between (matching the old Amount range); dates add
+  relative operators (`last_days`, `this_month`, `last_month`,
+  `this_year`, `last_year`), evaluated against `todayIsoDate()` on every
+  render. Mariner's built-in RECENT and TYPES collections are not
+  pre-created; the relative date and type rules let a person build them.
+  Like the snapshot shape, collection views include archived and
+  needs-review documents. `renameValue()` updates rule values (compared
+  case-insensitively), and `deleteFields()` drops rules on the deleted
+  field (`smartCollectionsFilteringOn()` checks both shapes, resolving ids
+  through `fieldDefs` because `fieldNameToId` is already cleared by then).
+  The editor's live count covers non-deleted documents; saving is refused
+  without a name or with a rule missing its value.
+  **The iPhone app (`dossiary-ios`, a sibling repo) ports this rule logic
+  to Swift.** `tests/export_smart_rule_cases.py` (not part of the suite)
+  writes the cases it checks against -- criteria in both formats and the ids
+  this JavaScript matches -- into that repo's test fixtures. After changing
+  `matchesRule()`, `matchesRules()`, `matchesCriteria()` or `smartRuleActual()`,
+  run it and tell the iPhone app's tests about the change. The iPhone app also
+  reads `library.sqlite` directly (read-only): a schema change should keep
+  old columns readable, as `SCHEMA_MIGRATIONS` already does.
+- **Rename or merge values** (`openManageValuesModal()`, `valuesForKind()`,
+  `renameValue()`, `startValueRename()`, Tools → "✎ Rename or merge
+  values…") is Mariner's Tag Editor and editable category/merchant lists:
+  pick Categories, Subcategories, Document types, Tags, People, or any
+  text custom field, see every value with its document count (Waste-bin
+  documents included, so a restored one can't bring an old spelling
+  back), and rename one in place (same Enter/blur/Escape convention as the
+  field rename). **Renaming onto a value that already exists merges the
+  two** after a `confirm()` -- it can't be taken apart again. Tags and
+  people merge by moving their join rows (`document_tags`/
+  `document_field_people`, read whole-table and filtered in JS per the
+  sql.js convention above, skipping links the target already has) and
+  deleting the old row; a plain rename updates the row in place, keeping
+  its id. What else is keyed by the value moves with it: Smart Collection
+  criteria (category, type, person, and dynamic filters on that field or
+  on person fields), a renamed type's `document_type_fields` setup (on a
+  merge the target's own setup wins) and `default_document_type`, and the
+  sidecars of every touched document. A person's name is shared by every
+  person-type field, so renaming one renames it everywhere -- the same
+  global `personNameToId` registry described in the People note.
+- **Back up library** (`openBackupModal()`, `listLibraryFiles()`,
+  `backupReminderText()`, Tools → "🗄 Back up library…") copies the whole
+  library folder into a new `<library> backup <yyyy-mm-dd hhmm>` folder
+  (never reusing an existing one) inside a folder the person picks --
+  refused if it's the library or inside it (`isInsideLibrary()`, shared
+  with export). `library.sqlite` is written from `db.export()` (the
+  in-memory database is always the authoritative copy); every other file
+  is copied as is, 4 at a time for iCloud's sake, skipping `.DS_Store`/`._*`.
+  Plain copies rather than a zip: no dependency, and a backup is simply
+  another library folder -- restoring means opening it. **Each backup also
+  gets `dossiary.html` and `How to open.txt` at its top**
+  (`ownCopyForBackup()`: the jsDelivr download, else a stored copy of
+  exactly this version -- never a `confirm()`; see the Export-as-library
+  bundles note), written after the files; a library opened from an earlier
+  backup has its own old copies skipped from the listing so the fresh ones
+  replace them. Without a copy (offline, nothing stored) the backup still
+  completes and the summary says so (`backupNoAppCopy`). Stop removes the
+  partial folder (`removeEntry(..., {recursive: true})`) so an incomplete
+  copy never looks like a backup; files that can't be read are listed.
+  `last_backup_at` and `backup_reminder_days` (default 30, 0 = off) are
+  `settings` rows; when a backup is due, `afterDbReady()` appends the
+  reminder to the "Opened library" status line (a status builder, so it
+  retranslates). **`#status` is now a single line** (`nowrap` + ellipsis,
+  full text in its `title`), since that reminder made the line wrap at
+  320px and pushed `.table-wrap` 26px behind the footer --
+  `test_footer_pin.py` caught it; any long status message had the same
+  latent risk.
+- **Export selected documents** (`openExportModal()`, `exportFileName()`,
+  `uniqueFileNameIn()`, `buildExportCsv()`, `#bulk-export-btn` in the
+  bulk-action bar's More menu) copies each selected document's active file into a
+  folder picked with `showDirectoryPicker()`, named `<yyyy-mm-dd> <title>`
+  (characters not allowed in file names replaced, clashes -- including
+  files already in that folder, which are never overwritten -- numbered
+  " (2)"), plus an optional `index.csv` of the details: the fixed columns,
+  Amount/Currency/Payment method, and every other custom field present in
+  the export. The CSV separator follows the UI language (`;` for de/fr/es/hy,
+  whose spreadsheets use a decimal comma, `,` otherwise) and starts with a
+  BOM so spreadsheets read it as UTF-8. **Read-only for the library**, and
+  `isInsideLibrary()` (`isSameEntry()` / `resolve()`) refuses the library
+  folder or anything in it, so an export can't turn into untracked files
+  under `files/`. A document whose file can't be read is listed, not fatal.
+  Emailing (Mariner's other export) isn't possible from a browser: a
+  `mailto:` link can't carry attachments. **Details in exported PDFs**
+  (`pdfWithDetails()`, `#export-details-toggle`, on by default): each
+  exported PDF copy gets Title (`displayName()`), Subject (category,
+  subcategory, type) and Keywords (tags, written as one comma-separated
+  string because pdf-lib joins a list with spaces) via pdf-lib, loaded with
+  `updateMetadata: false` so the scanner's own Creator/Producer and dates
+  survive and pages are copied as they are. Deliberately the copies only:
+  rewriting library files on every edit would mean a slow write per change
+  (iCloud) for something the sidecars already provide, and images can't
+  carry it this way. A PDF pdf-lib can't open (encrypted, damaged, library
+  unavailable) is copied unchanged and counted (`exportDetailsSkipped`).
+  Checked against the real pdf-lib 1.17.1 once (properties read back,
+  pages and Creator/Producer kept); the suite uses the stub's fake, whose
+  `save()` records the properties as `props`.
+- **Export as library** (`openExportLibraryModal()`, `buildExportLibraryDb()`,
+  `#bulk-export-library-btn` in the bulk More menu; spec
+  `docs/superpowers/specs/2026-10-15-export-as-library-design.md`) turns the
+  selected documents into a new `<Name>.dossiary` library, copied or moved.
+  The new database is built in memory from the open one with **ids kept**, so
+  every stored path stays valid: the documents and their tags, people,
+  custom values, splits and reminder snoozes; manual collections holding them
+  (with only those members); and setup -- 'used' (fields with a value on
+  these documents plus `NON_RENAMEABLE_FIELD_NAMES`, their types' field
+  setup, descriptions, settings) or 'all' (`copySetupFrom()`, now taking a
+  target database and an excluded-settings list). Never copied:
+  `EXPORT_SETTINGS_NOT_COPIED` (`last_backup_at`, `scan_bridge_url`,
+  `scan_last_settings`), `not_duplicate_groups`, `ocr_jobs`. Order: each
+  document's file and original are read before anything is written (a
+  document that can't be read is left out and listed, and stays here on
+  Move), previews (only the *read* is best-effort) and fresh sidecars (`sidecarTextForDoc()`; a failed preview or sidecar *write* aborts the export, since the destination is broken),
+  `library.sqlite` last; Stop, a failure or nothing readable removes the new
+  folder; Move then calls `bulkSetDeleted()` on the exported ids (undone in
+  memory if that save fails). "Open it" switches via `resetAll()` +
+  `proceedWithRootDirHandle()`, and the new library is added to Recent
+  libraries. `exportLibraryRunning` blocks closing the dialog meanwhile.
+  **Bundles** (spec
+  `docs/superpowers/specs/2026-10-20-export-bundle-with-dossiary-design.md`):
+  "What to create" (`export-library-output`: `library` | `folder` | `zip` |
+  `both`) can add Dossiary itself -- `<Bundle>/dossiary.html`,
+  `<Bundle>/<Name>.dossiary/`, `<Bundle>/How to open.txt`
+  (`bundleReadmeText()`: the UI language, then English) -- as a folder,
+  `<Bundle>.zip`, or both. A `file://` page can't read its own file, so
+  `getDossiaryHtmlForBundle()` downloads
+  `cdn.jsdelivr.net/gh/AarneAarebye/Dossiary@v<APP_VERSION>/dossiary.html`
+  (checked for the same `APP_VERSION`, 15 s timeout), else uses a copy
+  chosen once ("Choose dossiary.html…"), whose *contents* are kept in
+  IndexedDB (`dossiary-bundle-source`/`copies`) -- not a handle, since
+  re-reading one needs a permission prompt that would use up the click the
+  folder picker needs; that is also why the download happens only after the
+  folder is picked. Library only never calls `fetch`. The zip comes from a
+  built-in writer (`createZipWriter()`, `crc32()`, `zipLimits`): stored
+  entries, UTF-8 names, ZIP64 past 4 GB or 65,535 entries, appended to one
+  `createWritable()` stream so nothing large sits in memory. Zip only writes
+  the library straight into the zip through the export loop's `sink`; Both
+  writes the folder, then zips it (`listFilesUnder()`). Stop or a failure
+  aborts and removes the partial zip and the created folder. The test stub's
+  writable streams append like the real API (they used to replace).
+  The stored copy lives in the shared `file://` IndexedDB origin, like Recent
+  libraries (another local page could plant a copy whose version text
+  matches); it is only used when the download fails.
+- **Import a folder** (`openImportModal()`, `readImportIndex()`,
+  `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder…") is
+  Export's counterpart: every file at the top of a folder picked with
+  `showDirectoryPicker({mode: 'read'})` (hidden files skipped, subfolders
+  not walked) goes through `createReviewDocumentFromFile(file,
+  'folder-import', beforeSave)` -- the Inbox/drag-and-drop path, so exact
+  duplicates are skipped and counted, and the folder is only ever read.
+  `isInsideLibrary()` refuses the library or anything in it. **With an
+  `index.csv`** (Export's, in any UI language: the separator is whichever of
+  `;`/`,` the header uses more, and headers are matched against every
+  language's `STRINGS` value for the column's key, `IMPORT_CSV_COLUMNS`),
+  a file named in its File column gets that row's title, date, import date
+  (kept, so a round trip keeps its history), category, subcategory, type,
+  notes, tags, People, and every other column as a custom field (created as
+  a text field if the library lacks it; an existing person-type field takes
+  comma-separated names), and is filed with `needs_review = 0`. The
+  `beforeSave` hook applies this inside `createReviewDocumentFromFile()`,
+  before its sidecar write and its one `persistDb()`. A document type with
+  no field setup before the import gets the fields its rows used appended
+  (so they aren't orphaned); a type that already had a setup is left alone.
+  **Files without a row, or every file when there is no `index.csv`**, are
+  added like a dropped file: filename title, flagged for review. An
+  `index.csv` without a File column, or unreadable, is reported and the
+  files are still added. The summary is "Label: N" lines (added, with
+  details, for review, duplicates, failed, index rows without a file).
+- **Share** (`openShareModal()`, `shareEmailHref()`, `#bulk-share-btn` in
+  the bulk More menu, the panel-only `'share'` action) is the closest a
+  browser gets to Mariner's Email: the Web Share API hands `File`s to the
+  system share sheet (Mail, Messages, AirDrop, …). Chrome on macOS supports
+  it (`navigator.canShare({files})` is true in Chrome 154 here);
+  Playwright's bundled Chromium doesn't, which is how the suite exercises
+  the fallback. `navigator.share()` needs a fresh click, and reading files
+  can outlast that on iCloud, so the dialog reads them first (named by
+  `exportFileName()`, numbered on a clash, PDFs passed through
+  `pdfWithDetails()`), then shows its own Share button. A dismissed sheet
+  (`AbortError`) is silent; any other error is shown. A file that can't be
+  read is listed and the rest still shared. Without file sharing (no
+  `canShare`, or `canShare` refusing the files) the dialog offers Export and
+  "Write an email" -- a `mailto:` with the titles as subject and
+  "date title" lines as body (at most 50), since mailto can't attach files.
+- **Storage stats** (`computeStorageStats()`, `formatBytes()`,
+  `openStorageStatsModal()`) is a brand new, independent toolbar button (now
+  an item in the "🛠 Tools" dropdown) and
+  modal — deliberately **not** part of the "Library check" family
+  (`openLibraryCheckModal()`) the three prior maintenance features share,
+  since this is a read-only overview, not a detect-a-problem-and-fix-it
+  check. Answers the question CLAUDE.md's own "Preserving an original file
+  on ingestion" note raises but never lets anyone actually see: how much
+  of the library's real disk usage is the doubled original-preservation
+  overhead versus genuinely distinct content.
+  **The walk reads real files on disk, never trusts `allDocs`' own tracked
+  paths as the source of truth** — `computeStorageStats()` iterates
+  `filesDirHandle.entries()` (the same `for await (const [name, handle] of
+  dirHandle.entries())` pattern `checkInbox()` already uses), recursing one
+  level into each per-document subfolder, and reads every file's real size
+  via `getFile().size` (a metadata read — no file content is ever loaded
+  into memory). This is deliberate: summing only `allDocs`' own tracked
+  `file_path`/`original_file_path` values would silently miss anything on
+  disk that no document row points to at all.
+  **Every file under `files/` is classified into exactly one of three
+  buckets** by comparing its own relative path against every document's
+  `file_path`/`original_file_path` — **including documents in the Waste
+  bin**, since a soft-deleted document's files are never touched on disk
+  (per the Waste bin's own "nothing on disk is ever touched" design) and
+  are still real, space-consuming files:
+  - **Active** — matches some document's `file_path`.
+  - **Original** — matches some document's `original_file_path`.
+  - **Untracked** — matches neither. A genuine, useful side effect of
+    walking the real folder rather than the database: nothing else in
+    this app can currently show a file under `files/` that no document
+    points to at all. This feature only makes it visible — there is no
+    delete/cleanup action for it, deliberately out of scope. Every
+    captured document's sidecar `.txt` (see the "Sidecar `.txt` files"
+    note above — `writeSidecarFile()` writes it straight into `files/`,
+    alongside the primary file, not into a path any document's
+    `file_path`/`original_file_path` ever references) falls into this
+    bucket for exactly this reason — it's real, genuine content that just
+    isn't classified as active or original, not a bug in the walk.
+  `thumbnails/` gets the same two-way active/untracked split (matched
+  against `thumbnail_path`); `inbox/` isn't split further at all, since
+  every file staged there is equally "not yet added." `library.sqlite`'s
+  own size is added into the grand total but doesn't participate in the
+  files/thumbnails/inbox breakdown, since it's a different kind of thing
+  entirely. A missing `inbox/` or `thumbnails/` folder (a library that's
+  never staged an inbox file, or never generated a thumbnail) is treated
+  as zero, not an error — the same "a missing folder just means nothing
+  to add" reasoning `checkInbox()` already established; a per-file read
+  failure mid-walk is skipped rather than aborting the whole computation,
+  the same reasoning `backfillFileHash()` already uses. The top-level
+  `files/` iteration itself is wrapped too, not just each per-file read —
+  an uncaught throw there (e.g. permission revoked mid-session) would
+  otherwise reject `openStorageStatsModal()`'s own `await` and leave its
+  spinner up forever.
+  **The walk runs immediately when the modal opens** — the click on the
+  toolbar button is itself the explicit trigger, matching how
+  `openLibraryCheckModal()`'s own file-hash backfill already runs on open
+  rather than needing a second confirming click inside the modal. Unlike
+  that backfill, this computation never writes anything, so there's no
+  "disable Escape/close while running" concern — Escape and the close
+  button work normally throughout, even mid-walk.
+  **`formatBytes()`** generalizes the ad-hoc `(file.size/1024).toFixed(0)`
+  KB-only formatting the capture form's own picked-file-size preview
+  (`pickedFileSizeKb`) already uses, since a whole-library total can run
+  well past what's sensible to show in KB alone — it auto-scales through
+  B/KB/MB/GB/TB rather than being fixed to one unit.
+  **Each folder's own split renders as indented sub-rows
+  (`.storage-stats-subrow`) directly under that folder's row** — Active/
+  Originals/Untracked under Documents (`files/`), Untracked under Previews
+  (`thumbnails/`) — not as a flat list after every folder, since both
+  "Untracked" rows share one label key and would otherwise be
+  indistinguishable. `formatBytes()` promotes to the next unit based on the
+  value as it will actually be displayed (rounded to one decimal), so a
+  value just under a boundary (1048575 bytes) shows "1.0 MB", not
+  "1024.0 KB".
+  **The "Untracked" row is only rendered when non-zero**, in both `files/`
+  and `thumbnails/` independently — omitted entirely otherwise, matching
+  this app's existing "omit sections/rows with nothing to show" convention
+  (e.g. how the "Library check" modal's own sections each disappear when
+  empty). No per-document breakdown, no sorting, no "biggest documents"
+  list — deliberately just the aggregate picture, to keep this a simple
+  overview rather than growing into a second browsing UI.
+
+## How this was tested
+
+See `tests/CLAUDE.md` for the full per-feature test-coverage narrative and
+testing conventions (the shared stub harness, `stub_studio2.js` discipline,
+how to run the suite) — it loads automatically whenever Claude works with
+files under `tests/`.
+
+## Working conventions
+
+- This app touches other people's personal documents (financial, medical,
+  identity documents, etc.). Every file operation should be either an
+  explicit read of something the person picked, or an explicit write they
+  triggered (e.g. "Save document") — never anything automatic, silent, or
+  triggered by data from outside the person's own input.
+- Keep the single-file structure. If this grows enough to want separate
+  files, that's worth discussing first — it changes the "just open the
+  file" promise this app is built around.
+- Preserve the visual language (dark "ink" background, phosphor-green
+  accents, amber for capture/new-document actions) for consistency with the
+  sibling repo's `document_ledger.html`, since people may use both.
