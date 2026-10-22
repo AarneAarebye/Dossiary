@@ -180,6 +180,26 @@ Scanner einen Stapel an leeren Blättern trennen, hake im Dialog
 **Stapel an leeren Blättern trennen** an, um aus einem Stapel mehrere
 Dokumente zu machen: Lege einfach ein leeres Blatt zwischen sie (Scan Multi).
 
+## Dein iPhone oder iPad
+
+Die Dossiary-App auf iPhone und iPad zeigt deine Bibliotheken auch unterwegs.
+Sie bekommt sie von [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync),
+einer kleinen eigenen App auf deinem Mac, die du installierst und mit der du
+jede Bibliothek einmal teilst (siehe ihre eigene Anleitung).
+
+1. Wähle **🛠 Werkzeuge → 📱 iPhone & andere Geräte…**.
+2. Klicke beim ersten Mal auf **Verbinden**: Dossiary Sync zeigt auf deinem
+   Mac einen Code in einer Mitteilung. Gib ihn im Dialog ein.
+3. Klicke auf **iPhone oder iPad hinzufügen…**, hake die Bibliotheken an,
+   die das Gerät sehen darf, und klicke auf **QR-Code zeigen**.
+4. Wähle in der Dossiary-App auf dem iPhone oder iPad **Vom Mac hinzufügen**
+   und scanne den Code. Er gilt ein paar Minuten; ist er abgelaufen, klicke
+   auf **Neuer Code**.
+
+Derselbe Dialog listet deine Geräte: Hake eine Bibliothek an oder ab, um zu
+ändern, was ein iPhone sehen darf, oder entferne ein Gerät, das du nicht
+mehr benutzt.
+
 ## Ein kurzer Rundgang durch alles Weitere
 
 Sobald du mit den Grundlagen oben vertraut bist, gibt es noch mehr, das

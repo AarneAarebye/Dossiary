@@ -449,6 +449,17 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   (aufgeteilt in aktive Dateien, aufbewahrte Originale und nicht
   zugeordnete Dateien, auf die kein Dokument verweist), Vorschaubilder,
   Inbox und die Datenbank selbst. Nur zur Ansicht; nichts wird verändert.
+- **iPhone & andere Geräte** — „🛠 Tools → 📱 iPhone & andere Geräte…“
+  verwaltet die Geräte, mit denen [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync)
+  Ihre Bibliotheken teilt (die Dossiary-App auf iPhone und iPad, eine
+  Raspberry-Pi-Kopie), ohne Kommandozeile. Dossiary verbindet sich einmal
+  mit dem Dienst auf diesem Mac (er zeigt dazu einen Code in einer
+  Mitteilung; angesprochen wird nur `127.0.0.1`), listet dann die Geräte
+  mit den Bibliotheken, die jedes iPhone sehen darf, lässt Sie das ändern
+  oder ein Gerät entfernen, und „iPhone oder iPad hinzufügen…“ zeigt einen
+  im Browser gezeichneten QR-Code, den das Gerät zum Koppeln scannt. Eine
+  Bibliothek mit Dossiary Sync zu teilen bleibt ein Befehl
+  (`dossiary-sync share <Ordner>`).
 - **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
   täglich brauchen (Check inbox, Check reminders, Scan, Add document,
   Details, Columns); Gelegentliches — Manage fields, Manage collections,
@@ -1126,5 +1137,6 @@ eigenen Browser.
 | [jsPDF](https://github.com/parallax/jsPDF) | Aufbau der durchsuchbaren PDF-Ebene für erfasste Bilder | MIT |
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendern der ersten Seite eines PDFs (für Vorschauen und OCR) | Apache-2.0 |
 | [pdf-lib](https://github.com/Hopding/pdf-lib) | Seiten bearbeiten: PDFs drehen, umsortieren, aufteilen und zusammenfügen | MIT |
+| [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | Zeichnet den QR-Code, mit dem ein iPhone oder iPad gekoppelt wird | MIT |
 
 Dasselbe auch innerhalb der App, über den Link „Libraries“ im Footer.

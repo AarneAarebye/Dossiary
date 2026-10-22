@@ -50,7 +50,7 @@ CLAUDE.md                This file
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (104 scripts) + shared
+tests/                   Playwright regression suite (105 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -461,11 +461,14 @@ this repo's git tags.
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, `ensurePdfLib()`,
+  `ensureQrCode()`,
   plus sql.js loaded unconditionally for the database itself) — keep it in sync if a
   dependency is added, removed, or swapped. The license for each was
   verified directly against its own repo's `LICENSE` file when this was
   written (sql.js MIT, Tesseract.js Apache-2.0, jsPDF MIT, pdf.js
-  Apache-2.0, pdf-lib MIT -- checked against Hopding/pdf-lib's LICENSE.md), not assumed from general familiarity — if any of these
+  Apache-2.0, pdf-lib MIT -- checked against Hopding/pdf-lib's LICENSE.md,
+  qrcode-generator MIT -- checked against kazuhikoarase/qrcode-generator's
+  LICENSE), not assumed from general familiarity — if any of these
   ever change their license, or a new dependency gets added, verify the
   same way rather than guessing; this is exactly the kind of detail
   that's easy to get subtly wrong from memory.
@@ -2420,6 +2423,56 @@ this repo's git tags.
   helper on the machine; `tests/test_scan_dialog.py` fakes helpers per
   scenario, and `tests/manual_scan_reference_helper.py` checks against the
   real reference helper by hand.
+- **iPhone & other devices** (`openDevicesDialog()`, `syncAdminFetch()`,
+  Tools → `#devices-btn`; spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-22-dossiary-devices-dialog-design.md`)
+  manages Dossiary Sync's paired devices through its loopback-only admin
+  API on `http://127.0.0.1:8769` (3 s health timeout, 15 s for every other
+  call, so a hung service never leaves a button disabled). Not answering → an
+  explanation and the dossiary-sync link; otherwise Connect asks the service
+  to show a code as a macOS notification (a 429 names the wait) and swaps
+  the typed code for an admin token, kept per browser in `localStorage`
+  (`dossiary_sync_admin_token`, every access in try/catch; when
+  `localStorage` refuses to store it, the in-memory copy is used for the
+  rest of the session). **Every POST carries `Content-Type:
+  application/json` and a JSON body** (`{}` when there's nothing to say):
+  the service answers 415 otherwise, and the fake in the tests does the
+  same, so a missing header fails the suite. A token the service no longer
+  knows (`connected: false`, or a 401) is dropped and Connect comes back.
+  Connected: devices with role labels (phone/mirror/restore), relative
+  last-seen (`Intl.RelativeTimeFormat`), one checkbox per shared library
+  for phones (allow/deny at once, status line, a refusal undoes the tick),
+  Remove behind `confirm()`, shared libraries read-only with the
+  `dossiary-sync share <folder>` note, Disconnect. An answer in the wrong
+  shape says so (`devicesUnexpectedAnswer`), and when libraries and devices
+  are fetched together the error shown is the one that actually failed.
+  **"Add iPhone or iPad…"** (`#devices-add-slot`, `renderDevicesAddSlot()`,
+  `requestPairCode()`, state in `devicesPair`, which survives a re-render of
+  the list such as Remove): library checkboxes, none ticked, and "Show QR
+  code" disabled until one is; `POST /admin/pair-code {libraries}` →
+  `{code, expires, fingerprint, addresses, link}`. The QR code of `link`
+  (`dossiary-sync://pair?v=1&f=…&c=…&a=…`) is drawn locally as an SVG
+  (`qrSvgMarkup()`, one `<path>`, black on white with a 4-module quiet zone
+  whatever the theme) by **qrcode-generator 1.4.4** (Kazuhiko Arase, MIT,
+  checked against its repo's LICENSE), loaded from cdnjs on demand by
+  `ensureQrCode()` like pdf-lib (skipped when `window.qrcode` already
+  exists, which is how the tests' fake takes over) and listed in
+  `OPEN_SOURCE_LIBRARIES`; nothing is sent anywhere. Beside it: the
+  instructions, a "Valid for m:ss" countdown (`devicesPairTimer`, stopped
+  when the dialog closes or the section re-renders), the code (grouped
+  `XXXX XXXX`) and fingerprint as text. Expired → the QR is cleared and
+  "New code" asks again; Done folds the section and reloads the devices so
+  the new phone shows. Closing the dialog doesn't cancel the code (it
+  expires on its own; a new one replaces it on the service). A QR library
+  that can't load still shows code and fingerprint, with a note. A 401
+  anywhere drops the token. `devicesDialogSeq` drops answers for a dialog
+  that was closed or reopened meanwhile. Every service-supplied string
+  (device, library, code, fingerprint) is escaped; tests feed `<img
+  onerror>` names. Tested by `tests/test_devices_dialog.py` (a fake `fetch`
+  per scenario plus a fake `window.qrcode`; the shared stub blocks the real
+  service, and the cdnjs QR request is aborted). The real library was
+  checked once by rendering a link and decoding the screenshot with
+  OpenCV.
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default

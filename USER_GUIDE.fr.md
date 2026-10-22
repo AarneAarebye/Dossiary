@@ -184,6 +184,27 @@ blanches, cochez **Séparer la pile aux feuilles blanches** dans la fenêtre
 pour transformer une pile en plusieurs documents : il suffit de glisser une
 feuille blanche entre eux (Scan Multi).
 
+## Votre iPhone ou iPad
+
+L'application Dossiary pour iPhone et iPad vous montre vos bibliothèques
+loin de votre bureau. Elle les reçoit de [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync),
+une petite application distincte sur votre Mac, que vous installez et avec
+laquelle vous partagez chaque bibliothèque une fois (voir ses propres
+instructions).
+
+1. Choisissez **🛠 Outils → 📱 iPhone et autres appareils…**.
+2. La première fois, cliquez sur **Se connecter** : Dossiary Sync affiche un
+   code dans une notification sur votre Mac. Saisissez-le dans la fenêtre.
+3. Cliquez sur **Ajouter un iPhone ou un iPad…**, cochez les bibliothèques
+   que l'appareil pourra voir, puis cliquez sur **Afficher le code QR**.
+4. Dans l'application Dossiary de l'iPhone ou de l'iPad, choisissez
+   **Ajouter depuis le Mac** et scannez le code. Il reste valable quelques
+   minutes ; s'il expire, cliquez sur **Nouveau code**.
+
+La même fenêtre liste vos appareils : cochez ou décochez une bibliothèque
+pour changer ce qu'un téléphone peut voir, ou retirez un appareil que vous
+n'utilisez plus.
+
 ## Un rapide tour de tout le reste
 
 Une fois à l'aise avec les bases ci-dessus, il y a d'autres éléments qui

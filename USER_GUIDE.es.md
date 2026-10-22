@@ -175,6 +175,26 @@ escáner que puede separar una pila en las hojas en blanco, marca
 pila en varios documentos: basta con poner una hoja en blanco entre ellos
 (Scan Multi).
 
+## Tu iPhone o iPad
+
+La aplicación Dossiary para iPhone y iPad te muestra tus bibliotecas lejos
+del escritorio. Las obtiene de [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync),
+una pequeña aplicación aparte en tu Mac que instalas y con la que compartes
+cada biblioteca una vez (consulta sus propias instrucciones).
+
+1. Elige **🛠 Herramientas → 📱 iPhone y otros dispositivos…**.
+2. La primera vez, haz clic en **Conectar**: Dossiary Sync muestra un código
+   en una notificación en tu Mac. Escríbelo en el diálogo.
+3. Haz clic en **Añadir iPhone o iPad…**, marca las bibliotecas que podrá
+   ver el dispositivo y haz clic en **Mostrar código QR**.
+4. En la aplicación Dossiary del iPhone o iPad, elige **Añadir desde el
+   Mac** y escanea el código. Es válido unos minutos; si caduca, haz clic en
+   **Código nuevo**.
+
+El mismo diálogo muestra tus dispositivos: marca o desmarca una biblioteca
+para cambiar lo que puede ver un teléfono, o quita un dispositivo que ya no
+uses.
+
 ## Un breve recorrido por todo lo demás
 
 Una vez que te sientas cómodo con lo básico de arriba, hay más cosas que
