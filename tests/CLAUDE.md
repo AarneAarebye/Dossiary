@@ -1296,7 +1296,14 @@ data held while the service was down written by a tick once it answers, and
 a person's Edit meeting a newer version with only job data unwritten opening
 on the fresh library, the job data kept aside quietly); `quiet_copy_reused`
 (two quiet saves while a job blocks the reload sharing one folder with the
-latest memory)).
+latest memory); fix round 5: `multi_drop_job_save` also checks
+the notice and that the drop's final status names the kept-aside folder;
+`reload_race` (a person's `__DEBUG_dbRun` fired from inside
+`crypto.subtle.digest` during a reload -- once on the file's SHA-256, once on
+the stable-uid migration's SHA-1 for a row the iMac's version lacks a uid for:
+the reload gives up, the change stays counted, the next save keeps it);
+`held_back_saved_status` (the "Not saved" line replaced once the tick writes
+the change)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

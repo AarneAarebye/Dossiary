@@ -2632,7 +2632,24 @@ this repo's git tags.
   newer copy holds everything the older one did. A person's flow that meets
   a newer version with only a job's data unwritten (nothing held back, no
   earlier flow pending) keeps it aside quietly and goes on, on the fresh
-  library, instead of saying "Your change couldn't be saved". A lease a background save takes inside `persistDb()`
+  library, instead of saying "Your change couldn't be saved". **Person
+  flows that save more than once hold the flow open** (fix round 5,
+  `withPersonFlowHold()`/`beginPersonFlowHold()`/`endPersonFlowHold()`,
+  `syncPersonFlowHold`): drag-and-drop, Inbox "Add all"/Check inbox (and so
+  scan results), Import a folder, bulk Make searchable, and Edit pages'
+  split. While a hold is up a keep-aside is never quiet, `ensureEditLease()`
+  counts it as a person's change, the tick never clears
+  `syncPersonFlowPending`, and the job-data retry stays off. Within a hold the
+  flow's keep-asides on the same old version share one folder
+  (`syncHoldEpisode`), the notice comes once, its own dialog isn't closed and
+  the reload isn't forced under it; the flow's final status (and Import's and
+  bulk Make searchable's summaries) names the folder (`syncFlowKeptAside`,
+  `announceFlowKeptAside()`), so "Added 2 documents" never stands alone when
+  part of it is only in a copy. An id reserved before a mid-flow reload can
+  collide with a row the other Mac added; that INSERT then fails and the file
+  is reported as failed, not lost silently. Once the tick writes a held-back
+  change for real, the stale "Not saved" line gives way to
+  `syncHeldBackSavedStatus`. A lease a background save takes inside `persistDb()`
   (backfill, "Check for text", a backup's date) is marked background-only
   too. **The dialog an editing flow opened counts as activity**
   (`syncEditDialogEl`, captured right after `ensureEditLease()` -- not
@@ -2695,7 +2712,15 @@ this repo's git tags.
   heartbeat's silent re-acquire routes its `version` the same way.
   `reloadLibraryKeepingView()` marks the fresh database `__untracked` while
   the migrations run, so their changes don't count as this tab's, without
-  resetting the count for anything else. **Lease lost**: the state naming
+  resetting the count for anything else. **It never swaps out a change made
+  during its own awaits** (fix round 5): it hashes the file before its last
+  check, takes the change count there, runs the synchronous migrations with
+  the fresh database open only for that synchronous stretch, then
+  `migrateStableUids(fresh)` (it takes its target explicitly) with the old
+  database open again -- so a flow writing during that await writes to the
+  old, counted one -- and right before the swap gives up (keeping the old
+  database, no reload) if the count moved, anything is dirty, or anything
+  else now blocks a reload. **Lease lost**: the state naming
   another holder while holding → `other` and the status line "{device} took
   over editing this library." (a builder, so it retranslates); while `none`
   it just shows "editing on …", and back to `none` once the lease is free.

@@ -1283,6 +1283,10 @@ async def scenario_multi_drop_job_save(p):
     print("file 1 is in the library or a kept-aside copy:", where['one'] is not None, where)
     print("file 2's row survives, in the library or a kept-aside copy (never silently lost):", where['two'] is not None, where)
     print("...nothing written over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    # F2: a person's flow is running -- the keep-aside is announced, never quiet.
+    print("...the notice is shown (a person's flow was running):", await page.locator('#sync-notice-dialog').count() == 1)
+    st = await status(page)
+    print("...the drop's own final status names the kept-aside folder:", where['two'] and where['two'] != 'library' and f'.kept-aside/{where["two"]}' in st and 'Added 2 documents' in st, st)
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1405,6 +1409,66 @@ async def scenario_quiet_copy_reused(p):
     await browser.close()
 
 
+# F1: a db.run during the reload's own awaits. The hook runs a person's change
+# inside crypto.subtle.digest the first time an algorithm matching `algo` is
+# hashed after it's armed.
+DIGEST_HOOK = """([algo, sql, params]) => {
+    const orig = crypto.subtle.digest.bind(crypto.subtle);
+    window.__DIGEST_FIRED = 0;
+    crypto.subtle.digest = async (alg, data) => {
+        const r = await orig(alg, data);
+        if(window.__DIGEST_ARMED && String(alg).toUpperCase() === algo){
+            window.__DIGEST_ARMED = false;
+            window.__DIGEST_FIRED++;
+            window.__DEBUG_dbRun(sql, params);
+        }
+        return r;
+    };
+}"""
+
+
+async def scenario_reload_race(p):
+    for algo, label in [('SHA-256', "the file's hash"), ('SHA-1', 'the stable-uid migration')]:
+        browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok"})
+        await page.evaluate(DIGEST_HOOK, [algo, 'UPDATE documents SET title = ? WHERE id = ?', ['Changed during reload', 1]])
+        # The iMac's v4 is on disk; for the uid case one row there lacks its uid, so the reload's migration hashes.
+        await page.evaluate("""async (dropUid) => {
+            const h = window.__TEST_ROOT._children.get('library.sqlite');
+            const data = JSON.parse(await (await h.getFile()).text());
+            data.documents.find(x => x.id === 2).title = 'Receipt (iMac)';
+            if(dropUid) data.documents.find(x => x.id === 4).uid = null;
+            h._bytes = new TextEncoder().encode(JSON.stringify(data));
+        }""", algo == 'SHA-1')
+        await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; window.__DIGEST_ARMED = true; }", state(4))
+        await tick(page)
+        await page.wait_for_timeout(300)
+        fired = await page.evaluate("window.__DIGEST_FIRED")
+        st = await sync_state(page)
+        print(f"[{label}] a person's change lands during the reload's await:", fired == 1, fired)
+        print(f"[{label}] ...the reload gave up: it's still in memory and counted as unwritten:", st['reloads'] == 0 and st['dirty'], st)
+        await page.evaluate("window.__DEBUG_persistDb()")
+        await page.wait_for_timeout(600)
+        where = await where_titles(page, ['Changed during reload'])
+        print(f"[{label}] ...the next save keeps it (library or a kept-aside copy):", where['Changed during reload'] is not None, where)
+        print(f"[{label}] ...the iMac's version isn't overwritten:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+        print(f"[{label}] no page errors:", not errors, errors)
+        await browser.close()
+
+
+async def scenario_held_back_saved_status(p):
+    # F3: once the tick writes a held-back change, the stale "Not saved" line is replaced.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
+    await edit_title(page, 'Waited')
+    print("held back: 'Not saved' on the status line:", (await status(page)).startswith('Not saved'), await status(page))
+    await page.evaluate("window.__SYNC.down = false")
+    await tick(page, 61 * 1000)
+    await page.wait_for_timeout(300)
+    st = await status(page)
+    print("written by the tick: the status line says it's saved now:", await disk_doc_title(page, 1) == 'Waited' and 'Not saved' not in st and 'in the library now' in st, st)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -1415,7 +1479,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_idle_and_forms, scenario_dialog_open_refuses, scenario_library_check_stale, scenario_reload_refused,
              scenario_connected_elsewhere, scenario_held_back_copy, scenario_person_change_not_dropped, scenario_idle_non_edit_dialogs,
              scenario_multi_drop_job_save, scenario_tick_before_insert,
-             scenario_held_back_copy_race, scenario_job_data_retried, scenario_quiet_copy_reused]
+             scenario_held_back_copy_race, scenario_job_data_retried, scenario_quiet_copy_reused,
+             scenario_reload_race, scenario_held_back_saved_status]
 
 
 async def main():
