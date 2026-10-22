@@ -51,7 +51,7 @@ CLAUDE.md                Imports AGENTS.md
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (105 scripts) + shared
+tests/                   Playwright regression suite (106 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2497,6 +2497,51 @@ this repo's git tags.
   service, and the cdnjs QR request is aborted). The real library was
   checked once by rendering a link and decoding the screenshot with
   OpenCV.
+- **The sync lease (two-Mac editing, part 2)** (`syncLibrary`, `syncLease`,
+  `readSyncFile()`, `ensureLease()`, `showTakeOverModal()`, `syncTick()`,
+  `releaseLease()`, `renderSyncMarker()`; spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md`). Two Macs edit
+  one library through a Raspberry Pi hub; each Mac's Dossiary Sync gives
+  Dossiary a per-library edit lease over the admin API above (`POST
+  /admin/libraries/<id>/lease {action, takeOver}`). **Only a library with a
+  readable `.dossiary-sync.json` (`{libraryId, hub, version}`) at its root
+  takes part**, read in `afterDbReady()`; without one nothing changes and no
+  admin call is made. **The gate is inside `persistDb(opts)`**, so every one of
+  its ~80 callers is covered: a real write without the lease first runs
+  `ensureLease()` (one acquire in flight, shared by concurrent saves). No
+  admin token → `unconnected`, write; `granted` → `holding`; `offline` →
+  `offline`, write; no answer, a timeout or an error → `unsynced` with the
+  reason as the marker's tooltip, write (a timeout is "try again", never
+  offline); `busy` → a take-over dialog ("Being edited on {device} since
+  {time}.", appended as its own layer to `#modal-root`, or to
+  `#modal-root-over` when a dialog such as the Edit form is already open, so
+  that dialog survives; Escape = Cancel, caught on `window` in the capture
+  phase). Take over acquires with `takeOver: true` and writes; Cancel writes
+  nothing and sets `syncUnsavedChanges` (marker "unsaved changes"), and the
+  next real save asks again and writes everything. **View preferences pass
+  `{viewOnly: true}`** and never take the lease: `saveNavStyle`,
+  `saveSortState`, `saveDetailPanelExpanded`, `saveCollectionsNavExpanded`,
+  `saveColumnSettings`, `saveViewMode`, the grid size slider,
+  `toggleCollectionFolder()` and `saveLastScanSettings()` (the drag-open
+  folder restore only changes classes, it writes nothing). A view-only write
+  is skipped while a real change is held back or an acquire is pending, since
+  `db.export()` would carry the held-back change too. `syncTick()` (every 5 s
+  while a synced library is open) heartbeats every 60 s while holding --
+  `lost` with a holder → `other` ("editing on iMac"), `lost` with no holder
+  → re-acquire silently, a failed call → try again next tick -- retries an
+  acquire every 60 s while `offline`, and releases after 10 minutes without a
+  real save (`lastRealSaveAt`). `resetAll()` and `pagehide` release with
+  `fetch(..., {keepalive: true})`, unawaited. The marker (`#sync-marker`,
+  `.sub-sync-marker`) shares `#sub-label`'s non-wrapping header line and
+  truncates, so the header's height (part of `.table-wrap`'s budget) never
+  changes. `listLibraryFiles()` skips `.dossiary-sync.json` and `.kept-aside/`,
+  so a backup opened as a library isn't mistaken for the synced original.
+  Not here yet (part 2, task 2): polling the state, reloading on a newer
+  version (including after a granted acquire whose `version` is newer), the
+  kept-aside notice. `loadDb()`'s schema-upgrade write on open runs before
+  the sync file is read, so it is never gated. Tests: `tests/test_sync_lease.py`
+  (`__DEBUG_syncLease()`, `__DEBUG_syncNow(ms)` to advance the clock and run
+  a tick).
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default

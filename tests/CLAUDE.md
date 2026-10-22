@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **105
-scripts covering most of the app's actual functionality** (102 of them
+There's a real, runnable Playwright regression suite in `tests/` — **106
+scripts covering most of the app's actual functionality** (103 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1199,6 +1199,26 @@ fingerprint names shown as text; the service going down after connecting
 (toggle, Remove and Show QR code each end in a clear error, nothing stuck
 disabled); an answer in the wrong shape and the failing one of the two
 list requests reported; every call carrying a timeout signal).
+The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
+Sync's lease endpoint per scenario, a stored admin token, a library seeded
+with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping
+its `createWritable()`: no sync file → zero admin calls after a sort click and
+an edit; a synced library: a sort click and panel toggles writing the setting
+without a lease, the first Edit save sending one JSON acquire and the marker
+reading "✎ editing", a second save asking nothing; busy → the take-over
+dialog with device and time (UTC context, "02:02 PM"), nothing written while
+it's open, Cancel writing nothing with "unsaved changes" and a sort click then
+not writing the held-back change, the next save asking again, Escape
+cancelling, Take over acquiring with `takeOver: true` and writing; offline,
+no token ("not connected" with its tooltip, no calls) and service down ("not
+synced yet" with the reason) all writing; heartbeats through
+`__DEBUG_syncNow()` (none at 30 s, one at 60 s, a failed one still holding,
+`lost` without a holder re-acquiring silently, `lost` to the iMac → "editing
+on iMac" and no more heartbeats); release after 10 quiet minutes, on Switch
+library and on `pagehide` (with keepalive), none without the lease; a backup
+without `.dossiary-sync.json` or `.kept-aside/`; German labels and the marker
+following a language switch; the header's height unchanged with the marker
+shown, also with a long library name, at 320 and 1440px).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

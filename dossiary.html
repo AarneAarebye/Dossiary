@@ -40,6 +40,10 @@
   header .sub #sub-label{ overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .sub-switch-btn{ flex-shrink:0; background:transparent; border:none; padding:0 0 0 10px; font-family:var(--font-mono); font-size:11.5px; line-height:inherit; color:var(--text-dim); text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--line); cursor:pointer; }
   .sub-switch-btn::before{ content:'⇄'; text-decoration:none; display:inline-block; margin-right:6px; }
+  .sub-sync-marker{ flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-left:12px; font-size:11.5px; line-height:inherit; color:var(--text-dim); }
+  .sub-sync-marker[data-state="holding"], .sub-sync-marker[data-state="offline"]{ color:var(--phosphor); }
+  .sub-sync-marker[data-state="other"], .sub-sync-marker[data-state="unsaved"]{ color:var(--amber); }
+  .sub-sync-marker[data-state="unsynced"], .sub-sync-marker[data-state="unconnected"]{ color:var(--red); }
   .sub-switch-btn:hover:not(:disabled){ color:var(--phosphor); text-decoration-color:var(--phosphor-dim); border-color:transparent; }
   .stats{ display:flex; gap:22px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
   .stat b{ color:var(--phosphor); font-size:15px; display:block; font-weight:600; }
@@ -834,7 +838,7 @@
         <h1>Dossiary</h1>
         <span class="tagline">Your documents. Your disk. Nothing else.</span>
       </div>
-      <div class="sub"><span id="sub-label">No library open</span><button type="button" id="reload-btn" class="sub-switch-btn" data-i18n="toolbarSwitchLibrary" style="display:none;">Switch library</button></div>
+      <div class="sub"><span id="sub-label">No library open</span><button type="button" id="reload-btn" class="sub-switch-btn" data-i18n="toolbarSwitchLibrary" style="display:none;">Switch library</button><span id="sync-marker" class="sub-sync-marker" style="display:none;"></span></div>
     </div>
     <div class="stats" id="stats"></div>
   </header>
@@ -1165,6 +1169,7 @@
       toolbarImportFolder: '📂 Import a folder…', importModalTitle: 'Import a folder', importIntro: 'Adds every file in a folder you choose as a new document. If the folder has an index.csv (as Export writes it), each file listed there gets its title, date, category, tags and other details; other files go to the Inbox for review. The folder itself isn’t changed, and files already in the library are skipped.', importChooseFolderBtn: 'Choose folder…', importInsideLibrary: 'That folder is inside this library. Choose a folder outside it.', importNoFiles: 'There are no files to import in “{folder}”.', importIndexNoFileColumn: 'it has no File column', importIndexUnreadable: 'index.csv could not be used ({error}), so the files were added without its details.', importProgress: 'Importing {done} of {total}…', importDone: 'Imported from “{folder}”.', importCountAdded: 'Added: {count}', importCountWithDetails: 'With details from index.csv: {count}', importCountForReview: 'In the Inbox for review: {count}', importCountDuplicates: 'Already in the library, skipped: {count}', importCountFailed: 'Could not import: {count}', importCountUnmatched: 'Rows in index.csv without a file: {count}',
       toolbarButtonsMenu: '👁 Toolbar buttons…', toolbarButtonsTitle: 'Toolbar buttons', toolbarButtonsHint: "Untick the buttons you don’t use. Your choices are saved for this library; Add document and Tools always remain visible.",
       toolbarDevices: "📱 iPhone & other devices…", devicesDialogTitle: "iPhone & other devices", devicesLooking: "Looking for Dossiary Sync…", devicesClose: "Close", devicesNotRunningTitle: "Dossiary Sync isn't running on this Mac.", devicesNotRunningText: "Dossiary Sync is a small separate app that shares your libraries with the Dossiary app on iPhone and iPad and with a Raspberry Pi copy. Install it, share a library with it, and look again.", devicesGetSync: "Get Dossiary Sync", devicesLookAgain: "Look again", devicesConnectText: "Connect once to manage your devices here. Dossiary Sync then shows a code in a notification on this Mac.", devicesConnectButton: "Connect", devicesConnectAgain: "Dossiary Sync no longer accepts this browser. Connect again.", devicesTooSoonSingular: "Dossiary Sync just showed a code. Try again in {seconds} second.", devicesTooSoonPlural: "Dossiary Sync just showed a code. Try again in {seconds} seconds.", devicesSyncUnreachable: "Dossiary Sync didn't answer. Is it still running?", devicesRequestFailed: "Dossiary Sync refused the request ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Enter the code shown in the notification", devicesCodeSubmit: "Connect", devicesCodeNoNotification: "No notification? Notifications for Dossiary Sync may be switched off in System Settings; the code is also in its log. A code is valid for 5 minutes.", devicesNewCode: "Show a new code", devicesCodeEmpty: "Enter the code first.", devicesWrongCode: "That code didn't work. It may have expired; show a new code and try again.", devicesRolePhone: "iPhone or iPad", devicesRoleMirror: "Raspberry Pi copy", devicesRoleRestore: "Restore", devicesNeverSeen: "Never seen", devicesLastSeen: "Last seen {when}", devicesListHeading: "Devices", devicesNone: "No devices are paired yet.", devicesRemove: "Remove", devicesNoLibraries: "No libraries are shared yet.", devicesLibrariesHeading: "Shared libraries", devicesLibraryNotAvailable: "not available", devicesShareNote: "To share another library: {command} (see the Dossiary Sync README).", devicesDisconnect: "Disconnect", devicesAllowed: "{device} can now see {library}.", devicesDenied: "{device} can no longer see {library}.", devicesChangeFailed: "Couldn't change {library} for {device}: {error}", devicesRemoveConfirm: "{name} can no longer fetch anything. Remove it?", devicesRemoved: "Removed {name}.", devicesRemoveFailed: "Couldn't remove {name}: {error}", devicesDisconnected: "Disconnected from Dossiary Sync.", devicesAddButton: "Add iPhone or iPad…", devicesAddText: "Choose the libraries the new iPhone or iPad may see. You can change this later.", devicesShowQr: "Show QR code", devicesPairWorking: "Creating a code…", devicesPairCancel: "Cancel", devicesPairPickLibrary: "Choose at least one library.", devicesPairInstructions: "In the Dossiary app on your iPhone or iPad, choose Add from Mac and scan this code.", devicesPairValidFor: "Valid for {time}", devicesPairExpired: "This code has expired.", devicesPairNewCode: "New code", devicesPairCodeLabel: "Code:", devicesPairFingerprintLabel: "Fingerprint:", devicesPairDone: "Done", devicesPairQrAria: "QR code for pairing an iPhone or iPad", devicesQrUnavailable: "The QR code couldn't be drawn because its library didn't load. Check the internet connection, then choose New code.", devicesUnexpectedAnswer: "Dossiary Sync sent an answer Dossiary doesn't understand. Is Dossiary Sync up to date?", librariesUseQrCode: "Drawing the QR code that pairs an iPhone or iPad",
+      syncMarkerEditing: "✎ editing", syncMarkerEditingTitle: "This Mac is editing this library. The other Mac waits until it is free again.", syncMarkerEditingOffline: "✎ editing offline", syncMarkerEditingOfflineTitle: "The Raspberry Pi can't be reached. Changes are saved on this Mac and sent once it can be reached again.", syncMarkerEditingOn: "editing on {device}", syncMarkerEditingOnTitle: "Your next change asks whether to take over.", syncMarkerNotConnected: "not connected", syncMarkerNotConnectedTitle: "Connect in Tools › iPhone & other devices…", syncMarkerNotSynced: "not synced yet", syncMarkerUnsaved: "unsaved changes", syncMarkerUnsavedTitle: "Being edited on {device}. Your change stays in this window; your next change asks again.", syncAnotherMac: "another Mac", syncTakeOverTitle: "Being edited on another Mac", syncTakeOverText: "Being edited on {device} since {time}.", syncTakeOverTextNoTime: "Being edited on {device}.", syncTakeOverHint: "Take over to save your change here; {device} then stops editing. Cancel keeps your change in this window, unsaved, and your next change asks again.", syncTakeOverBtn: "Take over",
       splitsLabel: 'Split by category', splitsStart: '+ Split across categories', splitsAddLine: '+ Add a line', splitsCategoryPlaceholder: 'Category', splitsAmountPlaceholder: 'Amount', splitsNotePlaceholder: 'Note (optional)', splitsRemoveLine: 'Remove this line', splitsSummary: 'Split {split} of {amount}; {rest} stays with “{category}”.', splitsSummaryNoAmount: 'Enter the Amount above to split it.', splitsErrorTooMuch: 'The lines add up to more than the Amount.', splitsErrorLine: 'Every line needs a category and an amount.', splitsErrorNoAmount: 'Enter the Amount before splitting it.', detailSplits: 'Split',
       viewCalendar: '▤ Calendar', calPrevMonth: 'Previous month', calNextMonth: 'Next month', calThisMonth: 'Today', calMonthCountSingular: '1 document this month', calMonthCountPlural: '{count} documents this month', calUndated: 'No date ({count})',
       collectionsFoldersHeading: 'Folders', collectionsNewFolderPlaceholder: 'New folder name', collectionsNewFolderButton: '+ New folder', collectionsNoFolder: 'No folder', collectionsFolderSelectLabel: 'Folder for “{name}”', collectionsFolderDeleteConfirm: "Delete the folder “{name}”? Its collections will remain, but they will no longer be in a folder.",
@@ -1387,6 +1392,7 @@
       toolbarImportFolder: '📂 Importar una carpeta…', importModalTitle: 'Importar una carpeta', importIntro: 'Añade cada archivo de la carpeta que elijas como un documento nuevo. Si la carpeta tiene un index.csv (como el que escribe Exportar), cada archivo que aparece en él recibe su título, fecha, categoría, etiquetas y demás datos; los otros archivos van a la bandeja de entrada para revisarlos. La carpeta no se modifica y los archivos que ya están en la biblioteca se omiten.', importChooseFolderBtn: 'Elegir carpeta…', importInsideLibrary: 'Esa carpeta está dentro de esta biblioteca. Elige una carpeta fuera de ella.', importNoFiles: 'No hay archivos que importar en «{folder}».', importIndexNoFileColumn: 'no tiene columna Archivo', importIndexUnreadable: 'No se pudo usar index.csv ({error}), así que los archivos se añadieron sin sus datos.', importProgress: 'Importando {done} de {total}…', importDone: 'Importado de «{folder}».', importCountAdded: 'Añadidos: {count}', importCountWithDetails: 'Con datos de index.csv: {count}', importCountForReview: 'En la bandeja de entrada para revisar: {count}', importCountDuplicates: 'Ya en la biblioteca, omitidos: {count}', importCountFailed: 'No se pudieron importar: {count}', importCountUnmatched: 'Filas de index.csv sin archivo: {count}',
       toolbarButtonsMenu: '👁 Botones de la barra…', toolbarButtonsTitle: 'Botones de la barra de herramientas', toolbarButtonsHint: 'Desmarca los botones que no uses. Se guarda para esta biblioteca; Añadir documento y Herramientas siempre se quedan.',
       toolbarDevices: "📱 iPhone y otros dispositivos…", devicesDialogTitle: "iPhone y otros dispositivos", devicesLooking: "Buscando Dossiary Sync…", devicesClose: "Cerrar", devicesNotRunningTitle: "Dossiary Sync no se está ejecutando en este Mac.", devicesNotRunningText: "Dossiary Sync es una pequeña aplicación aparte que comparte sus bibliotecas con la aplicación Dossiary en iPhone y iPad y con una copia en una Raspberry Pi. Instálela, comparta una biblioteca con ella y vuelva a buscar.", devicesGetSync: "Obtener Dossiary Sync", devicesLookAgain: "Buscar de nuevo", devicesConnectText: "Conéctese una vez para gestionar sus dispositivos aquí. Dossiary Sync mostrará entonces un código en una notificación en este Mac.", devicesConnectButton: "Conectar", devicesConnectAgain: "Dossiary Sync ya no acepta este navegador. Vuelva a conectarse.", devicesTooSoonSingular: "Dossiary Sync acaba de mostrar un código. Inténtelo de nuevo en {seconds} segundo.", devicesTooSoonPlural: "Dossiary Sync acaba de mostrar un código. Inténtelo de nuevo en {seconds} segundos.", devicesSyncUnreachable: "Dossiary Sync no respondió. ¿Sigue en ejecución?", devicesRequestFailed: "Dossiary Sync rechazó la solicitud ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Introduzca el código que aparece en la notificación", devicesCodeSubmit: "Conectar", devicesCodeNoNotification: "¿No ve ninguna notificación? Puede que las notificaciones de Dossiary Sync estén desactivadas en Ajustes del Sistema; el código también figura en su registro. Un código es válido durante 5 minutos.", devicesNewCode: "Mostrar un código nuevo", devicesCodeEmpty: "Introduzca primero el código.", devicesWrongCode: "Ese código no funcionó. Puede que haya caducado; muestre un código nuevo e inténtelo de nuevo.", devicesRolePhone: "iPhone o iPad", devicesRoleMirror: "Copia en Raspberry Pi", devicesRoleRestore: "Restauración", devicesNeverSeen: "Nunca visto", devicesLastSeen: "Visto por última vez {when}", devicesListHeading: "Dispositivos", devicesNone: "Aún no hay dispositivos emparejados.", devicesRemove: "Quitar", devicesNoLibraries: "Aún no hay bibliotecas compartidas.", devicesLibrariesHeading: "Bibliotecas compartidas", devicesLibraryNotAvailable: "no disponible", devicesShareNote: "Para compartir otra biblioteca: {command} (consulte el README de Dossiary Sync).", devicesDisconnect: "Desconectar", devicesAllowed: "{device} ya puede ver {library}.", devicesDenied: "{device} ya no puede ver {library}.", devicesChangeFailed: "No se pudo cambiar {library} para {device}: {error}", devicesRemoveConfirm: "{name} ya no podrá obtener nada. ¿Quitarlo?", devicesRemoved: "Se quitó {name}.", devicesRemoveFailed: "No se pudo quitar {name}: {error}", devicesDisconnected: "Desconectado de Dossiary Sync.", devicesAddButton: "Añadir iPhone o iPad…", devicesAddText: "Elija las bibliotecas que podrá ver el nuevo iPhone o iPad. Puede cambiarlo más adelante.", devicesShowQr: "Mostrar código QR", devicesPairWorking: "Creando un código…", devicesPairCancel: "Cancelar", devicesPairPickLibrary: "Elija al menos una biblioteca.", devicesPairInstructions: "En la aplicación Dossiary de su iPhone o iPad, elija Añadir desde el Mac y escanee este código.", devicesPairValidFor: "Válido durante {time}", devicesPairExpired: "Este código ha caducado.", devicesPairNewCode: "Código nuevo", devicesPairCodeLabel: "Código:", devicesPairFingerprintLabel: "Huella digital:", devicesPairDone: "Listo", devicesPairQrAria: "Código QR para emparejar un iPhone o iPad", devicesQrUnavailable: "No se pudo dibujar el código QR porque su biblioteca no se cargó. Compruebe la conexión a internet y elija Código nuevo.", devicesUnexpectedAnswer: "Dossiary Sync envió una respuesta que Dossiary no entiende. ¿Está Dossiary Sync actualizado?", librariesUseQrCode: "Dibujar el código QR que empareja un iPhone o iPad",
+      syncMarkerEditing: "✎ editando", syncMarkerEditingTitle: "Este Mac está editando esta biblioteca. El otro Mac espera hasta que vuelva a quedar libre.", syncMarkerEditingOffline: "✎ editando sin conexión", syncMarkerEditingOfflineTitle: "No se puede conectar con la Raspberry Pi. Los cambios se guardan en este Mac y se envían cuando vuelva a estar disponible.", syncMarkerEditingOn: "editando en {device}", syncMarkerEditingOnTitle: "Su próximo cambio le preguntará si desea tomar el control.", syncMarkerNotConnected: "no conectado", syncMarkerNotConnectedTitle: "Conéctese en Herramientas › iPhone y otros dispositivos…", syncMarkerNotSynced: "aún no sincronizado", syncMarkerUnsaved: "cambios sin guardar", syncMarkerUnsavedTitle: "Se está editando en {device}. Su cambio se conserva en esta ventana; el próximo cambio volverá a preguntar.", syncAnotherMac: "otro Mac", syncTakeOverTitle: "Se está editando en otro Mac", syncTakeOverText: "Se está editando en {device} desde las {time}.", syncTakeOverTextNoTime: "Se está editando en {device}.", syncTakeOverHint: "Tome el control para guardar su cambio aquí; {device} dejará de editar. Cancelar conserva su cambio en esta ventana, sin guardar, y el próximo cambio volverá a preguntar.", syncTakeOverBtn: "Tomar el control",
       splitsLabel: 'Dividir por categoría', splitsStart: '+ Dividir entre categorías', splitsAddLine: '+ Añadir una línea', splitsCategoryPlaceholder: 'Categoría', splitsAmountPlaceholder: 'Importe', splitsNotePlaceholder: 'Nota (opcional)', splitsRemoveLine: 'Quitar esta línea', splitsSummary: 'Dividido {split} de {amount}; {rest} queda en «{category}».', splitsSummaryNoAmount: 'Introduce el importe arriba para dividirlo.', splitsErrorTooMuch: 'Las líneas suman más que el importe.', splitsErrorLine: 'Cada línea necesita una categoría y un importe.', splitsErrorNoAmount: 'Introduce el importe antes de dividirlo.', detailSplits: 'División',
       viewCalendar: '▤ Calendario', calPrevMonth: 'Mes anterior', calNextMonth: 'Mes siguiente', calThisMonth: 'Hoy', calMonthCountSingular: '1 documento este mes', calMonthCountPlural: '{count} documentos este mes', calUndated: 'Sin fecha ({count})',
       collectionsFoldersHeading: 'Carpetas', collectionsNewFolderPlaceholder: 'Nombre de la nueva carpeta', collectionsNewFolderButton: '+ Nueva carpeta', collectionsNoFolder: 'Sin carpeta', collectionsFolderSelectLabel: 'Carpeta de «{name}»', collectionsFolderDeleteConfirm: '¿Eliminar la carpeta «{name}»? Sus colecciones se conservan, sin carpeta.',
@@ -1609,6 +1615,7 @@
       toolbarImportFolder: '📂 Importer un dossier…', importModalTitle: 'Importer un dossier', importIntro: 'Ajoute chaque fichier du dossier choisi comme nouveau document. Si le dossier contient un index.csv (tel qu’écrit par Exporter), chaque fichier qui y figure reçoit son titre, sa date, sa catégorie, ses étiquettes et ses autres informations ; les autres fichiers vont dans la boîte de réception pour vérification. Le dossier lui-même n’est pas modifié, et les fichiers déjà présents dans la bibliothèque sont ignorés.', importChooseFolderBtn: 'Choisir un dossier…', importInsideLibrary: 'Ce dossier se trouve dans cette bibliothèque. Choisissez un dossier en dehors.', importNoFiles: 'Aucun fichier à importer dans « {folder} ».', importIndexNoFileColumn: 'il n’a pas de colonne Fichier', importIndexUnreadable: 'index.csv n’a pas pu être utilisé ({error}) ; les fichiers ont été ajoutés sans ses informations.', importProgress: 'Importation de {done} sur {total}…', importDone: 'Importé depuis « {folder} ».', importCountAdded: 'Ajoutés : {count}', importCountWithDetails: 'Avec les informations d’index.csv : {count}', importCountForReview: 'Dans la boîte de réception à vérifier : {count}', importCountDuplicates: 'Déjà dans la bibliothèque, ignorés : {count}', importCountFailed: 'Non importés : {count}', importCountUnmatched: 'Lignes d’index.csv sans fichier : {count}',
       toolbarButtonsMenu: '👁 Boutons de la barre…', toolbarButtonsTitle: 'Boutons de la barre d’outils', toolbarButtonsHint: 'Décochez les boutons que vous n’utilisez pas. C’est enregistré pour cette bibliothèque ; Ajouter un document et Outils restent toujours.',
       toolbarDevices: "📱 iPhone et autres appareils…", devicesDialogTitle: "iPhone et autres appareils", devicesLooking: "Recherche de Dossiary Sync…", devicesClose: "Fermer", devicesNotRunningTitle: "Dossiary Sync ne fonctionne pas sur ce Mac.", devicesNotRunningText: "Dossiary Sync est une petite application distincte qui partage vos bibliothèques avec l'application Dossiary sur iPhone et iPad et avec une copie sur un Raspberry Pi. Installez-la, partagez-y une bibliothèque, puis recherchez à nouveau.", devicesGetSync: "Obtenir Dossiary Sync", devicesLookAgain: "Rechercher à nouveau", devicesConnectText: "Connectez-vous une fois pour gérer vos appareils ici. Dossiary Sync affiche alors un code dans une notification sur ce Mac.", devicesConnectButton: "Se connecter", devicesConnectAgain: "Dossiary Sync n'accepte plus ce navigateur. Reconnectez-vous.", devicesTooSoonSingular: "Dossiary Sync vient d'afficher un code. Réessayez dans {seconds} seconde.", devicesTooSoonPlural: "Dossiary Sync vient d'afficher un code. Réessayez dans {seconds} secondes.", devicesSyncUnreachable: "Dossiary Sync n'a pas répondu. Fonctionne-t-il toujours ?", devicesRequestFailed: "Dossiary Sync a refusé la demande ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Saisissez le code affiché dans la notification", devicesCodeSubmit: "Se connecter", devicesCodeNoNotification: "Pas de notification ? Les notifications de Dossiary Sync sont peut-être désactivées dans les Réglages Système ; le code figure aussi dans son journal. Un code est valable 5 minutes.", devicesNewCode: "Afficher un nouveau code", devicesCodeEmpty: "Saisissez d'abord le code.", devicesWrongCode: "Ce code n'a pas fonctionné. Il a peut-être expiré ; affichez un nouveau code et réessayez.", devicesRolePhone: "iPhone ou iPad", devicesRoleMirror: "Copie sur Raspberry Pi", devicesRoleRestore: "Restauration", devicesNeverSeen: "Jamais vu", devicesLastSeen: "Vu pour la dernière fois {when}", devicesListHeading: "Appareils", devicesNone: "Aucun appareil n'est encore associé.", devicesRemove: "Retirer", devicesNoLibraries: "Aucune bibliothèque n'est encore partagée.", devicesLibrariesHeading: "Bibliothèques partagées", devicesLibraryNotAvailable: "indisponible", devicesShareNote: "Pour partager une autre bibliothèque : {command} (voir le README de Dossiary Sync).", devicesDisconnect: "Se déconnecter", devicesAllowed: "{device} peut maintenant voir {library}.", devicesDenied: "{device} ne peut plus voir {library}.", devicesChangeFailed: "Impossible de modifier {library} pour {device} : {error}", devicesRemoveConfirm: "{name} ne pourra plus rien récupérer. Le retirer ?", devicesRemoved: "{name} retiré.", devicesRemoveFailed: "Impossible de retirer {name} : {error}", devicesDisconnected: "Déconnecté de Dossiary Sync.", devicesAddButton: "Ajouter un iPhone ou un iPad…", devicesAddText: "Choisissez les bibliothèques que le nouvel iPhone ou iPad pourra voir. Vous pourrez le modifier plus tard.", devicesShowQr: "Afficher le code QR", devicesPairWorking: "Création d'un code…", devicesPairCancel: "Annuler", devicesPairPickLibrary: "Choisissez au moins une bibliothèque.", devicesPairInstructions: "Dans l'application Dossiary de votre iPhone ou iPad, choisissez Ajouter depuis le Mac et scannez ce code.", devicesPairValidFor: "Valable {time}", devicesPairExpired: "Ce code a expiré.", devicesPairNewCode: "Nouveau code", devicesPairCodeLabel: "Code :", devicesPairFingerprintLabel: "Empreinte :", devicesPairDone: "Terminé", devicesPairQrAria: "Code QR pour associer un iPhone ou un iPad", devicesQrUnavailable: "Le code QR n'a pas pu être dessiné, car sa bibliothèque ne s'est pas chargée. Vérifiez la connexion Internet, puis choisissez Nouveau code.", devicesUnexpectedAnswer: "Dossiary Sync a envoyé une réponse que Dossiary ne comprend pas. Dossiary Sync est-il à jour ?", librariesUseQrCode: "Dessin du code QR qui associe un iPhone ou un iPad",
+      syncMarkerEditing: "✎ en cours de modification", syncMarkerEditingTitle: "Ce Mac modifie cette bibliothèque. L’autre Mac attend qu’elle soit de nouveau libre.", syncMarkerEditingOffline: "✎ modification hors ligne", syncMarkerEditingOfflineTitle: "Le Raspberry Pi est injoignable. Les modifications sont enregistrées sur ce Mac et envoyées dès qu’il est de nouveau joignable.", syncMarkerEditingOn: "en cours de modification sur {device}", syncMarkerEditingOnTitle: "Votre prochaine modification vous demandera si vous voulez prendre la main.", syncMarkerNotConnected: "non connecté", syncMarkerNotConnectedTitle: "Connectez-vous dans Outils › iPhone et autres appareils…", syncMarkerNotSynced: "pas encore synchronisé", syncMarkerUnsaved: "modifications non enregistrées", syncMarkerUnsavedTitle: "En cours de modification sur {device}. Votre modification reste dans cette fenêtre ; la prochaine redemandera.", syncAnotherMac: "un autre Mac", syncTakeOverTitle: "En cours de modification sur un autre Mac", syncTakeOverText: "En cours de modification sur {device} depuis {time}.", syncTakeOverTextNoTime: "En cours de modification sur {device}.", syncTakeOverHint: "Prenez la main pour enregistrer votre modification ici ; {device} arrête alors de modifier. Annuler garde votre modification dans cette fenêtre, non enregistrée, et la prochaine modification redemandera.", syncTakeOverBtn: "Prendre la main",
       splitsLabel: 'Répartir par catégorie', splitsStart: '+ Répartir entre catégories', splitsAddLine: '+ Ajouter une ligne', splitsCategoryPlaceholder: 'Catégorie', splitsAmountPlaceholder: 'Montant', splitsNotePlaceholder: 'Note (facultatif)', splitsRemoveLine: 'Supprimer cette ligne', splitsSummary: 'Réparti {split} sur {amount} ; {rest} reste dans « {category} ».', splitsSummaryNoAmount: 'Saisissez le montant ci-dessus pour le répartir.', splitsErrorTooMuch: 'Les lignes dépassent le montant.', splitsErrorLine: 'Chaque ligne a besoin d’une catégorie et d’un montant.', splitsErrorNoAmount: 'Saisissez le montant avant de le répartir.', detailSplits: 'Répartition',
       viewCalendar: '▤ Calendrier', calPrevMonth: 'Mois précédent', calNextMonth: 'Mois suivant', calThisMonth: 'Aujourd’hui', calMonthCountSingular: '1 document ce mois-ci', calMonthCountPlural: '{count} documents ce mois-ci', calUndated: 'Sans date ({count})',
       collectionsFoldersHeading: 'Dossiers', collectionsNewFolderPlaceholder: 'Nom du nouveau dossier', collectionsNewFolderButton: '+ Nouveau dossier', collectionsNoFolder: 'Aucun dossier', collectionsFolderSelectLabel: 'Dossier de « {name} »', collectionsFolderDeleteConfirm: 'Supprimer le dossier « {name} » ? Ses collections sont conservées, sans dossier.',
@@ -1831,6 +1838,7 @@
       toolbarImportFolder: '📂 Ordner importieren…', importModalTitle: 'Ordner importieren', importIntro: 'Fügt jede Datei eines Ordners Ihrer Wahl als neues Dokument hinzu. Liegt im Ordner eine index.csv (wie sie der Export schreibt), erhält jede dort aufgeführte Datei Titel, Datum, Kategorie, Tags und weitere Angaben; alle anderen Dateien kommen zur Prüfung in den Posteingang. Der Ordner selbst wird nicht verändert, und Dateien, die schon in der Bibliothek sind, werden übersprungen.', importChooseFolderBtn: 'Ordner wählen…', importInsideLibrary: 'Dieser Ordner liegt in der Bibliothek. Wählen Sie einen Ordner außerhalb.', importNoFiles: 'In „{folder}“ gibt es keine Dateien zum Importieren.', importIndexNoFileColumn: 'es fehlt die Spalte Datei', importIndexUnreadable: 'Die index.csv war nicht verwendbar ({error}), deshalb wurden die Dateien ohne ihre Angaben hinzugefügt.', importProgress: 'Importiere {done} von {total}…', importDone: 'Aus „{folder}“ importiert.', importCountAdded: 'Hinzugefügt: {count}', importCountWithDetails: 'Mit Angaben aus der index.csv: {count}', importCountForReview: 'Zur Prüfung im Posteingang: {count}', importCountDuplicates: 'Schon in der Bibliothek, übersprungen: {count}', importCountFailed: 'Nicht importiert: {count}', importCountUnmatched: 'Zeilen der index.csv ohne Datei: {count}',
       toolbarButtonsMenu: '👁 Werkzeugleisten-Buttons…', toolbarButtonsTitle: 'Buttons der Werkzeugleiste', toolbarButtonsHint: 'Entferne den Haken bei Buttons, die du nicht nutzt. Das wird für diese Bibliothek gespeichert; Dokument hinzufügen und Werkzeuge bleiben immer.',
       toolbarDevices: "📱 iPhone & andere Geräte…", devicesDialogTitle: "iPhone & andere Geräte", devicesLooking: "Suche Dossiary Sync…", devicesClose: "Schließen", devicesNotRunningTitle: "Dossiary Sync läuft auf diesem Mac nicht.", devicesNotRunningText: "Dossiary Sync ist eine kleine eigene App, die deine Bibliotheken mit der Dossiary-App auf iPhone und iPad und mit einer Raspberry-Pi-Kopie teilt. Installiere sie, teile eine Bibliothek damit und suche erneut.", devicesGetSync: "Dossiary Sync herunterladen", devicesLookAgain: "Erneut suchen", devicesConnectText: "Verbinde dich einmal, um deine Geräte hier zu verwalten. Dossiary Sync zeigt dann einen Code in einer Mitteilung auf diesem Mac.", devicesConnectButton: "Verbinden", devicesConnectAgain: "Dossiary Sync akzeptiert diesen Browser nicht mehr. Bitte neu verbinden.", devicesTooSoonSingular: "Dossiary Sync hat gerade einen Code gezeigt. Versuche es in {seconds} Sekunde erneut.", devicesTooSoonPlural: "Dossiary Sync hat gerade einen Code gezeigt. Versuche es in {seconds} Sekunden erneut.", devicesSyncUnreachable: "Dossiary Sync hat nicht geantwortet. Läuft es noch?", devicesRequestFailed: "Dossiary Sync hat die Anfrage abgelehnt ({status}).", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Gib den Code aus der Mitteilung ein", devicesCodeSubmit: "Verbinden", devicesCodeNoNotification: "Keine Mitteilung? Vielleicht sind Mitteilungen für Dossiary Sync in den Systemeinstellungen ausgeschaltet; der Code steht auch in seinem Protokoll. Ein Code gilt 5 Minuten.", devicesNewCode: "Neuen Code zeigen", devicesCodeEmpty: "Gib zuerst den Code ein.", devicesWrongCode: "Dieser Code hat nicht funktioniert. Vielleicht ist er abgelaufen; lass einen neuen Code zeigen und versuche es erneut.", devicesRolePhone: "iPhone oder iPad", devicesRoleMirror: "Raspberry-Pi-Kopie", devicesRoleRestore: "Wiederherstellung", devicesNeverSeen: "Noch nie gesehen", devicesLastSeen: "Zuletzt gesehen {when}", devicesListHeading: "Geräte", devicesNone: "Noch keine Geräte gekoppelt.", devicesRemove: "Entfernen", devicesNoLibraries: "Noch keine Bibliotheken geteilt.", devicesLibrariesHeading: "Geteilte Bibliotheken", devicesLibraryNotAvailable: "nicht verfügbar", devicesShareNote: "Um eine weitere Bibliothek zu teilen: {command} (siehe die README von Dossiary Sync).", devicesDisconnect: "Trennen", devicesAllowed: "{device} sieht jetzt {library}.", devicesDenied: "{device} sieht {library} nicht mehr.", devicesChangeFailed: "{library} konnte für {device} nicht geändert werden: {error}", devicesRemoveConfirm: "{name} kann danach nichts mehr abrufen. Entfernen?", devicesRemoved: "{name} entfernt.", devicesRemoveFailed: "{name} konnte nicht entfernt werden: {error}", devicesDisconnected: "Von Dossiary Sync getrennt.", devicesAddButton: "iPhone oder iPad hinzufügen…", devicesAddText: "Wähle die Bibliotheken, die das neue iPhone oder iPad sehen darf. Du kannst das später ändern.", devicesShowQr: "QR-Code zeigen", devicesPairWorking: "Code wird erstellt…", devicesPairCancel: "Abbrechen", devicesPairPickLibrary: "Wähle mindestens eine Bibliothek.", devicesPairInstructions: "Wähle in der Dossiary-App auf deinem iPhone oder iPad „Vom Mac hinzufügen“ und scanne diesen Code.", devicesPairValidFor: "Gültig für {time}", devicesPairExpired: "Dieser Code ist abgelaufen.", devicesPairNewCode: "Neuer Code", devicesPairCodeLabel: "Code:", devicesPairFingerprintLabel: "Fingerabdruck:", devicesPairDone: "Fertig", devicesPairQrAria: "QR-Code zum Koppeln eines iPhone oder iPad", devicesQrUnavailable: "Der QR-Code konnte nicht gezeichnet werden, weil seine Bibliothek nicht geladen wurde. Prüfe die Internetverbindung und wähle dann „Neuer Code“.", devicesUnexpectedAnswer: "Dossiary Sync hat eine Antwort geschickt, die Dossiary nicht versteht. Ist Dossiary Sync aktuell?", librariesUseQrCode: "Zeichnet den QR-Code, mit dem ein iPhone oder iPad gekoppelt wird",
+      syncMarkerEditing: "✎ in Bearbeitung", syncMarkerEditingTitle: "Dieser Mac bearbeitet diese Bibliothek. Der andere Mac wartet, bis sie wieder frei ist.", syncMarkerEditingOffline: "✎ offline in Bearbeitung", syncMarkerEditingOfflineTitle: "Der Raspberry Pi ist nicht erreichbar. Änderungen werden auf diesem Mac gespeichert und gesendet, sobald er wieder erreichbar ist.", syncMarkerEditingOn: "in Bearbeitung auf {device}", syncMarkerEditingOnTitle: "Deine nächste Änderung fragt, ob du übernehmen möchtest.", syncMarkerNotConnected: "nicht verbunden", syncMarkerNotConnectedTitle: "Verbinden unter Werkzeuge › iPhone & andere Geräte…", syncMarkerNotSynced: "noch nicht abgeglichen", syncMarkerUnsaved: "ungespeicherte Änderungen", syncMarkerUnsavedTitle: "Wird auf {device} bearbeitet. Deine Änderung bleibt in diesem Fenster; die nächste Änderung fragt erneut.", syncAnotherMac: "ein anderer Mac", syncTakeOverTitle: "Wird auf einem anderen Mac bearbeitet", syncTakeOverText: "Wird seit {time} auf {device} bearbeitet.", syncTakeOverTextNoTime: "Wird auf {device} bearbeitet.", syncTakeOverHint: "Übernimm, um deine Änderung hier zu speichern; {device} hört dann auf zu bearbeiten. Abbrechen behält deine Änderung ungespeichert in diesem Fenster, und die nächste Änderung fragt erneut.", syncTakeOverBtn: "Übernehmen",
       splitsLabel: 'Auf Kategorien aufteilen', splitsStart: '+ Auf Kategorien aufteilen', splitsAddLine: '+ Zeile hinzufügen', splitsCategoryPlaceholder: 'Kategorie', splitsAmountPlaceholder: 'Betrag', splitsNotePlaceholder: 'Notiz (optional)', splitsRemoveLine: 'Diese Zeile entfernen', splitsSummary: '{split} von {amount} aufgeteilt; {rest} bleibt bei „{category}“.', splitsSummaryNoAmount: 'Gib oben den Betrag ein, um ihn aufzuteilen.', splitsErrorTooMuch: 'Die Zeilen ergeben mehr als den Betrag.', splitsErrorLine: 'Jede Zeile braucht eine Kategorie und einen Betrag.', splitsErrorNoAmount: 'Gib den Betrag ein, bevor du ihn aufteilst.', detailSplits: 'Aufteilung',
       viewCalendar: '▤ Kalender', calPrevMonth: 'Vorheriger Monat', calNextMonth: 'Nächster Monat', calThisMonth: 'Heute', calMonthCountSingular: '1 Dokument in diesem Monat', calMonthCountPlural: '{count} Dokumente in diesem Monat', calUndated: 'Ohne Datum ({count})',
       collectionsFoldersHeading: 'Ordner', collectionsNewFolderPlaceholder: 'Name des neuen Ordners', collectionsNewFolderButton: '+ Neuer Ordner', collectionsNoFolder: 'Kein Ordner', collectionsFolderSelectLabel: 'Ordner für „{name}“', collectionsFolderDeleteConfirm: 'Ordner „{name}“ löschen? Seine Sammlungen bleiben erhalten, ohne Ordner.',
@@ -2053,6 +2061,7 @@
       toolbarImportFolder: '📂 导入文件夹…', importModalTitle: '导入文件夹', importIntro: '将您选择的文件夹中的每个文件添加为新文档。如果文件夹中有 index.csv（由导出功能写入），其中列出的每个文件都会获得标题、日期、分类、标签和其他信息；其他文件会进入收件箱等待审阅。文件夹本身不会更改，资料库中已有的文件会被跳过。', importChooseFolderBtn: '选择文件夹…', importInsideLibrary: '该文件夹位于此资料库内。请选择资料库以外的文件夹。', importNoFiles: '“{folder}”中没有可导入的文件。', importIndexNoFileColumn: '缺少“文件”列', importIndexUnreadable: '无法使用 index.csv（{error}），因此添加文件时未包含其信息。', importProgress: '正在导入第 {done} 个，共 {total} 个…', importDone: '已从“{folder}”导入。', importCountAdded: '已添加：{count}', importCountWithDetails: '带有 index.csv 中的信息：{count}', importCountForReview: '在收件箱中等待审阅：{count}', importCountDuplicates: '已在资料库中，已跳过：{count}', importCountFailed: '无法导入：{count}', importCountUnmatched: 'index.csv 中没有对应文件的行：{count}',
       toolbarButtonsMenu: '👁 工具栏按钮…', toolbarButtonsTitle: '工具栏按钮', toolbarButtonsHint: '取消勾选你不使用的按钮。此设置按资料库保存；“添加文档”和“工具”始终保留。',
       toolbarDevices: "📱 iPhone 和其他设备…", devicesDialogTitle: "iPhone 和其他设备", devicesLooking: "正在查找 Dossiary Sync…", devicesClose: "关闭", devicesNotRunningTitle: "Dossiary Sync 未在这台 Mac 上运行。", devicesNotRunningText: "Dossiary Sync 是一个独立的小应用，用于将你的资料库共享给 iPhone 和 iPad 上的 Dossiary 应用以及 Raspberry Pi 副本。请安装它，用它共享一个资料库，然后再次查找。", devicesGetSync: "获取 Dossiary Sync", devicesLookAgain: "再次查找", devicesConnectText: "连接一次即可在这里管理你的设备。随后 Dossiary Sync 会在这台 Mac 上以通知显示一个代码。", devicesConnectButton: "连接", devicesConnectAgain: "Dossiary Sync 不再接受此浏览器。请重新连接。", devicesTooSoonSingular: "Dossiary Sync 刚刚显示过代码。请在 {seconds} 秒后重试。", devicesTooSoonPlural: "Dossiary Sync 刚刚显示过代码。请在 {seconds} 秒后重试。", devicesSyncUnreachable: "Dossiary Sync 没有响应。它还在运行吗？", devicesRequestFailed: "Dossiary Sync 拒绝了请求（{status}）。", devicesRequestFailedWith: "{message}（{status}）", devicesCodeLabel: "输入通知中显示的代码", devicesCodeSubmit: "连接", devicesCodeNoNotification: "没有看到通知？可能在系统设置中关闭了 Dossiary Sync 的通知；代码也会写入它的日志。代码有效期为 5 分钟。", devicesNewCode: "显示新代码", devicesCodeEmpty: "请先输入代码。", devicesWrongCode: "该代码无效，可能已过期。请显示新代码后重试。", devicesRolePhone: "iPhone 或 iPad", devicesRoleMirror: "Raspberry Pi 副本", devicesRoleRestore: "恢复", devicesNeverSeen: "从未连接", devicesLastSeen: "上次连接：{when}", devicesListHeading: "设备", devicesNone: "尚未配对任何设备。", devicesRemove: "移除", devicesNoLibraries: "尚未共享任何资料库。", devicesLibrariesHeading: "已共享的资料库", devicesLibraryNotAvailable: "不可用", devicesShareNote: "要共享另一个资料库：{command}（参见 Dossiary Sync 的 README）。", devicesDisconnect: "断开连接", devicesAllowed: "{device} 现在可以查看 {library}。", devicesDenied: "{device} 不能再查看 {library}。", devicesChangeFailed: "无法为 {device} 更改 {library}：{error}", devicesRemoveConfirm: "{name} 将无法再获取任何内容。要移除吗？", devicesRemoved: "已移除 {name}。", devicesRemoveFailed: "无法移除 {name}：{error}", devicesDisconnected: "已与 Dossiary Sync 断开连接。", devicesAddButton: "添加 iPhone 或 iPad…", devicesAddText: "选择新的 iPhone 或 iPad 可以查看的资料库。以后可以更改。", devicesShowQr: "显示二维码", devicesPairWorking: "正在创建代码…", devicesPairCancel: "取消", devicesPairPickLibrary: "请至少选择一个资料库。", devicesPairInstructions: "在 iPhone 或 iPad 上的 Dossiary 应用中，选择“从 Mac 添加”，然后扫描此代码。", devicesPairValidFor: "有效时间：{time}", devicesPairExpired: "此代码已过期。", devicesPairNewCode: "新代码", devicesPairCodeLabel: "代码：", devicesPairFingerprintLabel: "指纹：", devicesPairDone: "完成", devicesPairQrAria: "用于配对 iPhone 或 iPad 的二维码", devicesQrUnavailable: "无法绘制二维码，因为其程序库未能加载。请检查网络连接，然后选择“新代码”。", devicesUnexpectedAnswer: "Dossiary Sync 发送了 Dossiary 无法理解的应答。Dossiary Sync 是否为最新版本？", librariesUseQrCode: "绘制用于配对 iPhone 或 iPad 的二维码",
+      syncMarkerEditing: "✎ 正在编辑", syncMarkerEditingTitle: "这台 Mac 正在编辑此资料库。另一台 Mac 会等到它再次空闲。", syncMarkerEditingOffline: "✎ 离线编辑中", syncMarkerEditingOfflineTitle: "无法连接 Raspberry Pi。更改会保存在这台 Mac 上，并在可以连接时发送。", syncMarkerEditingOn: "正在 {device} 上编辑", syncMarkerEditingOnTitle: "你的下一次更改会询问是否接管。", syncMarkerNotConnected: "未连接", syncMarkerNotConnectedTitle: "请在“工具 › iPhone 和其他设备…”中连接", syncMarkerNotSynced: "尚未同步", syncMarkerUnsaved: "有未保存的更改", syncMarkerUnsavedTitle: "正在 {device} 上编辑。你的更改保留在此窗口中；下一次更改时会再次询问。", syncAnotherMac: "另一台 Mac", syncTakeOverTitle: "正在另一台 Mac 上编辑", syncTakeOverText: "自 {time} 起正在 {device} 上编辑。", syncTakeOverTextNoTime: "正在 {device} 上编辑。", syncTakeOverHint: "接管即可在这里保存你的更改；{device} 随后停止编辑。取消会将你的更改未保存地保留在此窗口中，下一次更改时会再次询问。", syncTakeOverBtn: "接管",
       splitsLabel: '按分类拆分', splitsStart: '+ 拆分到多个分类', splitsAddLine: '+ 添加一行', splitsCategoryPlaceholder: '分类', splitsAmountPlaceholder: '金额', splitsNotePlaceholder: '备注（可选）', splitsRemoveLine: '删除此行', splitsSummary: '已拆分 {split}（共 {amount}）；{rest} 仍归入“{category}”。', splitsSummaryNoAmount: '请先在上方输入金额再拆分。', splitsErrorTooMuch: '各行合计超过了金额。', splitsErrorLine: '每一行都需要分类和金额。', splitsErrorNoAmount: '拆分前请先输入金额。', detailSplits: '拆分',
       viewCalendar: '▤ 日历', calPrevMonth: '上个月', calNextMonth: '下个月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文档', calMonthCountPlural: '本月 {count} 份文档', calUndated: '无日期（{count}）',
       collectionsFoldersHeading: '文件夹', collectionsNewFolderPlaceholder: '新文件夹名称', collectionsNewFolderButton: '+ 新建文件夹', collectionsNoFolder: '无文件夹', collectionsFolderSelectLabel: '“{name}”所在的文件夹', collectionsFolderDeleteConfirm: '删除文件夹“{name}”？其中的收藏集会保留，但不再属于任何文件夹。',
@@ -2275,6 +2284,7 @@
       toolbarImportFolder: '📂 導入文件夾…', importModalTitle: '導入文件夾', importIntro: '將您選擇的文件夾中的每個文件添加爲新文檔。如果文件夾中有 index.csv（由導出功能寫入），其中列出的每個文件都會獲得標題、日期、分類、標籤和其他信息；其他文件會進入收件箱等待審閱。文件夾本身不會更改，資料庫中已有的文件會被跳過。', importChooseFolderBtn: '選擇文件夾…', importInsideLibrary: '該文件夾位於此資料庫內。請選擇資料庫以外的文件夾。', importNoFiles: '“{folder}”中沒有可導入的文件。', importIndexNoFileColumn: '缺少“文件”列', importIndexUnreadable: '無法使用 index.csv（{error}），因此添加文件時未包含其信息。', importProgress: '正在導入第 {done} 個，共 {total} 個…', importDone: '已從“{folder}”導入。', importCountAdded: '已添加：{count}', importCountWithDetails: '帶有 index.csv 中的信息：{count}', importCountForReview: '在收件箱中等待審閱：{count}', importCountDuplicates: '已在資料庫中，已跳過：{count}', importCountFailed: '無法導入：{count}', importCountUnmatched: 'index.csv 中沒有對應文件的行：{count}',
       toolbarButtonsMenu: '👁 工具欄按鈕…', toolbarButtonsTitle: '工具欄按鈕', toolbarButtonsHint: '取消勾選你不使用的按鈕。此設置按資料庫保存；「添加文檔」和「工具」始終保留。',
       toolbarDevices: "📱 iPhone 和其他設備…", devicesDialogTitle: "iPhone 和其他設備", devicesLooking: "正在查找 Dossiary Sync…", devicesClose: "關閉", devicesNotRunningTitle: "Dossiary Sync 未在這臺 Mac 上運行。", devicesNotRunningText: "Dossiary Sync 是一個獨立的小應用，用於將你的資料庫共享給 iPhone 和 iPad 上的 Dossiary 應用以及 Raspberry Pi 副本。請安裝它，用它共享一個資料庫，然後再次查找。", devicesGetSync: "獲取 Dossiary Sync", devicesLookAgain: "再次查找", devicesConnectText: "連接一次即可在這裏管理你的設備。隨後 Dossiary Sync 會在這臺 Mac 上以通知顯示一個代碼。", devicesConnectButton: "連接", devicesConnectAgain: "Dossiary Sync 不再接受此瀏覽器。請重新連接。", devicesTooSoonSingular: "Dossiary Sync 剛剛顯示過代碼。請在 {seconds} 秒後重試。", devicesTooSoonPlural: "Dossiary Sync 剛剛顯示過代碼。請在 {seconds} 秒後重試。", devicesSyncUnreachable: "Dossiary Sync 沒有響應。它還在運行嗎？", devicesRequestFailed: "Dossiary Sync 拒絕了請求（{status}）。", devicesRequestFailedWith: "{message}（{status}）", devicesCodeLabel: "輸入通知中顯示的代碼", devicesCodeSubmit: "連接", devicesCodeNoNotification: "沒有看到通知？可能在系統設置中關閉了 Dossiary Sync 的通知；代碼也會寫入它的日誌。代碼有效期爲 5 分鐘。", devicesNewCode: "顯示新代碼", devicesCodeEmpty: "請先輸入代碼。", devicesWrongCode: "該代碼無效，可能已過期。請顯示新代碼後重試。", devicesRolePhone: "iPhone 或 iPad", devicesRoleMirror: "Raspberry Pi 副本", devicesRoleRestore: "恢復", devicesNeverSeen: "從未連接", devicesLastSeen: "上次連接：{when}", devicesListHeading: "設備", devicesNone: "尚未配對任何設備。", devicesRemove: "移除", devicesNoLibraries: "尚未共享任何資料庫。", devicesLibrariesHeading: "已共享的資料庫", devicesLibraryNotAvailable: "不可用", devicesShareNote: "要共享另一個資料庫：{command}（參見 Dossiary Sync 的 README）。", devicesDisconnect: "斷開連接", devicesAllowed: "{device} 現在可以查看 {library}。", devicesDenied: "{device} 不能再查看 {library}。", devicesChangeFailed: "無法爲 {device} 更改 {library}：{error}", devicesRemoveConfirm: "{name} 將無法再獲取任何內容。要移除嗎？", devicesRemoved: "已移除 {name}。", devicesRemoveFailed: "無法移除 {name}：{error}", devicesDisconnected: "已與 Dossiary Sync 斷開連接。", devicesAddButton: "添加 iPhone 或 iPad…", devicesAddText: "選擇新的 iPhone 或 iPad 可以查看的資料庫。以後可以更改。", devicesShowQr: "顯示二維碼", devicesPairWorking: "正在創建代碼…", devicesPairCancel: "取消", devicesPairPickLibrary: "請至少選擇一個資料庫。", devicesPairInstructions: "在 iPhone 或 iPad 上的 Dossiary 應用中，選擇「從 Mac 添加」，然後掃描此代碼。", devicesPairValidFor: "有效時間：{time}", devicesPairExpired: "此代碼已過期。", devicesPairNewCode: "新代碼", devicesPairCodeLabel: "代碼：", devicesPairFingerprintLabel: "指紋：", devicesPairDone: "完成", devicesPairQrAria: "用於配對 iPhone 或 iPad 的二維碼", devicesQrUnavailable: "無法繪製二維碼，因爲其程序庫未能加載。請檢查網絡連接，然後選擇「新代碼」。", devicesUnexpectedAnswer: "Dossiary Sync 發送了 Dossiary 無法理解的應答。Dossiary Sync 是否爲最新版本？", librariesUseQrCode: "繪製用於配對 iPhone 或 iPad 的二維碼",
+      syncMarkerEditing: "✎ 正在編輯", syncMarkerEditingTitle: "這臺 Mac 正在編輯此資料庫。另一臺 Mac 會等到它再次空閒。", syncMarkerEditingOffline: "✎ 離線編輯中", syncMarkerEditingOfflineTitle: "無法連接 Raspberry Pi。更改會保存在這臺 Mac 上，並在可以連接時發送。", syncMarkerEditingOn: "正在 {device} 上編輯", syncMarkerEditingOnTitle: "你的下一次更改會詢問是否接管。", syncMarkerNotConnected: "未連接", syncMarkerNotConnectedTitle: "請在“工具 › iPhone 和其他設備…”中連接", syncMarkerNotSynced: "尚未同步", syncMarkerUnsaved: "有未保存的更改", syncMarkerUnsavedTitle: "正在 {device} 上編輯。你的更改保留在此窗口中；下一次更改時會再次詢問。", syncAnotherMac: "另一臺 Mac", syncTakeOverTitle: "正在另一臺 Mac 上編輯", syncTakeOverText: "自 {time} 起正在 {device} 上編輯。", syncTakeOverTextNoTime: "正在 {device} 上編輯。", syncTakeOverHint: "接管即可在這裏保存你的更改；{device} 隨後停止編輯。取消會將你的更改未保存地保留在此窗口中，下一次更改時會再次詢問。", syncTakeOverBtn: "接管",
       splitsLabel: '按分類拆分', splitsStart: '+ 拆分到多個分類', splitsAddLine: '+ 添加一行', splitsCategoryPlaceholder: '分類', splitsAmountPlaceholder: '金額', splitsNotePlaceholder: '備註（可選）', splitsRemoveLine: '刪除此行', splitsSummary: '已拆分 {split}（共 {amount}）；{rest} 仍歸入「{category}」。', splitsSummaryNoAmount: '請先在上方輸入金額再拆分。', splitsErrorTooMuch: '各行合計超過了金額。', splitsErrorLine: '每一行都需要分類和金額。', splitsErrorNoAmount: '拆分前請先輸入金額。', detailSplits: '拆分',
       viewCalendar: '▤ 日曆', calPrevMonth: '上個月', calNextMonth: '下個月', calThisMonth: '今天', calMonthCountSingular: '本月 1 份文檔', calMonthCountPlural: '本月 {count} 份文檔', calUndated: '無日期（{count}）',
       collectionsFoldersHeading: '文件夾', collectionsNewFolderPlaceholder: '新文件夾名稱', collectionsNewFolderButton: '+ 新建文件夾', collectionsNoFolder: '無文件夾', collectionsFolderSelectLabel: '「{name}」所在的文件夾', collectionsFolderDeleteConfirm: '刪除文件夾「{name}」？其中的收藏集會保留，但不再屬於任何文件夾。',
@@ -2730,6 +2740,7 @@
       importCountUnmatched: "index.csv-ի տողեր առանց ֆայլի՝ {count}",
       toolbarButtonsMenu: "👁 Գործիքագոտու կոճակներ…",
       toolbarDevices: "📱 iPhone և այլ սարքեր…", devicesDialogTitle: "iPhone և այլ սարքեր", devicesLooking: "Dossiary Sync-ի որոնում…", devicesClose: "Փակել", devicesNotRunningTitle: "Dossiary Sync-ը այս Mac-ում չի աշխատում։", devicesNotRunningText: "Dossiary Sync-ը փոքր առանձին հավելված է, որը ձեր գրադարանները կիսում է iPhone-ի և iPad-ի Dossiary հավելվածի և Raspberry Pi պատճենի հետ։ Տեղադրեք այն, կիսեք դրանով գրադարան և նորից որոնեք։", devicesGetSync: "Ստանալ Dossiary Sync-ը", devicesLookAgain: "Նորից որոնել", devicesConnectText: "Միացեք մեկ անգամ՝ ձեր սարքերն այստեղ կառավարելու համար։ Այնուհետև Dossiary Sync-ը այս Mac-ում ծանուցման մեջ ցույց կտա կոդ։", devicesConnectButton: "Միանալ", devicesConnectAgain: "Dossiary Sync-ն այլևս չի ընդունում այս դիտարկիչը։ Միացեք նորից։", devicesTooSoonSingular: "Dossiary Sync-ը հենց նոր կոդ է ցույց տվել։ Փորձեք նորից {seconds} վայրկյանից։", devicesTooSoonPlural: "Dossiary Sync-ը հենց նոր կոդ է ցույց տվել։ Փորձեք նորից {seconds} վայրկյանից։", devicesSyncUnreachable: "Dossiary Sync-ը չպատասխանեց։ Արդյո՞ք այն դեռ աշխատում է։", devicesRequestFailed: "Dossiary Sync-ը մերժեց հարցումը ({status})։", devicesRequestFailedWith: "{message} ({status})", devicesCodeLabel: "Մուտքագրեք ծանուցման մեջ ցուցադրված կոդը", devicesCodeSubmit: "Միանալ", devicesCodeNoNotification: "Ծանուցում չկա՞։ Հնարավոր է՝ Dossiary Sync-ի ծանուցումներն անջատված են System Settings-ում. կոդը գրված է նաև նրա մատյանում։ Կոդը վավեր է 5 րոպե։", devicesNewCode: "Ցույց տալ նոր կոդ", devicesCodeEmpty: "Նախ մուտքագրեք կոդը։", devicesWrongCode: "Այդ կոդը չաշխատեց։ Հնարավոր է՝ ժամկետն անցել է. ցույց տվեք նոր կոդ և փորձեք նորից։", devicesRolePhone: "iPhone կամ iPad", devicesRoleMirror: "Raspberry Pi պատճեն", devicesRoleRestore: "Վերականգնում", devicesNeverSeen: "Երբեք չի միացել", devicesLastSeen: "Վերջին անգամ՝ {when}", devicesListHeading: "Սարքեր", devicesNone: "Դեռ զուգակցված սարքեր չկան։", devicesRemove: "Հեռացնել", devicesNoLibraries: "Դեռ կիսված գրադարաններ չկան։", devicesLibrariesHeading: "Կիսված գրադարաններ", devicesLibraryNotAvailable: "հասանելի չէ", devicesShareNote: "Մեկ այլ գրադարան կիսելու համար՝ {command} (տե՛ս Dossiary Sync-ի README-ն)։", devicesDisconnect: "Անջատվել", devicesAllowed: "{device}-ն այժմ տեսնում է «{library}»-ը։", devicesDenied: "{device}-ն այլևս չի տեսնում «{library}»-ը։", devicesChangeFailed: "Չհաջողվեց փոխել «{library}»-ը {device}-ի համար՝ {error}", devicesRemoveConfirm: "{name}-ն այլևս ոչինչ չի կարողանա ստանալ։ Հեռացնե՞լ։", devicesRemoved: "{name}-ը հեռացվեց։", devicesRemoveFailed: "Չհաջողվեց հեռացնել {name}-ը՝ {error}", devicesDisconnected: "Անջատվեցիք Dossiary Sync-ից։", devicesAddButton: "Ավելացնել iPhone կամ iPad…", devicesAddText: "Ընտրեք այն գրադարանները, որոնք նոր iPhone-ը կամ iPad-ը կարող է տեսնել։ Հետագայում կարող եք փոխել։", devicesShowQr: "Ցույց տալ QR կոդը", devicesPairWorking: "Կոդը ստեղծվում է…", devicesPairCancel: "Չեղարկել", devicesPairPickLibrary: "Ընտրեք առնվազն մեկ գրադարան։", devicesPairInstructions: "Ձեր iPhone-ի կամ iPad-ի Dossiary հավելվածում ընտրեք «Ավելացնել Mac-ից» և սկանավորեք այս կոդը։", devicesPairValidFor: "Վավեր է ևս {time}", devicesPairExpired: "Այս կոդի ժամկետն անցել է։", devicesPairNewCode: "Նոր կոդ", devicesPairCodeLabel: "Կոդ՝", devicesPairFingerprintLabel: "Մատնահետք՝", devicesPairDone: "Պատրաստ է", devicesPairQrAria: "iPhone կամ iPad զուգակցելու QR կոդ", devicesQrUnavailable: "QR կոդը հնարավոր չեղավ գծել, քանի որ դրա գրադարանը չբեռնվեց։ Ստուգեք ինտերնետ կապը, ապա ընտրեք «Նոր կոդ»։", devicesUnexpectedAnswer: "Dossiary Sync-ն ուղարկեց պատասխան, որը Dossiary-ն չի հասկանում։ Արդյո՞ք Dossiary Sync-ը թարմացված է։", librariesUseQrCode: "iPhone կամ iPad զուգակցող QR կոդի գծում",
+      syncMarkerEditing: "✎ խմբագրվում է", syncMarkerEditingTitle: "Այս Mac-ը խմբագրում է այս գրադարանը։ Մյուս Mac-ը սպասում է, մինչև այն կրկին ազատ լինի։", syncMarkerEditingOffline: "✎ խմբագրվում է անցանց", syncMarkerEditingOfflineTitle: "Raspberry Pi-ն հասանելի չէ։ Փոփոխությունները պահվում են այս Mac-ում և կուղարկվեն, երբ այն կրկին հասանելի լինի։", syncMarkerEditingOn: "խմբագրվում է՝ {device}", syncMarkerEditingOnTitle: "Ձեր հաջորդ փոփոխության ժամանակ կհարցվի՝ արդյոք վերցնել խմբագրումը։", syncMarkerNotConnected: "միացված չէ", syncMarkerNotConnectedTitle: "Միացեք՝ Գործիքներ › iPhone և այլ սարքեր…", syncMarkerNotSynced: "դեռ համաժամեցված չէ", syncMarkerUnsaved: "չպահված փոփոխություններ", syncMarkerUnsavedTitle: "Խմբագրվում է՝ {device}։ Ձեր փոփոխությունը մնում է այս պատուհանում, իսկ հաջորդ փոփոխության ժամանակ կրկին կհարցվի։", syncAnotherMac: "մեկ այլ Mac", syncTakeOverTitle: "Խմբագրվում է մեկ այլ Mac-ում", syncTakeOverText: "{time}-ից խմբագրվում է՝ {device}։", syncTakeOverTextNoTime: "Խմբագրվում է՝ {device}։", syncTakeOverHint: "Վերցրեք խմբագրումը՝ ձեր փոփոխությունն այստեղ պահելու համար․ {device}-ը կդադարի խմբագրել։ «Չեղարկել»-ը ձեր փոփոխությունը թողնում է այս պատուհանում՝ չպահված, և հաջորդ փոփոխության ժամանակ կրկին կհարցվի։", syncTakeOverBtn: "Վերցնել խմբագրումը",
       toolbarButtonsTitle: "Գործիքագոտու կոճակներ",
       toolbarButtonsHint: "Հանեք նշումը այն կոճակներից, որոնք չեք օգտագործում։ Սա պահպանվում է այս գրադարանի համար․ «Ավելացնել փաստաթուղթ» և «Գործիքներ» կոճակները միշտ մնում են։",
       splitsLabel: "Բաժանում ըստ կատեգորիայի",
@@ -3477,6 +3488,7 @@
       updateNewLibraryHint();
     }
     updateUserGuideLink();
+    renderSyncMarker();
     // The status line (#status) is set via setStatusT() at every point something
     // just happened (library opened, document saved, inbox file added, ...) and,
     // unlike the containers re-rendered above, is never touched again until the
@@ -5044,9 +5056,12 @@
     const dueOnOpen = checkReminders();
     if(dueOnOpen.length) openRemindersModal(dueOnOpen);
     if(ocrJobRows().length) startOcrJobRunner();
+    syncReadPromise = readSyncFile().finally(() => { syncReadPromise = null; });
   }
 
   function resetAll(){
+    releaseLease('switch');   // fires its request before anything is cleared
+    clearSyncState();
     stopOcrJobRunner();
     calendarMonth = null;
     db = null; rootDirHandle = null; filesDirHandle = null; dbFileHandle = null;
@@ -5227,11 +5242,30 @@
     openDetail(selectedDocId); // populates the panel's empty state immediately, rather than leaving #detail-panel-body blank until the first row click
   }
 
-  async function persistDb(){
+  // Every write of library.sqlite. A synced library (.dossiary-sync.json at its
+  // root) first takes the edit lease for a real change -- see ensureLease().
+  // opts.viewOnly marks a view preference (sort, columns, view mode, ...),
+  // which never takes the lease; it isn't written while a real change is held
+  // back (Cancel in the take-over dialog), since the bytes would carry it too.
+  async function persistDb(opts = {}){
+    if(syncReadPromise) await syncReadPromise;
+    if(syncLibrary){
+      if(opts.viewOnly){
+        if(syncUnsavedChanges || syncLeasePending) return;
+      }else if(syncLease.state !== 'holding' && syncLease.state !== 'offline'){
+        const root = rootDirHandle;
+        const ok = await ensureLease();
+        if(!ok || root !== rootDirHandle || !db) return;
+      }
+    }
     const bytes = db.export();
     const writable = await dbFileHandle.createWritable();
     await writable.write(bytes);
     await writable.close();
+    if(!opts.viewOnly){
+      lastRealSaveAt = syncNow();
+      if(syncUnsavedChanges){ syncUnsavedChanges = false; renderSyncMarker(); }
+    }
   }
 
   // --- column/filter visibility settings (stored in library.sqlite itself, so the
@@ -5327,7 +5361,7 @@
   async function saveNavStyle(value){
     navStyle = value === 'sidebar' ? 'sidebar' : 'tabs';
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('nav_style', ?)", [navStyle]);
-    await persistDb();
+    await persistDb({viewOnly: true});
     applyNavStyle();
   }
 
@@ -5357,7 +5391,7 @@
     sortDir = dir;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('sort_key', ?)", [key]);
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('sort_dir', ?)", [dir]);
-    await persistDb();
+    await persistDb({viewOnly: true});
   }
 
   function applyNavStyle(){
@@ -5382,7 +5416,7 @@
   async function saveDetailPanelExpanded(value){
     detailPanelExpanded = !!value;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('detail_panel_expanded', ?)", [detailPanelExpanded ? '1' : '0']);
-    await persistDb();
+    await persistDb({viewOnly: true});
     applyDetailPanelExpanded();
   }
 
@@ -5401,7 +5435,7 @@
   async function saveCollectionsNavExpanded(value){
     collectionsNavExpanded = !!value;
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('collections_nav_expanded', ?)", [collectionsNavExpanded ? '1' : '0']);
-    await persistDb();
+    await persistDb({viewOnly: true});
     applyCollectionsNavExpanded();
   }
 
@@ -5410,7 +5444,7 @@
     else collapsedCollectionFolders.add(id);
     writeSetting('collapsed_collection_folders', JSON.stringify([...collapsedCollectionFolders]));
     renderNav();
-    await persistDb();
+    await persistDb({viewOnly: true});
   }
 
   // Sidebar nav: the list is inline, open or folded per the persisted
@@ -6586,7 +6620,7 @@
   async function saveColumnSettings(){
     const json = JSON.stringify([...visibleColumns]);
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('visible_columns', ?)", [json]);
-    await persistDb();
+    await persistDb({viewOnly: true});
   }
 
   function applyColumnVisibility(){
@@ -7955,12 +7989,15 @@
   }
 
   // Every file in the library folder, as [pathParts, fileHandle], skipping
-  // macOS clutter and library.sqlite (written from memory instead).
+  // macOS clutter, library.sqlite (written from memory instead) and Dossiary
+  // Sync's .dossiary-sync.json and .kept-aside/.
   async function listLibraryFiles(dirHandle, prefix = []){
     const out = [];
     for await (const [name, handle] of dirHandle.entries()){
       if(name === '.DS_Store' || name.startsWith('._')) continue;
       if(!prefix.length && name === 'library.sqlite') continue;
+      // Dossiary Sync's own: a backup opened as a library mustn't pass for the synced original.
+      if(!prefix.length && (name === '.dossiary-sync.json' || name === '.kept-aside')) continue;
       if(handle.kind === 'directory') out.push(...await listLibraryFiles(handle, [...prefix, name]));
       else out.push([[...prefix, name], handle]);
     }
@@ -13863,7 +13900,7 @@
   async function saveViewMode(mode){
     viewMode = mode === 'grid' || mode === 'calendar' ? mode : 'list';
     writeSetting('view_mode', viewMode);
-    await persistDb();
+    await persistDb({viewOnly: true});
     applyViewMode();
     render();
   }
@@ -15396,7 +15433,7 @@
   }
   async function saveLastScanSettings(settings){
     writeSetting('scan_last_settings', JSON.stringify(settings));
-    await persistDb();
+    await persistDb({viewOnly: true});
   }
 
   async function openScanDialog(){
@@ -15915,6 +15952,7 @@
     const token = readSyncAdminToken();
     if(token) headers.Authorization = `Bearer ${token}`;
     const init = { method, headers };
+    if(opts.keepalive) init.keepalive = true;   // pagehide: the request outlives the page
     if(method === 'POST'){
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(opts.body || {});
@@ -15941,6 +15979,272 @@
     const message = res.body && (typeof res.body.error === 'string' ? res.body.error : typeof res.body.message === 'string' ? res.body.message : '');
     return message ? t('devicesRequestFailedWith', { status: res.status, message }) : t('devicesRequestFailed', { status: res.status });
   }
+
+  // ---- Sync lease (two-Mac editing; spec dossiary-ios
+  // docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md) ----
+  // A library Dossiary Sync keeps in step with the Pi has .dossiary-sync.json
+  // at its root. For such a library the first real change takes the edit
+  // lease from this Mac's service (POST /admin/libraries/<id>/lease), so only
+  // one Mac changes it at a time. No sync file → no admin calls at all.
+  const SYNC_FILE_NAME = '.dossiary-sync.json';
+  const SYNC_HEARTBEAT_MS = 60 * 1000;
+  const SYNC_IDLE_RELEASE_MS = 10 * 60 * 1000;
+  const SYNC_TICK_MS = 5 * 1000;
+  let syncLibrary = null;               // {libraryId, version} from .dossiary-sync.json, or null
+  let syncLease = { state: 'none' };    // 'none' | 'holding' | 'offline' | 'other' (+deviceName, since) | 'unconnected' | 'unsynced' (+reason)
+  let syncUnsavedChanges = false;       // Cancel in the take-over dialog: a real change is held back in memory
+  let syncLeasePending = null;          // the acquire in flight; concurrent saves share it (one dialog)
+  let syncReadPromise = null;
+  let syncLastHeartbeatAt = 0;
+  let lastRealSaveAt = 0;
+  let syncClockOffset = 0;              // tests advance the clock through __DEBUG_syncNow()
+  let syncTimer = null;
+  let syncTickRunning = false;
+  const syncNow = () => Date.now() + syncClockOffset;
+
+  async function readSyncFile(){
+    const root = rootDirHandle;
+    syncLibrary = null;
+    if(!root) return;
+    let found = null;
+    try{
+      const file = await (await root.getFileHandle(SYNC_FILE_NAME)).getFile();
+      const data = JSON.parse(await file.text());
+      if(data && typeof data.libraryId === 'string' && data.libraryId && Number.isInteger(data.version)){
+        found = { libraryId: data.libraryId, version: data.version };
+      }
+    }catch(e){ /* missing or unreadable: not a synced library */ }
+    if(root !== rootDirHandle) return;
+    syncLibrary = found;
+    if(syncLibrary) startSyncTimer();
+    renderSyncMarker();
+  }
+
+  function setSyncLease(lease){
+    syncLease = lease;
+    renderSyncMarker();
+  }
+
+  function clearSyncState(){
+    stopSyncTimer();
+    syncLibrary = null;
+    syncLease = { state: 'none' };
+    syncUnsavedChanges = false;
+    syncLastHeartbeatAt = 0;
+    lastRealSaveAt = 0;
+    renderSyncMarker();
+  }
+
+  function syncLeaseCall(action, takeOver, opts = {}){
+    return syncAdminFetch(`/admin/libraries/${encodeURIComponent(syncLibrary.libraryId)}/lease`,
+      { method: 'POST', body: { action, takeOver: !!takeOver }, keepalive: !!opts.keepalive });
+  }
+  const syncLeaseResult = (res) => res && res.ok && res.body && typeof res.body.result === 'string' ? res.body.result : null;
+  const syncLeaseHolder = (res) => (res && res.body && res.body.lease && typeof res.body.lease === 'object') ? res.body.lease : null;
+  function syncOtherLease(lease){
+    return { state: 'other', deviceName: typeof lease.deviceName === 'string' && lease.deviceName ? lease.deviceName : t('syncAnotherMac'), since: typeof lease.since === 'string' ? lease.since : '' };
+  }
+
+  // Before a real write without the lease. → true: write now; false: don't
+  // (the other Mac holds it and the person chose Cancel).
+  function ensureLease(){
+    if(!syncLeasePending){
+      syncLeasePending = acquireLeaseForWrite().finally(() => { syncLeasePending = null; });
+    }
+    return syncLeasePending;
+  }
+
+  async function acquireLeaseForWrite(){
+    const lib = syncLibrary;
+    if(!lib) return true;
+    if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }   // an offline change until connected
+    const res = await syncLeaseCall('acquire', false);
+    if(lib !== syncLibrary) return false;   // the library was switched meanwhile
+    if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return true; }
+    const result = syncLeaseResult(res);
+    if(result === 'busy'){
+      const other = syncOtherLease(syncLeaseHolder(res) || {});
+      const takeOver = await showTakeOverModal(other);
+      if(lib !== syncLibrary) return false;
+      if(!takeOver){
+        syncUnsavedChanges = true;
+        setSyncLease(other);
+        return false;
+      }
+      const res2 = await syncLeaseCall('acquire', true);
+      if(lib !== syncLibrary) return false;
+      applyAcquireAnswer(res2);
+      return true;
+    }
+    applyAcquireAnswer(res);
+    return true;   // granted, offline, or the service not answering: the write goes through
+  }
+
+  // Granted → holding; offline → offline; anything else (no answer, a
+  // timeout, an error) → unsynced with the reason. A timeout is "try again
+  // later", never "offline" (it may be waiting behind a push or pull).
+  function applyAcquireAnswer(res){
+    const result = syncLeaseResult(res);
+    if(result === 'granted' || result === 'offline'){
+      syncLastHeartbeatAt = lastRealSaveAt = syncNow();   // the write follows at once; the idle clock starts here
+      setSyncLease({ state: result === 'granted' ? 'holding' : 'offline' });
+    }
+    else if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); }
+    else setSyncLease({ state: 'unsynced', reason: res && res.ok ? t('devicesUnexpectedAnswer') : syncErrorText(res) });
+  }
+
+  function syncSinceText(iso){
+    const when = iso ? new Date(iso) : null;
+    if(!when || !Number.isFinite(when.getTime())) return '';
+    const locale = DATE_LOCALE[currentLang] || 'en-US';
+    const time = when.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    return when.toDateString() === new Date().toDateString() ? time : `${formatDate(iso)} ${time}`;
+  }
+
+  // "Being edited on <device> since <time>." Take over / Cancel. A layer of its
+  // own (appended, never replacing) in #modal-root, or above whatever dialog is
+  // already open there (the Edit form being saved, Field Settings, ...), so
+  // that dialog is still there afterwards. Escape is Cancel.
+  function showTakeOverModal(other){
+    return new Promise(resolve => {
+      const host = modalRoot.innerHTML === '' ? modalRoot : modalOverRoot;
+      const layer = document.createElement('div');
+      layer.id = 'sync-takeover-layer';
+      const since = syncSinceText(other.since);
+      const device = escapeHtml(other.deviceName);
+      layer.innerHTML = `
+        <div class="backdrop" id="sync-takeover-backdrop">
+          <div class="modal" role="dialog" aria-modal="true" id="sync-takeover-dialog" aria-labelledby="sync-takeover-title">
+            <h2 id="sync-takeover-title">${t('syncTakeOverTitle')}</h2>
+            <p>${since ? t('syncTakeOverText', { device, time: escapeHtml(since) }) : t('syncTakeOverTextNoTime', { device })}</p>
+            <p class="doc-sub">${t('syncTakeOverHint', { device })}</p>
+            <div class="modal-actions">
+              <button class="primary" id="sync-takeover-btn">${t('syncTakeOverBtn')}</button>
+              <button id="sync-takeover-cancel-btn">${t('commonCancel')}</button>
+            </div>
+          </div>
+        </div>`;
+      host.appendChild(layer);
+      const done = (choice) => {
+        window.removeEventListener('keydown', onKey, true);
+        layer.remove();
+        resolve(choice);
+      };
+      const onKey = (e) => {
+        if(e.key !== 'Escape') return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        done(false);
+      };
+      window.addEventListener('keydown', onKey, true);
+      layer.querySelector('#sync-takeover-btn').addEventListener('click', () => done(true));
+      layer.querySelector('#sync-takeover-cancel-btn').addEventListener('click', () => done(false));
+      layer.querySelector('#sync-takeover-btn').focus();
+    });
+  }
+
+  function startSyncTimer(){
+    if(syncTimer) return;
+    syncTimer = setInterval(() => { syncTick(); }, SYNC_TICK_MS);
+  }
+  function stopSyncTimer(){
+    if(syncTimer){ clearInterval(syncTimer); syncTimer = null; }
+  }
+
+  // Every 5 s while a synced library is open: give the lease back after 10
+  // quiet minutes, heartbeat every minute while holding it, and while offline
+  // try every minute to take it properly.
+  async function syncTick(){
+    if(!syncLibrary || syncTickRunning) return;
+    syncTickRunning = true;
+    try{
+      const now = syncNow();
+      const state = syncLease.state;
+      if((state === 'holding' || state === 'offline') && now - lastRealSaveAt >= SYNC_IDLE_RELEASE_MS){
+        await releaseLease('idle');
+      }else if(state === 'holding' && now - syncLastHeartbeatAt >= SYNC_HEARTBEAT_MS){
+        await syncHeartbeat();
+      }else if(state === 'offline' && now - syncLastHeartbeatAt >= SYNC_HEARTBEAT_MS){
+        await syncRetryFromOffline();
+      }
+    }finally{
+      syncTickRunning = false;
+    }
+  }
+
+  async function syncHeartbeat(){
+    const lib = syncLibrary;
+    const res = await syncLeaseCall('heartbeat', false);
+    if(lib !== syncLibrary || syncLease.state !== 'holding') return;
+    if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return; }
+    const result = syncLeaseResult(res);
+    if(!result) return;   // no answer or a timeout: try again on the next tick, still holding
+    syncLastHeartbeatAt = syncNow();
+    const holder = syncLeaseHolder(res);
+    if(result === 'granted') return;
+    if(result === 'offline'){ setSyncLease({ state: 'offline' }); return; }
+    if((result === 'lost' || result === 'busy') && holder && holder.holder !== 'this'){ setSyncLease(syncOtherLease(holder)); return; }
+    if(result === 'lost'){
+      // Merely expired (no holder): take it again without asking.
+      const again = await syncLeaseCall('acquire', false);
+      if(lib !== syncLibrary || syncLease.state !== 'holding') return;
+      const r = syncLeaseResult(again);
+      if(r === 'granted') syncLastHeartbeatAt = syncNow();
+      else if(r === 'offline') setSyncLease({ state: 'offline' });
+      else if(r === 'busy') setSyncLease(syncOtherLease(syncLeaseHolder(again) || {}));
+    }
+  }
+
+  async function syncRetryFromOffline(){
+    const lib = syncLibrary;
+    const res = await syncLeaseCall('acquire', false);
+    if(lib !== syncLibrary || syncLease.state !== 'offline') return;
+    const r = syncLeaseResult(res);
+    if(!r) return;
+    syncLastHeartbeatAt = syncNow();
+    if(r === 'granted') setSyncLease({ state: 'holding' });
+    else if(r === 'busy') setSyncLease(syncOtherLease(syncLeaseHolder(res) || {}));
+  }
+
+  // 'idle' (10 quiet minutes), 'switch' (resetAll) or 'pagehide'. The last two
+  // send a keepalive request without waiting: the page may be going away.
+  async function releaseLease(reason){
+    if(!syncLibrary) return;
+    const held = syncLease.state === 'holding' || syncLease.state === 'offline';
+    if(reason === 'switch' || reason === 'pagehide'){
+      if(held && readSyncAdminToken()) syncLeaseCall('release', false, { keepalive: true });
+      return;
+    }
+    const lib = syncLibrary;
+    if(held && readSyncAdminToken()) await syncLeaseCall('release', false);
+    if(lib === syncLibrary && (syncLease.state === 'holding' || syncLease.state === 'offline')) setSyncLease({ state: 'none' });
+  }
+  window.addEventListener('pagehide', () => { releaseLease('pagehide'); });
+
+  const SYNC_MARKER_KEYS = { holding: 'syncMarkerEditing', offline: 'syncMarkerEditingOffline', other: 'syncMarkerEditingOn', unconnected: 'syncMarkerNotConnected', unsynced: 'syncMarkerNotSynced' };
+  function renderSyncMarker(){
+    const marker = el('sync-marker');
+    if(!marker) return;
+    const state = syncLibrary ? (syncUnsavedChanges ? 'unsaved' : syncLease.state) : 'none';
+    let text = '', title = '';
+    if(state === 'unsaved'){
+      text = t('syncMarkerUnsaved');
+      title = t('syncMarkerUnsavedTitle', { device: syncLease.deviceName || t('syncAnotherMac') });
+    }else if(SYNC_MARKER_KEYS[state]){
+      text = t(SYNC_MARKER_KEYS[state], { device: syncLease.deviceName || '' });
+      if(state === 'holding') title = t('syncMarkerEditingTitle');
+      else if(state === 'offline') title = t('syncMarkerEditingOfflineTitle');
+      else if(state === 'other') title = t('syncMarkerEditingOnTitle');
+      else if(state === 'unconnected') title = t('syncMarkerNotConnectedTitle');
+      else if(state === 'unsynced') title = syncLease.reason || '';
+    }
+    marker.textContent = text;
+    marker.title = title;
+    marker.dataset.state = state;
+    marker.style.display = text ? '' : 'none';
+  }
+
+  window.__DEBUG_syncLease = () => syncLease;
+  window.__DEBUG_syncNow = async (ms) => { syncClockOffset += ms || 0; await syncTick(); };
 
   const DEVICE_ROLE_LABEL_KEYS = { phone: 'devicesRolePhone', mirror: 'devicesRoleMirror', restore: 'devicesRoleRestore' };
   function deviceRoleLabel(role){ return DEVICE_ROLE_LABEL_KEYS[role] ? t(DEVICE_ROLE_LABEL_KEYS[role]) : String(role || ''); }
@@ -16476,7 +16780,7 @@
     gridTileSize = Number(e.target.value);
     el('doc-grid').style.setProperty('--tile-w', `${gridTileSize}px`);
   });
-  el('grid-size-range').addEventListener('change', async () => { writeSetting('grid_tile_size', gridTileSize); await persistDb(); });
+  el('grid-size-range').addEventListener('change', async () => { writeSetting('grid_tile_size', gridTileSize); await persistDb({viewOnly: true}); });
   el('create-previews-btn').addEventListener('click', () => {
     if(previewsRun){ previewsRun.stop = true; return; }
     runPreviewJob(docsMissingPreview(sortDocs(applyFilters(allDocs))), 'missing');
