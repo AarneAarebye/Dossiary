@@ -502,7 +502,11 @@ this repo's git tags.
   integer ids above collide. Existing rows get a UUID v5 of `<table>:<key>`
   (`documents:12`, `document_splits:12:0`, `reminder_snoozes:12:7`) in
   `DOSSIARY_UID_NAMESPACE`, so every copy computes the same value; new rows
-  get `crypto.randomUUID()`. `migrateStableUids()` runs on every open, after
+  get `crypto.randomUUID()` (`newUid()`) in every INSERT -- except the built-in
+  fields the migrations add, which get their derived uid, and reminder snoozes,
+  always derived since the (document, field) pair is their identity. Export as
+  library and "Copy the setup of" keep a row's uid (`withUid()` selects it only
+  when the source has the column). `migrateStableUids()` runs on every open, after
   the other migrations, filling any missing uid with its derived value --
   also a row an older Dossiary on another Mac wrote without one -- and sets
   the `stable_uids_migrated` marker. **The namespace never changes**: a new

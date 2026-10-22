@@ -4,6 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
+import uuid
 import asyncio, json
 from playwright.async_api import async_playwright
 
@@ -112,6 +113,13 @@ async def main():
         # === Scenario 1: "only what these documents use" ===
         used = await page.evaluate(BUILD_JS, [[1, 2], 'used'])
         print("Only the exported documents, ids kept:", sorted(d['id'] for d in used['documents']) == [1, 2])
+        here = await page.evaluate("() => JSON.parse(new TextDecoder().decode(window.__TEST_ROOT._children.get('library.sqlite')._bytes))")
+        def uid_of(data, table, key='id', val=None): return next((r.get('uid') for r in data[table] if r[key] == val), None)
+        print("...with their uids kept (documents, tags, people, fields):",
+              all(uid_of(used, 'documents', val=i) and uid_of(used, 'documents', val=i) == uid_of(here, 'documents', val=i) for i in (1, 2))
+              and all(t.get('uid') and t['uid'] == uid_of(here, 'tags', val=t['id']) for t in used['tags'])
+              and all(x.get('uid') and x['uid'] == uid_of(here, 'people', val=x['id']) for x in used['people'])
+              and all(f.get('uid') and f['uid'] == uid_of(here, 'fields', val=f['id']) for f in used['fields']))
         print("...with their details:", next(d for d in used['documents'] if d['id'] == 2)['ocr_text'] == 'text 2'
               and next(d for d in used['documents'] if d['id'] == 1)['file_hash'] == 'hash1')
         print("Only their tags:", [t['name'] for t in used['tags']] == ['tax'])

@@ -4,6 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
+import uuid
 import asyncio, json
 from playwright.async_api import async_playwright
 
@@ -108,6 +109,8 @@ async def main():
         fields = {f['name']: f for f in new['fields']}
         print("Custom field copied with its id and flags:", fields.get('Organization', {}).get('id') == 10
               and fields['Organization']['show_as_column'] == 1 and fields['Organization']['autocomplete'] == 0)
+        print("...keeping its uid (the derived one, as the source never had one):",
+              fields.get('Organization', {}).get('uid') == str(uuid.uuid5(uuid.UUID('a3f1c0de-5d0c-4b4e-9e1a-d055a12f0001'), 'fields:10')))
         print("No field is duplicated by the built-in field setup:", len(new['fields']) == len(fields) == 6)
         print("Document types' field order copied:", sorted((r['document_type'], r['field_name'], r['position']) for r in new['document_type_fields'])
               == [('Invoice', 'Amount', 1), ('Invoice', 'Currency', 2), ('Invoice', 'Organization', 0)])

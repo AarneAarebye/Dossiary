@@ -4,6 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
+import re
 import asyncio, json
 from playwright.async_api import async_playwright
 
@@ -282,11 +283,15 @@ async def run_test():
                 const f = await fh.getFile();
                 const text = await f.text();
                 const parsed = JSON.parse(text);
-                return { docCount: parsed.documents.length, tagCount: parsed.tags.length, tagNames: parsed.tags.map(t=>t.name) };
+                return { docCount: parsed.documents.length, tagCount: parsed.tags.length, tagNames: parsed.tags.map(t=>t.name),
+                         newDocUid: (parsed.documents.find(d => d.id === 2) || {}).uid, newTagUid: (parsed.tags.find(t => t.name === 'NewTag') || {}).uid };
             })()
         """)
         print("--- Scenario 3: verify persisted bytes on 'disk' after save ---")
         print("persisted state:", exported_bytes_check)
+        V4 = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+        print("captured document and its new tag got random v4 uids:",
+              bool(V4.match(exported_bytes_check['newDocUid'] or '')) and bool(V4.match(exported_bytes_check['newTagUid'] or '')))
 
         print("JS ERRORS (page1):", errors)
         print("JS ERRORS (page2, unused nav):", errors2)

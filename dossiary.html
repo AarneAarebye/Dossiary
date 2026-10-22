@@ -4855,6 +4855,13 @@
     const placeholders = cols.map(() => '?').join(', ');
     for(const row of rows) dstDb.run(`INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`, row);
   }
+  // A copied row keeps its uid (it's the same record), when the source has
+  // the column at all -- a library from before stable uids doesn't, and its
+  // rows get their derived uid when the copy is first opened.
+  function withUid(srcDb, table, cols){
+    try{ srcDb.exec(`SELECT uid FROM ${table}`); return [...cols, 'uid']; }
+    catch(e){ return cols; }
+  }
   // Copies into a fresh, empty database (the global db by default). Field ids
   // are kept, since visible_columns, sort_key and smart collection rules refer
   // to them. Runs before the field migrations, which then find their fields by
@@ -4862,11 +4869,11 @@
   // (an older library) is skipped.
   function copySetupFrom(srcDb, dstDb = db, settingsNotCopied = SETUP_SETTINGS_NOT_COPIED){
     const copy = (table, cols, keep) => insertRows(dstDb, table, cols, selectRows(srcDb, table, cols).filter(row => !keep || keep(row)));
-    copy('fields', ['id', 'name', 'type', 'show_as_column', 'autocomplete']);
+    copy('fields', withUid(srcDb, 'fields', ['id', 'name', 'type', 'show_as_column', 'autocomplete']));
     copy('document_type_fields', ['document_type', 'field_name', 'position']);
     copy('field_descriptions', ['field_name', 'description']);
-    copy('collection_folders', ['id', 'name']);
-    copy('collections', collectionColumns(srcDb), row => row[2] === 'smart');
+    copy('collection_folders', withUid(srcDb, 'collection_folders', ['id', 'name']));
+    copy('collections', withUid(srcDb, 'collections', collectionColumns(srcDb)), row => row[2] === 'smart');
     copy('settings', ['key', 'value'], row => !settingsNotCopied.includes(row[0]));
   }
   // folder_id is newer than collections itself; an older source lacks it.
@@ -4900,25 +4907,27 @@
       insertRows(dst, table, cols, rows);
       return rows;
     };
-    const docs = forDocs('documents', DOCUMENT_COLUMNS);
+    const docs = forDocs('documents', withUid(srcDb, 'documents', DOCUMENT_COLUMNS));
     const docTypes = new Set(docs.map(row => row[DOCUMENT_COLUMNS.indexOf('document_type')]).filter(Boolean));
     const docTags = forDocs('document_tags', ['document_id', 'tag_id']);
     const docPeople = forDocs('document_people', ['document_id', 'person_id']);
     const fieldPeople = forDocs('document_field_people', ['document_id', 'field_id', 'person_id']);
     const fieldValues = forDocs('document_field_values', ['document_id', 'field_id', 'value']);
-    forDocs('document_splits', ['document_id', 'position', 'category', 'amount', 'note']);
-    const snoozes = forDocs('reminder_snoozes', ['document_id', 'field_id', 'snoozed_until', 'dismissed']);
+    forDocs('document_splits', withUid(srcDb, 'document_splits', ['document_id', 'position', 'category', 'amount', 'note']));
+    const snoozes = forDocs('reminder_snoozes', withUid(srcDb, 'reminder_snoozes', ['document_id', 'field_id', 'snoozed_until', 'dismissed']));
 
     const tagIds = new Set(docTags.map(row => row[1]));
-    insertRows(dst, 'tags', ['id', 'name'], selectRows(srcDb, 'tags', ['id', 'name']).filter(row => tagIds.has(row[0])));
+    const tagCols = withUid(srcDb, 'tags', ['id', 'name']);
+    insertRows(dst, 'tags', tagCols, selectRows(srcDb, 'tags', tagCols).filter(row => tagIds.has(row[0])));
     const personIds = new Set([...docPeople.map(row => row[1]), ...fieldPeople.map(row => row[2])]);
-    insertRows(dst, 'people', ['id', 'name'], selectRows(srcDb, 'people', ['id', 'name']).filter(row => personIds.has(row[0])));
+    const personCols = withUid(srcDb, 'people', ['id', 'name']);
+    insertRows(dst, 'people', personCols, selectRows(srcDb, 'people', personCols).filter(row => personIds.has(row[0])));
 
     if(setupMode === 'all'){
       copySetupFrom(srcDb, dst, EXPORT_SETTINGS_NOT_COPIED);
     }else{
       const usedFieldIds = new Set([...fieldValues.map(row => row[1]), ...fieldPeople.map(row => row[1]), ...snoozes.map(row => row[1])]);
-      const fieldCols = ['id', 'name', 'type', 'show_as_column', 'autocomplete'];
+      const fieldCols = withUid(srcDb, 'fields', ['id', 'name', 'type', 'show_as_column', 'autocomplete']);
       const fields = selectRows(srcDb, 'fields', fieldCols).filter(row => usedFieldIds.has(row[0]) || NON_RENAMEABLE_FIELD_NAMES.includes(row[1]));
       insertRows(dst, 'fields', fieldCols, fields);
       const fieldNames = new Set(fields.map(row => row[1]));
@@ -4933,13 +4942,14 @@
     // Manual collections holding an exported document, with only those documents.
     const memberships = selectRows(srcDb, 'collection_documents', ['collection_id', 'document_id']).filter(row => idSet.has(row[1]));
     const memberOf = new Set(memberships.map(row => row[0]));
-    const collCols = collectionColumns(srcDb);
+    const collCols = withUid(srcDb, 'collections', collectionColumns(srcDb));
     const manual = selectRows(srcDb, 'collections', collCols).filter(row => row[2] === 'manual' && memberOf.has(row[0]));
     insertRows(dst, 'collections', collCols, manual);
     insertRows(dst, 'collection_documents', ['collection_id', 'document_id'], memberships);
     if(setupMode !== 'all'){ // 'all' already copied every folder
       const folderIds = new Set(manual.map(row => row[4]).filter(v => v != null));
-      insertRows(dst, 'collection_folders', ['id', 'name'], selectRows(srcDb, 'collection_folders', ['id', 'name']).filter(row => folderIds.has(row[0])));
+      const folderCols = withUid(srcDb, 'collection_folders', ['id', 'name']);
+      insertRows(dst, 'collection_folders', folderCols, selectRows(srcDb, 'collection_folders', folderCols).filter(row => folderIds.has(row[0])));
     }
     return dst;
   }
@@ -5949,6 +5959,9 @@
   // like the built-in fields, get their derived id too). Fills any missing uid
   // -- also one written without a uid by an older Dossiary on another Mac --
   // with the derived value, never a random one, so copies keep agreeing.
+  // The built-in fields the migrations above insert (Payment method, People,
+  // Reminder, ...) deliberately get no uid there: this fills in their derived
+  // one, so two Macs adding them to copies of one old library agree.
   async function migrateStableUids(){
     for(const [table, keyCols] of UID_TABLES){
       const { columns, rows } = queryAll(`SELECT ${keyCols.join(', ')}, uid FROM ${table}`);
@@ -6547,8 +6560,8 @@
     // own comment for why -- same reasoning Amount/Date table columns never got
     // filter dropdowns either).
     const autocomplete = type === 'text' ? 1 : 0;
-    db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)',
-      [id, name, type, 0, autocomplete]);
+    db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete, uid) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, name, type, 0, autocomplete, newUid()]);
     fieldDefs.push({ id, name, type, showAsColumn: false, autocomplete: !!autocomplete });
     fieldNameToId[name] = id;
 
@@ -9029,7 +9042,7 @@
         let personId = personNameToId[name];
         if(personId === undefined){
           personId = nextPersonId++;
-          db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+          db.run('INSERT INTO people (id, name, uid) VALUES (?, ?, ?)', [personId, name, newUid()]);
           personNameToId[name] = personId;
         }
         db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [d.id, fieldId, personId]);
@@ -9044,7 +9057,7 @@
       let tagId = tagNameToId[name];
       if(tagId === undefined){
         tagId = nextTagId++;
-        db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+        db.run('INSERT INTO tags (id, name, uid) VALUES (?, ?, ?)', [tagId, name, newUid()]);
         tagNameToId[name] = tagId;
       }
       db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [d.id, tagId]);
@@ -9055,7 +9068,7 @@
     for(const [name, value] of Object.entries(rec.fields)){
       if(fieldNameToId[name] === undefined){
         const id = nextFieldId++;
-        db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete) VALUES (?, ?, ?, ?, ?)', [id, name, 'text', 0, 1]);
+        db.run('INSERT INTO fields (id, name, type, show_as_column, autocomplete, uid) VALUES (?, ?, ?, ?, ?, ?)', [id, name, 'text', 0, 1, newUid()]);
         fieldDefs.push({ id, name, type: 'text', showAsColumn: false, autocomplete: true });
         fieldNameToId[name] = id;
       }
@@ -10340,7 +10353,10 @@
 
   async function snoozeReminder(documentId, fieldId, snoozedUntil){
     reminderSnoozes[`${documentId}:${fieldId}`] = { snoozedUntil, dismissed: false };
-    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [documentId, fieldId, snoozedUntil, 0]);
+    // A snooze is identified by its (document, field) pair, so its uid is always
+    // the derived one: the same pair snoozed on two Macs is the same record.
+    const uid = await derivedUid('reminder_snoozes', `${documentId}:${fieldId}`);
+    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed, uid) VALUES (?, ?, ?, ?, ?)', [documentId, fieldId, snoozedUntil, 0, uid]);
     await persistDb();
   }
 
@@ -10353,7 +10369,8 @@
   // check -- it's written anyway to keep the row's own stored state honest.
   async function dismissReminder(documentId, fieldId){
     reminderSnoozes[`${documentId}:${fieldId}`] = { snoozedUntil: null, dismissed: true };
-    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed) VALUES (?, ?, ?, ?)', [documentId, fieldId, null, 1]);
+    const uid = await derivedUid('reminder_snoozes', `${documentId}:${fieldId}`); // see snoozeReminder()
+    db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed, uid) VALUES (?, ?, ?, ?, ?)', [documentId, fieldId, null, 1, uid]);
     await persistDb();
   }
 
@@ -11287,7 +11304,7 @@
             let tagId = tagNameToId[name];
             if(tagId === undefined){
               tagId = nextTagId++;
-              db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+              db.run('INSERT INTO tags (id, name, uid) VALUES (?, ?, ?)', [tagId, name, newUid()]);
               tagNameToId[name] = tagId;
             }
             db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
@@ -11312,7 +11329,7 @@
             let personId = personNameToId[name];
             if(personId === undefined){
               personId = nextPersonId++;
-              db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+              db.run('INSERT INTO people (id, name, uid) VALUES (?, ?, ?)', [personId, name, newUid()]);
               personNameToId[name] = personId;
             }
             db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, field.id, personId]);
@@ -11936,7 +11953,7 @@
         let tagId = tagNameToId[name];
         if(tagId === undefined){
           tagId = nextTagId++;
-          db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+          db.run('INSERT INTO tags (id, name, uid) VALUES (?, ?, ?)', [tagId, name, newUid()]);
           tagNameToId[name] = tagId;
         }
         db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
@@ -11969,7 +11986,7 @@
           let personId = personNameToId[name];
           if(personId === undefined){
             personId = nextPersonId++;
-            db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+            db.run('INSERT INTO people (id, name, uid) VALUES (?, ?, ?)', [personId, name, newUid()]);
             personNameToId[name] = personId;
           }
           db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldId, personId]);
@@ -12003,7 +12020,7 @@
 
       db.run('DELETE FROM document_splits WHERE document_id = ?', [id]);
       splitsForDoc.forEach((sp, i) => {
-        db.run('INSERT INTO document_splits (document_id, position, category, amount, note) VALUES (?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null]);
+        db.run('INSERT INTO document_splits (document_id, position, category, amount, note, uid) VALUES (?, ?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null, newUid()]);
       });
 
       const otherPersonFieldsForSidecar = { ...personFieldValuesForDoc };
@@ -13366,9 +13383,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built, file_hash, has_text_layer, thumbnail_hd)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?, ?, ?)
-      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt, fileHashForDb, (pendingPdfHasText && pendingFile.type === 'application/pdf') ? 1 : 0, thumbnailPathForDb ? 1 : 0]);
+                                created_at, source, source_legacy_id, thumbnail_path, searchable_pdf_built, file_hash, has_text_layer, thumbnail_hd, uid)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'captured', NULL, ?, ?, ?, ?, ?, ?)
+      `, [id, title, category, subcategory, documentType, date, importDate, notes, ocrText, ocrLanguage, filePathForDb, originalFilePathForDb, createdAt, thumbnailPathForDb, searchablePdfBuilt, fileHashForDb, (pendingPdfHasText && pendingFile.type === 'application/pdf') ? 1 : 0, thumbnailPathForDb ? 1 : 0, newUid()]);
 
       const tagNames = el('f-tags').value.split(',').map(t => t.trim()).filter(Boolean);
       const tagsForDoc = [];
@@ -13376,7 +13393,7 @@
         let tagId = tagNameToId[name];
         if(tagId === undefined){
           tagId = nextTagId++;
-          db.run('INSERT INTO tags (id, name) VALUES (?, ?)', [tagId, name]);
+          db.run('INSERT INTO tags (id, name, uid) VALUES (?, ?, ?)', [tagId, name, newUid()]);
           tagNameToId[name] = tagId;
         }
         db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagId]);
@@ -13395,7 +13412,7 @@
           let personId = personNameToId[name];
           if(personId === undefined){
             personId = nextPersonId++;
-            db.run('INSERT INTO people (id, name) VALUES (?, ?)', [personId, name]);
+            db.run('INSERT INTO people (id, name, uid) VALUES (?, ?, ?)', [personId, name, newUid()]);
             personNameToId[name] = personId;
           }
           db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldId, personId]);
@@ -13414,7 +13431,7 @@
       }
 
       splitsForDoc.forEach((sp, i) => {
-        db.run('INSERT INTO document_splits (document_id, position, category, amount, note) VALUES (?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null]);
+        db.run('INSERT INTO document_splits (document_id, position, category, amount, note, uid) VALUES (?, ?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null, newUid()]);
       });
 
       const otherPersonFieldsForSidecar = { ...personFieldValuesForDoc };
@@ -13788,7 +13805,7 @@
       if(existing){
         db.run('UPDATE collections SET name = ?, criteria = ? WHERE id = ?', [name, criteria, existing.id]);
       }else{
-        db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [nextCollectionId, name, 'smart', criteria]);
+        db.run('INSERT INTO collections (id, name, kind, criteria, uid) VALUES (?, ?, ?, ?, ?)', [nextCollectionId, name, 'smart', criteria, newUid()]);
       }
       await persistDb();
       loadCollections();
@@ -14215,10 +14232,10 @@
     db.run(`
       INSERT INTO documents (id, title, category, subcategory, document_type, date,
                               import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                              created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, 'split', NULL, NULL, ?, 0, ?)
+                              created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash, uid)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, 'split', NULL, NULL, ?, 0, ?, ?)
     `, [id, title, src.category || null, src.subcategory || null, src.document_type || null, src.date || null,
-        now, src.notes || null, filePath, now, src.needs_review ? 1 : 0, fileHash]);
+        now, src.notes || null, filePath, now, src.needs_review ? 1 : 0, fileHash, newUid()]);
     for(const tag of src.tags || []){
       if(tagNameToId[tag] !== undefined) db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagNameToId[tag]]);
     }
@@ -14548,7 +14565,7 @@
     el('manage-new-folder-btn').addEventListener('click', async () => {
       const name = el('manage-new-folder-input').value.trim();
       if(!name) return;
-      db.run('INSERT INTO collection_folders (id, name) VALUES (?, ?)', [nextCollectionFolderId, name]);
+      db.run('INSERT INTO collection_folders (id, name, uid) VALUES (?, ?, ?)', [nextCollectionFolderId, name, newUid()]);
       await persistDb();
       loadCollections();
       el('manage-new-folder-input').value = '';
@@ -14790,9 +14807,9 @@
       db.run(`
         INSERT INTO documents (id, title, category, subcategory, document_type, date,
                                 import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash, thumbnail_hd)
-        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0, ?, ?)
-      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb, fileHashForDb, thumbnailPathForDb ? 1 : 0]);
+                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash, thumbnail_hd, uid)
+        VALUES (?, ?, NULL, NULL, ?, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?, NULL, ?, 1, 0, ?, ?, ?)
+      `, [id, title, documentType, createdAt, filePathForDb, originalFilePathForDb, createdAt, source, thumbnailPathForDb, fileHashForDb, thumbnailPathForDb ? 1 : 0, newUid()]);
 
       const d = {
         id, title, category: null, subcategory: null, document_type: documentType,
@@ -16569,7 +16586,7 @@
     // createManualCollection() below).
     const id = nextCollectionId;
     const criteria = JSON.stringify(criteriaToRules(currentFilters()));
-    db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'smart', criteria]);
+    db.run('INSERT INTO collections (id, name, kind, criteria, uid) VALUES (?, ?, ?, ?, ?)', [id, name, 'smart', criteria, newUid()]);
     await persistDb();
     loadCollections();
     el('smart-collection-name-form').style.display = 'none';
@@ -16594,7 +16611,7 @@
   // empty manual collection.
   async function createManualCollection(name){
     const id = nextCollectionId; // see saveSmartCollection()'s own comment on why not `++`
-    db.run('INSERT INTO collections (id, name, kind, criteria) VALUES (?, ?, ?, ?)', [id, name, 'manual', null]);
+    db.run('INSERT INTO collections (id, name, kind, criteria, uid) VALUES (?, ?, ?, ?, ?)', [id, name, 'manual', null, newUid()]);
     await persistDb();
     loadCollections();
     render();
