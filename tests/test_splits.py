@@ -142,8 +142,12 @@ async def main():
         await page.wait_for_timeout(150)
         print("A line without an amount is flagged:", await page.inner_text('#e-splits-summary') == 'Every line needs a category and an amount.')
         await last.locator('.split-remove-btn').click()
-        await page.click('#cancel-edit-btn')
-        await page.wait_for_timeout(200)
+        line_uid = (await saved())['document_splits'][0].get('uid')
+        await page.fill('#e-title', 'Supermarket')
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(400)
+        after = (await saved())['document_splits']
+        print("A save that leaves the line alone keeps its uid:", bool(line_uid) and len(after) == 1 and after[0].get('uid') == line_uid)
 
         # === Renaming a category follows into split lines ===
         await page.click('#tools-btn')

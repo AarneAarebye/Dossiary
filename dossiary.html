@@ -4859,7 +4859,7 @@
   // the column at all -- a library from before stable uids doesn't, and its
   // rows get their derived uid when the copy is first opened.
   function withUid(srcDb, table, cols){
-    try{ srcDb.exec(`SELECT uid FROM ${table}`); return [...cols, 'uid']; }
+    try{ srcDb.exec(`SELECT uid FROM ${table} LIMIT 0`); return [...cols, 'uid']; }
     catch(e){ return cols; }
   }
   // Copies into a fresh, empty database (the global db by default). Field ids
@@ -4947,7 +4947,8 @@
     insertRows(dst, 'collections', collCols, manual);
     insertRows(dst, 'collection_documents', ['collection_id', 'document_id'], memberships);
     if(setupMode !== 'all'){ // 'all' already copied every folder
-      const folderIds = new Set(manual.map(row => row[4]).filter(v => v != null));
+      const folderIdx = collCols.indexOf('folder_id');
+      const folderIds = new Set(folderIdx < 0 ? [] : manual.map(row => row[folderIdx]).filter(v => v != null));
       const folderCols = withUid(srcDb, 'collection_folders', ['id', 'name']);
       insertRows(dst, 'collection_folders', folderCols, selectRows(srcDb, 'collection_folders', folderCols).filter(row => folderIds.has(row[0])));
     }
@@ -12018,9 +12019,14 @@
         if(name) customFieldsForDoc[name] = value;
       }
 
+      // Lines are rewritten on every save; a position that already had a line
+      // keeps its uid, so a save that didn't touch the lines doesn't make them
+      // look like new records to a merge.
+      const splitUidByPosition = new Map(queryAll('SELECT document_id, position, uid FROM document_splits').rows
+        .filter(r => r[0] === id && r[2]).map(r => [r[1], r[2]]));
       db.run('DELETE FROM document_splits WHERE document_id = ?', [id]);
       splitsForDoc.forEach((sp, i) => {
-        db.run('INSERT INTO document_splits (document_id, position, category, amount, note, uid) VALUES (?, ?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null, newUid()]);
+        db.run('INSERT INTO document_splits (document_id, position, category, amount, note, uid) VALUES (?, ?, ?, ?, ?, ?)', [id, i, sp.category, sp.amount.toFixed(2), sp.note || null, splitUidByPosition.get(i) || newUid()]);
       });
 
       const otherPersonFieldsForSidecar = { ...personFieldValuesForDoc };

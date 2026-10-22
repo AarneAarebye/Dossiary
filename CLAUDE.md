@@ -511,7 +511,11 @@ this repo's git tags.
   also a row an older Dossiary on another Mac wrote without one -- and sets
   the `stable_uids_migrated` marker. **The namespace never changes**: a new
   one would give every existing row a different id. Integer ids stay the
-  keys everything references; nothing looks rows up by uid yet.
+  keys everything references; nothing looks rows up by uid yet. Saving the
+  Edit form rewrites a document's split lines but keeps each kept position's
+  uid. Accepted gap: an *older* Dossiary that deletes a tag/person and reuses
+  its integer id leaves a row the next open derives the old uid for -- only
+  this version's own inserts are guaranteed distinct.
 - **Tag deduplication** happens via an in-memory `tagNameToId` map built at
   load time and updated on every new tag insert — not a `SELECT ... WHERE
   name = ?` round-trip per tag. This assumes single-writer, single-tab
