@@ -2521,19 +2521,38 @@ this repo's git tags.
   not-a-duplicate, delete fields/tags/people/previews, re-link, "Check for
   text", the Edit form's Make searchable queue, the backup reminder days).
   Granted at the loaded version → go on; granted newer → reload first
-  (`maybeReload(true)`, which may run under an open dialog since nothing has
-  changed yet), then go on with ids from the fresh database; busy → the
+  (`maybeReload(true)`), then go on with ids from the fresh database --
+  **but never under an open dialog**: started from inside one (Field
+  Settings or Make searchable over the Edit form, Library check's deletes,
+  a scan), that dialog holds values and lists from the older version, so
+  the flow refuses with "{device} changed this library — close this dialog
+  and start again" (`syncCloseDialogFirst`; reopening recomputes); and if
+  the reload itself is refused (a background job, a save in flight, a
+  reload already running -- checked again afterwards, and up front while
+  `syncReloading`), "The library is updating — try again in a moment"
+  (`syncLibraryUpdating`), never starting on the old memory; busy → the
   take-over dialog right there, and Cancel means the flow doesn't start
   ("Not started: {device} is editing this library."); offline, not
-  connected, no answer, no sync file → go on. A change held back from
+  connected, no answer, no sync file → go on (in the last three a save is
+  then held back, see below). A change held back from
   before, met by a newer version, is kept aside first (below) and the flow
   doesn't start. **The gate is also inside `persistDb(opts)`**, so every one of
   its ~80 callers is still covered: a real write without the lease first runs
-  `ensureLease()` (one acquire in flight, shared by concurrent saves). No
-  admin token → `unconnected`, write; `granted` → `holding`; `offline` →
-  `offline`, write; no answer, a timeout or an error → `unsynced` with the
-  reason as the marker's tooltip, write (a timeout is "try again", never
-  offline); `busy` → a take-over dialog ("Being edited on {device} since
+  `ensureLease()` (one acquire in flight, shared by concurrent saves).
+  `granted` → `holding`; `offline` → `offline`, write; **no admin token
+  (`unconnected`) or no answer / a timeout / an error (`unsynced`, the
+  reason as the marker's tooltip; a timeout is "try again", never offline)
+  → the change is held back, not written** (fix round 2): Dossiary Sync
+  treats a database-only change it didn't lease like a view preference and
+  pulls over it. The marker reads "not connected — changes not saved" or
+  "Dossiary Sync not answering — changes not saved", the status line says
+  why, and `beforeunload`/Switch library ask as for a Cancel
+  (`syncDiscardTextNoService`). `syncTick()` retries a silent acquire every
+  tick while `unsynced` with a change held back (`syncRetryHeldBack()`), and
+  storing an admin token (`setSyncAdminToken()`, Connect in the devices
+  dialog) does the same for `unconnected`; once granted or offline the change
+  is written through `persistDb()`, so the safety net still applies. View
+  preferences stay as they were. `busy` → a take-over dialog ("Being edited on {device} since
   {time}.", appended as its own layer to `#modal-root`, or to
   `#modal-root-over` when a dialog such as the Edit form is already open, so
   that dialog survives; Escape = Cancel, caught on `window` in the capture
@@ -2564,15 +2583,22 @@ this repo's git tags.
   (and a person's save that joined that acquire asks with one of its own).
   Their change then waits in memory as held back (`syncHoldBack()`), for the
   next real save or the job's next pass. **Background jobs write files only
-  with the lease to hand** (`syncMayWriteFiles()`: holding, offline, not
-  connected, the service not answering, or no sync file -- the states in
-  which a person's save writes too -- and never while behind a newer version
-  or holding back a change): the OCR runner skips its pass while another Mac
+  with the lease to hand** (`syncMayWriteFiles()`: holding, offline, or no
+  sync file -- never while not connected or the service isn't answering,
+  never while behind a newer version or holding back a change): the OCR runner skips its pass while another Mac
   edits, and before swapping in a helper's result or starting its own OCR it
   calls `syncBackgroundMayWrite()`, which takes a free lease silently
   (`ensureLease(true)`, never a dialog) -- otherwise the job stays queued; a
   preview job stops at the next document; a backup writes `last_backup_at`
-  only that way too. **The safety net**: if a real write finds this tab's
+  only that way too. A lease only a background job took
+  (`syncLeaseForBackgroundOnly`, cleared by any person's flow or save) goes
+  back one heartbeat interval after its last write instead of ten minutes. A
+  background save that meets a newer version doesn't keep anything aside
+  (it holds only derived data -- hashes, a finished OCR row): it drops that
+  data with the reload and the job redoes it, unless a person's change is
+  also held back, which is kept aside as usual. **An open dialog counts as
+  activity**: while one is open and the lease is held, the idle clock is
+  reset every tick, so a form left open never meets a released lease. **The safety net**: if a real write finds this tab's
   memory based on an older version than the newest one another Mac is known
   to have made (`syncBehind()`: `syncKnownNewer`, noted by
   `syncNoteNewer()` from acquire answers, polls not showing this tab as
@@ -2598,7 +2624,7 @@ this repo's git tags.
   `syncNewerOnDisk()`) it isn't written but triggers a reload, after which
   the preference is written. After an acquire that went unanswered
   (`unsynced`), saves don't ask again for 60 s (`syncUnsyncedAt`); they
-  write meanwhile. `syncTick()` (every 5 s while a synced library is open)
+  hold back at once meanwhile. `syncTick()` (every 5 s while a synced library is open)
   heartbeats every 60 s while holding -- `lost` with a holder → `other`
   ("editing on iMac"), `lost` with no holder → re-acquire silently, a failed
   call → try again next tick -- retries an acquire every 60 s while

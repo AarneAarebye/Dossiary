@@ -31,6 +31,11 @@ FAKE_SYNC = """
         if(!url.startsWith(BASE + '/') || S.down) throw new TypeError('Failed to fetch');
         const path = url.slice(BASE.length);
         if(path === '/admin/health') return json(200, { service: 'dossiary-sync', version: '0.4.0', adminProtocol: 1, connected: headers.Authorization === `Bearer ${S.token}` });
+        if(path === '/admin/connect/start' && opts.method === 'POST') return json(200, { validFor: 300 });
+        if(path === '/admin/connect' && opts.method === 'POST'){
+            const body = JSON.parse(opts.body || '{}');
+            return body.code === 'KX7P2M9Q' ? json(200, { token: S.token }) : json(403, { error: 'Wrong code' });
+        }
         if(headers.Authorization !== `Bearer ${S.token}`) return json(401, { error: 'Unauthorized' });
         if(path === '/admin/libraries') return json(200, S.libraries || [{ id: 'lib-7f3a', name: 'Household', available: true }]);
         if(path === '/admin/devices') return json(200, []);
@@ -307,24 +312,56 @@ async def scenario_offline(p):
 
 
 async def scenario_no_token(p):
+    # X1: no admin token in this browser → a real change is held back, not written.
     browser, page, errors = await open_app(p, token=None)
+    before = await saved_title(page)
     await edit_title(page, 'Unconnected change')
-    print("no token: the write goes through:", await saved_title(page) == 'Unconnected change')
+    print("no token: the change isn't written:", await saved_title(page) == before)
     print("...with no admin calls:", await admin_calls(page) == [])
     m = await marker(page)
-    print("...marker reads 'not connected':", m['visible'] and m['text'] == 'not connected', m)
+    print("...marker reads 'not connected — changes not saved':", m['visible'] and m['text'] == 'not connected — changes not saved', m)
     print("...its tooltip points to the devices dialog:", m['title'] == 'Connect in Tools › iPhone & other devices…', m['title'])
+    print("...the status line says so:", (await status(page)).startswith("Not saved: this browser isn't connected"), await status(page))
+    print("...the change stays in this window:", 'Unconnected change' in await page.inner_text('tr[data-id="1"]'))
+    prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
+    print("...closing the tab asks first:", prevented)
+    w = await writes(page)
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    print("...a background write is held back too:", await writes(page) == w)
+    # Connecting in the devices dialog takes the lease and writes it.
+    await page.click('#tools-btn'); await page.click('#devices-btn')
+    await page.wait_for_timeout(300)
+    await page.click('#devices-connect-btn')
+    await page.wait_for_timeout(200)
+    await page.fill('#devices-code-input', 'KX7P2M9Q')
+    await page.click('#devices-code-submit')
+    await page.wait_for_timeout(600)
+    print("after connecting: the held-back change is written:", await saved_title(page) == 'Unconnected change', await saved_title(page))
+    print("...through an acquire:", len(await lease_calls(page, 'acquire')) == 1)
+    m = await marker(page)
+    print("...marker reads '✎ editing':", m['text'] == '✎ editing', m)
     print("no page errors:", not errors, errors)
     await browser.close()
 
 
 async def scenario_service_down(p):
+    # X1: the service not answering → held back, written once it answers.
     browser, page, errors = await open_app(p, sync={"token": "admin-tok", "down": True})
+    before = await saved_title(page)
     await edit_title(page, 'Down change')
-    print("service down: the write goes through:", await saved_title(page) == 'Down change')
+    print("service down: the change isn't written:", await saved_title(page) == before)
     m = await marker(page)
-    print("...marker reads 'not synced yet':", m['visible'] and m['text'] == 'not synced yet', m)
+    print("...marker reads 'Dossiary Sync not answering — changes not saved':", m['visible'] and m['text'] == 'Dossiary Sync not answering — changes not saved', m)
     print("...with the reason as its tooltip:", "didn't answer" in m['title'], m['title'])
+    print("...the status line says so:", (await status(page)).startswith("Not saved: Dossiary Sync isn't answering"), await status(page))
+    w = await writes(page)
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    print("...a background write is held back too:", await writes(page) == w)
+    await page.evaluate("window.__SYNC.down = false")
+    await tick(page)
+    await page.wait_for_timeout(300)
+    print("once it answers, the next tick writes it:", await saved_title(page) == 'Down change')
+    print("...marker reads '✎ editing':", (await marker(page))['text'] == '✎ editing')
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -676,6 +713,17 @@ async def scenario_safety_net(p):
     await page.wait_for_timeout(500)
     names2 = await kept_aside_names(page)
     print("...a second one gets its own folder:", len(names2) == 2 and names[0] in names2, names2)
+    # N3: a background job's save behind a newer version keeps nothing aside and shows no notice.
+    await page.click('#sync-notice-ok-btn')
+    await page.wait_for_timeout(150)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 6; }", state(6))
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 2])")
+    await disk_change(page, {2: 'Receipt (iMac 3)'})
+    await tick(page)
+    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
+    await page.wait_for_timeout(500)
+    print("a background save behind a newer version: no folder, no notice:", len(await kept_aside_names(page)) == 2 and await page.locator('#sync-notice-dialog').count() == 0)
+    print("...the newer version is loaded:", 'Receipt (iMac 3)' in await row_text(page, 2))
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -743,6 +791,9 @@ async def scenario_background_files(p):
         await page.wait_for_timeout(200)
         if await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0: break
     print("with the lease taken silently, the job runs:", await page.evaluate("window.__DEBUG_ocrJobRows().length") == 0 and (await sync_state(page))['state'] == 'holding')
+    await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
+    await page.wait_for_timeout(200)
+    print("...a lease only the job took goes back after a minute:", len(await lease_calls(page, 'release')) == 1 and (await sync_state(page))['state'] == 'none')
     errors = [e for e in errors if 'ERR_FAILED' not in e]
     print("no page errors:", not errors, errors)
     await browser.close()
@@ -963,15 +1014,105 @@ async def scenario_sync_read_before_writes(p):
 
 
 async def scenario_unanswered_backoff(p):
-    # 6. After an unanswered acquire, don't ask again for about a minute.
+    # 6. After an unanswered acquire, a person's save doesn't ask again for about a minute (it holds back at once).
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
     await edit_title(page, 'One')
     n1 = len(await lease_calls(page, 'acquire'))
     await edit_title(page, 'Two')
-    print("unanswered acquire: the next save within a minute doesn't ask:", len(await lease_calls(page, 'acquire')) == n1 == 1 and await disk_doc_title(page, 1) == 'Two')
+    print("unanswered acquire: the next edit within a minute doesn't ask:", n1 == 1 and len(await lease_calls(page, 'acquire')) == 1)
+    print("...both held back, nothing written:", await disk_doc_title(page, 1) == 'Invoice' and (await sync_state(page))['unsaved'])
+    await page.evaluate("window.__SYNC.down = false")
     await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
-    await edit_title(page, 'Three')
-    print("...after a minute it asks again:", len(await lease_calls(page, 'acquire')) == 2 and await disk_doc_title(page, 1) == 'Three')
+    await page.wait_for_timeout(300)
+    print("...the tick's retry writes the latest:", await disk_doc_title(page, 1) == 'Two')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_idle_and_forms(p):
+    # N4: an open Edit form counts as activity -- no idle release under it.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    await open_edit(page)
+    print("holding with the Edit form open:", (await sync_state(page))['state'] == 'holding')
+    for _ in range(11):
+        await page.evaluate("window.__DEBUG_syncNow(60 * 1000)")
+    print("...no release after 11 minutes while it's open:", await lease_calls(page, 'release') == [] and (await sync_state(page))['state'] == 'holding')
+    await page.click('#cancel-edit-btn')
+    await page.wait_for_timeout(150)
+    for _ in range(11):
+        await page.evaluate("window.__DEBUG_syncNow(60 * 1000)")
+    print("...released 10 quiet minutes after it closes:", len(await lease_calls(page, 'release')) == 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_dialog_open_refuses(p):
+    # N1 (a): an Edit form open on v3; the lease lapsed and the iMac changed the document (v4).
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await open_edit(page)
+    await page.fill('#e-title', 'Typed on the old version')
+    await disk_change(page, {1: 'Invoice (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; }", state(4))
+    await tick(page)
+    await page.click('#e-type-fields-btn')
+    await page.wait_for_timeout(400)
+    st = await sync_state(page)
+    print("Set up fields from the stale Edit form: no reload under it:", st['reloads'] == 0, st)
+    print("...Field Settings doesn't open:", await page.evaluate("document.getElementById('modal-root-over').innerHTML === ''"))
+    print("...the status line says to close and start again:", 'close this dialog and start again' in await status(page), await status(page))
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(600)
+    print("...Save then doesn't overwrite the iMac's change:", await disk_doc_title(page, 1) == 'Invoice (iMac)')
+    print("...it's kept aside instead:", len(await kept_aside_names(page)) == 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_library_check_stale(p):
+    # N1 (b): Library check's lists come from v3; the iMac's v4 uses the "orphaned" tag again.
+    seed = dict(SEED2); seed["tags"] = [{"id": 1, "name": "old"}]
+    browser, page, errors = await open_app(p, seed=seed, sync={"token": "admin-tok", "state": state(3)})
+    page.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
+    await page.click('#tools-btn'); await page.click('#library-check-btn')
+    await page.wait_for_timeout(600)
+    await page.evaluate("""async () => {
+        const root = window.__TEST_ROOT, h = root._children.get('library.sqlite');
+        const data = JSON.parse(await (await h.getFile()).text());
+        data.document_tags = [{ document_id: 2, tag_id: 1 }];
+        h._bytes = new TextEncoder().encode(JSON.stringify(data));
+        const f = root._children.get('.dossiary-sync.json');
+        f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 }));
+    }""")
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; }", state(4))
+    await tick(page)
+    btn = page.locator('.orphaned-row button').first
+    print("Library check lists the tag as orphaned:", await btn.count() == 1)
+    await btn.click()
+    await page.wait_for_timeout(600)
+    disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text())")
+    print("Delete after a foreign version bump: the iMac's tag survives:", any(t['name'] == 'old' for t in disk['tags']) and disk['document_tags'] == [{"document_id": 2, "tag_id": 1}], disk.get('tags'), disk.get('document_tags'))
+    print("...the status line says to close and start again:", 'close this dialog and start again' in await status(page), await status(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_reload_refused(p):
+    # N2: the reload a gated action needs is refused (a background job runs) → the action doesn't start.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3), "acquireVersion": 4})
+    await page.click('tr[data-id="1"]')
+    await page.wait_for_timeout(150)
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__DEBUG_syncBackgroundBusy(true)")
+    await page.click('#archive-toggle-btn')
+    await page.wait_for_timeout(500)
+    disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text())")
+    print("reload refused: the archive doesn't start:", not disk['documents'][0]['archived'] and await kept_aside_names(page) == [])
+    print("...the status line says the library is updating:", await status(page) == 'The library is updating — try again in a moment.', await status(page))
+    await page.evaluate("window.__DEBUG_syncBackgroundBusy(false)")
+    await page.click('#archive-toggle-btn')
+    await page.wait_for_timeout(500)
+    disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text())")
+    print("...once free, it reloads and archives on the newer version:", disk['documents'][0]['archived'] and disk['documents'][1]['title'] == 'Receipt (iMac)')
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -982,7 +1123,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_acquire_newer_version, scenario_lost_via_state, scenario_kept_aside, scenario_last_error, scenario_german_task2,
              scenario_view_write_newer_on_disk, scenario_cancel_followups, scenario_background_writes_wait,
              scenario_takeover_layer_removed, scenario_sync_read_before_writes, scenario_unanswered_backoff,
-             scenario_safety_net, scenario_sleep_lost_lease, scenario_background_files]
+             scenario_safety_net, scenario_sleep_lost_lease, scenario_background_files,
+             scenario_idle_and_forms, scenario_dialog_open_refuses, scenario_library_check_stale, scenario_reload_refused]
 
 
 async def main():

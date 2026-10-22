@@ -1258,7 +1258,21 @@ folder; `sleep_lost_lease` (the state shows no lease while holding → `none`,
 the bump not taken as this Mac's, the save kept aside; the heartbeat's
 re-acquire with a newer version reloading); `background_files` (a queued OCR
 fallback job stays queued while the iMac edits and while the lease is busy, no
-dialog, then runs once the lease is taken silently)).
+dialog, then runs once the lease is taken silently, and that lease goes back
+a minute later). Fix round 2: no token and service down now hold the change
+back (marker "… — changes not saved", status line, `beforeunload`, a
+background write held back too) until connecting in the devices dialog (the
+fake serves `/admin/connect/start` and `/admin/connect`) or the service
+answering again (the next tick writes it); `idle_and_forms` (no idle release
+under an open Edit form, release 10 minutes after it closes);
+`dialog_open_refuses` (Set up fields from a stale Edit form after a foreign
+bump: no reload under it, "close this dialog and start again", the Save kept
+aside, the iMac's change intact); `library_check_stale` (an "orphaned" tag the
+iMac's newer version uses again isn't deleted from a stale Library check);
+`reload_refused` (`__DEBUG_syncBackgroundBusy(true)` makes the needed reload
+fail: Archive doesn't start, "The library is updating…"; once free it archives
+on the newer version); and in `safety_net`, a background save behind a newer
+version keeping nothing aside and showing no notice).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
