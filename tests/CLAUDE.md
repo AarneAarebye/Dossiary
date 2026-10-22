@@ -1449,3 +1449,11 @@ JS-stub side — so, like that note's own guidance, if you ever add a fourth
 test file that needs this same technique, copy
 `_write_patched_app_with_preview_enabled()` verbatim from one of these
 three rather than writing a new one from scratch.
+Stable uids (`test_stable_uids.py`): `__DEBUG_derivedUid()` against Python's
+`uuid.uuid5` in the same namespace (so the JavaScript UUID v5 is pinned to the
+standard); an old seeded library with rows in all eight uid tables and no uid
+getting every derived value, built-in fields added on open included, and the
+`stable_uids_migrated` marker; two fresh copies of one seed agreeing; a reopen
+changing nothing and restoring a cleared uid to the same value; a new library
+running it too. `test_splits.py` needs the git-ignored `tiny.pdf` fixture,
+which a fresh worktree lacks -- copy it from the main checkout.

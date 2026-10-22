@@ -3516,13 +3516,14 @@
       ocr_language TEXT, file_path TEXT, original_file_path TEXT,
       created_at TEXT, source TEXT, source_legacy_id INTEGER, thumbnail_path TEXT,
       archived INTEGER DEFAULT 0, needs_review INTEGER DEFAULT 0, deleted INTEGER DEFAULT 0,
-      searchable_pdf_built INTEGER DEFAULT 0, file_hash TEXT, has_text_layer INTEGER DEFAULT 0, text_checked INTEGER DEFAULT 0, thumbnail_hd INTEGER DEFAULT 0
+      searchable_pdf_built INTEGER DEFAULT 0, file_hash TEXT, has_text_layer INTEGER DEFAULT 0, text_checked INTEGER DEFAULT 0, thumbnail_hd INTEGER DEFAULT 0,
+      uid TEXT
     );
-    CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
+    CREATE TABLE IF NOT EXISTS tags ( id INTEGER PRIMARY KEY, name TEXT UNIQUE, uid TEXT );
     CREATE TABLE IF NOT EXISTS document_tags (
       document_id INTEGER, tag_id INTEGER, PRIMARY KEY (document_id, tag_id)
     );
-    CREATE TABLE IF NOT EXISTS people ( id INTEGER PRIMARY KEY, name TEXT UNIQUE );
+    CREATE TABLE IF NOT EXISTS people ( id INTEGER PRIMARY KEY, name TEXT UNIQUE, uid TEXT );
     CREATE TABLE IF NOT EXISTS document_people (
       document_id INTEGER, person_id INTEGER, PRIMARY KEY (document_id, person_id)
     );
@@ -3536,21 +3537,21 @@
     );
     CREATE TABLE IF NOT EXISTS fields (
       id INTEGER PRIMARY KEY, name TEXT UNIQUE, type TEXT,
-      show_as_column INTEGER DEFAULT 0, autocomplete INTEGER DEFAULT 0
+      show_as_column INTEGER DEFAULT 0, autocomplete INTEGER DEFAULT 0, uid TEXT
     );
     CREATE TABLE IF NOT EXISTS document_field_values (
       document_id INTEGER, field_id INTEGER, value TEXT, PRIMARY KEY (document_id, field_id)
     );
     CREATE TABLE IF NOT EXISTS collections (
       id INTEGER PRIMARY KEY, name TEXT, kind TEXT,
-      criteria TEXT, folder_id INTEGER
+      criteria TEXT, folder_id INTEGER, uid TEXT
     );
     CREATE TABLE IF NOT EXISTS document_splits (
-      document_id INTEGER, position INTEGER, category TEXT, amount TEXT, note TEXT,
+      document_id INTEGER, position INTEGER, category TEXT, amount TEXT, note TEXT, uid TEXT,
       PRIMARY KEY (document_id, position)
     );
     CREATE TABLE IF NOT EXISTS collection_folders (
-      id INTEGER PRIMARY KEY, name TEXT
+      id INTEGER PRIMARY KEY, name TEXT, uid TEXT
     );
     CREATE TABLE IF NOT EXISTS collection_documents (
       collection_id INTEGER, document_id INTEGER, PRIMARY KEY (collection_id, document_id)
@@ -3559,7 +3560,7 @@
       field_name TEXT PRIMARY KEY, description TEXT
     );
     CREATE TABLE IF NOT EXISTS reminder_snoozes (
-      document_id INTEGER, field_id INTEGER, snoozed_until TEXT, dismissed INTEGER DEFAULT 0,
+      document_id INTEGER, field_id INTEGER, snoozed_until TEXT, dismissed INTEGER DEFAULT 0, uid TEXT,
       PRIMARY KEY (document_id, field_id)
     );
     CREATE TABLE IF NOT EXISTS not_duplicate_groups (
@@ -3603,6 +3604,15 @@
     'ALTER TABLE collections ADD COLUMN folder_id INTEGER',
     'ALTER TABLE ocr_jobs ADD COLUMN ocr_language TEXT',
     'ALTER TABLE ocr_jobs ADD COLUMN requested_by TEXT',
+    // Stable record ids (see migrateStableUids()).
+    'ALTER TABLE documents ADD COLUMN uid TEXT',
+    'ALTER TABLE tags ADD COLUMN uid TEXT',
+    'ALTER TABLE people ADD COLUMN uid TEXT',
+    'ALTER TABLE fields ADD COLUMN uid TEXT',
+    'ALTER TABLE collections ADD COLUMN uid TEXT',
+    'ALTER TABLE collection_folders ADD COLUMN uid TEXT',
+    'ALTER TABLE document_splits ADD COLUMN uid TEXT',
+    'ALTER TABLE reminder_snoozes ADD COLUMN uid TEXT',
   ];
   function applySchemaMigrations(){
     for(const sql of SCHEMA_MIGRATIONS){
@@ -4971,6 +4981,7 @@
       migrateTextFieldsAutocompleteDefault(); // no-op here (no text fields exist yet beyond the sentinels above), but marks this library as migrated
       migrateCurrencyColumnDefault(); // no-op here (Currency was already created show_as_column=1 above), but marks this library as migrated
       migrateSearchablePdfBuiltFlag(); // no-op here (no documents exist yet), but marks this library as migrated
+      await migrateStableUids(); // gives the built-in fields above their derived ids, and marks the library
       dbFileHandle = await rootDirHandle.getFileHandle('library.sqlite', { create: true });
       await persistDb();
       filesDirHandle = await rootDirHandle.getDirectoryHandle('files', { create: true });
@@ -4999,6 +5010,7 @@
     migrateTextFieldsAutocompleteDefault(); // one-time; no-op if this library was already migrated
     migrateCurrencyColumnDefault(); // one-time; no-op if this library was already migrated
     migrateSearchablePdfBuiltFlag(); // one-time; no-op if this library was already migrated
+    await migrateStableUids(); // every open: fills any missing uid with its derived value
     await persistDb(); // save the upgraded schema back immediately, not just in memory
     afterDbReady();
   }
@@ -5899,6 +5911,57 @@
       }
     }
     db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('searchable_pdf_built_backfill_migrated', ?)", ['1']);
+  }
+
+  // Stable record ids (two-Mac editing, part 1; spec
+  // docs/superpowers/specs/2026-10-22-stable-uids-design.md). Integer ids are
+  // assigned per library as MAX(id)+1, so two Macs editing copies of one
+  // library hand out the same number to different records; merging needs an
+  // id that is the same for the same record everywhere. Existing rows get a
+  // UUID v5 derived from "<table>:<key>" in this namespace -- so every copy of
+  // a library computes the same value, offline, in any order -- and new rows
+  // a random v4. The namespace must never change: it would give every
+  // existing row a different id.
+  const DOSSIARY_UID_NAMESPACE = 'a3f1c0de-5d0c-4b4e-9e1a-d055a12f0001';
+  // [table, key columns] for every table whose rows can be created on either Mac.
+  const UID_TABLES = [
+    ['documents', ['id']], ['tags', ['id']], ['people', ['id']], ['fields', ['id']],
+    ['collections', ['id']], ['collection_folders', ['id']],
+    ['document_splits', ['document_id', 'position']],
+    ['reminder_snoozes', ['document_id', 'field_id']],
+  ];
+  function newUid(){ return crypto.randomUUID(); }
+  // RFC 9562 UUID v5: SHA-1 of the namespace bytes followed by the UTF-8 name.
+  async function derivedUid(table, key){
+    const ns = DOSSIARY_UID_NAMESPACE.replace(/-/g, '').match(/../g).map(h => parseInt(h, 16));
+    const name = new TextEncoder().encode(`${table}:${key}`);
+    const input = new Uint8Array(16 + name.length);
+    input.set(ns, 0);
+    input.set(name, 16);
+    const b = new Uint8Array(await crypto.subtle.digest('SHA-1', input)).slice(0, 16);
+    b[6] = (b[6] & 0x0f) | 0x50;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    const hex = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  window.__DEBUG_derivedUid = (table, key) => derivedUid(table, key);
+  // Runs on every open, after the other migrations (so rows they just added,
+  // like the built-in fields, get their derived id too). Fills any missing uid
+  // -- also one written without a uid by an older Dossiary on another Mac --
+  // with the derived value, never a random one, so copies keep agreeing.
+  async function migrateStableUids(){
+    for(const [table, keyCols] of UID_TABLES){
+      const { columns, rows } = queryAll(`SELECT ${keyCols.join(', ')}, uid FROM ${table}`);
+      const idx = Object.fromEntries(columns.map((c, i) => [c, i]));
+      for(const row of rows){
+        if(row[idx.uid]) continue;
+        const keyVals = keyCols.map(c => row[idx[c]]);
+        const uid = await derivedUid(table, keyVals.join(':'));
+        db.run(`UPDATE ${table} SET uid = ? WHERE ${keyCols.map(c => `${c} = ?`).join(' AND ')}`, [uid, ...keyVals]);
+      }
+    }
+    const marked = queryAll("SELECT value FROM settings WHERE key = 'stable_uids_migrated'").rows;
+    if(!marked.length) db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('stable_uids_migrated', ?)", ['1']);
   }
 
   function loadFieldValues(){
