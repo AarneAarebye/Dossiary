@@ -142,8 +142,12 @@ async def main():
         await page.wait_for_timeout(150)
         print("A line without an amount is flagged:", await page.inner_text('#e-splits-summary') == 'Every line needs a category and an amount.')
         await last.locator('.split-remove-btn').click()
-        await page.click('#cancel-edit-btn')
-        await page.wait_for_timeout(200)
+        line_uid = (await saved())['document_splits'][0].get('uid')
+        await page.fill('#e-title', 'Supermarket')
+        await page.click('#save-edit-btn')
+        await page.wait_for_timeout(400)
+        after = (await saved())['document_splits']
+        print("A save that leaves the line alone keeps its uid:", bool(line_uid) and len(after) == 1 and after[0].get('uid') == line_uid)
 
         # === Renaming a category follows into split lines ===
         await page.click('#tools-btn')
@@ -212,6 +216,13 @@ async def main():
         print("German labels:", await page.inner_text('#e-splits-summary') == '5.00 von 30.00 aufgeteilt; 25.00 bleibt bei „Groceries“.')
 
         print("ERRORS:", errors)
+        # Stable uids: every row this test created in a uid table got its uid
+        # when it was inserted (migrateStableUids() only runs on open).
+        print("Every row in the uid tables has a uid:", await page.evaluate("""() => {
+            const data = JSON.parse(new TextDecoder().decode(window.__TEST_ROOT._children.get('library.sqlite')._bytes));
+            return ['documents', 'tags', 'people', 'fields', 'collections', 'collection_folders', 'document_splits', 'reminder_snoozes']
+                .every(t => (data[t] || []).every(r => /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(r.uid || '')));
+        }"""))
         await browser.close()
 
 asyncio.run(main())

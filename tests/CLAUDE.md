@@ -1449,3 +1449,22 @@ JS-stub side — so, like that note's own guidance, if you ever add a fourth
 test file that needs this same technique, copy
 `_write_patched_app_with_preview_enabled()` verbatim from one of these
 three rather than writing a new one from scratch.
+Stable uids (`test_stable_uids.py`): `__DEBUG_derivedUid()` against Python's
+`uuid.uuid5` in the same namespace (so the JavaScript UUID v5 is pinned to the
+standard); an old seeded library with rows in all eight uid tables and no uid
+getting every derived value, built-in fields added on open included, and the
+`stable_uids_migrated` marker; two fresh copies of one seed agreeing; a reopen
+changing nothing and restoring a cleared uid to the same value; a new library
+running it too. Every creation path is covered by one generic check at the
+end of the tests that run it (`test_studio.py`, `test_edit.py`,
+`test_add_field_inline.py`, `test_person_type_field.py`, `test_splits.py`,
+`test_drag_drop.py`, `test_inbox.py`, `test_import_folder.py`,
+`test_page_tools.py`, `test_collections.py`, `test_collection_folders.py`,
+`test_smart_collections.py`, `test_reminders.py`): every row in the eight
+tables has a uid, which a path inserting without one fails (confirmed by
+dropping the tag INSERT's uid); `test_studio.py` also checks the captured
+document and its new tag are v4. `test_export_library.py` checks exported
+documents, tags, people and fields keep their uids, `test_copy_setup.py` a
+copied field's, and `test_import_folder.py` that imported documents get new
+v4 ones. `test_splits.py` needs the git-ignored `tiny.pdf` fixture,
+which a fresh worktree lacks -- copy it from the main checkout.

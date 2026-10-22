@@ -4,6 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
+import re
 import asyncio, json
 from playwright.async_api import async_playwright
 
@@ -133,6 +134,8 @@ async def main():
         print("Title, date, category, subcategory, type, notes come from index.csv:",
               (s.get('date'), s.get('category'), s.get('subcategory'), s.get('document_type'), s.get('notes')) == ('2026-02-15', 'Home', 'Energy', 'Invoice', 'Paid; "on time"'), s)
         print("...the original import date is kept:", s.get('import_date') == '2026-03-01')
+        print("Imported documents are new records with random v4 uids:",
+              all(re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$', d.get('uid') or '') for d in rows['documents']))
         print("...and it is filed, not flagged for review:", s.get('needs_review') == 0 and s.get('source') == 'folder-import')
         field_ids = {f['name']: f['id'] for f in rows['fields']}
         vals = {(v['document_id'], v['field_id']): v['value'] for v in rows['document_field_values']}
@@ -183,6 +186,13 @@ async def main():
         print("Without index.csv every file is added for review:", 'Added: 2' in summary3 and 'In the Inbox for review: 2' in summary3 and 'index.csv' not in summary3, repr(summary3))
 
         print("JS ERRORS:", errors)
+        # Stable uids: every row this test created in a uid table got its uid
+        # when it was inserted (migrateStableUids() only runs on open).
+        print("Every row in the uid tables has a uid:", await page.evaluate("""() => {
+            const data = JSON.parse(new TextDecoder().decode(window.__TEST_ROOT._children.get('library.sqlite')._bytes));
+            return ['documents', 'tags', 'people', 'fields', 'collections', 'collection_folders', 'document_splits', 'reminder_snoozes']
+                .every(t => (data[t] || []).every(r => /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(r.uid || '')));
+        }"""))
         await browser.close()
 
 asyncio.run(main())

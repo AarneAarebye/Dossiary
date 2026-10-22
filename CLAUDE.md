@@ -494,6 +494,28 @@ this repo's git tags.
   `migrate_to_new_library.py`'s approach in the sibling repo — keep both
   consistent if either changes, since a person could reasonably use both
   tools against the same library lineage.
+- **Stable uids** (`uid TEXT` on `documents`, `tags`, `people`, `fields`,
+  `collections`, `collection_folders`, `document_splits`, `reminder_snoozes`;
+  `derivedUid()`, `newUid()`, `migrateStableUids()`; spec
+  `docs/superpowers/specs/2026-10-22-stable-uids-design.md`) give every record
+  an identity that survives two Macs editing copies of one library, where the
+  integer ids above collide. Existing rows get a UUID v5 of `<table>:<key>`
+  (`documents:12`, `document_splits:12:0`, `reminder_snoozes:12:7`) in
+  `DOSSIARY_UID_NAMESPACE`, so every copy computes the same value; new rows
+  get `crypto.randomUUID()` (`newUid()`) in every INSERT -- except the built-in
+  fields the migrations add, which get their derived uid, and reminder snoozes,
+  always derived since the (document, field) pair is their identity. Export as
+  library and "Copy the setup of" keep a row's uid (`withUid()` selects it only
+  when the source has the column). `migrateStableUids()` runs on every open, after
+  the other migrations, filling any missing uid with its derived value --
+  also a row an older Dossiary on another Mac wrote without one -- and sets
+  the `stable_uids_migrated` marker. **The namespace never changes**: a new
+  one would give every existing row a different id. Integer ids stay the
+  keys everything references; nothing looks rows up by uid yet. Saving the
+  Edit form rewrites a document's split lines but keeps each kept position's
+  uid. Accepted gap: an *older* Dossiary that deletes a tag/person and reuses
+  its integer id leaves a row the next open derives the old uid for -- only
+  this version's own inserts are guaranteed distinct.
 - **Tag deduplication** happens via an in-memory `tagNameToId` map built at
   load time and updated on every new tag insert — not a `SELECT ... WHERE
   name = ?` round-trip per tag. This assumes single-writer, single-tab
