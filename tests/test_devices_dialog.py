@@ -37,7 +37,7 @@ FAKE_SYNC = """
         const valid = !S.forgotten && headers.Authorization === `Bearer ${S.token}`;
         if(path === '/admin/health') return json(200, { service: 'dossiary-sync', version: '0.3.0', adminProtocol: 1, connected: valid });
         if(path === '/admin/connect/start' && method === 'POST'){
-            if(S.tooSoon) return json(429, { error: 'Too soon' }, { 'Retry-After': String(S.tooSoon) });
+            if(S.tooSoon) return json(429, S.tooSoonBody ? { error: 'Too soon', retryAfter: S.tooSoonBody } : { error: 'Too soon' }, S.tooSoonBody ? {} : { 'Retry-After': String(S.tooSoon) });
             return json(200, { validFor: 300 });
         }
         if(path === '/admin/connect' && method === 'POST'){
@@ -223,6 +223,16 @@ async def scenario_too_soon(p):
     print("429 says how long to wait:", '24' in text and 'second' in text, text)
     print("...and shows no code field:", await page.locator('#devices-code-input').count() == 0)
     print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # The wait time from the JSON body (no readable Retry-After header).
+    sync = sample_sync(); sync['tooSoon'] = 1; sync['tooSoonBody'] = 17
+    browser, page, errors = await open_app(p, sync=sync)
+    await open_dialog(page)
+    await page.click('#devices-connect-btn')
+    await page.wait_for_timeout(200)
+    text = await page.inner_text('#devices-connect-status')
+    print("429 body retryAfter is used:", '17' in text and '30' not in text, text)
     await browser.close()
 
 
@@ -477,6 +487,13 @@ async def scenario_pair_edge_cases(p):
     print("...still shows code and fingerprint:", await page.inner_text('#devices-pair-code') == 'QWER 7YUP'
           and await page.inner_text('#devices-pair-fingerprint') == 'AB:CD:EF:01')
     print("...and no SVG:", await page.locator('#devices-qr svg').count() == 0)
+    print("...offers New code:", await page.is_visible('#devices-qr-new-btn'))
+    n = await page.evaluate("window.__SYNC.pairCount")
+    await page.click('#devices-qr-new-btn')
+    await page.wait_for_timeout(600)
+    print("...New code requests a fresh code:", await page.evaluate("window.__SYNC.pairCount") == n + 1)
+    print("...and only one QR script tried per draw:",
+          await page.evaluate("document.querySelectorAll('script[src*=qrcode-generator]').length") <= 1)
     print("no page errors:", not [e for e in errors if 'ERR_FAILED' not in e], errors)
     await browser.close()
 

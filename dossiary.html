@@ -15838,7 +15838,9 @@
     try{
       const response = await fetch(SYNC_ADMIN_URL + path, init);
       const body = await response.json().catch(() => null);
-      const retry = parseInt(response.headers && response.headers.get ? response.headers.get('Retry-After') : '', 10);
+      const fromBody = body && Number(body.retryAfter);
+      const retry = Number.isFinite(fromBody) && fromBody > 0 ? fromBody
+        : parseInt(response.headers && response.headers.get ? response.headers.get('Retry-After') : '', 10);
       return { status: response.status, ok: response.ok, body, retryAfter: Number.isFinite(retry) ? retry : null };
     }catch(e){
       return null;
@@ -16062,17 +16064,22 @@
   let devicesPairTimer = null;
   const QRCODE_GENERATOR_URL = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
 
-  async function ensureQrCode(){
-    if(window.qrcode) return window.qrcode;
-    await new Promise((resolve, reject) => {
+  let qrLoadPromise = null;
+  const QR_LOAD_TIMEOUT_MS = 15000;
+  function ensureQrCode(){
+    if(window.qrcode) return Promise.resolve(window.qrcode);
+    if(qrLoadPromise) return qrLoadPromise;
+    const attempt = new Promise((resolve, reject) => {
       const s = document.createElement('script');
+      const timer = setTimeout(() => { s.remove(); reject(new Error('Timed out loading the QR code library')); }, QR_LOAD_TIMEOUT_MS);
       s.src = QRCODE_GENERATOR_URL;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error('Failed to load the QR code library from CDN'));
+      s.onload = () => { clearTimeout(timer); window.qrcode ? resolve(window.qrcode) : reject(new Error('QR code library missing')); };
+      s.onerror = () => { clearTimeout(timer); s.remove(); reject(new Error('Failed to load the QR code library from CDN')); };
       document.head.appendChild(s);
     });
-    if(!window.qrcode) throw new Error('QR code library missing');
-    return window.qrcode;
+    qrLoadPromise = attempt;
+    attempt.catch(() => { if(qrLoadPromise === attempt) qrLoadPromise = null; });
+    return attempt;
   }
 
   // One <path> of 1x1 squares, 4 modules of quiet zone, black on white
@@ -16196,6 +16203,8 @@
       qrEl.innerHTML = '';
       const status = el('devices-pair-status');
       if(status) status.textContent = t('devicesQrUnavailable');
+      const newBtn = el('devices-qr-new-btn');
+      if(newBtn) newBtn.style.display = '';
     }
   }
 
