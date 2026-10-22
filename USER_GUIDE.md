@@ -167,6 +167,25 @@ that can split a stack on blank sheets, tick **Split the stack at blank
 sheets** in the dialog to turn one stack into several documents: just put a
 blank sheet between them (Scan Multi).
 
+## Your iPhone or iPad
+
+The Dossiary app on iPhone and iPad shows your libraries away from your
+desk. It gets them from [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync),
+a small separate app on your Mac that you install and share each library
+with once (see its own instructions).
+
+1. Choose **🛠 Tools → 📱 iPhone & other devices…**.
+2. The first time, click **Connect**: Dossiary Sync shows a code in a
+   notification on your Mac. Type it into the dialog.
+3. Click **Add iPhone or iPad…**, tick the libraries the device may see,
+   and click **Show QR code**.
+4. In the Dossiary app on the iPhone or iPad, choose **Add from Mac** and
+   scan the code. It's valid for a few minutes; if it runs out, click
+   **New code**.
+
+The same dialog lists your devices: tick or untick a library to change what
+a phone may see, or remove a device you no longer use.
+
 ## A quick tour of everything else
 
 Once you're comfortable with the basics above, there's more worth

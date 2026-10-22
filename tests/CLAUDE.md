@@ -1185,8 +1185,19 @@ a stored valid token going straight to the devices with role labels and
 relative last-seen times; per-library checkboxes for phones only, allow and
 deny requests with the status line, a refused change undone; Remove behind
 `confirm()`; the language switch blocked while open; Disconnect; a revoked
-token dropped on open and on a 401; a blocked `localStorage`; German labels
-and relative times).
+token dropped on open and on a 401; a blocked `localStorage`, and one that
+reads but won't store (the token stays in memory); German labels and
+relative times; "Add iPhone or iPad…" with a fake `window.qrcode` (the
+cdnjs request is aborted): no library ticked keeps "Show QR code" disabled
+and sends nothing, a refused pair-code shows the reason, the QR SVG of the
+`link`, the grouped code and fingerprint as text, the countdown, expiry
+clearing the QR and offering New code, the QR surviving a Remove, Done
+reloading the devices, a 401 on pair-code, the library failing to load,
+no shared libraries; hostile `<img onerror>` device/library/code/
+fingerprint names shown as text; the service going down after connecting
+(toggle, Remove and Show QR code each end in a clear error, nothing stuck
+disabled); an answer in the wrong shape and the failing one of the two
+list requests reported; every call carrying a timeout signal).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

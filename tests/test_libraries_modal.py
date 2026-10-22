@@ -43,6 +43,7 @@ async def main():
         print("modal shows Tesseract.js:", 'Tesseract.js' in modal_text)
         print("modal shows jsPDF:", 'jsPDF' in modal_text)
         print("modal shows pdf.js:", 'pdf.js' in modal_text)
+        print("modal shows qrcode-generator:", 'qrcode-generator' in modal_text and 'QR code' in modal_text)
         print("modal shows MIT:", 'MIT' in modal_text)
         print("modal shows Apache-2.0:", 'Apache-2.0' in modal_text)
 

@@ -13,7 +13,10 @@ from playwright.async_api import async_playwright
 # shared stub would refuse any real request to it anyway, so no test reaches
 # a Dossiary Sync running on this machine.
 # config: { down, token, code, tooSoon (Retry-After seconds), libraries,
-#           devices, forgotten (token revoked), failAllow (status) }
+#           devices, forgotten (token revoked), failAllow (status),
+#           librariesRaw (body for /admin/libraries instead of the list),
+#           devicesStatus (status for /admin/devices), pairFail (status),
+#           pairExpiresIn (seconds), pairCode, pairFingerprint }
 # Every request is logged in window.__CALLS.
 FAKE_SYNC = """
 (config) => {
@@ -24,7 +27,8 @@ FAKE_SYNC = """
     window.fetch = async (url, opts = {}) => {
         const headers = opts.headers || {};
         window.__CALLS.push({ url, method: opts.method || 'GET', auth: headers.Authorization || null,
-                              contentType: headers['Content-Type'] || null, body: opts.body || null });
+                              contentType: headers['Content-Type'] || null, body: opts.body || null,
+                              hasSignal: !!opts.signal });
         const S = window.__SYNC;
         if(!url.startsWith(BASE + '/') || S.down) throw new TypeError('Failed to fetch');
         const path = url.slice(BASE.length);
@@ -44,8 +48,19 @@ FAKE_SYNC = """
         }
         if(!valid) return json(401, { error: 'Unauthorized' });
         if(path === '/admin/connect' && method === 'DELETE'){ S.forgotten = true; return new Response(null, { status: 204 }); }
-        if(path === '/admin/libraries') return json(200, S.libraries || []);
-        if(path === '/admin/devices') return json(200, S.devices || []);
+        if(path === '/admin/libraries') return json(200, S.librariesRaw !== undefined ? S.librariesRaw : (S.libraries || []));
+        if(path === '/admin/devices') return S.devicesStatus ? json(S.devicesStatus, { error: 'Device store broken' }) : json(200, S.devices || []);
+        if(path === '/admin/pair-code' && method === 'POST'){
+            const libs = JSON.parse(opts.body || '{}').libraries;
+            if(S.pairFail) return json(S.pairFail, { error: 'Unknown library' });
+            if(!Array.isArray(libs) || !libs.length) return json(400, { error: 'Choose at least one library' });
+            const code = S.pairCode || 'QWER7YUP', f = S.pairFingerprint || 'AB:CD:EF:01';
+            S.pairCount = (S.pairCount || 0) + 1;
+            return json(200, { code, fingerprint: f,
+                               expires: new Date(Date.now() + (S.pairExpiresIn || 300) * 1000).toISOString(),
+                               addresses: ['https://mac.local:8443'],
+                               link: `dossiary-sync://pair?v=1&f=${encodeURIComponent(f)}&c=${code}&a=${encodeURIComponent('https://mac.local:8443')}&n=${S.pairCount}` });
+        }
         const m = /^\\/admin\\/devices\\/([^/]+)(?:\\/(allow|deny))?$/.exec(path);
         if(m){
             const id = decodeURIComponent(m[1]);
@@ -67,6 +82,19 @@ FAKE_SYNC = """
 
 TOKEN_KEY = 'dossiary_sync_admin_token'
 
+# Stands in for qrcode-generator (the real one comes from cdnjs, which the
+# tests never reach): records what it was asked to encode.
+FAKE_QR = """
+() => {
+    window.__QR_DATA = [];
+    window.qrcode = (type, ecl) => ({
+        addData(d){ window.__QR_DATA.push({ d, type, ecl }); }, make(){},
+        getModuleCount(){ return 21; }, isDark(r, c){ return (r * c + r) % 3 === 0; },
+    });
+}
+"""
+HOSTILE = '<img src=x onerror=window.__xss=1>'
+
 
 def iso_ago(**kw):
     return (datetime.now(timezone.utc) - timedelta(**kw)).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -85,7 +113,7 @@ def sample_sync():
     }
 
 
-async def open_app(p, sync=None, token=None, lang=None):
+async def open_app(p, sync=None, token=None, lang=None, qr=True):
     browser = await p.chromium.launch()
     page = await browser.new_page()
     errors = []
@@ -96,6 +124,8 @@ async def open_app(p, sync=None, token=None, lang=None):
         url = route.request.url
         if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
             await route.fulfill(body="/* stubbed */", content_type='application/javascript')
+        elif 'qrcode' in url:
+            await route.abort()   # the QR library never loads from the network in tests
         else:
             await route.continue_()
     await page.route('**/*', route_handler)
@@ -108,6 +138,8 @@ async def open_app(p, sync=None, token=None, lang=None):
         await page.evaluate("([k, t]) => localStorage.setItem(k, t)", [TOKEN_KEY, token])
     if sync is not None:
         await page.evaluate(FAKE_SYNC, sync)
+    if qr:
+        await page.evaluate(FAKE_QR)
     await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot({}); window.__TEST_ROOT.name = 'TestLib';")
     await page.click('#open-btn')
     await page.wait_for_timeout(300)
@@ -332,11 +364,226 @@ async def scenario_german(p):
     print("German role labels:", roles == ['iPhone oder iPad', 'Raspberry-Pi-Kopie', 'Wiederherstellung'], roles)
     seen = await page.eval_on_selector_all('.devices-row .devices-seen', 'els => els.map(e => e.textContent)')
     print("German relative time:", 'vor 5 Minuten' in seen[0], seen)
+    print("German add button:", await page.inner_text('#devices-add-btn') == 'iPhone oder iPad hinzufügen…')
     print("no page errors:", not errors, errors)
     await browser.close()
 
 
-SCENARIOS = [scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german]
+async def scenario_pair(p):
+    sync = sample_sync(); sync['pairFail'] = 400; sync['pairExpiresIn'] = 3
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    await page.click('#devices-add-btn')
+    boxes = await page.eval_on_selector_all('.devices-pair-lib-checkbox', 'els => els.map(e => [e.dataset.library, e.checked])')
+    print("Add iPhone or iPad lists the shared libraries, none ticked:", boxes == [['lib-a', False], ['lib-b', False]], boxes)
+    print("Show QR code disabled with no library:", await page.is_disabled('#devices-show-qr-btn'))
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    print("...enabled once one is ticked:", not await page.is_disabled('#devices-show-qr-btn'))
+    await page.uncheck('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    print("...disabled again when unticked:", await page.is_disabled('#devices-show-qr-btn'))
+    await page.evaluate("document.getElementById('devices-show-qr-btn').disabled = false")
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(200)
+    print("zero libraries: asks for one, sends nothing:",
+          'at least one library' in await page.inner_text('#devices-pair-status')
+          and not any(c['url'].endswith('/admin/pair-code') for c in await calls(page)))
+
+    # The service refuses: its reason is shown, the choice stays.
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(300)
+    print("a refused pair-code shows the reason:", 'Unknown library' in await page.inner_text('#devices-pair-status'))
+    print("...keeps the ticked library and the button usable:",
+          await page.is_checked('.devices-pair-lib-checkbox[data-library="lib-a"]') and not await page.is_disabled('#devices-show-qr-btn'))
+
+    await page.evaluate("window.__SYNC.pairFail = 0")
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(300)
+    pc = [c for c in await calls(page) if c['url'].endswith('/admin/pair-code')][-1]
+    print("pair-code posted {libraries} as JSON with the token:",
+          json.loads(pc['body']) == {"libraries": ["lib-a"]} and pc['contentType'] == 'application/json' and pc['auth'] == 'Bearer admin-tok')
+    link = await page.get_attribute('#devices-qr', 'data-link')
+    print("QR drawn as SVG:", await page.locator('#devices-qr svg path').count() == 1)
+    qr_data = await page.evaluate("window.__QR_DATA")
+    print("...of the link:", link.startswith('dossiary-sync://pair?v=1&') and qr_data[-1]['d'] == link, link)
+    print("code shown as text, grouped:", await page.inner_text('#devices-pair-code') == 'QWER 7YUP')
+    print("fingerprint shown as text:", await page.inner_text('#devices-pair-fingerprint') == 'AB:CD:EF:01')
+    print("instructions:", 'Add from Mac' in await page.inner_text('#devices-add-slot'))
+    cd = await page.inner_text('#devices-pair-countdown')
+    print("countdown:", cd in ('Valid for 0:03', 'Valid for 0:02'), cd)
+    print("New code hidden while valid:", not await page.is_visible('#devices-qr-new-btn'))
+
+    await page.wait_for_timeout(3500)
+    print("expired: says so:", await page.inner_text('#devices-pair-countdown') == 'This code has expired.')
+    print("...removes the QR:", await page.locator('#devices-qr svg').count() == 0)
+    print("...offers New code:", await page.is_visible('#devices-qr-new-btn'))
+
+    await page.evaluate("window.__SYNC.pairExpiresIn = 125")
+    await page.click('#devices-qr-new-btn')
+    await page.wait_for_timeout(300)
+    link2 = await page.get_attribute('#devices-qr', 'data-link')
+    print("New code asks again and draws the new link:",
+          len([c for c in await calls(page) if c['url'].endswith('/admin/pair-code')]) == 3 and link2 != link
+          and await page.locator('#devices-qr svg').count() == 1)
+    cd = await page.inner_text('#devices-pair-countdown')
+    print("countdown shows minutes:", cd in ('Valid for 2:05', 'Valid for 2:04'), cd)
+
+    # A device removed meanwhile re-renders the list; the QR stays.
+    page.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
+    await page.click('.devices-row[data-id="dev-3"] .devices-remove-btn')
+    await page.wait_for_timeout(300)
+    print("QR survives a removal:", await page.get_attribute('#devices-qr', 'data-link') == link2)
+
+    n_dev_calls = len([c for c in await calls(page) if c['url'].endswith('/admin/devices')])
+    await page.click('#devices-pair-done-btn')
+    await page.wait_for_timeout(300)
+    print("Done reloads the devices and folds the section:",
+          len([c for c in await calls(page) if c['url'].endswith('/admin/devices')]) == n_dev_calls + 1
+          and await page.locator('#devices-add-btn').count() == 1 and await page.locator('#devices-qr').count() == 0)
+
+    # Closing the dialog with a QR open stops the countdown quietly.
+    await page.click('#devices-add-btn')
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-b"]')
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(300)
+    await page.click('#modal-close-btn')
+    await page.wait_for_timeout(1300)
+    print("every call had a timeout signal:", all(c['hasSignal'] for c in await calls(page)))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_pair_edge_cases(p):
+    # 401 on pair-code: the token is gone.
+    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok')
+    await open_dialog(page)
+    await page.click('#devices-add-btn')
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    await page.evaluate("window.__SYNC.forgotten = true")
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(300)
+    print("401 on pair-code: back to Connect, token dropped:",
+          await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
+    await browser.close()
+
+    # The QR library can't load (offline): the code and fingerprint still show.
+    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok', qr=False)
+    await open_dialog(page)
+    await page.click('#devices-add-btn')
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(600)
+    print("QR library missing: says so:", "couldn't be drawn" in await page.inner_text('#devices-pair-status'))
+    print("...still shows code and fingerprint:", await page.inner_text('#devices-pair-code') == 'QWER 7YUP'
+          and await page.inner_text('#devices-pair-fingerprint') == 'AB:CD:EF:01')
+    print("...and no SVG:", await page.locator('#devices-qr svg').count() == 0)
+    print("no page errors:", not [e for e in errors if 'ERR_FAILED' not in e], errors)
+    await browser.close()
+
+    # No libraries shared: nothing to choose.
+    sync = sample_sync(); sync['libraries'] = []
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    await page.click('#devices-add-btn')
+    print("no shared libraries: no QR button, says so:",
+          await page.locator('#devices-show-qr-btn').count() == 0 and 'No libraries are shared yet' in await page.inner_text('#devices-add-slot'))
+    await page.click('#devices-pair-cancel-btn')
+    print("Cancel folds it again:", await page.locator('#devices-add-btn').count() == 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_hostile_names(p):
+    sync = sample_sync()
+    sync['libraries'][0]['name'] = HOSTILE
+    sync['devices'][0]['name'] = HOSTILE
+    sync['pairFingerprint'] = HOSTILE
+    sync['pairCode'] = HOSTILE
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    await page.click('#devices-add-btn')
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(400)
+    body = await page.inner_text('#devices-dialog-body')
+    print("hostile device/library/code/fingerprint shown as text:", body.count(HOSTILE) >= 5, body.count(HOSTILE))
+    print("...no element injected:", await page.locator('#devices-dialog-body img').count() == 0)
+    print("...no script ran:", await page.evaluate("window.__xss") is None)
+    # The status line names them too.
+    await page.check('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]')
+    await page.wait_for_timeout(300)
+    print("status line shows the name as text:", HOSTILE in await page.inner_text('#status')
+          and await page.evaluate("window.__xss") is None)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_service_goes_down(p):
+    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok')
+    await open_dialog(page)
+    await page.evaluate("window.__SYNC.down = true")
+    box = '.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]'
+    await page.click(box)   # not check(): the refusal undoes the tick before check() could see it
+    await page.wait_for_timeout(300)
+    status = await page.inner_text('#status')
+    print("toggling with the service gone: clear error:", "didn't answer" in status and 'err' in await page.get_attribute('#status', 'class'), status)
+    print("...tick undone, checkbox usable again:", not await page.is_checked(box) and not await page.is_disabled(box))
+    page.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
+    await page.click('.devices-row[data-id="dev-2"] .devices-remove-btn')
+    await page.wait_for_timeout(300)
+    status = await page.inner_text('#status')
+    print("Remove with the service gone: clear error:", "Couldn't remove pi-copy" in status and "didn't answer" in status, status)
+    print("...row kept:", await page.locator('.devices-row[data-id="dev-2"]').count() == 1)
+    await page.click('#devices-add-btn')
+    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
+    await page.click('#devices-show-qr-btn')
+    await page.wait_for_timeout(300)
+    print("Show QR code with the service gone: clear error, button usable:",
+          "didn't answer" in await page.inner_text('#devices-pair-status') and not await page.is_disabled('#devices-show-qr-btn'))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_bad_answers(p):
+    # /admin/libraries answers 200 but not a list: say so, not "refused (200)".
+    sync = sample_sync(); sync['librariesRaw'] = {"oops": True}
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    body = await page.inner_text('#devices-dialog-body')
+    print("libraries in an unknown shape: reported as such:", "doesn't understand" in body and '(200)' not in body, body)
+    await browser.close()
+    # /admin/devices fails while libraries are fine: that failure is reported.
+    sync = sample_sync(); sync['devicesStatus'] = 500
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    body = await page.inner_text('#devices-dialog-body')
+    print("devices failing: its error is the one shown:", 'Device store broken (500)' in body, body)
+    print("no page errors:", not [e for e in errors if '500' not in e], errors)
+    await browser.close()
+
+
+async def scenario_storage_refuses_write(p):
+    # localStorage reads fine but won't store (quota): the token is still used.
+    browser, page, errors = await open_app(p, sync=sample_sync())
+    await page.evaluate("() => { Storage.prototype.setItem = () => { throw new Error('QuotaExceededError'); }; }")
+    await open_dialog(page)
+    await page.click('#devices-connect-btn')
+    await page.wait_for_timeout(200)
+    await page.fill('#devices-code-input', 'KX7P2M9Q')
+    await page.click('#devices-code-submit')
+    await page.wait_for_timeout(400)
+    devs = [c for c in await calls(page) if c['url'].endswith('/admin/devices')]
+    print("token kept in memory when it can't be stored:", await page.locator('.devices-row').count() == 3
+          and devs and devs[-1]['auth'] == 'Bearer admin-tok')
+    await page.click('#modal-close-btn')
+    await open_dialog(page)
+    print("...and used again on the next open:", await page.locator('.devices-row').count() == 3)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+SCENARIOS = [scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german,
+             scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write]
 
 
 async def main():
