@@ -354,7 +354,7 @@ async def scenario_no_token(p):
     print("...with no admin calls:", await admin_calls(page) == [])
     m = await marker(page)
     print("...marker reads 'not connected — changes not saved':", m['visible'] and m['text'] == 'not connected — changes not saved', m)
-    print("...its tooltip points to the devices dialog:", m['title'] == 'Connect in Tools › iPhone & other devices…', m['title'])
+    print("...its tooltip says a click connects:", m['title'] == 'Click to connect Dossiary Sync.', m['title'])
     print("...the status line says so:", (await status(page)).startswith("Not saved: this browser isn't connected"), await status(page))
     print("...the change stays in this window:", 'Unconnected change' in await page.inner_text('tr[data-id="1"]'))
     prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
@@ -362,9 +362,11 @@ async def scenario_no_token(p):
     w = await writes(page)
     await page.evaluate("window.__DEBUG_persistDb({ background: true })")
     print("...a background write is held back too:", await writes(page) == w)
-    # Connecting in the devices dialog takes the lease and writes it.
-    await page.click('#tools-btn'); await page.click('#devices-btn')
+    # The marker is a link: Enter on it opens the devices dialog, and connecting there takes the lease and writes it.
+    print("...the marker is a focusable button:", await page.evaluate("() => { const m = document.getElementById('sync-marker'); return m.getAttribute('role') === 'button' && m.tabIndex === 0; }"))
+    await page.focus('#sync-marker'); await page.keyboard.press('Enter')
     await page.wait_for_timeout(300)
+    print("...Enter on it opens the devices dialog:", await page.locator('#devices-connect-btn').count() == 1)
     await page.click('#devices-connect-btn')
     await page.wait_for_timeout(200)
     await page.fill('#devices-code-input', 'KX7P2M9Q')
@@ -374,6 +376,10 @@ async def scenario_no_token(p):
     print("...through an acquire:", len(await lease_calls(page, 'acquire')) == 1)
     m = await marker(page)
     print("...marker reads '✎ editing':", m['text'] == '✎ editing', m)
+    print("...and is no longer a link:", await page.evaluate("() => { const m = document.getElementById('sync-marker'); return !m.classList.contains('sub-sync-link') && !m.hasAttribute('role') && !m.hasAttribute('tabindex'); }"))
+    await page.click('#devices-close-btn'); await page.wait_for_timeout(100)
+    await page.click('#sync-marker'); await page.wait_for_timeout(200)
+    print("...clicking it opens nothing:", await page.evaluate("document.getElementById('modal-root').innerHTML === ''"))
     print("no page errors:", not errors, errors)
     await browser.close()
 
