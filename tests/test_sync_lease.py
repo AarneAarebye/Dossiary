@@ -170,6 +170,16 @@ async def marker(page):
     }""")
 
 
+async def marker_colour(page):
+    """The marker's computed colour and the colours of --red / --text-dim / --phosphor, for comparing."""
+    return await page.evaluate("""() => {
+        const probe = (v) => { const d = document.createElement('span'); d.style.color = `var(${v})`; document.body.appendChild(d);
+                                const c = getComputedStyle(d).color; d.remove(); return c; };
+        return { marker: getComputedStyle(document.getElementById('sync-marker')).color,
+                 red: probe('--red'), dim: probe('--text-dim'), phosphor: probe('--phosphor') };
+    }""")
+
+
 async def edit_title(page, title, wait=400):
     await page.click('tr[data-id="1"]')
     await page.wait_for_timeout(150)
@@ -347,6 +357,8 @@ async def scenario_offline(p):
     print("offline: the write goes through:", await saved_title(page) == 'Offline change')
     m = await marker(page)
     print("...marker reads 'connected · offline':", m['visible'] and m['text'] == 'connected · offline', m)
+    c = await marker_colour(page)
+    print("...in the neutral dim colour, not green:", c['marker'] == c['dim'] and c['marker'] != c['phosphor'], c)
     await edit_title(page, 'Offline again')
     print("...the next save doesn't ask again:", len(await lease_calls(page, 'acquire')) == 1 and await saved_title(page) == 'Offline again')
     print("no page errors:", not errors, errors)
@@ -364,6 +376,8 @@ async def scenario_no_token(p):
     m = await marker(page)
     print("...marker reads 'not connected', no 'not saved':", m['visible'] and m['text'] == 'not connected' and 'not saved' not in (m['text'] + await status(page)).lower(), m)
     print("...its tooltip says a click connects:", m['title'] == 'Click to connect Dossiary Sync.', m['title'])
+    c = await marker_colour(page)
+    print("...in the neutral dim colour, not red:", c['marker'] == c['dim'] and c['marker'] != c['red'], c)
     prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
     print("...closing the tab asks nothing:", not prevented)
     print("...the base marker is written:", marker_ok(await base_marker(page), 3), await base_marker(page))
@@ -399,6 +413,8 @@ async def scenario_service_down(p):
     m = await marker(page)
     print("...marker reads 'not synced yet':", m['visible'] and m['text'] == 'not synced yet', m)
     print("...with the reason as its tooltip:", 'may not be running' in m['title'], m['title'])
+    c = await marker_colour(page)
+    print("...in the neutral dim colour, not red:", c['marker'] == c['dim'], c)
     print("...and no 'Not saved' on the status line:", 'Not saved' not in await status(page), await status(page))
     n = len(await lease_calls(page, 'acquire'))
     await edit_title(page, 'Down again')
@@ -910,6 +926,13 @@ async def scenario_last_error(p):
     print("lastError while holding: marker 'not synced yet':", m['text'] == 'not synced yet', m)
     print("...with the error as its tooltip:", m['title'] == 'The Pi refused the upload (disk full).')
     print("...still holding (saves go on):", (await sync_state(page))['state'] == 'holding')
+    c = await marker_colour(page)
+    print("...in red (a real failure: the hub answered):", c['marker'] == c['red'], c)
+    unreachable = dict(state(3, THIS_LEASE, None, 'unreachable'), hubReachable=False)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", unreachable)
+    await tick(page)
+    m = await marker(page); c = await marker_colour(page)
+    print("lastError with the hub unreachable: the neutral offline marker, not red:", m['text'] == 'connected · offline' and c['marker'] == c['dim'], m, c)
     await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, THIS_LEASE))
     await tick(page)
     print("...back to '✎ editing' once it clears:", (await marker(page))['text'] == '✎ editing')
@@ -2038,9 +2061,13 @@ async def open_devices_dialog(page):
 
 async def scenario_devices_disconnect(p):
     # The devices dialog switches a library to "work disconnected" and back; the marker follows at once.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3), "disconnectAt": DISCONNECTED_SINCE})
+    # A second library whose state answers 404 (a Mac running as origin, or a library the editor doesn't know).
+    libs = [{"id": LIB_ID, "name": "Household", "available": True}, {"id": "lib-origin", "name": "Shared from here", "available": True}]
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3), "disconnectAt": DISCONNECTED_SINCE, "libraries": libs})
     await open_devices_dialog(page)
-    print("a connected library offers 'Work disconnected':", await page.locator('.devices-lib-disconnect-btn').count() == 1)
+    print("a connected library offers 'Work disconnected':", await page.locator(f'.devices-lib-disconnect-btn[data-library="{LIB_ID}"]').count() == 1)
+    print("...a library whose state answers 404 offers no button:", await page.locator('.devices-lib-disconnect-btn[data-library="lib-origin"], .devices-lib-reconnect-btn[data-library="lib-origin"]').count() == 0,
+          await page.locator('.devices-lib-disconnect-btn').count())
     await page.click('.devices-lib-disconnect-btn')
     await page.wait_for_timeout(500)
     calls = [c for c in await admin_calls(page) if c['url'].endswith('/connection')]

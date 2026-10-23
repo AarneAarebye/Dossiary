@@ -41,11 +41,13 @@
   .sub-switch-btn{ flex-shrink:0; background:transparent; border:none; padding:0 0 0 10px; font-family:var(--font-mono); font-size:11.5px; line-height:inherit; color:var(--text-dim); text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--line); cursor:pointer; }
   .sub-switch-btn::before{ content:'⇄'; text-decoration:none; display:inline-block; margin-right:6px; }
   .sub-sync-marker{ flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-left:12px; font-size:11.5px; line-height:inherit; color:var(--text-dim); }
-  .sub-sync-marker[data-state="holding"], .sub-sync-marker[data-state="offline"]{ color:var(--phosphor); }
+  /* Not connected, not synced yet and offline are normal ways to work (changes are saved here): the neutral
+     --text-dim above, never a warning colour. Red is only for a sync that really failed (sync-error). */
+  .sub-sync-marker[data-state="holding"]{ color:var(--phosphor); }
   .sub-sync-marker[data-state="other"], .sub-sync-marker[data-state="unsaved"]{ color:var(--amber); }
-  .sub-sync-marker[data-state="unsynced"], .sub-sync-marker[data-state="unconnected"]{ color:var(--red); }
+  .sub-sync-marker[data-state="sync-error"]{ color:var(--red); }
   .sub-sync-marker.sub-sync-link{ cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
-  .sub-sync-marker.sub-sync-link:focus-visible{ outline:1px solid var(--red); outline-offset:-1px; }
+  .sub-sync-marker.sub-sync-link:focus-visible{ outline:1px solid currentColor; outline-offset:-1px; }
   .devices-kept-aside{ font-size:12px; color:var(--amber); margin-top:2px; }
   .sub-switch-btn:hover:not(:disabled){ color:var(--phosphor); text-decoration-color:var(--phosphor-dim); border-color:transparent; }
   .stats{ display:flex; gap:22px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
@@ -17451,9 +17453,16 @@
       text = t('syncMarkerUnsaved');
       title = t('syncMarkerUnsavedTitle', { device: syncLease.deviceName || t('syncAnotherMac') });
     }else if(state === 'holding' && syncLastState && typeof syncLastState.lastError === 'string' && syncLastState.lastError){
-      text = t('syncMarkerNotSynced');   // holding, but the last push failed: the service retries
-      title = syncLastState.lastError;
-      state = 'unsynced';
+      if(syncLastState.hubReachable === false){
+        // The hub merely can't be reached: the neutral offline marker (changes are saved here, sent later).
+        text = t('syncMarkerEditingOffline');
+        title = t('syncMarkerEditingOfflineTitle');
+        state = 'offline';
+      }else{
+        text = t('syncMarkerNotSynced');   // holding, but the last push failed although the hub answered: the service retries
+        title = syncLastState.lastError;
+        state = 'sync-error';
+      }
     }else if(SYNC_MARKER_KEYS[state]){
       text = t(SYNC_MARKER_KEYS[state], { device: syncLease.deviceName || '' });
       if(state === 'holding') title = t('syncMarkerEditingTitle');
@@ -17648,6 +17657,7 @@
       devices: devs.body.filter(d => d && typeof d.id === 'string').map(normalizeSyncDevice),
       keptAside: {},
       disconnectedSince: {},
+      stateAnswered: {},   // library id → its GET …/state answered OK (only then can it be disconnected)
     };
     renderDevicesConnected(seq);
     loadDevicesKeptAside(seq);
@@ -17662,6 +17672,7 @@
       const ok = res && res.ok && res.body;
       state.keptAside[l.id] = ok && Array.isArray(res.body.keptAside) ? res.body.keptAside.filter(k => k && typeof k.stamp === 'string' && k.stamp) : [];
       state.disconnectedSince[l.id] = ok && typeof res.body.disconnectedSince === 'string' ? res.body.disconnectedSince : null;
+      state.stateAnswered[l.id] = !!ok;
     }));
     if(!devicesDialogOpen(seq) || devicesState !== state) return;
     const slot = el('devices-libraries');
@@ -17675,7 +17686,10 @@
           <div class="devices-kept-aside">${escapeHtml(keptAsideText(k))}</div>`).join('')}</li>`).join('')}</ul>`
         : `<p class="scan-dialog-text">${t('devicesNoLibraries')}</p>`;
   }
+  // Only for a library whose state answered: on a Mac running as origin (no hub), or for a library the
+  // service doesn't edit, the state GET answers 404 and so would the switch.
   function libraryConnectionHtml(id){
+    if(!(devicesState.stateAnswered || {})[id]) return '';
     const since = (devicesState.disconnectedSince || {})[id];
     const attr = escapeHtml(id);
     if(since) return ` <span class="devices-lib-disconnected-note doc-sub">${escapeHtml(t('devicesLibraryDisconnectedSince', { when: deviceRelativeTime(since) || '' }))}</span> <button class="devices-lib-reconnect-btn" data-library="${attr}">${t('devicesLibraryReconnect')}</button>`;

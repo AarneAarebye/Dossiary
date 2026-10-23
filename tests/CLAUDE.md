@@ -1355,6 +1355,15 @@ marker reads "connected · offline"). Strings removed with the hold-back:
 `syncNotSavedUnconnectedStatus`, `syncNotSavedUnsyncedStatus`,
 `syncMarkerNotConnectedUnsaved`, `syncMarkerNotAnsweringUnsaved`,
 `syncDiscardTextNoService`.
+Fix wave (final review): `leaseless_write_pulled_over` (C1/I1: no token, an
+edit written, then a pull of another Mac's version lands over it; opening
+Edit and, for a second edit, a sort click keep memory aside with the notice
+instead of reloading the edit away); `devices_disconnect` also checks that a
+library whose `GET …/state` answers 404 gets no "Work disconnected" button;
+`no_token`, `service_down` and `offline` check the marker's computed colour is
+the neutral `--text-dim` (`marker_colour()`), and `last_error` that a
+`lastError` while holding is red only while the hub answered
+(`hubReachable === false` reads "connected · offline", dim).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
