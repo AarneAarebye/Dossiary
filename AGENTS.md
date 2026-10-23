@@ -2602,7 +2602,9 @@ this repo's git tags.
     reservation ends with `settleDocId()` in a `finally`, so no id stays in
     flight after an early return or an error.
   - The marker (`#sync-marker`) shares `#sub-label`'s non-wrapping header
-    line, so the header's height never changes.
+    line, so the header's height never changes. While not connected it is a link
+    (`.sub-sync-link`, `role="button"`, Enter/Space too) that opens the
+    devices dialog, where Connect is.
   - `.kept-aside/` copies Dossiary writes live only on this Mac; Dossiary
     Sync's own `keptAside` list doesn't know them (part 3 must look for
     both). `listLibraryFiles()` skips `.dossiary-sync.json`,
