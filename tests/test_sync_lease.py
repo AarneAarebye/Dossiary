@@ -1469,6 +1469,63 @@ async def scenario_held_back_saved_status(p):
     await browser.close()
 
 
+SEED_FIELDS = dict(SEED2, fields=[{"id": 12, "name": "Organization", "type": "text", "show_as_column": 0, "autocomplete": 1}])
+
+
+async def scenario_reload_giveup_field_maps(p):
+    # E1: the other Mac deleted field 12 "Organization" and made "Warranty" with the same id. A reload that gives up
+    # (a person's change during the uid migration's await) must leave the field maps describing this tab's database.
+    browser, page, errors = await open_app(p, seed=SEED_FIELDS, sync={"token": "admin-tok"})
+    before = await page.evaluate("window.__DEBUG_findFieldByName('Organization')")
+    await page.evaluate(DIGEST_HOOK, ['SHA-1', 'UPDATE documents SET title = ? WHERE id = ?', ['Changed during reload', 1]])
+    await page.evaluate("""async () => {
+        const h = window.__TEST_ROOT._children.get('library.sqlite');
+        const data = JSON.parse(await (await h.getFile()).text());
+        data.fields.find(f => f.id === 12).name = 'Warranty';
+        data.documents.find(x => x.id === 4).uid = null;
+        h._bytes = new TextEncoder().encode(JSON.stringify(data));
+    }""")
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__DIGEST_ARMED = true; }", state(4))
+    await tick(page)
+    await page.wait_for_timeout(300)
+    st = await sync_state(page)
+    print("the reload gave up (a person's change during its await):", await page.evaluate("window.__DIGEST_FIRED") == 1 and st['reloads'] == 0, st)
+    org = await page.evaluate("window.__DEBUG_findFieldByName('Organization')")
+    war = await page.evaluate("window.__DEBUG_findFieldByName('Warranty')")
+    print("...the field maps still describe this tab's database (Organization is 12, no Warranty):", bool(before and org and org['id'] == 12 and war is None), org, war)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def file_text(page, path):
+    return await page.evaluate("""async (path) => {
+        let dir = window.__TEST_ROOT; const parts = path.split('/');
+        for(const p of parts.slice(0, -1)){ dir = dir._children.get(p); if(!dir) return null; }
+        const h = dir._children.get(parts[parts.length - 1]);
+        return h ? await (await h.getFile()).text() : null;
+    }""", path)
+
+
+async def scenario_drop_skips_foreign_ids(p):
+    # E2: the other Mac's documents 5 and 6 have their files on disk already (pulled), but this tab's memory
+    # doesn't know their rows. A drop must never write over them, and must not cascade.
+    foreign = {'files/5_Scan.pdf': 'IMAC-5', 'thumbnails/5.jpg': 'IMAC-THUMB-5', 'files/6_Other.pdf': 'IMAC-6'}
+    browser, page, errors = await open_app(p, seed=SEED2, extra_files=foreign)
+    await drop_files(page, ['Scan.pdf', 'Other.pdf', 'third.pdf'])
+    await page.wait_for_timeout(1500)
+    kept = {path: await file_text(page, path) for path in foreign}
+    print("the other Mac's files, original and preview are not written over:", kept == foreign, {k: (v or '')[:20] for k, v in kept.items()})
+    ids = await page.evaluate("""async () => {
+        const data = JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text());
+        return data.documents.filter(d => d.source === 'dropped').map(d => [d.title, d.id]);
+    }""")
+    got = dict(ids)
+    print("all three dropped documents are added:", sorted(got) == ['Other', 'Scan', 'third'], ids)
+    print("...on free ids, none of the other Mac's:", bool(got) and not ({5, 6} & set(got.values())) and len(set(got.values())) == 3, ids)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -1480,7 +1537,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_connected_elsewhere, scenario_held_back_copy, scenario_person_change_not_dropped, scenario_idle_non_edit_dialogs,
              scenario_multi_drop_job_save, scenario_tick_before_insert,
              scenario_held_back_copy_race, scenario_job_data_retried, scenario_quiet_copy_reused,
-             scenario_reload_race, scenario_held_back_saved_status]
+             scenario_reload_race, scenario_held_back_saved_status,
+             scenario_reload_giveup_field_maps, scenario_drop_skips_foreign_ids]
 
 
 async def main():

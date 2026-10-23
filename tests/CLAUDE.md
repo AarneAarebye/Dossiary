@@ -1303,7 +1303,12 @@ the notice and that the drop's final status names the kept-aside folder;
 the stable-uid migration's SHA-1 for a row the iMac's version lacks a uid for:
 the reload gives up, the change stays counted, the next save keeps it);
 `held_back_saved_status` (the "Not saved" line replaced once the tick writes
-the change)).
+the change); round 6: `reload_giveup_field_maps` (the other
+Mac's copy renames field 12; a reload that gives up during the uid
+migration leaves `fieldNameToId` describing this tab's database) and
+`drop_skips_foreign_ids` (files/5_Scan.pdf, thumbnails/5.jpg and
+files/6_Other.pdf on disk without their rows: a three-file drop writes over
+none of them and takes ids 7-9)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

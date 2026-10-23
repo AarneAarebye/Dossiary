@@ -2645,9 +2645,19 @@ this repo's git tags.
   the reload isn't forced under it; the flow's final status (and Import's and
   bulk Make searchable's summaries) names the folder (`syncFlowKeptAside`,
   `announceFlowKeptAside()`), so "Added 2 documents" never stands alone when
-  part of it is only in a copy. An id reserved before a mid-flow reload can
-  collide with a row the other Mac added; that INSERT then fails and the file
-  is reported as failed, not lost silently. Once the tick writes a held-back
+  part of it is only in a copy. A hold belongs to the library it began in
+  (`endPersonFlowHold(token)` does nothing after a switch). **New document
+  ids never land on another Mac's files** (round 6, `reserveDocId()`,
+  `checkReservedDocId()`, `releaseDocId()`): a new document's files are
+  named by its id and written before its INSERT, so in a synced library an
+  id whose `files/<id>_…` or `thumbnails/<id>.*` already exists on disk (the
+  other Mac's document, pulled while this tab's memory doesn't know the row
+  yet) is skipped, for capture, Inbox/drop/import and Edit pages' split
+  parts; right before the INSERT, if the library was reloaded since the
+  reservation and a row with that id now exists, the add is refused with
+  `syncDocIdTakenError` (reported, not silent) and the counter is kept past
+  any id this flow already wrote files for; a failed add gives its id back
+  only if nothing reserved one after it and no reload came in between. Once the tick writes a held-back
   change for real, the stale "Not saved" line gives way to
   `syncHeldBackSavedStatus`. A lease a background save takes inside `persistDb()`
   (backfill, "Check for text", a backup's date) is marked background-only
@@ -2720,7 +2730,10 @@ this repo's git tags.
   database open again -- so a flow writing during that await writes to the
   old, counted one -- and right before the swap gives up (keeping the old
   database, no reload) if the count moved, anything is dirty, or anything
-  else now blocks a reload. **Lease lost**: the state naming
+  else now blocks a reload. The change count is taken before its first
+  await, and the field maps the migrations rebuilt from the fresh database
+  (`loadFieldDefs()`) are rebuilt from the old one as soon as it's open
+  again, so a give-up never leaves another Mac's field ids in memory. **Lease lost**: the state naming
   another holder while holding → `other` and the status line "{device} took
   over editing this library." (a builder, so it retranslates); while `none`
   it just shows "editing on …", and back to `none` once the lease is free.
