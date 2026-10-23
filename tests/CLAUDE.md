@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **105
-scripts covering most of the app's actual functionality** (102 of them
+There's a real, runnable Playwright regression suite in `tests/` — **107
+scripts covering most of the app's actual functionality** (104 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1199,6 +1199,144 @@ fingerprint names shown as text; the service going down after connecting
 (toggle, Remove and Show QR code each end in a clear error, nothing stuck
 disabled); an answer in the wrong shape and the failing one of the two
 list requests reported; every call carrying a timeout signal).
+The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
+Sync's lease endpoint per scenario, a stored admin token, a library seeded
+with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping
+its `createWritable()`: no sync file → zero admin calls after a sort click and
+an edit; a synced library: a sort click and panel toggles writing the setting
+without a lease, the first Edit save sending one JSON acquire and the marker
+reading "✎ editing", a second save asking nothing; busy → the take-over
+dialog with device and time (UTC context, "02:02 PM"), nothing written while
+it's open, Cancel writing nothing with "unsaved changes" and a sort click then
+not writing the held-back change, the next save asking again, Escape
+cancelling, Take over acquiring with `takeOver: true` and writing; offline,
+no token ("not connected" with its tooltip, no calls) and service down ("not
+synced yet" with the reason) all writing; heartbeats through
+`__DEBUG_syncNow()` (none at 30 s, one at 60 s, a failed one still holding,
+`lost` without a holder re-acquiring silently, `lost` to the iMac → "editing
+on iMac" and no more heartbeats); release after 10 quiet minutes, on Switch
+library and on `pagehide` (with keepalive), none without the lease; a backup
+without `.dossiary-sync.json` or `.kept-aside/`; German labels and the marker
+following a language switch; the header's height unchanged with the marker
+shown, also with a long library name, at 320 and 1440px. Part 2's second
+task added the `GET …/state` poll to the fake (`window.__SYNC.state`, and
+`acquireVersion` for a granted acquire's version), a `disk_change()` helper
+that rewrites `library.sqlite` and the sync file the way a pull does, without
+counting a write, and these scenarios: a newer version reloads once, with the
+new title in the table and panel, the Inbox view, search text, category
+filter, filtered list and selection kept, nothing written and no second
+reload; the scroll position kept (60 documents); no reload while the Edit form
+is open, then one once it closes; holding → no reload, the version taken as
+this Mac's push; a granted acquire with a newer version → the change written
+anyway, then a reload, still shown, nothing left unsaved; lease lost via the
+state → "editing on iMac", the status line, retranslated to German, then the
+iMac's newer version loaded; kept aside → one status line, a reload, the stamp
+in `localStorage`, not repeated on the next poll or after reopening the page,
+and the line under the library in the devices dialog; `lastError` while
+holding → "not synced yet" with the error as tooltip, back to "✎ editing";
+German kept-aside text. And Task 1's review follow-ups: a sort click with a
+newer version on disk leaving the pulled file alone, reloading, then saving
+the sort; after Cancel the "Not saved" status line, `beforeunload` asking,
+Switch library asking (Cancel keeps it, Switch anyway switches) and neither
+asking without a held-back change; background writes (a real "Create missing
+previews" run, and `__DEBUG_persistDb({background: true})`) never opening the
+dialog or acquiring while `other`, a view-only click then not writing their
+change, no reload over it, a busy acquire for a background write turning
+`other` silently while a person's save still asks; removing the take-over
+layer settling the dialog; a write right after opening waiting for a slow
+sync-file read and taking the lease; and no new acquire within a minute of an
+unanswered one. Fix round 1 moved the lease to the start of editing: the busy
+scenario now gets the dialog when Edit opens (Cancel → no form, "Not
+started"; Archive asks too; Take over → form, save writes), and a held-back
+change comes from `hold_back_change()` -- the lease lost to the other Mac
+while the form is open; `acquire_newer_version` checks that opening Edit on a
+newer hub version reloads first and the newer content survives the save;
+`safety_net` writes a change into memory with `__DEBUG_dbRun()` and a granted
+acquire reports a newer version: nothing written, `.kept-aside/<Mac>-<time>/`
+holding this tab's bytes, a reload, the notice, and a second one in its own
+folder; `sleep_lost_lease` (the state shows no lease while holding → `none`,
+the bump not taken as this Mac's, the save kept aside; the heartbeat's
+re-acquire with a newer version reloading); `background_files` (a queued OCR
+fallback job stays queued while the iMac edits and while the lease is busy, no
+dialog, then runs once the lease is taken silently, and that lease goes back
+a minute later). Fix round 2: no token and service down now hold the change
+back (marker "… — changes not saved", status line, `beforeunload`, a
+background write held back too) until connecting in the devices dialog (the
+fake serves `/admin/connect/start` and `/admin/connect`) or the service
+answering again (the next tick writes it); `idle_and_forms` (no idle release
+under an open Edit form, release 10 minutes after it closes);
+`dialog_open_refuses` (Set up fields from a stale Edit form after a foreign
+bump: no reload under it, "close this dialog and start again", the Save kept
+aside, the iMac's change intact); `library_check_stale` (an "orphaned" tag the
+iMac's newer version uses again isn't deleted from a stale Library check);
+`reload_refused` (`__DEBUG_syncBackgroundBusy(true)` makes the needed reload
+fail: Archive doesn't start, "The library is updating…"; once free it archives
+on the newer version); and in `safety_net`, a background save behind a newer
+version keeping nothing aside and showing no notice). Fix round 3:
+`held_back_copy` (no copy at 20 s, a `.kept-aside` copy with this tab's bytes
+at 30 s, the live file untouched, folder in tooltip and status line, a
+further change updating the same copy, the copy kept once written for real);
+`person_change_not_dropped` (`__DEBUG_ensureEditLease()` + a person's
+`__DEBUG_dbRun()`, then a job's save meeting a newer version keeps it aside
+with the notice); `connected_elsewhere` (a token stored by another tab picked
+up by the next tick); `idle_non_edit_dialogs` (Storage stats doesn't keep the
+lease; an Edit form an hour without input doesn't either); and in
+`service_down`, a job's change held silently, the "may not be running"
+tooltip, and no new acquire from a tick within the minute. Fix round 4: `multi_drop_job_save` and
+`tick_before_insert` (a real two-file / one-file drop whose files folder is
+hooked: the lease lapses and the iMac's v4 appears while the drop is mid-way,
+a job's save lands between a file's INSERT and its own save -- after a tick
+in the second -- and the sidecar write is slow, so the reload wins: the
+dropped document survives in the library or a `.kept-aside` copy); in
+`safety_net`, a background save behind a newer version now keeping a quiet
+copy with a plain status line and no notice; `held_back_copy_race` (two
+copies at once make one folder, a copy finishing after the real save claims
+nothing, a later episode gets its own folder); `job_data_retried` (a job's
+data held while the service was down written by a tick once it answers, and
+a person's Edit meeting a newer version with only job data unwritten opening
+on the fresh library, the job data kept aside quietly); `quiet_copy_reused`
+(two quiet saves while a job blocks the reload sharing one folder with the
+latest memory); fix round 5: `multi_drop_job_save` also checks
+the notice and that the drop's final status names the kept-aside folder;
+`reload_race` (a person's `__DEBUG_dbRun` fired from inside
+`crypto.subtle.digest` during a reload -- once on the file's SHA-256, once on
+the stable-uid migration's SHA-1 for a row the iMac's version lacks a uid for:
+the reload gives up, the change stays counted, the next save keeps it);
+`held_back_saved_status` (the "Not saved" line replaced once the tick writes
+the change); round 6: `reload_giveup_field_maps` (the other
+Mac's copy renames field 12; a reload that gives up during the uid
+migration leaves `fieldNameToId` describing this tab's database) and
+`drop_skips_foreign_ids` (files/5_Scan.pdf, thumbnails/5.jpg and
+files/6_Other.pdf on disk without their rows: a three-file drop writes over
+none of them and takes ids 7-9); final review: `open_race` (the pull lands
+between reading `library.sqlite` and the sync file: nothing written on open,
+version 3 kept, the next poll reloads the iMac's version, an edit lands on
+top), `takeover_window` (a take-over before the next poll: Save asks instead
+of writing), `sleep_window` (`__DEBUG_syncClockSkip(200 s)` with the form
+open: Save heartbeats first and keeps the change aside), `offline_window`
+(the offline period over: Save keeps aside or asks; a poll leaves
+"offline" and reloads), `view_prefs_not_holding` (a sort click without the
+lease stays in memory and goes out with the next real save) and
+`reserved_ids` (one folder walk per reservation, ids in flight not handed
+out twice after a reload, `releaseDocId()`/`checkReservedDocId()`
+refusals). The fake's granted acquire now names this Mac as holder in its
+state and a release clears it, like the real service; `first_change` and
+`view_write_newer_on_disk` check that a view preference without the lease
+waits for the next real save; base marker round: `base_marker` (no marker on
+open; `.dossiary-base.json` after a real save and a view preference with the
+memory's version and the SHA-256 of the bytes on disk, version 4 after a
+reload, written by the held-back retry, never inside a `.kept-aside` copy, the
+live one untouched by a keep-aside), `offline_exit_pulled` (N2: the offline
+period ends with this Mac holding after the service pulled the iMac's v4 --
+reloaded, not taken as this Mac's own, the edit on top, marker 4),
+`confirm_unanswered` (no answer to the confirm → `unsynced`, held back, written
+once the service answers; the fake's `hang` makes a hung service give up
+after ~3 s; a save right after an answered poll sends no second state
+request), `no_reload_while_opening` (N3: a tick while `loadDb()` is paused in
+the stable-uid migration doesn't reload; the next one after opening does) and
+`export_open_asks` (Export as library's "Open it" asks first with a change
+held back; the exported library has no sync file or marker); `no_sync_file`
+writes no marker, and `backup` leaves it out)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

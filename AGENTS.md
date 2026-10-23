@@ -51,7 +51,7 @@ CLAUDE.md                Imports AGENTS.md
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (105 scripts) + shared
+tests/                   Playwright regression suite (107 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2093,7 +2093,8 @@ this repo's git tags.
   after opening an existing library, with the failure path (column already
   exists) silently ignored. `loadDb()` also immediately persists the
   upgraded schema back to disk rather than leaving the upgrade only in
-  memory. If you add a new column, add the migration in the same change —
+  memory -- except in a synced library (see the sync lease note), where it
+  stays in memory until the next real save, written under the lease. If you add a new column, add the migration in the same change —
   don't just add it to `SCHEMA` and assume everyone's starting fresh;
   people have real libraries with real captured documents already.
 - **OCR now runs on both images and PDFs** — see the 2026-09-22 PDF capture
@@ -2497,6 +2498,135 @@ this repo's git tags.
   service, and the cdnjs QR request is aborted). The real library was
   checked once by rendering a link and decoding the screenshot with
   OpenCV.
+- **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md`). Two Macs edit
+  one library through a Raspberry Pi hub; each Mac's Dossiary Sync hands
+  Dossiary a per-library edit lease over the admin API above (`POST
+  /admin/libraries/<id>/lease {action: acquire|heartbeat|release, takeOver}`,
+  `GET /admin/libraries/<id>/state`). Only a library with a readable
+  `.dossiary-sync.json` (`{libraryId, hub, version}`) at its root takes part;
+  without one nothing below happens and no admin call is made. Built over one
+  task and seven review rounds; the comment block above `persistDb()` is the
+  short form of this note, and `tests/test_sync_lease.py` covers every row.
+
+  **States** (`syncLease.state`) and what a save does in each. "Person" = a
+  flow a click started; "job" = `persistDb({background: true})` (OCR runner,
+  backfills, previews); "view" = `{viewOnly: true}` (sort, columns, nav
+  style, panel, view mode, tile size, folded folders, scan settings --
+  `SYNC_VIEW_PREF_KEYS`).
+
+  | State | Real save (person) | Real save (job) | View preference | How loud |
+  |---|---|---|---|---|
+  | `holding` | confirm (`syncConfirmLease()`: state poll unless one answered in the last 3 s; heartbeat if the last is > 120 s old; 3 s timeout each; no answer → `unsynced`, held back), then write | same | write | marker "✎ editing" |
+  | `offline` | confirm (poll, as above), then write | same | write | marker "✎ editing offline" |
+  | `none` (lease free) | acquire, then write | acquire silently, then write | memory only | -- |
+  | `other` (another Mac holds it) | take-over dialog: Take over → write; Cancel → held back | held back silently | memory only | marker "editing on {device}" / "unsaved changes", status line "Not saved: …" |
+  | `unconnected` (no admin token) | held back | held back silently | memory only | marker "not connected — changes not saved", status line |
+  | `unsynced` (no answer / error) | held back; the tick retries | held back silently | memory only | marker "Dossiary Sync not answering — changes not saved", reason as tooltip |
+  | any, memory behind a newer version (`syncBehind()`, disk not this tab's) | kept aside + reload, notice (`#sync-notice-dialog`) | kept aside quietly (plain status line), reload when free | -- | notice vs. plain line |
+
+  **Events.**
+  - *Editing starts* (`ensureEditLease()`, first line of ~40 entry points:
+    the Edit/capture/bulk-edit forms, Field Settings, Manage collections,
+    page tools, one-shot actions, Inbox/drop/scan, …): acquire before
+    anything changes. Granted at a newer version → reload first, never under
+    an open dialog (`syncCloseDialogFirst`) or while a reload is refused
+    (`syncLibraryUpdating`); busy → take-over dialog, Cancel = the flow
+    doesn't start ("Not started: …").
+  - *Poll* (every 5 s, `pollSyncState()`): another holder while holding →
+    `other` + "{device} took over editing this library."; no lease while
+    holding → `none`; offline over (`!offline && hubReachable`, or another
+    holder) while `offline` → `none`/`other`/`holding`; a higher `version`
+    is this Mac's own push only while the state says `holder: 'this'` and
+    the offline period didn't just end (the service may have pulled another
+    Mac's version as it did), otherwise `syncNoteNewer()` -- this tab's own
+    bytes are still recognised by `syncDiskIsOurs()`; new `keptAside` entries → one status line
+    each and a reload; `lastError` while holding → marker "not synced yet".
+  - *Reload* (`maybeReload()` → `reloadLibraryKeepingView()`): when behind
+    and nothing is in the way -- no dialog, no save in flight, no acquire
+    pending, nothing held back or dirty, no job running. Keeps view, search,
+    filters, selection, scroll and this window's view preferences;
+    migrations run in memory (`__untracked`); gives up if anything changed
+    during its awaits.
+  - *Tick* (every 5 s, `syncTick()`): heartbeat every 60 s while holding
+    (`lost` with no holder → silent re-acquire, with a holder → `other`);
+    acquire every 60 s while offline; release after 10 quiet minutes (one
+    minute for a lease only a job took); held-back changes copied to
+    `.kept-aside/` 30 s after the last one; retry held-back changes while
+    `unsynced`/after connecting.
+  - *Opening*: `loadDb()` reads the sync file **before** `library.sqlite`
+    (Dossiary Sync writes the database first, so the version read can only
+    be older than the database, never newer) and, for a synced library,
+    does **not** write on open -- migrations stay in memory until the next
+    real save. The sync timer starts with the sync file, but never reloads
+    while `loadDb()` is still opening (`syncOpening`, checked in
+    `syncReloadBlocked()`).
+  - *Leaving*: `resetAll()` and `pagehide` release with `keepalive`;
+    `beforeunload` and Switch library (`switchLibraryAsking()`, also used by
+    Export as library's "Open it") ask while a change is held back.
+
+  **Invariants.**
+  - Nothing a person changed is ever dropped: written, held back in memory
+    (with a `.kept-aside/<this Mac>-<time>/library.sqlite` copy 30 s later,
+    `writeHeldBackCopy()`), or kept aside (`syncKeepAsideAndReload()`).
+  - A real write happens only with the lease confirmed or offline confirmed
+    just before it -- an unanswered confirm holds the change back as
+    "not answering", it never writes on "holding as far as anyone knows";
+    a view preference is written only while holding or offline (otherwise a
+    pull may be running; check-then-write isn't atomic, and a write with a
+    current marker would make Dossiary Sync take the lease to push it).
+  - Every live write of `library.sqlite` (real, view preference, the
+    held-back retry -- all through `persistDb()`) is followed by the base
+    marker `.dossiary-base.json` (`writeSyncBaseMarker()`): `{version,
+    sha256, writtenAt}`, the version memory was at when the bytes were
+    exported and their SHA-256. Keep-aside copies never get one. Dossiary
+    Sync pushes a changed database only when the marker matches the bytes
+    and names the folder's version (or the start of this Mac's own pushes
+    that led to it); any other base, or no matching marker after 10 s, is
+    kept aside on both sides and the hub's version pulled -- never pushed.
+    So a version number this tab claims must never be newer than its
+    memory: only an acquire's answer, a poll while holding (not just after
+    offline) or `syncDiskIsOurs()` move `syncLibrary.version`.
+  - Never write over a version this tab didn't load or write
+    (`syncDiskIsOurs()` hashes the file against `syncLoadedHash` /
+    `syncLastWrittenHash`).
+  - Real changes in memory are counted (`trackDbChanges()`, `syncDirty()`);
+    a reload never replaces them.
+  - Background jobs write files only while holding or offline
+    (`syncMayWriteFiles()`, `syncBackgroundMayWrite()`), never with a dialog.
+  - New document ids skip ids with files on disk, ids in the database and
+    ids in flight (`reserveDocId()`, one folder walk per call,
+    `syncReservedDocIds`); `checkReservedDocId()` refuses an add whose id a
+    reload brought (`syncDocIdTakenError`); `releaseDocId()` gives an id back
+    only if nothing came after it and its INSERT hadn't run; every
+    reservation ends with `settleDocId()` in a `finally`, so no id stays in
+    flight after an early return or an error.
+  - The marker (`#sync-marker`) shares `#sub-label`'s non-wrapping header
+    line, so the header's height never changes.
+  - `.kept-aside/` copies Dossiary writes live only on this Mac; Dossiary
+    Sync's own `keptAside` list doesn't know them (part 3 must look for
+    both). `listLibraryFiles()` skips `.dossiary-sync.json`,
+    `.dossiary-base.json` and `.kept-aside/` (backups); Export as library
+    writes only the documents' files and a new database, so neither file
+    reaches an exported library.
+
+  **Key names.** State: `syncLibrary`, `syncLease`, `syncLastState`,
+  `syncKnownNewer`, `syncUnsavedChanges`, `syncPersonFlowPending`,
+  `syncPersonFlowHold`, `syncLeaseForBackgroundOnly`, `syncReloadWanted`.
+  Functions: `readSyncFile()`, `persistDb()`, `writeSyncBaseMarker()`,
+  `ensureLease()`, `acquireLeaseForWrite()`, `applyAcquireAnswer()`,
+  `syncConfirmLease()` (`syncLastAnswerAt`, `syncAnswerSeq`),
+  `ensureEditLease()`, `withPersonFlowHold()`, `syncHoldBack()`,
+  `syncRetryHeldBack()`, `syncKeepAsideAndReload()`, `syncTick()`,
+  `syncHeartbeat()`, `pollSyncState()`, `maybeReload()`,
+  `reloadLibraryKeepingView()`, `releaseLease()`, `renderSyncMarker()`,
+  `syncOpening`, `settleDocId()`; constants `SYNC_BASE_FILE_NAME`,
+  `SYNC_CONFIRM_TIMEOUT_MS`, `SYNC_CONFIRM_FRESH_MS`.
+  Test hooks: `__DEBUG_syncLease()`, `__DEBUG_syncState()`,
+  `__DEBUG_persistDb(opts)`, `__DEBUG_syncNow(ms)` (advance the clock and
+  tick), `__DEBUG_syncClockSkip(ms)` (no tick: a sleeping Mac),
+  `__DEBUG_ensureEditLease()`, `__DEBUG_reserveDocId()`/
+  `__DEBUG_checkReservedDocId()`/`__DEBUG_releaseDocId()`.
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the
   2026-09-22 amendment below — scanned PDFs too): `runOcr()` requests
   Tesseract's `{blocks: true}` output specifically — the default
@@ -4318,8 +4448,8 @@ this repo's git tags.
   Move), previews (only the *read* is best-effort) and fresh sidecars (`sidecarTextForDoc()`; a failed preview or sidecar *write* aborts the export, since the destination is broken),
   `library.sqlite` last; Stop, a failure or nothing readable removes the new
   folder; Move then calls `bulkSetDeleted()` on the exported ids (undone in
-  memory if that save fails). "Open it" switches via `resetAll()` +
-  `proceedWithRootDirHandle()`, and the new library is added to Recent
+  memory if that save fails). "Open it" switches via `switchLibraryAsking()`
+  (which asks first while a change is held back) + `proceedWithRootDirHandle()`, and the new library is added to Recent
   libraries. `exportLibraryRunning` blocks closing the dialog meanwhile.
   **Bundles** (spec
   `docs/superpowers/specs/2026-10-20-export-bundle-with-dossiary-design.md`):
