@@ -5309,21 +5309,30 @@
   //                       unless one answered in the last 3 s, and a
   //                       heartbeat when the last one is over 2 minutes old;
   //                       3 s each at most); still holding/offline → real
-  //                       write; no answer → unsynced (held back); view
+  //                       write; no answer → unsynced, and the real write
+  //                       goes ahead with the base marker (as below); view
   //                       preference → write.
   //   none / other      : real → acquire (other/busy: take-over dialog for a
   //                       person, silent hold-back for a job); view preference
   //                       → memory only, written with the next real save.
   //   unconnected / unsynced : real → written at once (the base marker decides
-  //                       later whether the service pushes or keeps it aside);
-  //                       view preference → memory.
+  //                       later whether the service pushes or keeps it aside),
+  //                       and remembered (syncWroteWithoutLease): a newer
+  //                       version found later with library.sqlite not this
+  //                       tab's bytes is then kept aside with the notice, never
+  //                       a plain reload; view preference → memory.
   //   behind a newer version (syncBehind(), disk not ours) on a real write
   //                       → keep aside + reload: with a notice for a person's
   //                       change, quietly for a job's data alone.
   // Invariants: a real write only with the lease confirmed, offline
   // confirmed, or no lease to be had (unconnected / unsynced, where the base
-  // marker guards the push); never over a version this tab hasn't loaded;
-  // a reload never replaces unwritten changes (syncDirty()) or runs under an open dialog
+  // marker guards the push); never over a version this tab knows is newer
+  // than its memory (syncBehind(): kept aside instead). Without a lease a
+  // pull may still land just after the write (the tab can't know): Dossiary
+  // Sync never installs over a folder file that isn't the one it last
+  // synced (the write survives as this Mac's change and is kept aside), and
+  // this tab keeps a lease-less write aside rather than reloading it away.
+  // A reload never replaces unwritten changes (syncDirty()) or runs under an open dialog
   // unless forced by a flow about to start. Every write of library.sqlite is
   // followed by the base marker (.dossiary-base.json: the version memory is
   // at, the SHA-256 of the bytes written), from which Dossiary Sync decides
@@ -5343,6 +5352,7 @@
   // check it.
   async function persistDb(opts = {}){
     syncPersistsInFlight++;
+    let leaseless = false;   // a real write with no lease to be had (see syncWroteWithoutLease)
     try{
       if(syncReadPromise) await syncReadPromise;
       if(syncLibrary){
@@ -5415,10 +5425,11 @@
           // person's change known to be pending keeps them aside quietly
           // (a plain status line, no notice).
           if(syncBehind() && !(await syncDiskIsOurs())){
-            const quiet = !!opts.background && !syncUnsavedChanges && !syncPersonFlowPending && syncPersonFlowHold === 0;
+            const quiet = !!opts.background && !syncUnsavedChanges && !syncPersonFlowPending && syncPersonFlowHold === 0 && !syncWroteWithoutLease;
             await syncKeepAsideAndReload(false, quiet);
             return false;
           }
+          leaseless = syncLease.state === 'unconnected' || syncLease.state === 'unsynced';
         }
       }
       const seq = syncChangeSeq;
@@ -5432,7 +5443,10 @@
       if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // everything changed up to the export is on disk now
       if(markerLib){
         const hash = await syncHashBytes(bytes);
-        if(markerLib === syncLibrary) syncLastWrittenHash = hash;
+        if(markerLib === syncLibrary){
+          syncLastWrittenHash = hash;
+          if(leaseless) syncWroteWithoutLease = true;
+        }
         await writeSyncBaseMarker(markerRoot, baseVersion, hash);
       }
       if(!opts.viewOnly){
@@ -16326,6 +16340,10 @@
   let syncLeaseForBackgroundOnly = false; // the lease was taken by a background job and no person has changed anything since
   let syncLoadedHash = null;            // SHA-256 of library.sqlite as last loaded or reloaded
   let syncLastWrittenHash = null;       // ...and as this tab last wrote it
+  // The last real write had no lease (not connected / not synced yet): a newer version with a foreign
+  // library.sqlite may have been pulled over it, so it is kept aside (with the notice) rather than
+  // reloaded away. Cleared by a reload, a keep-aside, or a granted acquire at memory's version.
+  let syncWroteWithoutLease = false;
   let syncLastAnswerAt = 0;             // when a state poll or a heartbeat last answered (a confirm right after is skipped)
   let syncAnswerSeq = 0;                // counts answers of any kind from the service (did this confirm get one?)
   let syncOpening = null;               // loadDb() is opening the library: no reload meanwhile
@@ -16395,7 +16413,7 @@
   function clearSyncState(){
     stopSyncTimer();
     syncLibrary = null;
-    syncLoadedHash = null; syncLastWrittenHash = null;
+    syncLoadedHash = null; syncLastWrittenHash = null; syncWroteWithoutLease = false;
     syncReservedDocIds = new Set();
     syncLease = { state: 'none' };
     syncUnsavedChanges = false;
@@ -16559,6 +16577,7 @@
       return false;
     }
     if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // safe on disk, aside
+    syncWroteWithoutLease = false;                   // memory (with that write) is aside too
     if(quiet){
       syncQuietEpisode = { lib, folder, reloads: syncReloadCount };
       setStatusLive(() => t('syncKeptAsideQuiet', { device, folder }), '');
@@ -16640,8 +16659,15 @@
         setStatusLive(() => device ? t('syncCloseDialogFirst', { device }) : t('syncCloseDialogFirstUnknown'), 'err');
         return false;
       }
+      // A write made without a lease, and a newer version that isn't this tab's bytes: Dossiary Sync may have
+      // pulled it over that write. Keep memory (which has it) aside, with the notice; the person starts again.
+      if(syncWroteWithoutLease && !syncDirty() && !syncUnsavedChanges && !(await syncDiskIsOurs())){
+        if(lib !== syncLibrary || root !== rootDirHandle) return false;
+        await syncKeepAsideAndReload(true);
+        return false;
+      }
       if(syncDirty() || syncUnsavedChanges){
-        if(!personPendingBefore && !syncUnsavedChanges && syncPersistsInFlight === 0){
+        if(!personPendingBefore && !syncUnsavedChanges && syncPersistsInFlight === 0 && !syncWroteWithoutLease){
           // Only a job's unwritten data (held silently while no lease could
           // be had): keep it aside quietly and go on, on the fresh library.
           if(!await syncKeepAsideAndReload(true, true)) return false;
@@ -16923,6 +16949,9 @@
       // The service pulls a newer version before answering granted, so the
       // version here can be newer than this tab's memory (syncBehind()).
       if(result === 'granted') syncNoteNewer(res.body.version);
+      // Granted at memory's version: nothing was pulled over a lease-less write (it is this Mac's change on
+      // the hub's version, pushed by the service).
+      if(result === 'granted' && syncLibrary && res.body.version === syncLibrary.version && !syncBehind()) syncWroteWithoutLease = false;
       const lease = syncLeaseHolder(res);
       if(lease && lease.holder === 'this' && typeof lease.deviceName === 'string' && lease.deviceName) syncThisDeviceName = lease.deviceName;
       setSyncLease({ state: result === 'granted' ? 'holding' : 'offline' });
@@ -17238,11 +17267,23 @@
     const lib = syncLibrary;
     if(!lib || syncReloadBlocked(force)) return false;
     if(!syncReloadWanted && !syncBehind()) return false;
+    if(syncWroteWithoutLease){
+      // The last write had no lease: a foreign library.sqlite may have been pulled over it. Not a plain
+      // reload then -- memory, which holds that write, is kept aside first, with the notice.
+      if(!(await syncDiskIsOurs())){
+        if(lib !== syncLibrary || syncReloadBlocked(force)) return false;
+        await syncKeepAsideAndReload(true);
+        return lib === syncLibrary && !syncBehind() && !syncReloadWanted;
+      }
+      if(lib !== syncLibrary || syncReloadBlocked(force)) return false;
+      if(!syncReloadWanted && !syncBehind()) return false;
+    }
     const target = Math.max(lib.version, syncKnownNewer);
     const ok = await reloadLibraryKeepingView(force);
     if(!ok || lib !== syncLibrary) return false;
     lib.version = target;
     syncReloadWanted = false;
+    syncWroteWithoutLease = false;
     if(syncViewWriteDropped){
       syncViewWriteDropped = false;
       try{ await persistDb({ viewOnly: true }); }catch(e){ /* a view preference: written with the next save */ }

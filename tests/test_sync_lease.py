@@ -2055,6 +2055,41 @@ async def scenario_devices_disconnect(p):
     await browser.close()
 
 
+async def scenario_leaseless_write_pulled_over(p):
+    # C1/I1: no token, an edit is written without a lease, then a pull of another Mac's version lands over it
+    # (the service's check failed to stop it, or it raced). Opening Edit must not reload the edit away: it is kept
+    # aside with a notice (without a token no state poll ever reports the service's own keep-aside).
+    browser, page, errors = await open_app(p, seed=SEED2, token=None)
+    await edit_title(page, 'Lease-less edit')
+    print("lease-less: the edit is written:", await disk_doc_title(page, 1) == 'Lease-less edit')
+    await disk_change(page, {1: 'Invoice', 2: 'Receipt (iMac)'}, sync_version=4)
+    await open_edit(page)
+    names = await kept_aside_names(page)
+    in_library = 'Lease-less edit' in await row_text(page, 1)
+    kept = bool(names) and await kept_aside_title(page, names[-1]) == 'Lease-less edit'
+    print("...opening Edit after a pull over it keeps the edit (library or .kept-aside):", in_library or kept, names)
+    print("...it is in .kept-aside:", kept, names)
+    notice = await page.inner_text('#sync-notice-dialog') if await page.locator('#sync-notice-dialog').count() else ''
+    print("...a notice names the folder:", bool(names) and f'.kept-aside/{names[-1]}' in notice, repr(notice))
+    print("...the library shows the newer version:", 'Receipt (iMac)' in await row_text(page, 2), await row_text(page, 2))
+    if await page.locator('#sync-notice-ok-btn').count():
+        await page.click('#sync-notice-ok-btn'); await page.wait_for_timeout(150)
+    if await page.evaluate("document.getElementById('modal-root').innerHTML !== ''"):
+        await page.keyboard.press('Escape'); await page.wait_for_timeout(150)   # the Edit form opened (the bug)
+    # The same through a view preference (sorting), which reloads when it meets a newer version.
+    await edit_title(page, 'Second lease-less edit')
+    await disk_change(page, {1: 'Invoice', 2: 'Receipt (iMac 2)'}, sync_version=5)
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(600)
+    names2 = await kept_aside_names(page)
+    fresh = [n for n in names2 if n not in names]
+    print("...a sort click after a pull over the next edit keeps it aside too:", len(fresh) == 1 and await kept_aside_title(page, fresh[0]) == 'Second lease-less edit', names2)
+    print("...with the notice:", await page.locator('#sync-notice-dialog').count() == 1)
+    print("...and the newer version loaded:", 'Receipt (iMac 2)' in await row_text(page, 2))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -2073,7 +2108,7 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_base_marker, scenario_offline_exit_pulled, scenario_confirm_unanswered,
              scenario_no_reload_while_opening, scenario_export_open_asks,
              scenario_disconnected, scenario_disconnected_first_write,
-             scenario_devices_disconnect]
+             scenario_devices_disconnect, scenario_leaseless_write_pulled_over]
 
 
 async def main():
