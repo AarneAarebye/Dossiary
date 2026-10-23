@@ -43,6 +43,13 @@ FAKE_SYNC = """
         if(headers.Authorization !== `Bearer ${S.token}`) return json(401, { error: 'Unauthorized' });
         if(path === '/admin/libraries') return json(200, S.libraries || [{ id: 'lib-7f3a', name: 'Household', available: true }]);
         if(path === '/admin/devices') return json(200, []);
+        const cn = /^\\/admin\\/libraries\\/([^/]+)\\/connection$/.exec(path);
+        if(cn && opts.method === 'POST'){
+            if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
+            const body = JSON.parse(opts.body);
+            S.state = Object.assign({}, S.state || {}, { disconnectedSince: body.connected ? null : (S.disconnectAt || new Date().toISOString()), lease: null });
+            return json(200, S.state);
+        }
         const st = /^\\/admin\\/libraries\\/([^/]+)\\/state$/.exec(path);
         if(st && (opts.method || 'GET') === 'GET'){
             const s = (S.states || {})[decodeURIComponent(st[1])] || (decodeURIComponent(st[1]) === 'lib-7f3a' ? S.state : null);
@@ -53,6 +60,7 @@ FAKE_SYNC = """
             if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
             const body = JSON.parse(opts.body);
             if(body.action === 'acquire'){
+                if(S.state && S.state.disconnectedSince) return json(200, { result: 'disconnected', lease: null, version: S.state.version });
                 const result = body.takeOver ? (S.takeOver || 'granted') : (S.acquire || 'granted');
                 if(result === 'busy') return json(200, { result, lease: S.busyLease, version: S.acquireVersion || 3 });
                 const granted = result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null;
@@ -1988,6 +1996,51 @@ async def scenario_export_open_asks(p):
     await browser.close()
 
 
+DISCONNECTED_SINCE = "2026-10-20T10:00:00Z"
+
+
+def disconnected_sync():
+    return {"token": "admin-tok", "state": dict(state(3), disconnectedSince=DISCONNECTED_SINCE)}
+
+
+async def scenario_disconnected(p):
+    # Disconnected on this Mac: edits are written at once, with no lease call, no hold-back and no warning text.
+    browser, page, errors = await open_app(p, seed=SEED2, sync=disconnected_sync())
+    await tick(page)
+    print("the poll turns the state to disconnected:", (await sync_state(page))['state'] == 'disconnected', await sync_state(page))
+    m = await marker(page)
+    print("...marker reads 'disconnected':", m['visible'] and m['text'] == 'disconnected', m)
+    print("...its tooltip says nothing is sent until reconnecting:", 'until you reconnect' in m['title'], m['title'])
+    n = len(await lease_calls(page))
+    await edit_title(page, 'Disconnected change')
+    print("an edit is written at once:", await disk_doc_title(page, 1) == 'Disconnected change')
+    print("...with no lease call:", len(await lease_calls(page)) == n)
+    st = await sync_state(page)
+    print("...nothing held back:", not st['unsaved'] and st['state'] == 'disconnected', st)
+    m = await marker(page)
+    shown = (m['text'] + ' ' + m['title'] + ' ' + await status(page)).lower()
+    print("...no warning wording:", 'not saved' not in shown and 'offline' not in shown, shown)
+    print("...the base marker names the version and the bytes:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(300)
+    print("a view preference is written too:", await sort_on_disk(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_disconnected_first_write(p):
+    # The first edit, before any poll: the acquire answer says 'disconnected' and the write goes through.
+    browser, page, errors = await open_app(p, seed=SEED2, sync=disconnected_sync())
+    await edit_title(page, 'Before any poll')
+    st = await sync_state(page)
+    print("the first edit writes and the state is disconnected:", await disk_doc_title(page, 1) == 'Before any poll' and st['state'] == 'disconnected' and not st['unsaved'], st)
+    n = len(await lease_calls(page, 'acquire'))
+    await edit_title(page, 'Second')
+    print("...later edits ask nothing more:", len(await lease_calls(page, 'acquire')) == n and await disk_doc_title(page, 1) == 'Second', n)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -2004,7 +2057,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_open_race, scenario_takeover_window, scenario_sleep_window, scenario_offline_window,
              scenario_view_prefs_not_holding, scenario_reserved_ids,
              scenario_base_marker, scenario_offline_exit_pulled, scenario_confirm_unanswered,
-             scenario_no_reload_while_opening, scenario_export_open_asks]
+             scenario_no_reload_while_opening, scenario_export_open_asks,
+             scenario_disconnected, scenario_disconnected_first_write]
 
 
 async def main():
