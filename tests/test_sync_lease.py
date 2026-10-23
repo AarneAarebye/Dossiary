@@ -2041,6 +2041,31 @@ async def scenario_disconnected_first_write(p):
     await browser.close()
 
 
+async def open_devices_dialog(page):
+    await page.click('#tools-btn')
+    await page.click('#devices-btn')
+    await page.wait_for_timeout(500)
+
+
+async def scenario_devices_disconnect(p):
+    # The devices dialog switches a library to "work disconnected" and back; the marker follows at once.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3), "disconnectAt": DISCONNECTED_SINCE})
+    await open_devices_dialog(page)
+    print("a connected library offers 'Work disconnected':", await page.locator('.devices-lib-disconnect-btn').count() == 1)
+    await page.click('.devices-lib-disconnect-btn')
+    await page.wait_for_timeout(500)
+    calls = [c for c in await admin_calls(page) if c['url'].endswith('/connection')]
+    print("...it posts connected:false as JSON:", len(calls) == 1 and calls[0]['body'] == {"connected": False} and calls[0]['contentType'] == 'application/json', calls)
+    print("...the dialog now shows the note and Reconnect:", await page.locator('.devices-lib-reconnect-btn').count() == 1 and await page.locator('.devices-lib-disconnected-note').count() == 1)
+    print("...marker reads 'disconnected':", (await marker(page))['text'] == 'disconnected', await marker(page))
+    await page.click('.devices-lib-reconnect-btn')
+    await page.wait_for_timeout(500)
+    print("Reconnect posts connected:true:", [c['body'] for c in await admin_calls(page) if c['url'].endswith('/connection')][-1] == {"connected": True})
+    print("...the button flips back and the marker clears:", await page.locator('.devices-lib-disconnect-btn').count() == 1 and (await sync_state(page))['state'] != 'disconnected', await sync_state(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -2058,7 +2083,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_view_prefs_not_holding, scenario_reserved_ids,
              scenario_base_marker, scenario_offline_exit_pulled, scenario_confirm_unanswered,
              scenario_no_reload_while_opening, scenario_export_open_asks,
-             scenario_disconnected, scenario_disconnected_first_write]
+             scenario_disconnected, scenario_disconnected_first_write,
+             scenario_devices_disconnect]
 
 
 async def main():
