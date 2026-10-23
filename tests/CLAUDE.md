@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **106
-scripts covering most of the app's actual functionality** (103 of them
+There's a real, runnable Playwright regression suite in `tests/` — **107
+scripts covering most of the app's actual functionality** (104 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1308,7 +1308,21 @@ Mac's copy renames field 12; a reload that gives up during the uid
 migration leaves `fieldNameToId` describing this tab's database) and
 `drop_skips_foreign_ids` (files/5_Scan.pdf, thumbnails/5.jpg and
 files/6_Other.pdf on disk without their rows: a three-file drop writes over
-none of them and takes ids 7-9)).
+none of them and takes ids 7-9); final review: `open_race` (the pull lands
+between reading `library.sqlite` and the sync file: nothing written on open,
+version 3 kept, the next poll reloads the iMac's version, an edit lands on
+top), `takeover_window` (a take-over before the next poll: Save asks instead
+of writing), `sleep_window` (`__DEBUG_syncClockSkip(200 s)` with the form
+open: Save heartbeats first and keeps the change aside), `offline_window`
+(the offline period over: Save keeps aside or asks; a poll leaves
+"offline" and reloads), `view_prefs_not_holding` (a sort click without the
+lease stays in memory and goes out with the next real save) and
+`reserved_ids` (one folder walk per reservation, ids in flight not handed
+out twice after a reload, `releaseDocId()`/`checkReservedDocId()`
+refusals). The fake's granted acquire now names this Mac as holder in its
+state and a release clears it, like the real service; `first_change` and
+`view_write_newer_on_disk` check that a view preference without the lease
+waits for the next real save)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

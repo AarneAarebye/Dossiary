@@ -5052,10 +5052,23 @@
     setStatusT('statusLoadingSqliteEngine', null, 'busy');
     await ensureSqlJs();
     setStatusT('statusReadingLibrary', null, 'busy');
+    // Two-Mac editing: the sync file first, then library.sqlite. Dossiary Sync
+    // writes the database first and the sync file after it, so read in this
+    // order the version can only be older than the database, never newer --
+    // a newer database is then simply reloaded by the next poll, while the
+    // other order could take an old database for the newer version.
+    syncLoadedHash = null;
+    syncReadPromise = readSyncFile().finally(() => { syncReadPromise = null; });
+    await syncReadPromise;
+    const synced = !!syncLibrary;
     const file = await dbFileHandle.getFile();
     const buf = await file.arrayBuffer();
-    syncLoadedHash = await syncHashBytes(new Uint8Array(buf));
+    if(synced) syncLoadedHash = await syncHashBytes(new Uint8Array(buf));
     db = trackDbChanges(new SQL.Database(new Uint8Array(buf)));
+    // A synced library's migrations stay in memory (as on a reload): the
+    // open-time write would go to disk without the lease, maybe over a newer
+    // version the service just pulled. They're written with the next real save.
+    if(synced) db.__untracked = true;
     db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
     applySchemaMigrations(); // adds any columns introduced after this library was created
     migrateSentinelFieldsToGeneric(); // one-time; no-op if this library was already migrated
@@ -5065,14 +5078,16 @@
     migrateCurrencyColumnDefault(); // one-time; no-op if this library was already migrated
     migrateSearchablePdfBuiltFlag(); // one-time; no-op if this library was already migrated
     await migrateStableUids(); // every open: fills any missing uid with its derived value
-    await persistDb(); // save the upgraded schema back immediately, not just in memory
-    afterDbReady();
+    if(synced) db.__untracked = false;
+    else await persistDb(); // save the upgraded schema back immediately, not just in memory
+    afterDbReady({ syncFileRead: true });
   }
 
   let setupCopiedFromName = null; // set by initNewLibrary() for afterDbReady()'s status line
-  function afterDbReady(){
-    // First, so any write started while the library opens waits for the sync file.
-    syncReadPromise = readSyncFile().finally(() => { syncReadPromise = null; });
+  function afterDbReady(opts = {}){
+    // First, so any write started while the library opens waits for the sync
+    // file (loadDb() has read it already, before library.sqlite).
+    if(!opts.syncFileRead) syncReadPromise = readSyncFile().finally(() => { syncReadPromise = null; });
     emptyState.style.display = 'none';
     initState.style.display = 'none';
     loadDocumentsFromDb();
@@ -5276,12 +5291,31 @@
 
   // Every write of library.sqlite. A synced library (.dossiary-sync.json at its
   // root) first takes the edit lease for a real change -- see ensureLease().
+  //
+  // Two-Mac editing at a glance (states are syncLease.state; "real" = not
+  // opts.viewOnly). Nothing a person changed is ever dropped: it's written,
+  // held back in memory (with a .kept-aside copy after 30 s), or kept aside.
+  //   holding / offline : confirm first (syncConfirmLease(): a state poll, and
+  //                       a heartbeat when the last one is over 2 minutes
+  //                       old); still holding/offline → real write; view
+  //                       preference → write.
+  //   none / other      : real → acquire (other/busy: take-over dialog for a
+  //                       person, silent hold-back for a job); view preference
+  //                       → memory only, written with the next real save.
+  //   unconnected / unsynced : real → held back (marker + status line, quiet
+  //                       for a job's data alone); view preference → memory.
+  //   behind a newer version (syncBehind(), disk not ours) on a real write
+  //                       → keep aside + reload: with a notice for a person's
+  //                       change, quietly for a job's data alone.
+  // Invariants: a real write only with the lease confirmed or offline
+  // confirmed; never over a version this tab hasn't loaded; a reload never
+  // replaces unwritten changes (syncDirty()) or runs under an open dialog
+  // unless forced by a flow about to start.
   // opts.viewOnly marks a view preference (sort, columns, view mode, ...),
-  // which never takes the lease. Without the lease it isn't written while a
-  // real change sits in memory unwritten (Cancel in the take-over dialog, a
-  // background job's work), since the bytes would carry that change too, nor
-  // when a newer library.sqlite is on disk (Dossiary Sync pulled one): the
-  // library reloads first and the preference is written afterwards.
+  // which never takes the lease. In a synced library it's written only while
+  // holding (or offline), and even then not while a change is held back or
+  // memory is behind a newer version (the library reloads first); otherwise
+  // it stays in memory and goes out with the next real save.
   // opts.background marks a write no click asked for (the OCR job runner,
   // Library check's backfill, preview jobs): it never opens the take-over
   // dialog; while the other Mac edits, its change waits in memory for the next
@@ -5294,16 +5328,32 @@
     try{
       if(syncReadPromise) await syncReadPromise;
       if(syncLibrary){
-        const free = syncLease.state !== 'holding' && syncLease.state !== 'offline';
         if(opts.viewOnly){
+          // Only while this Mac holds the lease (or is offline, where every
+          // change is this Mac's): otherwise Dossiary Sync may be pulling a
+          // newer library.sqlite right now, and checking for that and then
+          // writing can't be made one step. The preference stays in memory
+          // (a reload keeps it) and goes to disk with the next real save.
+          if(syncLease.state !== 'holding' && syncLease.state !== 'offline'){
+            if(syncBehind() || syncReloadWanted || await syncNewerOnDisk()) setTimeout(() => { maybeReload(); }, 0);
+            return false;
+          }
           if(syncUnsavedChanges || syncLeasePending || syncReloading) return false;
-          if(free && syncDirty()) return false;
-          if(syncBehind() || syncReloadWanted || (free && await syncNewerOnDisk())){
+          if(syncBehind() || syncReloadWanted){
             syncViewWriteDropped = true;
             setTimeout(() => { maybeReload(); }, 0);
             return false;
           }
         }else{
+          // "Holding" or "offline" may be out of date: taken over since the
+          // last poll, expired while the Mac slept, the offline period over.
+          // Ask first; the answer may turn this into an acquire below.
+          if(syncLease.state === 'holding' || syncLease.state === 'offline'){
+            const root = rootDirHandle;
+            await syncConfirmLease();
+            if(root !== rootDirHandle || !db) return false;
+          }
+          const free = syncLease.state !== 'holding' && syncLease.state !== 'offline';
           if(free){
             if(opts.background && syncLease.state === 'other'){ syncHoldBack(); return false; }
             await syncNewerOnDisk();   // a pull since the last poll counts too
@@ -8410,7 +8460,7 @@
     el('export-library-open-btn').addEventListener('click', async () => {
       const handle = dest;
       closeModal();
-      resetAll();
+      if(!(await switchLibraryAsking())) return;   // a held-back change: the person chose to stay
       await proceedWithRootDirHandle(handle);
     });
     el('export-library-start-btn').addEventListener('click', async () => {
@@ -16238,6 +16288,10 @@
   let syncLeaseForBackgroundOnly = false; // the lease was taken by a background job and no person has changed anything since
   let syncLoadedHash = null;            // SHA-256 of library.sqlite as last loaded or reloaded
   let syncLastWrittenHash = null;       // ...and as this tab last wrote it
+  // Ids this tab has handed out whose INSERT hasn't run yet: a reload resets
+  // nextDocId from the fresh database, which doesn't know them, so a second
+  // flow mustn't get the same one (reserveDocId()).
+  let syncReservedDocIds = new Set();
   let syncReloading = false;
   let syncReloadCount = 0;
   let syncViewWriteDropped = false;     // a view preference wasn't written because a newer library was on disk
@@ -16282,6 +16336,14 @@
     syncLibrary = found;
     if(syncLibrary) startSyncTimer();
     renderSyncMarker();
+    // Read after library.sqlite (a new library): if the file on disk isn't
+    // what this tab loaded or wrote, it may be newer than the version just
+    // read -- reload as soon as nothing is in the way.
+    if(syncLibrary && syncLoadedHash && dbFileHandle){
+      let hash = null;
+      try{ hash = await syncHashBytes(new Uint8Array(await (await dbFileHandle.getFile()).arrayBuffer())); }catch(e){ hash = null; }
+      if(root === rootDirHandle && hash && hash !== syncLoadedHash && hash !== syncLastWrittenHash) syncReloadWanted = true;
+    }
   }
 
   function setSyncLease(lease){
@@ -16292,6 +16354,8 @@
   function clearSyncState(){
     stopSyncTimer();
     syncLibrary = null;
+    syncLoadedHash = null; syncLastWrittenHash = null;
+    syncReservedDocIds = new Set();
     syncLease = { state: 'none' };
     syncUnsavedChanges = false;
     syncLastHeartbeatAt = 0;
@@ -16587,27 +16651,38 @@
   // → {id, reloads}; pass it to checkReservedDocId() right before the
   // INSERT, and roll back only with releaseDocId().
   async function reserveDocId(){
-    for(let tries = 0; ; tries++){
-      const id = nextDocId++;
-      if(!syncLibrary || tries > 10000) return { id, reloads: syncReloadCount };
-      if(allDocs.some(x => x.id === id)) continue;
-      if(!(await docIdHasFilesOnDisk(id))) return { id, reloads: syncReloadCount };
-    }
+    if(!syncLibrary) return { id: nextDocId++, reloads: syncReloadCount };
+    // One walk of files/ and thumbnails/ per reservation (on iCloud Drive each
+    // walk is slow), and the rows the database already has.
+    const reloads = syncReloadCount;
+    const taken = await docIdsWithFilesOnDisk();
+    for(const r of queryAll('SELECT id FROM documents').rows) taken.add(r[0]);
+    for(const d of allDocs) taken.add(d.id);
+    for(const id of syncReservedDocIds) taken.add(id);
+    let id = nextDocId;
+    while(taken.has(id)) id++;
+    // A reload during the walk may have moved nextDocId on: never go back.
+    if(nextDocId > id) id = nextDocId;
+    while(taken.has(id) || syncReservedDocIds.has(id)) id++;
+    nextDocId = id + 1;
+    syncReservedDocIds.add(id);
+    return { id, reloads };
   }
-  async function docIdHasFilesOnDisk(id){
-    const prefix = `${id}_`, thumb = new RegExp(`^${id}\\.`);
-    try{ for await (const [name] of filesDirHandle.entries()) if(name.startsWith(prefix)) return true; }catch(e){}
+  async function docIdsWithFilesOnDisk(){
+    const ids = new Set();
+    try{ for await (const [name] of filesDirHandle.entries()){ const m = /^(\d+)_/.exec(name); if(m) ids.add(Number(m[1])); } }catch(e){}
     try{
       const dir = await rootDirHandle.getDirectoryHandle('thumbnails');
-      for await (const [name] of dir.entries()) if(thumb.test(name)) return true;
+      for await (const [name] of dir.entries()){ const m = /^(\d+)\./.exec(name); if(m) ids.add(Number(m[1])); }
     }catch(e){ /* no thumbnails folder */ }
-    return false;
+    return ids;
   }
   // Right before the INSERT: if the library was reloaded since the id was
   // reserved (another Mac's version came in), a row with that id may exist
   // now -- refuse rather than fail half-way; and keep the counter past the id
   // whose files this flow has already written.
   function checkReservedDocId(res){
+    syncReservedDocIds.delete(res.id);   // the INSERT follows at once, or the add fails
     if(res.reloads === syncReloadCount) return;
     if(allDocs.some(x => x.id === res.id) || queryAll('SELECT id FROM documents').rows.some(r => r[0] === res.id)){
       const e = new Error(t('syncDocIdTakenError'));
@@ -16619,7 +16694,9 @@
   // A failed add gives its id back only if nothing reserved one after it
   // (a reload resets the counter, and a later reservation may be past it).
   function releaseDocId(res){
-    if(res && res.reloads === syncReloadCount && nextDocId === res.id + 1) nextDocId--;
+    if(!res) return;
+    syncReservedDocIds.delete(res.id);
+    if(res.reloads === syncReloadCount && nextDocId === res.id + 1) nextDocId--;
   }
   async function withPersonFlowHold(fn){
     const token = beginPersonFlowHold();
@@ -16668,9 +16745,10 @@
   }
 
   // Background jobs (OCR runner, preview jobs) write files -- never without
-  // the lease: only while holding it, offline, not connected or with the
-  // service not answering (where a person's save writes too), or when the
-  // library isn't synced, and never while memory is behind a newer version.
+  // the lease: only while holding it or offline, or when the library isn't
+  // synced. Not while not connected or with the service not answering (a
+  // person's save is held back then too), and never while memory is behind a
+  // newer version or a change is held back.
   function syncMayWriteFiles(){
     if(!syncLibrary) return true;
     if(syncBehind() || syncUnsavedChanges) return false;
@@ -16746,7 +16824,10 @@
   async function acquireLeaseForWrite(background){
     const lib = syncLibrary;
     if(!lib) return true;
-    if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }   // an offline change until connected
+    // No admin token: no lease can be had. persistDb() holds the change back
+    // in memory (marker "not connected — changes not saved") until this
+    // browser connects (setSyncAdminToken() retries).
+    if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }
     const res = await syncLeaseCall('acquire', false);
     if(lib !== syncLibrary) return false;   // the library was switched meanwhile
     if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return true; }
@@ -16858,6 +16939,7 @@
   }
 
   // Switch library with a change held back in memory asks first.
+  // → true when switched (resetAll() ran), false when the person stayed.
   async function switchLibraryAsking(){
     if(syncLibrary && syncUnsavedChanges){
       const device = escapeHtml(syncLease.deviceName || t('syncAnotherMac'));
@@ -16868,9 +16950,10 @@
         paragraphs: [noService ? t('syncDiscardTextNoService') : t('syncDiscardText', { device })],
         okLabel: t('syncDiscardBtn'),
       });
-      if(!discard) return;
+      if(!discard) return false;
     }
     resetAll();
+    return true;
   }
   window.addEventListener('beforeunload', (e) => {
     if(syncLibrary && syncUnsavedChanges){ e.preventDefault(); e.returnValue = ''; }
@@ -16941,7 +17024,7 @@
   // (then it's this Mac's own push) or something is in the way -- an open
   // dialog, a save in flight, a change not yet written; the next poll tries
   // again.
-  async function pollSyncState(){
+  async function pollSyncState(opts = {}){
     const lib = syncLibrary;
     if(!lib || !readSyncAdminToken()) return false;
     const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/state`);
@@ -16973,6 +17056,13 @@
       if(other.deviceName !== syncLease.deviceName || other.since !== syncLease.since) setSyncLease(other);
     }else if(syncLease.state === 'other' && !otherHolds){
       setSyncLease({ state: 'none' });   // free again: the next change asks for it
+    }else if(syncLease.state === 'offline' && (otherHolds || (st.offline === false && st.hubReachable !== false))){
+      // The offline period is over on the service's side: from now on a
+      // database-only save without the lease would count as a view
+      // preference there. Leave "offline"; the next change takes the lease.
+      if(otherHolds) setSyncLease(syncOtherLease(lease));
+      else if(thisHolds){ syncLastHeartbeatAt = syncNow(); setSyncLease({ state: 'holding' }); }
+      else setSyncLease({ state: 'none' });
     }
     noteKeptAside(lib, st.keptAside);
     // A higher version while the service confirms this tab holds the lease is
@@ -16983,8 +17073,24 @@
       syncNoteNewer(st.version);
     }
     renderSyncMarker();
-    await maybeReload();
+    if(!opts.noReload) await maybeReload();
     return true;
+  }
+
+  // Before a real write while "holding" or "offline": is that still so? A
+  // state poll shows a take-over, an expired lease or the end of an offline
+  // period (pollSyncState() switches the state); a heartbeat over 2 minutes
+  // old (the Mac slept) is renewed first -- a lost one re-acquires or turns
+  // into "editing on …". No answer: the write goes ahead (holding/offline as
+  // far as anyone knows; Dossiary Sync treats a save soon after holding or
+  // offline ended as a real change too).
+  const SYNC_STALE_HOLD_MS = 120 * 1000;
+  async function syncConfirmLease(){
+    const lib = syncLibrary;
+    if(!lib || !readSyncAdminToken()) return;
+    await pollSyncState({ noReload: true });
+    if(lib !== syncLibrary) return;
+    if(syncLease.state === 'holding' && syncNow() - syncLastHeartbeatAt > SYNC_STALE_HOLD_MS) await syncHeartbeat();
   }
 
   // Kept-aside versions: Dossiary Sync couldn't combine this Mac's changes
@@ -17242,6 +17348,11 @@
     pending: !!syncLeasePending, reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending });
   window.__DEBUG_persistDb = (opts) => persistDb(opts);
   window.__DEBUG_ensureEditLease = () => ensureEditLease();
+  window.__DEBUG_syncClockSkip = (ms) => { syncClockOffset += ms || 0; };   // time passes with no tick (a sleeping Mac)
+  window.__DEBUG_reserveDocId = () => reserveDocId();
+  window.__DEBUG_checkReservedDocId = (res) => { try{ checkReservedDocId(res); return { ok: true }; }catch(e){ return { ok: false, idTaken: !!e.idTaken, message: e.message }; } };
+  window.__DEBUG_releaseDocId = (res) => releaseDocId(res);
+  window.__DEBUG_nextDocId = () => nextDocId;
 
   const DEVICE_ROLE_LABEL_KEYS = { phone: 'devicesRolePhone', mirror: 'devicesRoleMirror', restore: 'devicesRoleRestore' };
   function deviceRoleLabel(role){ return DEVICE_ROLE_LABEL_KEYS[role] ? t(DEVICE_ROLE_LABEL_KEYS[role]) : String(role || ''); }

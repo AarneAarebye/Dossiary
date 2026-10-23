@@ -51,13 +51,19 @@ FAKE_SYNC = """
             if(body.action === 'acquire'){
                 const result = body.takeOver ? (S.takeOver || 'granted') : (S.acquire || 'granted');
                 if(result === 'busy') return json(200, { result, lease: S.busyLease, version: S.acquireVersion || 3 });
-                return json(200, { result, lease: result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null, version: S.acquireVersion || 3 });
+                const granted = result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null;
+                // Like the real service: once granted, its state names this Mac as the holder.
+                if(granted && S.state) S.state = Object.assign({}, S.state, { lease: granted });
+                return json(200, { result, lease: granted, version: S.acquireVersion || 3 });
             }
             if(body.action === 'heartbeat'){
                 const result = S.heartbeat || 'granted';
                 return json(200, { result, lease: result === 'lost' ? (S.lostLease || null) : null, version: 3 });
             }
-            if(body.action === 'release') return json(200, { result: 'released', lease: null, version: 3 });
+            if(body.action === 'release'){
+                if(S.state && S.state.lease && S.state.lease.holder === 'this') S.state = Object.assign({}, S.state, { lease: null });
+                return json(200, { result: 'released', lease: null, version: 3 });
+            }
         }
         return json(404, { error: 'Not found' });
     };
@@ -188,8 +194,8 @@ async def scenario_first_change(p):
     await page.click('th[data-key="title"]')
     await page.wait_for_timeout(200)
     print("a sort click before any edit takes no lease:", await lease_calls(page) == [])
-    sort_saved = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).settings.some(r => r.key === 'sort_key' && r.value === 'title')")
-    print("...but the sort setting is written:", sort_saved and await writes(page) == before + 1)
+    # Without the lease a view preference stays in memory (a pull may be running) and goes out with the next real save.
+    print("...and isn't written yet:", not await sort_on_disk(page) and await writes(page) == before)
     await page.click('#detail-panel-toggle-btn')
     await page.wait_for_timeout(150)
     await page.click('#detail-panel-toggle-btn')
@@ -200,6 +206,7 @@ async def scenario_first_change(p):
     print("the first Edit save sends one acquire:", len(acq) == 1 and acq[0]['body'] == {"action": "acquire", "takeOver": False}, acq)
     print("...as JSON with the token:", acq[0]['contentType'] == 'application/json' and acq[0]['auth'] == 'Bearer admin-tok')
     print("...and the file is written:", await saved_title(page) == 'First change')
+    print("...with the sort chosen before it:", await sort_on_disk(page))
     m = await marker(page)
     print("marker reads '✎ editing':", m['visible'] and m['text'] == '✎ editing', m)
     print("state is holding:", (await page.evaluate("window.__DEBUG_syncLease()"))['state'] == 'holding')
@@ -899,8 +906,10 @@ async def scenario_view_write_newer_on_disk(p):
     await page.wait_for_timeout(400)
     print("view-only write with a newer version on disk: the pulled file survives:", await disk_doc_title(page, 2) == 'Receipt (pulled)')
     print("...the library reloads instead:", 'Receipt (pulled)' in await row_text(page, 2) and (await sync_state(page))['version'] == 4)
-    sort_saved = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).settings.some(r => r.key === 'sort_key' && r.value === 'title')")
-    print("...and the sort is applied and saved afterwards:", sort_saved and await page.evaluate("document.querySelector('th[data-key=\"title\"]').classList.contains('active')"))
+    # Not holding the lease: the sort stays in memory across the reload, written with the next real save.
+    print("...the sort is still applied, kept in memory:", not await sort_on_disk(page) and await page.evaluate("document.querySelector('th[data-key=\"title\"]').classList.contains('active')"))
+    await edit_title(page, 'Edited')
+    print("...and written with the next real save:", await sort_on_disk(page) and await disk_doc_title(page, 2) == 'Receipt (pulled)')
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1526,6 +1535,212 @@ async def scenario_drop_skips_foreign_ids(p):
     await browser.close()
 
 
+async def scenario_open_race(p):
+    # C1: Dossiary Sync swaps in the iMac's version 4 (library.sqlite, then the sync file) right after this tab
+    # read library.sqlite. Memory is then version 3 and must never count as 4, nor be written over the file.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquireVersion": 4, "state": state(4)})
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    await page.evaluate("""() => {
+        const root = window.__TEST_ROOT;
+        const h = root._children.get('library.sqlite');
+        const orig = h.getFile.bind(h);
+        let swapped = false;
+        h.getFile = async () => {
+            const f = await orig();
+            if(!swapped){
+                swapped = true;   // the pull lands between this read and the sync file's
+                const data = JSON.parse(await f.text());
+                data.documents.find(d => d.id === 2).title = 'Receipt (iMac)';
+                h._bytes = new TextEncoder().encode(JSON.stringify(data));
+                root._children.get('.dossiary-sync.json')._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 }));
+            }
+            return f;
+        };
+        window.__DB_WRITES = 0;
+    }""")
+    await page.click('#open-btn')
+    await page.wait_for_timeout(500)
+    print("opening a synced library writes nothing (migrations stay in memory):", await writes(page) == 0, await writes(page))
+    print("...the iMac's version on disk survives opening:", await disk_doc_title(page, 2) == 'Receipt (iMac)')
+    st = await sync_state(page)
+    print("...memory isn't taken for version 4:", st['version'] == 3 and not st['dirty'], st)
+    await tick(page)
+    print("the next poll reloads the iMac's version:", 'Receipt (iMac)' in await row_text(page, 2) and (await sync_state(page))['version'] == 4)
+    await edit_title(page, 'Mine on top')
+    print("...an edit then lands on top of it:", await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'Mine on top')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_takeover_window(p):
+    # I1, window 1: the iMac took over a moment ago; this tab still says "holding" until its next poll.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await open_edit(page)
+    await page.fill('#e-title', 'Saved right after the take-over')
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'busy'; window.__SYNC.busyLease = s.lease; }", state(3, IMAC_LEASE))
+    w = await writes(page)
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(400)
+    print("take-over window: Save asks first instead of writing:", await page.locator('#sync-takeover-dialog').count() == 1 and await writes(page) == w)
+    if await page.locator('#sync-takeover-cancel-btn').count():
+        await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
+    st = await sync_state(page)
+    print("...Cancel holds the change back, nothing written:", st['unsaved'] and st['state'] == 'other' and await disk_doc_title(page, 1) == 'Invoice', st)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_sleep_window(p):
+    # I1, window 2: the Mac slept past the lease timeout with the Edit form open; Save before the first poll.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await open_edit(page)
+    await page.fill('#e-title', 'Typed before the sleep')
+    await page.evaluate("window.__DEBUG_syncClockSkip(200 * 1000)")
+    # Meanwhile the lease expired and the iMac edited; the service pulls version 4 as it grants again.
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__SYNC.heartbeat = 'lost'; window.__SYNC.lostLease = null; window.__SYNC.acquireVersion = 4;")
+    hb = len(await lease_calls(page, 'heartbeat'))
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(600)
+    print("after a long sleep, Save heartbeats first:", len(await lease_calls(page, 'heartbeat')) == hb + 1)
+    print("...and doesn't write over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'Invoice')
+    names = await kept_aside_names(page)
+    print("...the change is kept aside instead:", len(names) == 1 and await kept_aside_title(page, names[0]) == 'Typed before the sleep', names)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_offline_window(p):
+    # I1, window 3: the service is back (offline over) but this tab still says "offline" until its next acquire.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "offline", "state": state(3, None, offline=True)})
+    await open_edit(page)
+    print("offline: the form opens:", (await sync_state(page))['state'] == 'offline')
+    await page.fill('#e-title', 'Typed while offline')
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'granted'; window.__SYNC.acquireVersion = 4; }", state(4))
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(600)
+    print("offline over: Save doesn't write over the iMac's version:", await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'Invoice')
+    names = await kept_aside_names(page)
+    print("...the change is kept aside:", len(names) == 1 and await kept_aside_title(page, names[0]) == 'Typed while offline', names)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # The iMac holds it once the service is back: Save asks.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "offline", "state": state(3, None, offline=True)})
+    await open_edit(page)
+    await page.fill('#e-title', 'Typed while offline')
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'busy'; window.__SYNC.busyLease = s.lease; }", state(3, IMAC_LEASE))
+    w = await writes(page)
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(400)
+    print("offline over, iMac editing: Save asks instead of writing:", await page.locator('#sync-takeover-dialog').count() == 1 and await writes(page) == w)
+    if await page.locator('#sync-takeover-cancel-btn').count():
+        await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(200)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # A poll saying the offline period is over leaves "offline" and loads the iMac's newer version.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "offline", "state": state(3, None, offline=True)})
+    await page.evaluate("window.__DEBUG_ensureEditLease()")
+    await page.wait_for_timeout(200)
+    await tick(page)
+    print("offline: a poll still saying offline keeps it:", (await sync_state(page))['state'] == 'offline')
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    await page.wait_for_timeout(200)
+    st = await sync_state(page)
+    print("...a poll saying it's over leaves offline:", st['state'] == 'none', st)
+    print("...and the iMac's version is loaded:", 'Receipt (iMac)' in await row_text(page, 2) and st['version'] == 4)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_view_prefs_not_holding(p):
+    # I2: a view preference while this tab doesn't hold the lease stays in memory (a pull may be running);
+    # the next real save writes it.
+    browser, page, errors = await open_app(p, seed=SEED2)
+    w = await writes(page)
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(300)
+    print("view preference without the lease: not written:", await writes(page) == w and not await sort_on_disk(page))
+    print("...but applied in this window:", await page.evaluate("document.querySelector('th[data-key=\"title\"]').classList.contains('active')"))
+    await edit_title(page, 'Real change')
+    print("...and written with the next real save:", await sort_on_disk(page) and await disk_doc_title(page, 1) == 'Real change')
+    w = await writes(page)
+    await page.click('th[data-key="date"]')
+    await page.wait_for_timeout(300)
+    print("while holding, a view preference is written:", await writes(page) == w + 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def sort_on_disk(page, key='title'):
+    return await page.evaluate("async (k) => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).settings.some(r => r.key === 'sort_key' && r.value === k)", key)
+
+
+async def scenario_reserved_ids(p):
+    # Minor: reserveDocId() walks the folders once, skips ids in flight, and its refusals.
+    foreign = {'files/5_Scan.pdf': 'IMAC-5', 'thumbnails/6.jpg': 'IMAC-THUMB-6', 'files/7_x/orig.pdf': 'IMAC-7'}
+    browser, page, errors = await open_app(p, seed=SEED2, extra_files=foreign)
+    await page.evaluate("""() => {
+        window.__WALKS = 0;
+        const files = window.__TEST_ROOT._children.get('files');
+        const orig = files.entries.bind(files);
+        files.entries = (...a) => { window.__WALKS++; return orig(...a); };
+    }""")
+    r1 = await page.evaluate("window.__DEBUG_reserveDocId()")
+    walks = await page.evaluate("window.__WALKS")
+    print("reserving skips every id with files on disk:", r1['id'] == 8, r1)
+    print("...walking files/ once, not once per id:", walks == 1, walks)
+    await page.evaluate("(r) => window.__DEBUG_releaseDocId(r)", r1)
+    print("releasing the last reservation gives its id back:", await page.evaluate("window.__DEBUG_nextDocId()") == 8)
+    a = await page.evaluate("window.__DEBUG_reserveDocId()")
+    b = await page.evaluate("window.__DEBUG_reserveDocId()")
+    await page.evaluate("(r) => window.__DEBUG_releaseDocId(r)", a)
+    c = await page.evaluate("window.__DEBUG_reserveDocId()")
+    print("...but not when a later one was reserved after it:", (a['id'], b['id'], c['id']) == (8, 9, 10), a, b, c)
+    print("check with no reload in between passes:", (await page.evaluate("(r) => window.__DEBUG_checkReservedDocId(r)", b))['ok'])
+    await browser.close()
+
+    # A reload since the reservation that brought a row with that id refuses the add; one that didn't, passes.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    res = await page.evaluate("window.__DEBUG_reserveDocId()")
+    other = await page.evaluate("window.__DEBUG_reserveDocId()")
+    await page.evaluate("""async (id) => {
+        const h = window.__TEST_ROOT._children.get('library.sqlite');
+        const data = JSON.parse(await (await h.getFile()).text());
+        data.documents.push(Object.assign({}, data.documents[0], { id, title: 'iMac doc', uid: null }));
+        h._bytes = new TextEncoder().encode(JSON.stringify(data));
+    }""", res['id'])
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    print("a reload brought the iMac's row with the reserved id:", (await sync_state(page))['reloads'] == 1 and 'iMac doc' in await row_text(page, res['id']))
+    chk = await page.evaluate("(r) => window.__DEBUG_checkReservedDocId(r)", res)
+    print("...checking the reservation refuses it as taken:", not chk['ok'] and chk['idTaken'] and 'changed on another Mac' in chk['message'], chk)
+    n = await page.evaluate("window.__DEBUG_nextDocId()")
+    await page.evaluate("(r) => window.__DEBUG_releaseDocId(r)", res)
+    print("...releasing it after the reload leaves the counter alone:", await page.evaluate("window.__DEBUG_nextDocId()") == n)
+    chk2 = await page.evaluate("(r) => window.__DEBUG_checkReservedDocId(r)", other)
+    print("an id the reload didn't bring passes, the counter kept past it:", chk2['ok'] and await page.evaluate("window.__DEBUG_nextDocId()") > other['id'], chk2)
+    await browser.close()
+
+    # A reload resets the counter; an id still in flight is never handed out twice.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    first = await page.evaluate("window.__DEBUG_reserveDocId()")
+    await disk_change(page, {2: 'Receipt (iMac)'})
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    second = await page.evaluate("window.__DEBUG_reserveDocId()")
+    print("after a reload, an id in flight isn't reserved again:", (await sync_state(page))['reloads'] == 1 and second['id'] != first['id'], first, second)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -1538,7 +1753,9 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_multi_drop_job_save, scenario_tick_before_insert,
              scenario_held_back_copy_race, scenario_job_data_retried, scenario_quiet_copy_reused,
              scenario_reload_race, scenario_held_back_saved_status,
-             scenario_reload_giveup_field_maps, scenario_drop_skips_foreign_ids]
+             scenario_reload_giveup_field_maps, scenario_drop_skips_foreign_ids,
+             scenario_open_race, scenario_takeover_window, scenario_sleep_window, scenario_offline_window,
+             scenario_view_prefs_not_holding, scenario_reserved_ids]
 
 
 async def main():
