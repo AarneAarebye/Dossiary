@@ -2517,8 +2517,8 @@ this repo's git tags.
 
   | State | Real save (person) | Real save (job) | View preference | How loud |
   |---|---|---|---|---|
-  | `holding` | confirm (`syncConfirmLease()`: state poll; heartbeat if the last is > 120 s old), then write | same | write | marker "✎ editing" |
-  | `offline` | confirm (poll), then write | same | write | marker "✎ editing offline" |
+  | `holding` | confirm (`syncConfirmLease()`: state poll unless one answered in the last 3 s; heartbeat if the last is > 120 s old; 3 s timeout each; no answer → `unsynced`, held back), then write | same | write | marker "✎ editing" |
+  | `offline` | confirm (poll, as above), then write | same | write | marker "✎ editing offline" |
   | `none` (lease free) | acquire, then write | acquire silently, then write | memory only | -- |
   | `other` (another Mac holds it) | take-over dialog: Take over → write; Cancel → held back | held back silently | memory only | marker "editing on {device}" / "unsaved changes", status line "Not saved: …" |
   | `unconnected` (no admin token) | held back | held back silently | memory only | marker "not connected — changes not saved", status line |
@@ -2537,8 +2537,10 @@ this repo's git tags.
     `other` + "{device} took over editing this library."; no lease while
     holding → `none`; offline over (`!offline && hubReachable`, or another
     holder) while `offline` → `none`/`other`/`holding`; a higher `version`
-    is this Mac's own push only while the state says `holder: 'this'`,
-    otherwise `syncNoteNewer()`; new `keptAside` entries → one status line
+    is this Mac's own push only while the state says `holder: 'this'` and
+    the offline period didn't just end (the service may have pulled another
+    Mac's version as it did), otherwise `syncNoteNewer()` -- this tab's own
+    bytes are still recognised by `syncDiskIsOurs()`; new `keptAside` entries → one status line
     each and a reload; `lastError` while holding → marker "not synced yet".
   - *Reload* (`maybeReload()` → `reloadLibraryKeepingView()`): when behind
     and nothing is in the way -- no dialog, no save in flight, no acquire
@@ -2556,7 +2558,9 @@ this repo's git tags.
     (Dossiary Sync writes the database first, so the version read can only
     be older than the database, never newer) and, for a synced library,
     does **not** write on open -- migrations stay in memory until the next
-    real save.
+    real save. The sync timer starts with the sync file, but never reloads
+    while `loadDb()` is still opening (`syncOpening`, checked in
+    `syncReloadBlocked()`).
   - *Leaving*: `resetAll()` and `pagehide` release with `keepalive`;
     `beforeunload` and Switch library (`switchLibraryAsking()`, also used by
     Export as library's "Open it") ask while a change is held back.
@@ -2566,8 +2570,23 @@ this repo's git tags.
     (with a `.kept-aside/<this Mac>-<time>/library.sqlite` copy 30 s later,
     `writeHeldBackCopy()`), or kept aside (`syncKeepAsideAndReload()`).
   - A real write happens only with the lease confirmed or offline confirmed
-    just before it; a view preference is written only while holding or
-    offline (otherwise a pull may be running; check-then-write isn't atomic).
+    just before it -- an unanswered confirm holds the change back as
+    "not answering", it never writes on "holding as far as anyone knows";
+    a view preference is written only while holding or offline (otherwise a
+    pull may be running; check-then-write isn't atomic, and a write with a
+    current marker would make Dossiary Sync take the lease to push it).
+  - Every live write of `library.sqlite` (real, view preference, the
+    held-back retry -- all through `persistDb()`) is followed by the base
+    marker `.dossiary-base.json` (`writeSyncBaseMarker()`): `{version,
+    sha256, writtenAt}`, the version memory was at when the bytes were
+    exported and their SHA-256. Keep-aside copies never get one. Dossiary
+    Sync pushes a changed database only when the marker matches the bytes
+    and names the folder's version (or the start of this Mac's own pushes
+    that led to it); any other base, or no matching marker after 10 s, is
+    kept aside on both sides and the hub's version pulled -- never pushed.
+    So a version number this tab claims must never be newer than its
+    memory: only an acquire's answer, a poll while holding (not just after
+    offline) or `syncDiskIsOurs()` move `syncLibrary.version`.
   - Never write over a version this tab didn't load or write
     (`syncDiskIsOurs()` hashes the file against `syncLoadedHash` /
     `syncLastWrittenHash`).
@@ -2579,26 +2598,30 @@ this repo's git tags.
     ids in flight (`reserveDocId()`, one folder walk per call,
     `syncReservedDocIds`); `checkReservedDocId()` refuses an add whose id a
     reload brought (`syncDocIdTakenError`); `releaseDocId()` gives an id back
-    only if nothing came after it.
+    only if nothing came after it and its INSERT hadn't run; every
+    reservation ends with `settleDocId()` in a `finally`, so no id stays in
+    flight after an early return or an error.
   - The marker (`#sync-marker`) shares `#sub-label`'s non-wrapping header
     line, so the header's height never changes.
   - `.kept-aside/` copies Dossiary writes live only on this Mac; Dossiary
     Sync's own `keptAside` list doesn't know them (part 3 must look for
-    both). `listLibraryFiles()` skips `.dossiary-sync.json` and
-    `.kept-aside/`.
-  - Dossiary Sync's side of the same rule: a database-only change within
-    180 s after this Mac stopped holding or an offline period ended counts as
-    a real change there (pushed or kept aside), not a view preference.
+    both). `listLibraryFiles()` skips `.dossiary-sync.json`,
+    `.dossiary-base.json` and `.kept-aside/` (backups); Export as library
+    writes only the documents' files and a new database, so neither file
+    reaches an exported library.
 
   **Key names.** State: `syncLibrary`, `syncLease`, `syncLastState`,
   `syncKnownNewer`, `syncUnsavedChanges`, `syncPersonFlowPending`,
   `syncPersonFlowHold`, `syncLeaseForBackgroundOnly`, `syncReloadWanted`.
-  Functions: `readSyncFile()`, `persistDb()`, `ensureLease()`,
-  `acquireLeaseForWrite()`, `applyAcquireAnswer()`, `syncConfirmLease()`,
+  Functions: `readSyncFile()`, `persistDb()`, `writeSyncBaseMarker()`,
+  `ensureLease()`, `acquireLeaseForWrite()`, `applyAcquireAnswer()`,
+  `syncConfirmLease()` (`syncLastAnswerAt`, `syncAnswerSeq`),
   `ensureEditLease()`, `withPersonFlowHold()`, `syncHoldBack()`,
   `syncRetryHeldBack()`, `syncKeepAsideAndReload()`, `syncTick()`,
   `syncHeartbeat()`, `pollSyncState()`, `maybeReload()`,
-  `reloadLibraryKeepingView()`, `releaseLease()`, `renderSyncMarker()`.
+  `reloadLibraryKeepingView()`, `releaseLease()`, `renderSyncMarker()`,
+  `syncOpening`, `settleDocId()`; constants `SYNC_BASE_FILE_NAME`,
+  `SYNC_CONFIRM_TIMEOUT_MS`, `SYNC_CONFIRM_FRESH_MS`.
   Test hooks: `__DEBUG_syncLease()`, `__DEBUG_syncState()`,
   `__DEBUG_persistDb(opts)`, `__DEBUG_syncNow(ms)` (advance the clock and
   tick), `__DEBUG_syncClockSkip(ms)` (no tick: a sleeping Mac),

@@ -14,7 +14,7 @@ from playwright.async_api import async_playwright
 # service per scenario.
 # config: { token, down, acquire ('granted'|'busy'|'offline'), busyLease,
 #           takeOver ('granted'|...), heartbeat ('granted'|'lost'|'offline'),
-#           lostLease (lease object or None) }
+#           lostLease (lease object or None), hang (no answer until aborted) }
 # Every request is logged in window.__CALLS (url, method, body, keepalive).
 FAKE_SYNC = """
 (config) => {
@@ -30,6 +30,10 @@ FAKE_SYNC = """
         const S = window.__SYNC;
         if(!url.startsWith(BASE + '/') || S.down) throw new TypeError('Failed to fetch');
         const path = url.slice(BASE.length);
+        // A hung service: no answer until the caller's own timeout aborts the request.
+        if(S.hang && path !== '/admin/health') return new Promise((_, reject) => {
+            if(opts.signal) opts.signal.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+        });
         if(path === '/admin/health') return json(200, { service: 'dossiary-sync', version: '0.4.0', adminProtocol: 1, connected: headers.Authorization === `Bearer ${S.token}` });
         if(path === '/admin/connect/start' && opts.method === 'POST') return json(200, { validFor: 300 });
         if(path === '/admin/connect' && opts.method === 'POST'){
@@ -172,6 +176,28 @@ async def saved_title(page):
     return await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
 
 
+async def base_marker(page, path='.dossiary-base.json'):
+    """The base marker at `path` (None when absent), plus the SHA-256 of library.sqlite on disk (diskSha)."""
+    return await page.evaluate("""async (path) => {
+        let dir = window.__TEST_ROOT;
+        const parts = path.split('/');
+        try{ for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part); }catch(e){ return null; }
+        let text;
+        try{ text = await (await (await dir.getFileHandle(parts[parts.length - 1])).getFile()).text(); }catch(e){ return null; }
+        const m = JSON.parse(text);
+        const bytes = new Uint8Array(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).arrayBuffer());
+        const d = await crypto.subtle.digest('SHA-256', bytes);
+        m.diskSha = [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+        return m;
+    }""", path)
+
+
+def marker_ok(m, version):
+    """The marker names `version` and the bytes on disk."""
+    return bool(m) and m.get('version') == version and isinstance(m.get('sha256'), str) and m['sha256'] == m['diskSha'] \
+        and str(m.get('writtenAt', '')).endswith('Z')
+
+
 async def scenario_no_sync_file(p):
     browser, page, errors = await open_app(p, sync_file=False)
     before = await writes(page)
@@ -181,6 +207,7 @@ async def scenario_no_sync_file(p):
     print("no sync file: the edit is saved:", await saved_title(page) == 'Edited' and await writes(page) >= before + 2)
     print("...with zero admin calls (sort click and edit):", await admin_calls(page) == [], await admin_calls(page))
     print("...and no marker:", not (await marker(page))['visible'])
+    print("...and no base marker file:", await base_marker(page) is None)
     print("...state stays none:", (await page.evaluate("window.__DEBUG_syncLease()"))['state'] == 'none')
     print("no page errors:", not errors, errors)
     await browser.close()
@@ -457,7 +484,8 @@ async def scenario_release(p):
 
 
 async def scenario_backup(p):
-    browser, page, errors = await open_app(p, extra_files={'.kept-aside/2026-05-03/library.sqlite': 'old', 'files/1_a.pdf': 'pdf'})
+    browser, page, errors = await open_app(p, extra_files={'.kept-aside/2026-05-03/library.sqlite': 'old', 'files/1_a.pdf': 'pdf',
+                                                           '.dossiary-base.json': '{"version": 3, "sha256": "x"}'})
     await page.evaluate("() => { window.__BACKUP_PARENT = window.__makeEmptyRoot(); window.__NEXT_PICKED_DIR = window.__BACKUP_PARENT; }")
     await page.route('https://cdn.jsdelivr.net/gh/**', lambda route: route.abort())
     await page.click('#tools-btn'); await page.click('#backup-btn')
@@ -473,6 +501,7 @@ async def scenario_backup(p):
     }""")
     print("a backup has no .dossiary-sync.json:", '.dossiary-sync.json' not in copied, copied)
     print("...and no .kept-aside:", not any(c.startswith('.kept-aside') for c in copied))
+    print("...and no base marker (.dossiary-base.json):", '.dossiary-base.json' not in copied)
     print("...but has the library:", 'library.sqlite' in copied and 'files/1_a.pdf' in copied)
     errors = [e for e in errors if 'ERR_FAILED' not in e]
     print("no page errors:", not errors, errors)
@@ -1741,6 +1770,218 @@ async def scenario_reserved_ids(p):
     await browser.close()
 
 
+async def scenario_base_marker(p):
+    # The base marker: after every write of library.sqlite in a synced library, .dossiary-base.json says
+    # which hub version this tab's memory is at and the SHA-256 of the bytes just written.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    print("opening writes no base marker:", await base_marker(page) is None)
+    await edit_title(page, 'Marked')
+    m = await base_marker(page)
+    print("a real save writes the marker: version 3, the hash of the bytes written:", marker_ok(m, 3), m)
+    w = await writes(page)
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(300)
+    m = await base_marker(page)
+    print("a view preference (while holding) writes it too:", await writes(page) == w + 1 and marker_ok(m, 3), m)
+    # Lease given back, another Mac's version 4 pulled and reloaded: the next save names version 4.
+    await tick(page, 11 * 60 * 1000)
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; }", state(4))
+    await tick(page)
+    print("reloaded version 4:", (await sync_state(page))['version'] == 4 and 'Receipt (iMac)' in await row_text(page, 2))
+    await edit_title(page, 'On version 4')
+    m = await base_marker(page)
+    print("...the next save's marker names version 4:", marker_ok(m, 4), m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # A change held back (the service not answering) and written by the retry gets its marker too.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("window.__SYNC.down = true")
+    await edit_title(page, 'Held back')
+    print("held back while the service doesn't answer: nothing written, no marker:",
+          (await sync_state(page))['unsaved'] and await base_marker(page) is None)
+    await page.evaluate("window.__SYNC.down = false")
+    await tick(page, 61 * 1000)
+    await page.wait_for_timeout(300)
+    m = await base_marker(page)
+    print("...the retry writes it with its marker:", await disk_doc_title(page, 1) == 'Held back' and marker_ok(m, 3), m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # Keep-aside copies get no marker, and the live marker isn't touched by one.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, THIS_LEASE)})
+    await edit_title(page, 'Before the sleep')
+    before = await base_marker(page)
+    await open_edit(page)
+    await page.fill('#e-title', 'Typed before the sleep')
+    await page.evaluate("window.__DEBUG_syncClockSkip(200 * 1000)")
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__SYNC.heartbeat = 'lost'; window.__SYNC.lostLease = null; window.__SYNC.acquireVersion = 4;")
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(600)
+    names = await kept_aside_names(page)
+    after = await base_marker(page)
+    print("kept aside, with no marker in the copy:", len(names) == 1 and await base_marker(page, names[0] + '/.dossiary-base.json') is None, names)
+    print("...and the live marker is the one from the last live write:",
+          before is not None and after is not None and (after['version'], after['sha256']) == (before['version'], before['sha256']))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_offline_exit_pulled(p):
+    # N2: the offline period ends with this Mac getting the lease, after Dossiary Sync pulled the iMac's
+    # version 4. That version is the iMac's, not this Mac's own push: reload it, never write over it.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "acquire": "offline", "state": state(3, None, offline=True)})
+    await page.evaluate("window.__DEBUG_ensureEditLease()")
+    await page.wait_for_timeout(200)
+    await tick(page)
+    print("offline:", (await sync_state(page))['state'] == 'offline')
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'granted'; window.__SYNC.acquireVersion = 4; }", state(4, THIS_LEASE))
+    await tick(page)
+    await page.wait_for_timeout(200)
+    st = await sync_state(page)
+    print("offline over, holding: the pulled version 4 is reloaded, not taken as this Mac's own:",
+          st['state'] == 'holding' and st['version'] == 4 and st['reloads'] == 1 and 'Receipt (iMac)' in await row_text(page, 2), st)
+    await edit_title(page, 'After offline')
+    print("...an edit then lands on top of the iMac's version:",
+          await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'After offline')
+    m = await base_marker(page)
+    print("...with a marker naming version 4:", marker_ok(m, 4), m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def state_gets(page):
+    return len([c for c in await admin_calls(page) if c['url'].endswith('/state')])
+
+
+async def scenario_confirm_unanswered(p):
+    # Concern 2: the confirm before a write gets no answer → "not answering", the change held back, not written.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'First')
+    await open_edit(page)
+    await page.fill('#e-title', 'Unconfirmed')
+    await page.evaluate("window.__DEBUG_syncClockSkip(10 * 1000); window.__SYNC.down = true;")
+    w = await writes(page)
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(400)
+    st = await sync_state(page)
+    print("no answer to the confirm: not written, held back as 'not answering':",
+          await writes(page) == w and st['unsaved'] and st['state'] == 'unsynced' and await disk_doc_title(page, 1) == 'First', st)
+    print("...the marker says so:", 'not answering' in (await marker(page))['text'], await marker(page))
+    await page.evaluate("window.__SYNC.down = false")
+    await tick(page, 61 * 1000)
+    await page.wait_for_timeout(300)
+    print("...written once the service answers again:", await disk_doc_title(page, 1) == 'Unconfirmed' and not (await sync_state(page))['unsaved'])
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # Concern 1: a hung service delays the confirm about 3 s, not 15.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'First')
+    await open_edit(page)
+    await page.fill('#e-title', 'Hung')
+    await page.evaluate("window.__DEBUG_syncClockSkip(10 * 1000); window.__SYNC.hang = true;")
+    await page.click('#save-edit-btn')
+    await page.wait_for_timeout(4000)
+    st = await sync_state(page)
+    print("a hung service: the confirm gives up after about 3 s and holds the change back:",
+          st['state'] == 'unsynced' and st['unsaved'] and await disk_doc_title(page, 1) == 'First', st)
+    await page.evaluate("window.__SYNC.hang = false")
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # Concern 1: a poll that answered a moment ago stands for the confirm: no second state request.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'First')
+    await tick(page)
+    n = await state_gets(page)
+    await edit_title(page, 'Right after a poll')
+    print("a save right after a poll answered asks no second time:", await state_gets(page) == n and await disk_doc_title(page, 1) == 'Right after a poll', n, await state_gets(page))
+    await page.evaluate("window.__DEBUG_syncClockSkip(10 * 1000)")
+    await edit_title(page, 'Later')
+    print("...a save later on confirms again:", await state_gets(page) == n + 1 and await disk_doc_title(page, 1) == 'Later')
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_no_reload_while_opening(p):
+    # N3: the sync timer mustn't reload while loadDb() is still opening the library (between setting up
+    # the database and its last migration).
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    await page.evaluate("""() => {
+        // Pause the second digest of the open (the first hashes library.sqlite before the database is set up;
+        // the next ones run in migrateStableUids(), after it).
+        const orig = crypto.subtle.digest.bind(crypto.subtle);
+        let calls = 0;
+        window.__OPEN_PAUSED = false;
+        window.__OPEN_GATE = new Promise(r => { window.__OPEN_RELEASE = r; });
+        crypto.subtle.digest = async (...a) => {
+            calls++;
+            if(calls === 2){ window.__OPEN_PAUSED = true; await window.__OPEN_GATE; }
+            return orig(...a);
+        };
+    }""")
+    await page.click('#open-btn')
+    await page.wait_for_timeout(300)
+    print("opening paused after the database was set up:", await page.evaluate("window.__OPEN_PAUSED"))
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await page.evaluate("window.__DEBUG_syncNow(0)")
+    await page.wait_for_timeout(300)
+    print("a tick while opening doesn't reload:", (await sync_state(page))['reloads'] == 0, await sync_state(page))
+    await page.evaluate("window.__OPEN_RELEASE()")
+    await page.wait_for_timeout(400)
+    await tick(page)
+    st = await sync_state(page)
+    print("...once open, the next tick reloads version 4:", st['reloads'] == 1 and st['version'] == 4 and 'Receipt (iMac)' in await row_text(page, 2), st)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_export_open_asks(p):
+    # Concern 5: Export as library's "Open it" asks first while a change is held back; staying keeps it.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)},
+                                           extra_files={'files/1_a.pdf': 'pdf 1', '.dossiary-base.json': '{"version": 3, "sha256": "x"}'})
+    await hold_back_change(page, 'Held back')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
+    if await page.locator('#modal-root .modal').count():
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(200)
+    print("a change is held back:", (await sync_state(page))['unsaved'])
+    await page.evaluate("() => { window.__EXPORT_PARENT = window.__makeEmptyRoot(); window.__EXPORT_PARENT.name = 'Outside'; window.__NEXT_PICKED_DIR = window.__EXPORT_PARENT; }")
+    await page.check('tr[data-id="1"] .row-select-checkbox')
+    await page.click('#bulk-more-btn')
+    await page.click('#bulk-export-library-btn')
+    await page.wait_for_timeout(300)
+    await page.click('#export-library-start-btn')
+    await page.wait_for_timeout(1000)
+    print("exported:", await page.is_visible('#export-library-open-btn'))
+    exported = await page.evaluate("""async () => {
+        const out = [];
+        let dir; for await (const [, h] of window.__EXPORT_PARENT.entries()) dir = h;
+        if(!dir) return out;
+        for await (const [n] of dir.entries()) out.push(n);
+        return out.sort();
+    }""")
+    print("...the exported library has no sync file and no base marker:",
+          'library.sqlite' in exported and '.dossiary-base.json' not in exported and '.dossiary-sync.json' not in exported, exported)
+    await page.click('#export-library-open-btn')
+    await page.wait_for_timeout(300)
+    print("'Open it' asks first:", await page.locator('#sync-discard-dialog').count() == 1)
+    await page.click('#sync-discard-cancel-btn')
+    await page.wait_for_timeout(300)
+    print("...staying keeps this library and the held-back change:", await page.inner_text('#sub-label') == 'Household' and (await sync_state(page))['unsaved'])
+    errors = [e for e in errors if 'ERR_FAILED' not in e]
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -1755,7 +1996,9 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_reload_race, scenario_held_back_saved_status,
              scenario_reload_giveup_field_maps, scenario_drop_skips_foreign_ids,
              scenario_open_race, scenario_takeover_window, scenario_sleep_window, scenario_offline_window,
-             scenario_view_prefs_not_holding, scenario_reserved_ids]
+             scenario_view_prefs_not_holding, scenario_reserved_ids,
+             scenario_base_marker, scenario_offline_exit_pulled, scenario_confirm_unanswered,
+             scenario_no_reload_while_opening, scenario_export_open_asks]
 
 
 async def main():

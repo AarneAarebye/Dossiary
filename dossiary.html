@@ -5049,6 +5049,14 @@
   }
 
   async function loadDb(){
+    // The sync timer starts as soon as the sync file is read (below); it must
+    // not reload the library while this is still setting it up.
+    const opening = {};
+    syncOpening = opening;
+    try{ await loadDbNow(); }
+    finally{ if(syncOpening === opening) syncOpening = null; }
+  }
+  async function loadDbNow(){
     setStatusT('statusLoadingSqliteEngine', null, 'busy');
     await ensureSqlJs();
     setStatusT('statusReadingLibrary', null, 'busy');
@@ -5295,9 +5303,11 @@
   // Two-Mac editing at a glance (states are syncLease.state; "real" = not
   // opts.viewOnly). Nothing a person changed is ever dropped: it's written,
   // held back in memory (with a .kept-aside copy after 30 s), or kept aside.
-  //   holding / offline : confirm first (syncConfirmLease(): a state poll, and
-  //                       a heartbeat when the last one is over 2 minutes
-  //                       old); still holding/offline → real write; view
+  //   holding / offline : confirm first (syncConfirmLease(): a state poll
+  //                       unless one answered in the last 3 s, and a
+  //                       heartbeat when the last one is over 2 minutes old;
+  //                       3 s each at most); still holding/offline → real
+  //                       write; no answer → unsynced (held back); view
   //                       preference → write.
   //   none / other      : real → acquire (other/busy: take-over dialog for a
   //                       person, silent hold-back for a job); view preference
@@ -5310,7 +5320,10 @@
   // Invariants: a real write only with the lease confirmed or offline
   // confirmed; never over a version this tab hasn't loaded; a reload never
   // replaces unwritten changes (syncDirty()) or runs under an open dialog
-  // unless forced by a flow about to start.
+  // unless forced by a flow about to start. Every write of library.sqlite is
+  // followed by the base marker (.dossiary-base.json: the version memory is
+  // at, the SHA-256 of the bytes written), from which Dossiary Sync decides
+  // whether the change may be pushed or is kept aside.
   // opts.viewOnly marks a view preference (sort, columns, view mode, ...),
   // which never takes the lease. In a synced library it's written only while
   // holding (or offline), and even then not while a change is held back or
@@ -5350,8 +5363,14 @@
           // Ask first; the answer may turn this into an acquire below.
           if(syncLease.state === 'holding' || syncLease.state === 'offline'){
             const root = rootDirHandle;
-            await syncConfirmLease();
+            const answered = await syncConfirmLease();
             if(root !== rootDirHandle || !db) return false;
+            // No answer: not "holding as far as anyone knows" -- held back
+            // below as "not answering", and retried once the service answers.
+            if(!answered && (syncLease.state === 'holding' || syncLease.state === 'offline')){
+              syncUnsyncedAt = syncNow();
+              setSyncLease({ state: 'unsynced', reason: syncAdminEverAnswered ? syncErrorText(null) : t('syncNotRunningReason') });
+            }
           }
           const free = syncLease.state !== 'holding' && syncLease.state !== 'offline';
           if(free){
@@ -5377,10 +5396,10 @@
               }
             }
             // No lease to be had (no admin token in this browser, or the
-            // service not answering): Dossiary Sync would pull over a
-            // database-only change it didn't lease, so the change is held
-            // back in memory and written once the lease comes (syncTick
-            // retries; connecting in the devices dialog does too).
+            // service not answering): nothing confirms which version is on
+            // disk or who holds the lease, so the change is held back in
+            // memory and written once the lease comes (syncTick retries;
+            // connecting in the devices dialog does too).
             if(syncLease.state === 'unconnected' || syncLease.state === 'unsynced'){
               // Only a job's changes pending: hold them silently (they stay
               // unwritten in memory; syncTick retries them once a lease can
@@ -5411,12 +5430,19 @@
         }
       }
       const seq = syncChangeSeq;
+      // The version memory is at, taken with the bytes: the base marker names it.
+      const markerLib = syncLibrary, markerRoot = rootDirHandle;
+      const baseVersion = markerLib ? markerLib.version : null;
       const bytes = db.export();
       const writable = await dbFileHandle.createWritable();
       await writable.write(bytes);
       await writable.close();
       if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // everything changed up to the export is on disk now
-      if(syncLibrary) syncLastWrittenHash = await syncHashBytes(bytes);
+      if(markerLib){
+        const hash = await syncHashBytes(bytes);
+        if(markerLib === syncLibrary) syncLastWrittenHash = hash;
+        await writeSyncBaseMarker(markerRoot, baseVersion, hash);
+      }
       if(!opts.viewOnly){
         lastRealSaveAt = syncNow();
         if(!opts.background){ syncLeaseForBackgroundOnly = false; syncPersonFlowPending = false; }
@@ -8156,15 +8182,16 @@
   }
 
   // Every file in the library folder, as [pathParts, fileHandle], skipping
-  // macOS clutter, library.sqlite (written from memory instead) and Dossiary
-  // Sync's .dossiary-sync.json and .kept-aside/.
+  // macOS clutter, library.sqlite (written from memory instead) and the sync
+  // bookkeeping: .dossiary-sync.json, the base marker .dossiary-base.json and
+  // .kept-aside/.
   async function listLibraryFiles(dirHandle, prefix = []){
     const out = [];
     for await (const [name, handle] of dirHandle.entries()){
       if(name === '.DS_Store' || name.startsWith('._')) continue;
       if(!prefix.length && name === 'library.sqlite') continue;
       // Dossiary Sync's own: a backup opened as a library mustn't pass for the synced original.
-      if(!prefix.length && (name === '.dossiary-sync.json' || name === '.kept-aside')) continue;
+      if(!prefix.length && (name === '.dossiary-sync.json' || name === '.dossiary-base.json' || name === '.kept-aside')) continue;
       if(handle.kind === 'directory') out.push(...await listLibraryFiles(handle, [...prefix, name]));
       else out.push([[...prefix, name], handle]);
     }
@@ -13725,6 +13752,8 @@
       captureStatus.textContent = t('statusSaveFailed', {error: e.message});
       saveBtn.disabled = false;
       releaseDocId(res); // roll back the reservation since the save didn't complete
+    }finally{
+      settleDocId(res);
     }
   }
 
@@ -14485,53 +14514,60 @@
   // document's original already holds these pages untouched.
   async function createSplitDocument(src, bytes, partNo){
     const res = await reserveDocId();
-    const id = res.id;
-    const title = `${src.title || t('commonDocumentFallback', {id: src.id})} (${partNo})`;
-    const filePath = `files/${id}_${safeFilename(title, 'document')}.pdf`;
-    await withFileOp('write', filePath, async () => {
-      const writable = await (await resolveFileHandle(filePath, true)).createWritable();
-      await writable.write(bytes);
-      await writable.close();
-    });
-    const fileHash = await hashArrayBuffer(new Uint8Array(bytes).slice().buffer);
-    const now = nowIso();
-    checkReservedDocId(res);
-    db.run(`
-      INSERT INTO documents (id, title, category, subcategory, document_type, date,
-                              import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
-                              created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash, uid)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, 'split', NULL, NULL, ?, 0, ?, ?)
-    `, [id, title, src.category || null, src.subcategory || null, src.document_type || null, src.date || null,
-        now, src.notes || null, filePath, now, src.needs_review ? 1 : 0, fileHash, newUid()]);
-    for(const tag of src.tags || []){
-      if(tagNameToId[tag] !== undefined) db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagNameToId[tag]]);
-    }
-    for(const [name, value] of Object.entries(src.customFields || {})){
-      if(fieldNameToId[name] !== undefined) db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, fieldNameToId[name], value]);
-    }
-    for(const [name, people] of Object.entries(src.personFieldValues || {})){
-      for(const person of people || []){
-        if(fieldNameToId[name] !== undefined && personNameToId[person] !== undefined){
-          db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldNameToId[name], personNameToId[person]]);
+    try{
+      const id = res.id;
+      const title = `${src.title || t('commonDocumentFallback', {id: src.id})} (${partNo})`;
+      const filePath = `files/${id}_${safeFilename(title, 'document')}.pdf`;
+      await withFileOp('write', filePath, async () => {
+        const writable = await (await resolveFileHandle(filePath, true)).createWritable();
+        await writable.write(bytes);
+        await writable.close();
+      });
+      const fileHash = await hashArrayBuffer(new Uint8Array(bytes).slice().buffer);
+      const now = nowIso();
+      checkReservedDocId(res);
+      db.run(`
+        INSERT INTO documents (id, title, category, subcategory, document_type, date,
+                                import_date, notes, ocr_text, ocr_language, file_path, original_file_path,
+                                created_at, source, source_legacy_id, thumbnail_path, needs_review, searchable_pdf_built, file_hash, uid)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, ?, 'split', NULL, NULL, ?, 0, ?, ?)
+      `, [id, title, src.category || null, src.subcategory || null, src.document_type || null, src.date || null,
+          now, src.notes || null, filePath, now, src.needs_review ? 1 : 0, fileHash, newUid()]);
+      for(const tag of src.tags || []){
+        if(tagNameToId[tag] !== undefined) db.run('INSERT OR IGNORE INTO document_tags (document_id, tag_id) VALUES (?, ?)', [id, tagNameToId[tag]]);
+      }
+      for(const [name, value] of Object.entries(src.customFields || {})){
+        if(fieldNameToId[name] !== undefined) db.run('INSERT INTO document_field_values (document_id, field_id, value) VALUES (?, ?, ?)', [id, fieldNameToId[name], value]);
+      }
+      for(const [name, people] of Object.entries(src.personFieldValues || {})){
+        for(const person of people || []){
+          if(fieldNameToId[name] !== undefined && personNameToId[person] !== undefined){
+            db.run('INSERT OR IGNORE INTO document_field_people (document_id, field_id, person_id) VALUES (?, ?, ?)', [id, fieldNameToId[name], personNameToId[person]]);
+          }
         }
       }
+      for(const [collectionId, members] of Object.entries(collectionDocIds)){
+        if(members.has(src.id)) db.run('INSERT OR IGNORE INTO collection_documents (collection_id, document_id) VALUES (?, ?)', [Number(collectionId), id]);
+      }
+      const d = {
+        id, title, category: src.category || null, subcategory: src.subcategory || null, document_type: src.document_type || null,
+        date: src.date || null, import_date: now, notes: src.notes || null, ocr_text: null, ocr_language: null,
+        file_path: filePath, original_file_path: null, created_at: now, source: 'split', source_legacy_id: null,
+        thumbnail_path: null, file_hash: fileHash, archived: false, needs_review: !!src.needs_review, deleted: false,
+        searchable_pdf_built: false, has_text_layer: false, text_checked: false,
+        customFields: {...(src.customFields || {})},
+        personFieldValues: Object.fromEntries(Object.entries(src.personFieldValues || {}).map(([k, v]) => [k, [...(v || [])]])),
+        tags: [...(src.tags || [])], people: [...(src.people || [])],
+      };
+      allDocs.push(d);
+      await refreshAfterPdfChange(d, bytes);
+      return d;
+    }catch(e){
+      releaseDocId(res);   // not added: its id goes back, unless one came after it or the INSERT already ran
+      throw e;
+    }finally{
+      settleDocId(res);
     }
-    for(const [collectionId, members] of Object.entries(collectionDocIds)){
-      if(members.has(src.id)) db.run('INSERT OR IGNORE INTO collection_documents (collection_id, document_id) VALUES (?, ?)', [Number(collectionId), id]);
-    }
-    const d = {
-      id, title, category: src.category || null, subcategory: src.subcategory || null, document_type: src.document_type || null,
-      date: src.date || null, import_date: now, notes: src.notes || null, ocr_text: null, ocr_language: null,
-      file_path: filePath, original_file_path: null, created_at: now, source: 'split', source_legacy_id: null,
-      thumbnail_path: null, file_hash: fileHash, archived: false, needs_review: !!src.needs_review, deleted: false,
-      searchable_pdf_built: false, has_text_layer: false, text_checked: false,
-      customFields: {...(src.customFields || {})},
-      personFieldValues: Object.fromEntries(Object.entries(src.personFieldValues || {}).map(([k, v]) => [k, [...(v || [])]])),
-      tags: [...(src.tags || [])], people: [...(src.people || [])],
-    };
-    allDocs.push(d);
-    await refreshAfterPdfChange(d, bytes);
-    return d;
   }
 
   async function openPageToolsModal(id){
@@ -15125,6 +15161,8 @@
     }catch(e){
       releaseDocId(res); // give the id back, unless a later reservation or a reload came in between
       throw e;
+    }finally{
+      settleDocId(res);
     }
   }
 
@@ -16250,6 +16288,14 @@
   // lease from this Mac's service (POST /admin/libraries/<id>/lease), so only
   // one Mac changes it at a time. No sync file → no admin calls at all.
   const SYNC_FILE_NAME = '.dossiary-sync.json';
+  // The base marker: right after every write of library.sqlite in a synced
+  // library, {version, sha256, writtenAt} -- the hub version this tab's
+  // memory is at and the hash of the bytes just written. Dossiary Sync pushes
+  // a changed library.sqlite only when its marker names the version the
+  // folder holds (or the start of this Mac's own pushes that led to it); any
+  // other base, or no marker for those bytes, is kept aside, never pushed.
+  // Never written for a .kept-aside copy; left out of backups.
+  const SYNC_BASE_FILE_NAME = '.dossiary-base.json';
   const SYNC_HEARTBEAT_MS = 60 * 1000;
   const SYNC_IDLE_RELEASE_MS = 10 * 60 * 1000;
   const SYNC_TICK_MS = 5 * 1000;
@@ -16288,6 +16334,9 @@
   let syncLeaseForBackgroundOnly = false; // the lease was taken by a background job and no person has changed anything since
   let syncLoadedHash = null;            // SHA-256 of library.sqlite as last loaded or reloaded
   let syncLastWrittenHash = null;       // ...and as this tab last wrote it
+  let syncLastAnswerAt = 0;             // when a state poll or a heartbeat last answered (a confirm right after is skipped)
+  let syncAnswerSeq = 0;                // counts answers of any kind from the service (did this confirm get one?)
+  let syncOpening = null;               // loadDb() is opening the library: no reload meanwhile
   // Ids this tab has handed out whose INSERT hasn't run yet: a reload resets
   // nextDocId from the fresh database, which doesn't know them, so a second
   // flow mustn't get the same one (reserveDocId()).
@@ -16358,7 +16407,7 @@
     syncReservedDocIds = new Set();
     syncLease = { state: 'none' };
     syncUnsavedChanges = false;
-    syncLastHeartbeatAt = 0;
+    syncLastHeartbeatAt = 0; syncLastAnswerAt = 0;
     lastRealSaveAt = 0;
     syncUnsyncedAt = 0;
     syncLastState = null;
@@ -16417,6 +16466,20 @@
       }
       renderSyncMarker();
     }catch(e){ /* tried again on the next tick */ }
+  }
+
+  // .dossiary-base.json for the bytes just written to library.sqlite (see
+  // SYNC_BASE_FILE_NAME). A marker that can't be written leaves the change
+  // without one: Dossiary Sync waits 10 s, then keeps that version aside --
+  // nothing is lost, it just isn't pushed.
+  async function writeSyncBaseMarker(root, version, sha256){
+    if(!root || !Number.isInteger(version) || !sha256) return;
+    const text = JSON.stringify({ version, sha256, writtenAt: new Date().toISOString() });
+    try{
+      const writable = await (await root.getFileHandle(SYNC_BASE_FILE_NAME, { create: true })).createWritable();
+      await writable.write(new TextEncoder().encode(text));
+      await writable.close();
+    }catch(e){ /* see above */ }
   }
 
   async function syncHashBytes(bytes){
@@ -16696,7 +16759,14 @@
   function releaseDocId(res){
     if(!res) return;
     syncReservedDocIds.delete(res.id);
+    // Already inserted (the flow failed after its INSERT): the id is used.
+    if(allDocs.some(x => x.id === res.id) || queryAll('SELECT id FROM documents').rows.some(r => r[0] === res.id)) return;
     if(res.reloads === syncReloadCount && nextDocId === res.id + 1) nextDocId--;
+  }
+  // In a finally after every reservation: however the flow ended (an early
+  // return, an error before the INSERT), its id is no longer in flight.
+  function settleDocId(res){
+    if(res) syncReservedDocIds.delete(res.id);
   }
   async function withPersonFlowHold(fn){
     const token = beginPersonFlowHold();
@@ -16794,7 +16864,7 @@
 
   function syncLeaseCall(action, takeOver, opts = {}){
     return syncAdminFetch(`/admin/libraries/${encodeURIComponent(syncLibrary.libraryId)}/lease`,
-      { method: 'POST', body: { action, takeOver: !!takeOver }, keepalive: !!opts.keepalive });
+      { method: 'POST', body: { action, takeOver: !!takeOver }, keepalive: !!opts.keepalive, timeoutMs: opts.timeoutMs });
   }
   const syncLeaseResult = (res) => res && res.ok && res.body && typeof res.body.result === 'string' ? res.body.result : null;
   const syncLeaseHolder = (res) => (res && res.body && res.body.lease && typeof res.body.lease === 'object') ? res.body.lease : null;
@@ -17027,8 +17097,9 @@
   async function pollSyncState(opts = {}){
     const lib = syncLibrary;
     if(!lib || !readSyncAdminToken()) return false;
-    const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/state`);
+    const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/state`, { timeoutMs: opts.timeoutMs });
     if(lib !== syncLibrary) return false;
+    if(res) syncAnswerSeq++;   // the service answered (syncConfirmLease() asks only that)
     if(res && res.status === 401){
       setSyncAdminToken(null);
       if(syncLease.state !== 'holding' && syncLease.state !== 'offline') setSyncLease({ state: 'unconnected' });
@@ -17037,6 +17108,8 @@
     const st = res && res.ok && res.body && typeof res.body === 'object' ? res.body : null;
     if(!st || !Number.isInteger(st.version)) return !!res;   // no answer, or not in the expected shape: ask again next time
     syncLastState = st;
+    syncLastAnswerAt = syncNow();
+    let leftOffline = false;
     const lease = st.lease && typeof st.lease === 'object' ? st.lease : null;
     const otherHolds = !!lease && lease.holder === 'other';
     const thisHolds = !!lease && lease.holder === 'this';
@@ -17057,17 +17130,21 @@
     }else if(syncLease.state === 'other' && !otherHolds){
       setSyncLease({ state: 'none' });   // free again: the next change asks for it
     }else if(syncLease.state === 'offline' && (otherHolds || (st.offline === false && st.hubReachable !== false))){
-      // The offline period is over on the service's side: from now on a
-      // database-only save without the lease would count as a view
-      // preference there. Leave "offline"; the next change takes the lease.
+      // The offline period is over on the service's side. Leave "offline";
+      // the next change takes the lease. Whatever version is there now may
+      // have been pulled while it ended (another Mac's): it's never taken as
+      // this Mac's own push, even when this Mac holds the lease now.
+      leftOffline = true;
       if(otherHolds) setSyncLease(syncOtherLease(lease));
       else if(thisHolds){ syncLastHeartbeatAt = syncNow(); setSyncLease({ state: 'holding' }); }
       else setSyncLease({ state: 'none' });
     }
     noteKeptAside(lib, st.keptAside);
     // A higher version while the service confirms this tab holds the lease is
-    // this Mac's own push; anything else is another Mac's.
-    if(syncLease.state === 'holding' && thisHolds){
+    // this Mac's own push; anything else is another Mac's (and so is one seen
+    // as an offline period ends -- syncDiskIsOurs() still recognises this
+    // tab's own bytes).
+    if(syncLease.state === 'holding' && thisHolds && !leftOffline){
       if(st.version > lib.version && !syncBehind()) lib.version = st.version;
     }else if(syncLease.state !== 'offline'){
       syncNoteNewer(st.version);
@@ -17081,16 +17158,31 @@
   // state poll shows a take-over, an expired lease or the end of an offline
   // period (pollSyncState() switches the state); a heartbeat over 2 minutes
   // old (the Mac slept) is renewed first -- a lost one re-acquires or turns
-  // into "editing on …". No answer: the write goes ahead (holding/offline as
-  // far as anyone knows; Dossiary Sync treats a save soon after holding or
-  // offline ended as a real change too).
+  // into "editing on …". A poll or heartbeat that answered within the last
+  // 3 s stands for the poll; each call waits at most 3 s.
+  // → true: answered (the state may have changed; persistDb() follows it);
+  // false: no answer -- the write is held back as "not answering", never
+  // made on "holding/offline as far as anyone knows".
   const SYNC_STALE_HOLD_MS = 120 * 1000;
+  const SYNC_CONFIRM_TIMEOUT_MS = 3 * 1000;
+  const SYNC_CONFIRM_FRESH_MS = 3 * 1000;
   async function syncConfirmLease(){
     const lib = syncLibrary;
-    if(!lib || !readSyncAdminToken()) return;
-    await pollSyncState({ noReload: true });
-    if(lib !== syncLibrary) return;
-    if(syncLease.state === 'holding' && syncNow() - syncLastHeartbeatAt > SYNC_STALE_HOLD_MS) await syncHeartbeat();
+    if(!lib) return true;
+    if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }
+    if(syncNow() - syncLastAnswerAt >= SYNC_CONFIRM_FRESH_MS){
+      const seq = syncAnswerSeq;
+      await pollSyncState({ noReload: true, timeoutMs: SYNC_CONFIRM_TIMEOUT_MS });
+      if(lib !== syncLibrary) return true;
+      if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }
+      if(syncAnswerSeq === seq) return false;
+    }
+    if(syncLease.state === 'holding' && syncNow() - syncLastHeartbeatAt > SYNC_STALE_HOLD_MS){
+      const answered = await syncHeartbeat({ timeoutMs: SYNC_CONFIRM_TIMEOUT_MS });
+      if(lib !== syncLibrary) return true;
+      if(!answered && syncLease.state === 'holding') return false;
+    }
+    return true;
   }
 
   // Kept-aside versions: Dossiary Sync couldn't combine this Mac's changes
@@ -17130,7 +17222,7 @@
   // force: an editing flow about to start (or the safety net) reloads even
   // under an open dialog -- nothing in it has changed anything yet.
   function syncReloadBlocked(force = false){
-    return syncReloading || !db || !rootDirHandle || !dbFileHandle
+    return syncReloading || !!syncOpening || !db || !rootDirHandle || !dbFileHandle
       || (!force && (modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== ''))
       || syncPersistsInFlight > 0 || (!force && !!syncLeasePending) || syncUnsavedChanges || syncDirty() || syncBackgroundJobRunning();
   }
@@ -17246,22 +17338,23 @@
     }
   }
 
-  async function syncHeartbeat(){
+  // → false when nothing answered (a timeout), true otherwise.
+  async function syncHeartbeat(opts = {}){
     const lib = syncLibrary;
-    const res = await syncLeaseCall('heartbeat', false);
-    if(lib !== syncLibrary || syncLease.state !== 'holding') return;
-    if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return; }
+    const res = await syncLeaseCall('heartbeat', false, { timeoutMs: opts.timeoutMs });
+    if(lib !== syncLibrary || syncLease.state !== 'holding') return true;
+    if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return true; }
     const result = syncLeaseResult(res);
-    if(!result) return;   // no answer or a timeout: try again on the next tick, still holding
+    if(!result) return false;   // no answer or a timeout: the tick tries again on the next one, still holding
     syncLastHeartbeatAt = syncNow();
     const holder = syncLeaseHolder(res);
-    if(result === 'granted') return;
-    if(result === 'offline'){ setSyncLease({ state: 'offline' }); return; }
-    if((result === 'lost' || result === 'busy') && holder && holder.holder !== 'this'){ setSyncLease(syncOtherLease(holder)); return; }
+    if(result === 'granted'){ syncLastAnswerAt = syncNow(); syncAnswerSeq++; return true; }
+    if(result === 'offline'){ setSyncLease({ state: 'offline' }); return true; }
+    if((result === 'lost' || result === 'busy') && holder && holder.holder !== 'this'){ setSyncLease(syncOtherLease(holder)); return true; }
     if(result === 'lost'){
       // Merely expired (no holder): take it again without asking.
-      const again = await syncLeaseCall('acquire', false);
-      if(lib !== syncLibrary || syncLease.state !== 'holding') return;
+      const again = await syncLeaseCall('acquire', false, { timeoutMs: opts.timeoutMs });
+      if(lib !== syncLibrary || syncLease.state !== 'holding') return true;
       const r = syncLeaseResult(again);
       if(r === 'granted'){
         syncLastHeartbeatAt = syncNow();
@@ -17273,7 +17366,9 @@
       }
       else if(r === 'offline') setSyncLease({ state: 'offline' });
       else if(r === 'busy') setSyncLease(syncOtherLease(syncLeaseHolder(again) || {}));
+      return !!r;   // lost and not taken again: not "holding" as far as anyone knows
     }
+    return true;
   }
 
   async function syncRetryFromOffline(){

@@ -1322,7 +1322,21 @@ out twice after a reload, `releaseDocId()`/`checkReservedDocId()`
 refusals). The fake's granted acquire now names this Mac as holder in its
 state and a release clears it, like the real service; `first_change` and
 `view_write_newer_on_disk` check that a view preference without the lease
-waits for the next real save)).
+waits for the next real save; base marker round: `base_marker` (no marker on
+open; `.dossiary-base.json` after a real save and a view preference with the
+memory's version and the SHA-256 of the bytes on disk, version 4 after a
+reload, written by the held-back retry, never inside a `.kept-aside` copy, the
+live one untouched by a keep-aside), `offline_exit_pulled` (N2: the offline
+period ends with this Mac holding after the service pulled the iMac's v4 --
+reloaded, not taken as this Mac's own, the edit on top, marker 4),
+`confirm_unanswered` (no answer to the confirm → `unsynced`, held back, written
+once the service answers; the fake's `hang` makes a hung service give up
+after ~3 s; a save right after an answered poll sends no second state
+request), `no_reload_while_opening` (N3: a tick while `loadDb()` is paused in
+the stable-uid migration doesn't reload; the next one after opening does) and
+`export_open_asks` (Export as library's "Open it" asks first with a change
+held back; the exported library has no sync file or marker); `no_sync_file`
+writes no marker, and `backup` leaves it out)).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
