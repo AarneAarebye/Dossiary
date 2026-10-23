@@ -2518,12 +2518,12 @@ this repo's git tags.
   | State | Real save (person) | Real save (job) | View preference | How loud |
   |---|---|---|---|---|
   | `holding` | confirm (`syncConfirmLease()`: state poll unless one answered in the last 3 s; heartbeat if the last is > 120 s old; 3 s timeout each; no answer → `unsynced`: the write goes ahead, the base marker decides later), then write | same | write | marker "✎ editing" |
-  | `offline` | confirm (poll, as above), then write | same | write | marker "connected · offline" (neutral) |
+  | `offline` | confirm (poll, as above), then write | same | write | marker "connected · offline" (green, like `holding`) |
   | `none` (lease free) | acquire, then write | acquire silently, then write | memory only | -- |
   | `other` (another Mac holds it) | take-over dialog: Take over → write; Cancel → held back | held back silently | memory only | marker "editing on {device}" / "unsaved changes", status line "Not saved: …" |
-  | `disconnected` (this library is switched to "Work disconnected" on this Mac) | straight to disk with the base marker; no lease call, no hold-back | same | write | neutral marker "disconnected" (`syncMarkerDisconnected`, tooltip `syncMarkerDisconnectedTitle`) |
-  | `unconnected` (no admin token) | written at once; the base marker decides later whether the service pushes it or keeps it aside | written at once, except file-writing jobs (`syncMayWriteFiles()`: OCR, previews), which wait | memory only | neutral marker, pointer to the devices dialog |
-  | `unsynced` (no answer / error) | written at once, as `unconnected`; the tick retries the lease | as `unconnected` | memory only | marker "Dossiary Sync not answering", reason as tooltip |
+  | `disconnected` (this library is switched to "Work disconnected" on this Mac) | straight to disk with the base marker; no lease call, no hold-back | same | write | marker "disconnected" in the default dim colour (`syncMarkerDisconnected`, tooltip `syncMarkerDisconnectedTitle`; no colour rule for the state) |
+  | `unconnected` (no admin token) | written at once; the base marker decides later whether the service pushes it or keeps it aside | written at once, except file-writing jobs (`syncMayWriteFiles()`: OCR, previews), which wait | memory only | marker "not connected" in red, a link (`sub-sync-link`) that opens the devices dialog, tooltip "Click to connect Dossiary Sync." |
+  | `unsynced` (no answer / error) | written at once, as `unconnected`; the tick retries the lease | as `unconnected` | memory only | marker "not synced yet" in red, reason as tooltip |
   | any, memory behind a newer version (`syncBehind()`, disk not this tab's) | kept aside + reload, notice (`#sync-notice-dialog`) | kept aside quietly (plain status line), reload when free | -- | notice vs. plain line |
 
   **Disconnected** (offline-first, spec `2026-10-23-offline-first-sync-design.md`

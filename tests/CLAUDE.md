@@ -1339,7 +1339,7 @@ Offline-first round (spec `2026-10-23-offline-first-sync-design.md` in
 dossiary-ios): the lease state `disconnected` (a library switched to "Work
 disconnected" on this Mac; entered from the state poll's `disconnectedSince`
 or an acquire answering `disconnected`) writes straight to disk with the base
-marker, no lease call, no hold-back, neutral marker "disconnected".
+marker, no lease call, no hold-back, marker "disconnected" (default dim colour).
 New scenarios: `disconnected`, `disconnected_first_write` and
 `devices_disconnect` (the dialog's "Work disconnected" / "Reconnect" buttons
 and "Disconnected {when}" note, `POST /admin/libraries/<id>/connection`).
