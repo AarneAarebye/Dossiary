@@ -47,7 +47,7 @@ Expected: `0` then a positive count. If the first number is not `0`, stop and re
 
 - [ ] **Step 2: Write the failing test**
 
-In `tests/test_scan_dialog.py`, directly after the `V2_OCR_SCANNER = ...` definition add the fixtures:
+In `tests/test_scan_dialog.py`, directly after the `V2_OCR_SCANNER = ...` definition add the fixtures (the `PHOTO_HELPERS` line uses `L2`, so put that one line after the `L2 = 'http://localhost:8766'` definition):
 
 ```python
 PHOTO_FLATBED = {"id": "fake:photo", "name": "Fake Photo", "sources": ["flatbed"], "duplex": False,
