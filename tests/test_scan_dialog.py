@@ -64,8 +64,17 @@ FAKE_HELPERS = """
             if(next && next.delayMs) await new Promise(r => setTimeout(r, next.delayMs));
             if(next && next.status) return next.raw ? new Response(next.raw, { status: next.status }) : json(next.status, next.body);
             const n = window.__CALLS.length;
-            if(H.version === 2) return json(200, { ok: true, partial: false, message: '1 page scanned.',
-                                                   files: [{ name: `scan_${n}.pdf`, pages: 1, data: btoa('%PDF-1.4 fake v2 ' + n), ...(req.ocr ? { ocrJob: 'job-' + n } : {}) }] });
+            if(H.version === 2){
+                const kind = req.format === 'jpeg' ? ['jpg', 'image/jpeg'] : req.format === 'png' ? ['png', 'image/png'] : null;
+                if(kind){
+                    const c = document.createElement('canvas'); c.width = 4; c.height = 4;
+                    c.getContext('2d').fillRect(0, 0, 2, 2);
+                    return json(200, { ok: true, partial: false, message: '1 image scanned.',
+                                       files: [{ name: `scan_${n}.${kind[0]}`, pages: 1, data: c.toDataURL(kind[1]).split(',')[1] }] });
+                }
+                return json(200, { ok: true, partial: false, message: '1 page scanned.',
+                                   files: [{ name: `scan_${n}.pdf`, pages: 1, data: btoa('%PDF-1.4 fake v2 ' + n), ...(req.ocr ? { ocrJob: 'job-' + n } : {}) }] });
+            }
             return json(200, { ok: true, partial: false, message: 'ok', output_paths: [],
                                files: [{ filename: `scan_${n}.pdf`, content_base64: btoa('%PDF-1.4 fake v1 ' + n) }] });
         }
@@ -86,9 +95,19 @@ V2_SCANNERS = [
 
 V2_OCR_SCANNER = {"id": "fake:ocr", "name": "Fake OCR Scanner", "sources": ["flatbed"], "duplex": False,
                   "colorModes": ["color"], "resolutions": [300], "extras": [], "ocr": {"languages": ["deu", "eng"]}}
+PHOTO_FLATBED = {"id": "fake:photo", "name": "Fake Photo", "sources": ["flatbed"], "duplex": False,
+                 "colorModes": ["color", "gray", "bw"], "resolutions": [150, 300, 600, 1200], "extras": [],
+                 "formats": ["pdf", "jpeg", "png"], "areas": ["a4", "10x15"], "ocr": {"languages": ["deu", "eng"]}}
+PHOTO_GLASS = {"id": "fake:glass", "name": "Fake Glass", "sources": ["feeder", "flatbed"], "duplex": True,
+               "colorModes": ["color", "gray", "bw"], "resolutions": [150, 300, 600, 1200], "extras": [],
+               "formats": ["pdf", "jpeg", "png"], "areas": ["full", "a4", "a5"]}
+PHOTO_ODD = {"id": "fake:odd", "name": "Fake Odd", "sources": ["flatbed"], "duplex": False,
+             "colorModes": ["color"], "resolutions": [300], "extras": [],
+             "formats": ["pdf", "tiff", "jpeg"], "areas": ["a4", "b5", "10x15"]}
 
 L1 = 'http://localhost:8765'
 L2 = 'http://localhost:8766'
+PHOTO_HELPERS = {L2: {"version": 2, "token": "tok-2", "scanners": [V2_SCANNERS[0], PHOTO_FLATBED, PHOTO_GLASS, PHOTO_ODD]}}
 
 
 async def open_app(p, tokens=None, lang=None, helpers=None, keep_auto_ocr=False):
@@ -1094,7 +1113,209 @@ async def scenario_ocr_jobs(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs]
+# === Photos, Task 1: formats and areas are read; the size helpers ===
+async def scenario_photo_data(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers=PHOTO_HELPERS)
+    found = {s['id']: s for s in await page.evaluate("window.__DEBUG_scanScanners()")}
+    print("a scanner without the fields gets formats ['pdf'] and no areas:",
+          found['fake:flatbed']['formats'] == ['pdf'] and found['fake:flatbed']['areas'] == [])
+    print("formats and areas are read as listed:",
+          found['fake:photo']['formats'] == ['pdf', 'jpeg', 'png'] and found['fake:glass']['areas'] == ['full', 'a4', 'a5'])
+    print("unknown format and area ids are dropped:",
+          found['fake:odd']['formats'] == ['pdf', 'jpeg'] and found['fake:odd']['areas'] == ['a4', '10x15'])
+    px = lambda a, d: page.evaluate("([a, d]) => window.__DEBUG_scanPixels(a, d)", [a, d])
+    print("10x15 at 300 dpi is 1181 x 1772 px:", await px('10x15', 300) == 1181 * 1772)
+    print("A4 at 1200 dpi is 139,201,551 px:", await px('a4', 1200) == 139201551)
+    print("A5 at 1200 dpi is 69,367,632 px:", await px('a5', 1200) == 69367632)
+    print("full has no known size:", await px('full', 300) is None)
+    res = lambda r, a: page.evaluate("([r, a]) => window.__DEBUG_scanResolutionsFor(r, a)", [r, a])
+    print("A4 drops 1200 dpi, keeps the rest:", await res([150, 300, 600, 1200], 'a4') == [150, 300, 600])
+    print("10x15 keeps every resolution:", await res([150, 300, 600, 1200], '10x15') == [150, 300, 600, 1200])
+    print("full and no area filter nothing:", await res([150, 1200], 'full') == [150, 1200] and await res([150, 1200], None) == [150, 1200])
+    print("nothing left keeps the lowest:", await res([2400, 4800], 'a4') == [2400])
+    pick = lambda l, w: page.evaluate("([l, w]) => window.__DEBUG_scanPickResolution(l, w)", [l, w])
+    print("pick keeps a listed value:", await pick([150, 300, 600], 300) == 300)
+    print("pick falls to the next lower value:", await pick([150, 300, 600], 1200) == 600 and await pick([150, 600], 300) == 150)
+    print("pick falls to the first when none is lower:", await pick([300, 600], 150) == 300)
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+async def option_texts(page, selector):
+    return await page.eval_on_selector_all(f'{selector} option', 'els => els.map(e => e.textContent)')
+
+
+# === Photos, Task 3: the controls ===
+async def scenario_photo_controls(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers=PHOTO_HELPERS)
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:flatbed')
+    print("no Format or Paper size for a scanner without them:",
+          await page.locator('#scan-dialog-format').count() == 0 and await page.locator('#scan-dialog-area').count() == 0)
+    settings = await page.evaluate("window.__DEBUG_readScanDialogSettings()")
+    print("...and the settings carry neither:", 'format' not in settings and 'area' not in settings)
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:photo')
+    print("Format lists PDF, JPEG, PNG, PDF first:", await option_texts(page, '#scan-dialog-format') == ['PDF', 'JPEG', 'PNG']
+          and await page.eval_on_selector('#scan-dialog-format', 'e => e.value') == 'pdf')
+    print("Paper size lists the scanner's areas, the first selected:",
+          await option_texts(page, '#scan-dialog-area') == ['A4', '10 × 15 cm'] and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == 'a4')
+    print("A4 hides 1200 dpi:", await option_texts(page, '#scan-dialog-resolution') == ['150 dpi', '300 dpi', '600 dpi'])
+    await page.select_option('#scan-dialog-area', '10x15')
+    print("10 × 15 cm offers 1200 dpi:", await option_texts(page, '#scan-dialog-resolution') == ['150 dpi', '300 dpi', '600 dpi', '1200 dpi'])
+    await page.select_option('#scan-dialog-resolution', '1200')
+    await page.select_option('#scan-dialog-area', 'a4')
+    print("back to A4 the resolution falls to 600 dpi:", await page.eval_on_selector('#scan-dialog-resolution', 'e => e.value') == '600')
+
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    print("JPEG hides black & white:", await option_texts(page, '#scan-dialog-color') == ['Color', 'Grayscale'])
+    await page.select_option('#scan-dialog-format', 'png')
+    print("PNG offers black & white:", await option_texts(page, '#scan-dialog-color') == ['Color', 'Grayscale', 'Black & white'])
+    await page.select_option('#scan-dialog-color', 'bw')
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    print("switching to JPEG moves a chosen black & white to the first mode:", await page.eval_on_selector('#scan-dialog-color', 'e => e.value') == 'color')
+    await page.select_option('#scan-dialog-format', 'pdf')
+    print("PDF offers black & white again:", 'Black & white' in await option_texts(page, '#scan-dialog-color'))
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:odd')
+    print("unknown ids never reach the selects:",
+          await option_texts(page, '#scan-dialog-format') == ['PDF', 'JPEG'] and await option_texts(page, '#scan-dialog-area') == ['A4', '10 × 15 cm'])
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:glass')
+    print("whole glass is the first area and the default:",
+          await option_texts(page, '#scan-dialog-area') == ['Whole glass', 'A4', 'A5'] and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == 'full')
+    print("the whole glass filters no resolution:", await option_texts(page, '#scan-dialog-resolution') == ['150 dpi', '300 dpi', '600 dpi', '1200 dpi'])
+    await page.select_option('#scan-dialog-source', 'flatbed')  # the glass lists the feeder first
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    await page.select_option('#scan-dialog-source', 'feeder')
+    print("the feeder hides Format and Paper size:",
+          not await page.is_visible('#scan-dialog-format-field') and not await page.is_visible('#scan-dialog-area-field'))
+    print("...the feeder offers black & white even though JPEG is chosen:", 'Black & white' in await option_texts(page, '#scan-dialog-color'))
+    settings = await page.evaluate("window.__DEBUG_readScanDialogSettings()")
+    print("the chosen format and area are still read while hidden:", settings['format'] == 'jpeg' and settings['area'] == 'full')
+    await page.select_option('#scan-dialog-source', 'flatbed')
+    print("back on the flatbed Format shows again with the earlier choice:",
+          await page.is_visible('#scan-dialog-format-field') and await page.eval_on_selector('#scan-dialog-format', 'e => e.value') == 'jpeg')
+    print("...and JPEG hides black & white again:", 'Black & white' not in await option_texts(page, '#scan-dialog-color'))
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+async def last_scan_body(page):
+    return json.loads([x for x in await calls(page) if x['url'] == f'{L2}/scan'][-1]['body'])
+
+
+# === Photos, Task 4: the request, remembering, image results ===
+async def scenario_photo_request(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers=PHOTO_HELPERS, keep_auto_ocr=True)
+    await page.evaluate("window.__DEBUG_holdOcrJobs(true)")  # no timer: OCR passes are explicit
+
+    # An older scanner: no area, pdf, exactly as before.
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:flatbed')
+    await start_scan(page)
+    body = await last_scan_body(page)
+    print("a scanner without the fields: pdf and no area:", body['format'] == 'pdf' and 'area' not in body)
+
+    # A PDF from a scanner with areas: the default area, and OCR as before.
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:photo')
+    await start_scan(page)
+    body = await last_scan_body(page)
+    print("a PDF carries the first area:", body['format'] == 'pdf' and body['area'] == 'a4')
+    print("a PDF asks for OCR as before:", body.get('ocr') is True)
+
+    # A JPEG: format and area, no OCR.
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:photo')
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    await page.select_option('#scan-dialog-area', '10x15')
+    await page.select_option('#scan-dialog-color', 'gray')
+    await page.select_option('#scan-dialog-resolution', '300')
+    await start_scan(page, wait=900)
+    body = await last_scan_body(page)
+    print("the JPEG request carries exactly the chosen settings:",
+          body == {"scanner": "fake:photo", "format": "jpeg", "extras": {}, "source": "flatbed", "colorMode": "gray",
+                   "resolution": 300, "duplex": False, "area": "10x15"})
+    print("an image request has no ocr:", 'ocr' not in body and 'ocrLanguages' not in body)
+
+    # Remembered: the dialog comes back with the same format and area.
+    saved = json.loads(next(r['value'] for r in (await db_state(page))['settings'] if r['key'] == 'scan_last_settings'))
+    print("format and area are remembered:", saved.get('format') == 'jpeg' and saved.get('area') == '10x15')
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    print("reopening restores them:", await page.eval_on_selector('#scan-dialog-format', 'e => e.value') == 'jpeg'
+          and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == '10x15')
+    await page.keyboard.press('Escape')
+    # An area the scanner no longer lists is ignored.
+    narrowed = dict(PHOTO_FLATBED, areas=["a4", "a5"])
+    await page.evaluate("(s) => { window.__HELPERS['%s'].scanners = [s]; }" % L2, narrowed)
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    print("a remembered area that is gone falls back to the first:",
+          await page.locator('#scan-dialog-area').count() == 1
+          and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == 'a4'
+          and await page.eval_on_selector_all('#scan-dialog-area option', 'os => os.map(o => o.textContent)') == ['A4', 'A5'])
+    await start_scan(page)
+    print("the request then carries the first area:", (await last_scan_body(page)).get('area') == 'a4')
+    await page.evaluate("(s) => { window.__HELPERS['%s'].scanners = s; }" % L2, PHOTO_HELPERS[L2]["scanners"])
+
+    # The feeder: pdf, no area, whatever format was chosen.
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:glass')
+    await page.select_option('#scan-dialog-source', 'flatbed')
+    await page.select_option('#scan-dialog-format', 'png')
+    await page.select_option('#scan-dialog-source', 'feeder')
+    await start_scan(page)
+    body = await last_scan_body(page)
+    print("a feeder scan is a pdf without an area:", body['format'] == 'pdf' and 'area' not in body and body['source'] == 'feeder')
+    # The flatbed of the same scanner: png, the whole glass.
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:glass')
+    await page.select_option('#scan-dialog-source', 'flatbed')
+    await page.select_option('#scan-dialog-format', 'png')
+    await start_scan(page, wait=900)
+    body = await last_scan_body(page)
+    print("a flatbed PNG of the whole glass:", body['format'] == 'png' and body['area'] == 'full' and 'ocr' not in body)
+
+    # Results: the images became documents, and (OCR is on) wait for Dossiary's own OCR.
+    db = await db_state(page)
+    names = [d['original_file_path'] or d['file_path'] for d in db['documents']]
+    print("the image scans became documents:", sum(1 for n in names if n.endswith('.jpg')) == 1 and sum(1 for n in names if n.endswith('.png')) == 1)
+    rows = await ocr_rows(page)
+    image_ids = [d['id'] for d in db['documents'] if (d['original_file_path'] or d['file_path']).endswith(('.jpg', '.png'))]
+    print("each image waits for Dossiary's own OCR (no helper job):",
+          sorted(r['document_id'] for r in rows if r['job_id'] is None and r['document_id'] in image_ids) == sorted(image_ids))
+    jpg = next(d for d in db['documents'] if (d['original_file_path'] or d['file_path']).endswith('.jpg'))
+    # The runner is held and runs one fallback per pass, oldest row first (earlier PDF scans wait too):
+    # pass until the JPEG's row is gone.
+    finished = False
+    for _ in range(8):
+        await run_pass(page)
+        if await wait_fallback_done(page, jpg['id']):
+            finished = True
+            break
+    print("the own OCR finishes the JPEG:", finished)
+    jpg = await doc_row(page, jpg['id'])
+    print("the JPEG is now a searchable PDF, the original JPEG kept:",
+          jpg['searchable_pdf_built'] == 1 and jpg['file_path'].endswith('.pdf') and (jpg['original_file_path'] or '').endswith('.jpg'))
+    print("no page errors:", errors == [])
+    await browser.close()
+
+    # With automatic OCR off, a scanned image stays an image.
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers=PHOTO_HELPERS)
+    await page.click('#scan-btn'); await page.wait_for_timeout(300)
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:photo')
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    await start_scan(page, wait=900)
+    db = await db_state(page)
+    print("OCR off: the scan is an image document with no OCR row:",
+          len(db['documents']) == 1 and (db['documents'][0]['file_path'] or '').endswith('.jpg') and await ocr_rows(page) == [])
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs, scenario_photo_data, scenario_photo_controls, scenario_photo_request]
 
 
 async def main():

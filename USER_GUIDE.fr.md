@@ -184,6 +184,12 @@ blanches, cochez **Séparer la pile aux feuilles blanches** dans la fenêtre
 pour transformer une pile en plusieurs documents : il suffit de glisser une
 feuille blanche entre eux (Scan Multi).
 
+Pour numériser une photo, choisissez **JPEG** ou **PNG** sous **Format**
+(le chargeur de documents ne numérise qu'en PDF) et la taille du tirage
+sous **Format du papier**, par exemple 10 × 15 cm. Les résolutions qui
+donneraient une image énorme ne sont pas proposées pour les formats
+standard.
+
 ## Votre iPhone ou iPad
 
 L'application Dossiary pour iPhone et iPad vous montre vos bibliothèques

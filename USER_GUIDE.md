@@ -167,6 +167,11 @@ that can split a stack on blank sheets, tick **Split the stack at blank
 sheets** in the dialog to turn one stack into several documents: just put a
 blank sheet between them (Scan Multi).
 
+To scan a photo, choose **JPEG** or **PNG** under **Format** (the document
+feeder only scans PDFs) and the size of the print under **Paper size**, for
+example 10 × 15 cm. Resolutions that would give an enormous image aren't
+offered for the standard sizes.
+
 ## Your iPhone or iPad
 
 The Dossiary app on iPhone and iPad shows your libraries away from your
