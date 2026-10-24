@@ -43,6 +43,13 @@ FAKE_SYNC = """
         if(headers.Authorization !== `Bearer ${S.token}`) return json(401, { error: 'Unauthorized' });
         if(path === '/admin/libraries') return json(200, S.libraries || [{ id: 'lib-7f3a', name: 'Household', available: true }]);
         if(path === '/admin/devices') return json(200, []);
+        const cn = /^\\/admin\\/libraries\\/([^/]+)\\/connection$/.exec(path);
+        if(cn && opts.method === 'POST'){
+            if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
+            const body = JSON.parse(opts.body);
+            S.state = Object.assign({}, S.state || {}, { disconnectedSince: body.connected ? null : (S.disconnectAt || new Date().toISOString()), lease: null });
+            return json(200, S.state);
+        }
         const st = /^\\/admin\\/libraries\\/([^/]+)\\/state$/.exec(path);
         if(st && (opts.method || 'GET') === 'GET'){
             const s = (S.states || {})[decodeURIComponent(st[1])] || (decodeURIComponent(st[1]) === 'lib-7f3a' ? S.state : null);
@@ -53,6 +60,7 @@ FAKE_SYNC = """
             if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
             const body = JSON.parse(opts.body);
             if(body.action === 'acquire'){
+                if(S.state && S.state.disconnectedSince) return json(200, { result: 'disconnected', lease: null, version: S.state.version });
                 const result = body.takeOver ? (S.takeOver || 'granted') : (S.acquire || 'granted');
                 if(result === 'busy') return json(200, { result, lease: S.busyLease, version: S.acquireVersion || 3 });
                 const granted = result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null;
@@ -159,6 +167,16 @@ async def marker(page):
         const m = document.getElementById('sync-marker');
         if(!m) return null;
         return { text: m.textContent, title: m.title, visible: getComputedStyle(m).display !== 'none' };
+    }""")
+
+
+async def marker_colour(page):
+    """The marker's computed colour and the colours of --red / --text-dim / --phosphor, for comparing."""
+    return await page.evaluate("""() => {
+        const probe = (v) => { const d = document.createElement('span'); d.style.color = `var(${v})`; document.body.appendChild(d);
+                                const c = getComputedStyle(d).color; d.remove(); return c; };
+        return { marker: getComputedStyle(document.getElementById('sync-marker')).color,
+                 red: probe('--red'), dim: probe('--text-dim'), phosphor: probe('--phosphor') };
     }""")
 
 
@@ -338,7 +356,9 @@ async def scenario_offline(p):
     await edit_title(page, 'Offline change')
     print("offline: the write goes through:", await saved_title(page) == 'Offline change')
     m = await marker(page)
-    print("...marker reads '✎ editing offline':", m['visible'] and m['text'] == '✎ editing offline', m)
+    print("...marker reads 'connected · offline':", m['visible'] and m['text'] == 'connected · offline', m)
+    c = await marker_colour(page)
+    print("...in the neutral dim colour, not green:", c['marker'] == c['dim'] and c['marker'] != c['phosphor'], c)
     await edit_title(page, 'Offline again')
     print("...the next save doesn't ask again:", len(await lease_calls(page, 'acquire')) == 1 and await saved_title(page) == 'Offline again')
     print("no page errors:", not errors, errors)
@@ -346,38 +366,37 @@ async def scenario_offline(p):
 
 
 async def scenario_no_token(p):
-    # X1: no admin token in this browser → a real change is held back, not written.
+    # No admin token in this browser: the change is written at once, nothing is held back or warned about.
     browser, page, errors = await open_app(p, token=None)
-    before = await saved_title(page)
     await edit_title(page, 'Unconnected change')
-    print("no token: the change isn't written:", await saved_title(page) == before)
+    print("no token: the change is written:", await saved_title(page) == 'Unconnected change')
     print("...with no admin calls:", await admin_calls(page) == [])
+    st = await sync_state(page)
+    print("...nothing held back:", not st['unsaved'] and st['state'] == 'unconnected', st)
     m = await marker(page)
-    print("...marker reads 'not connected — changes not saved':", m['visible'] and m['text'] == 'not connected — changes not saved', m)
+    print("...marker reads 'not connected', no 'not saved':", m['visible'] and m['text'] == 'not connected' and 'not saved' not in (m['text'] + await status(page)).lower(), m)
     print("...its tooltip says a click connects:", m['title'] == 'Click to connect Dossiary Sync.', m['title'])
-    print("...the status line says so:", (await status(page)).startswith("Not saved: this browser isn't connected"), await status(page))
-    print("...the change stays in this window:", 'Unconnected change' in await page.inner_text('tr[data-id="1"]'))
+    c = await marker_colour(page)
+    print("...in the neutral dim colour, not red:", c['marker'] == c['dim'] and c['marker'] != c['red'], c)
     prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
-    print("...closing the tab asks first:", prevented)
-    w = await writes(page)
-    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
-    print("...a background write is held back too:", await writes(page) == w)
-    # The marker is a link: Enter on it opens the devices dialog, and connecting there takes the lease and writes it.
-    print("...the marker is a focusable button:", await page.evaluate("() => { const m = document.getElementById('sync-marker'); return m.getAttribute('role') === 'button' && m.tabIndex === 0; }"))
+    print("...closing the tab asks nothing:", not prevented)
+    print("...the base marker is written:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("...the marker is still a focusable button that opens the devices dialog:", await page.evaluate("() => { const m = document.getElementById('sync-marker'); return m.getAttribute('role') === 'button' && m.tabIndex === 0; }"))
     await page.focus('#sync-marker'); await page.keyboard.press('Enter')
     await page.wait_for_timeout(300)
     print("...Enter on it opens the devices dialog:", await page.locator('#devices-connect-btn').count() == 1)
+    # Connecting there: the next edit takes the lease, and the marker stops being a link.
     await page.click('#devices-connect-btn')
     await page.wait_for_timeout(200)
     await page.fill('#devices-code-input', 'KX7P2M9Q')
     await page.click('#devices-code-submit')
     await page.wait_for_timeout(600)
-    print("after connecting: the held-back change is written:", await saved_title(page) == 'Unconnected change', await saved_title(page))
-    print("...through an acquire:", len(await lease_calls(page, 'acquire')) == 1)
+    await page.click('#devices-close-btn'); await page.wait_for_timeout(100)
+    await edit_title(page, 'Connected change')
+    print("after connecting: the next edit is written through one acquire:", len(await lease_calls(page, 'acquire')) == 1 and await saved_title(page) == 'Connected change')
     m = await marker(page)
     print("...marker reads '✎ editing':", m['text'] == '✎ editing', m)
     print("...and is no longer a link:", await page.evaluate("() => { const m = document.getElementById('sync-marker'); return !m.classList.contains('sub-sync-link') && !m.hasAttribute('role') && !m.hasAttribute('tabindex'); }"))
-    await page.click('#devices-close-btn'); await page.wait_for_timeout(100)
     await page.click('#sync-marker'); await page.wait_for_timeout(200)
     print("...clicking it opens nothing:", await page.evaluate("document.getElementById('modal-root').innerHTML === ''"))
     print("no page errors:", not errors, errors)
@@ -385,33 +404,25 @@ async def scenario_no_token(p):
 
 
 async def scenario_service_down(p):
-    # X1: the service not answering → held back, written once it answers.
+    # The service not answering: the change is written at once; the marker says 'not synced yet', never 'not saved'.
     browser, page, errors = await open_app(p, sync={"token": "admin-tok", "down": True})
-    before = await saved_title(page)
-    # NEW-2: only a job's change pending → held silently.
-    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 1])")
-    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
-    prevented = await page.evaluate("() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; }")
-    m = await marker(page)
-    print("a job's change alone is held silently (no 'not saved', no beforeunload):", not prevented and 'changes not saved' not in m['text'] and not (await sync_state(page))['unsaved'], m)
-    print("...the tooltip says it may not be running or installed:", 'may not be running, or not be installed' in m['title'], m['title'])
     await edit_title(page, 'Down change')
-    print("service down: the change isn't written:", await saved_title(page) == before)
+    print("service down: the change is written:", await saved_title(page) == 'Down change')
+    st = await sync_state(page)
+    print("...nothing held back:", not st['unsaved'] and st['state'] == 'unsynced', st)
     m = await marker(page)
-    print("...marker reads 'Dossiary Sync not answering — changes not saved':", m['visible'] and m['text'] == 'Dossiary Sync not answering — changes not saved', m)
+    print("...marker reads 'not synced yet':", m['visible'] and m['text'] == 'not synced yet', m)
     print("...with the reason as its tooltip:", 'may not be running' in m['title'], m['title'])
-    print("...the status line says so:", (await status(page)).startswith("Not saved: Dossiary Sync isn't answering"), await status(page))
+    c = await marker_colour(page)
+    print("...in the neutral dim colour, not red:", c['marker'] == c['dim'], c)
+    print("...and no 'Not saved' on the status line:", 'Not saved' not in await status(page), await status(page))
     n = len(await lease_calls(page, 'acquire'))
-    await tick(page)
-    print("...a tick within the minute (no answer) doesn't ask again:", len(await lease_calls(page, 'acquire')) == n)
+    await edit_title(page, 'Down again')
+    print("...a second edit within the minute asks nothing and is written:", len(await lease_calls(page, 'acquire')) == n and await saved_title(page) == 'Down again')
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 1])")
     w = await writes(page)
     await page.evaluate("window.__DEBUG_persistDb({ background: true })")
-    print("...a background write is held back too:", await writes(page) == w)
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page)
-    await page.wait_for_timeout(300)
-    print("once it answers, the next tick writes it:", await saved_title(page) == 'Down change')
-    print("...marker reads '✎ editing':", (await marker(page))['text'] == '✎ editing')
+    print("...a job's data is written too:", await writes(page) > w)
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -915,6 +926,13 @@ async def scenario_last_error(p):
     print("lastError while holding: marker 'not synced yet':", m['text'] == 'not synced yet', m)
     print("...with the error as its tooltip:", m['title'] == 'The Pi refused the upload (disk full).')
     print("...still holding (saves go on):", (await sync_state(page))['state'] == 'holding')
+    c = await marker_colour(page)
+    print("...in red (a real failure: the hub answered):", c['marker'] == c['red'], c)
+    unreachable = dict(state(3, THIS_LEASE, None, 'unreachable'), hubReachable=False)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", unreachable)
+    await tick(page)
+    m = await marker(page); c = await marker_colour(page)
+    print("lastError with the hub unreachable: the neutral offline marker, not red:", m['text'] == 'connected · offline' and c['marker'] == c['dim'], m, c)
     await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, THIS_LEASE))
     await tick(page)
     print("...back to '✎ editing' once it clears:", (await marker(page))['text'] == '✎ editing')
@@ -1073,17 +1091,13 @@ async def scenario_sync_read_before_writes(p):
 
 
 async def scenario_unanswered_backoff(p):
-    # 6. After an unanswered acquire, a person's save doesn't ask again for about a minute (it holds back at once).
+    # 6. After an unanswered acquire, a person's save doesn't ask again for about a minute; each is written at once.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
     await edit_title(page, 'One')
     n1 = len(await lease_calls(page, 'acquire'))
     await edit_title(page, 'Two')
     print("unanswered acquire: the next edit within a minute doesn't ask:", n1 == 1 and len(await lease_calls(page, 'acquire')) == 1)
-    print("...both held back, nothing written:", await disk_doc_title(page, 1) == 'Invoice' and (await sync_state(page))['unsaved'])
-    await page.evaluate("window.__SYNC.down = false")
-    await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
-    await page.wait_for_timeout(300)
-    print("...the tick's retry writes the latest:", await disk_doc_title(page, 1) == 'Two')
+    print("...both written at once, nothing held back:", await disk_doc_title(page, 1) == 'Two' and not (await sync_state(page))['unsaved'])
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1177,22 +1191,26 @@ async def scenario_reload_refused(p):
 
 
 async def scenario_connected_elsewhere(p):
-    # NEW-3: connected in another tab: the token appears in localStorage; the next tick writes the held-back change.
+    # NEW-3: connected in another tab: the token appears in localStorage; the next tick leaves 'not connected'.
     browser, page, errors = await open_app(p, token=None)
-    await edit_title(page, 'Held back')
-    print("held back while not connected:", (await sync_state(page))['unsaved'])
+    await edit_title(page, 'Written unconnected')
+    print("not connected: the change is written:", await saved_title(page) == 'Written unconnected' and not (await sync_state(page))['unsaved'])
     await page.evaluate("([k, t]) => localStorage.setItem(k, t)", [TOKEN_KEY, 'admin-tok'])
     await tick(page)
     await page.wait_for_timeout(300)
-    print("connected in another tab: the next tick writes it:", await saved_title(page) == 'Held back' and (await marker(page))['text'] == '✎ editing')
+    print("connected in another tab: the next tick leaves 'not connected':", (await sync_state(page))['state'] != 'unconnected', await sync_state(page))
+    await edit_title(page, 'Connected now')
+    print("...the next real save acquires:", len(await lease_calls(page, 'acquire')) == 1 and await saved_title(page) == 'Connected now' and (await marker(page))['text'] == '✎ editing')
     print("no page errors:", not errors, errors)
     await browser.close()
 
 
 async def scenario_held_back_copy(p):
-    # Held-back changes don't live only in memory: 30 s after the last one, a .kept-aside copy.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
-    await edit_title(page, 'Kept in a copy')
+    # Held-back changes (take-over Cancel) don't live only in memory: 30 s after the last one, a .kept-aside copy.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await hold_back_change(page, 'Kept in a copy')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
     await page.evaluate("window.__DEBUG_syncNow(20 * 1000)")
     print("20 s after holding back: no copy yet:", await kept_aside_names(page) == [])
     await page.evaluate("window.__DEBUG_syncNow(11 * 1000)")
@@ -1201,17 +1219,20 @@ async def scenario_held_back_copy(p):
     print("after 30 s: a .kept-aside copy with this tab's change:", len(names) == 1 and await kept_aside_title(page, names[0]) == 'Kept in a copy', names)
     print("...the live library.sqlite unchanged:", await disk_doc_title(page, 1) == 'Invoice')
     m = await marker(page)
-    print("...the marker's tooltip names the folder:", f'.kept-aside/{names[0]}' in m['title'], m['title'])
-    print("...and the status line:", f'.kept-aside/{names[0]}' in await status(page), await status(page))
-    await edit_title(page, 'Changed again')
+    print("...the marker's tooltip names the folder:", bool(names) and f'.kept-aside/{names[0]}' in m['title'], m['title'])
+    print("...and the status line:", bool(names) and f'.kept-aside/{names[0]}' in await status(page), await status(page))
+    await page.evaluate("window.__SYNC.acquire = 'granted'")
+    await hold_back_change(page, 'Changed again')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
     await page.evaluate("window.__DEBUG_syncNow(31 * 1000)")
     await page.wait_for_timeout(200)
     names2 = await kept_aside_names(page)
-    print("...a further change updates the same copy:", names2 == names and await kept_aside_title(page, names[0]) == 'Changed again', names2)
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page)
-    await page.wait_for_timeout(300)
-    print("once the service answers it's written for real, the copy kept:", await disk_doc_title(page, 1) == 'Changed again' and await kept_aside_names(page) == names)
+    print("...a further change updates the same copy:", names2 == names and bool(names) and await kept_aside_title(page, names[0]) == 'Changed again', names2)
+    await page.evaluate("window.__SYNC.acquire = 'granted'")
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3))
+    await edit_title(page, 'Taken over')
+    print("once taken over it's written for real, the copy kept:", await disk_doc_title(page, 1) == 'Taken over' and await kept_aside_names(page) == names and not (await sync_state(page))['unsaved'])
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1357,7 +1378,7 @@ async def disk_file_hash(page, id):
 async def scenario_held_back_copy_race(p):
     # R2: a held-back copy still being written when the change is written for real doesn't claim the episode afterwards;
     # two copies at once (a tick and pagehide) make one folder.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await page.evaluate("""() => {
         const root = window.__TEST_ROOT;
         const orig = root.getDirectoryHandle.bind(root);
@@ -1366,11 +1387,14 @@ async def scenario_held_back_copy_race(p):
             return orig(name, opts);
         };
     }""")
-    await edit_title(page, 'First episode')
+    await hold_back_change(page, 'First episode')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
     await page.evaluate("() => { window.__SLOW_KEPT = true; window.dispatchEvent(new Event('pagehide')); window.dispatchEvent(new Event('pagehide')); }")
     await page.wait_for_timeout(50)
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page, 5 * 1000)          # the service answers: the change is written for real while the copy is still being written
+    # Take over: the change is written for real while the copy is still being written.
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'granted'; }", state(3))
+    await page.evaluate("window.__DEBUG_persistDb()")
     await page.wait_for_timeout(1500)
     print("the change is written for real:", await disk_doc_title(page, 1) == 'First episode' and not (await sync_state(page))['unsaved'])
     names = await kept_aside_names(page)
@@ -1380,9 +1404,10 @@ async def scenario_held_back_copy_race(p):
     m = await marker(page)
     print("...nor the marker's tooltip:", '.kept-aside' not in m['title'], m['title'])
     # A new held-back episode gets its own folder, not the late copy's.
-    await page.evaluate("window.__SLOW_KEPT = false; window.__SYNC.down = true")
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(3, None))
-    await release_and_hold_back(page, 'Second episode')
+    await page.evaluate("window.__SLOW_KEPT = false")
+    await hold_back_change(page, 'Second episode')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
     await page.evaluate("window.__DEBUG_syncNow(31 * 1000)")
     await page.wait_for_timeout(300)
     names2 = await kept_aside_names(page)
@@ -1392,40 +1417,14 @@ async def scenario_held_back_copy_race(p):
     await browser.close()
 
 
-async def release_and_hold_back(page, title):
-    """Give the lease back (idle), then make a change while the service doesn't answer: held back."""
-    for _ in range(11):
-        await page.evaluate("window.__DEBUG_syncNow(60 * 1000)")
-    await page.evaluate("window.__DEBUG_syncNow(61 * 1000)")
-    await edit_title(page, title)
-
-
 async def scenario_job_data_retried(p):
-    # R3: a job's data held silently while the service didn't answer is written by a tick once it answers ...
+    # R3: a job's data while the service doesn't answer is written at once, with the base marker.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
     await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 2])")
     await page.evaluate("window.__DEBUG_persistDb({ background: true })")
     st = await sync_state(page)
-    print("a job's data held silently:", st['dirty'] and not st['unsaved'], st)
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page, 61 * 1000)
-    await page.wait_for_timeout(300)
-    print("once the service answers, a tick writes it:", await disk_file_hash(page, 2) == 'abc' and not (await sync_state(page))['dirty'], await sync_state(page))
-    await page.wait_for_timeout(100)
-    print("no page errors:", not errors, errors)
-    await browser.close()
-    # ... and a person's flow meeting a newer version with only a job's data unwritten keeps it aside quietly and goes on.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
-    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_hash = ? WHERE id = ?', ['abc', 2])")
-    await page.evaluate("window.__DEBUG_persistDb({ background: true })")
-    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
-    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquireVersion = 4; window.__SYNC.down = false; }", state(4))
-    await open_edit(page)
-    print("Edit opens on the newer version (no 'couldn't be saved' notice):", await page.locator('#e-title').count() == 1 and await page.locator('#sync-notice-dialog').count() == 0)
-    print("...the iMac's version is loaded:", 'Receipt (iMac)' in await row_text(page, 2))
-    names = await kept_aside_names(page)
-    held = names and await page.evaluate("""async (n) => JSON.parse(await (await window.__TEST_ROOT._children.get('.kept-aside')._children.get(n)._children.get('library.sqlite').getFile()).text()).documents.find(d => d.id === 2).file_hash""", names[0])
-    print("...the job's data is kept aside quietly, not dropped:", len(names) == 1 and held == 'abc', names)
+    print("a job's data is written at once:", await disk_file_hash(page, 2) == 'abc' and not st['dirty'] and not st['unsaved'], st)
+    print("...with the base marker:", marker_ok(await base_marker(page), 3), await base_marker(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1500,15 +1499,33 @@ async def scenario_reload_race(p):
 
 
 async def scenario_held_back_saved_status(p):
-    # F3: once the tick writes a held-back change, the stale "Not saved" line is replaced.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "down": True})
-    await edit_title(page, 'Waited')
+    # F3: once a held-back change is written, the stale "Not saved" line is replaced.
+    # Take over: the next edit writes it, and its own line replaces "Not saved".
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await hold_back_change(page, 'Waited')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
     print("held back: 'Not saved' on the status line:", (await status(page)).startswith('Not saved'), await status(page))
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page, 61 * 1000)
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'granted'; }", state(3))
+    await edit_title(page, 'Waited, then taken over')
+    st = await status(page)
+    print("taken over: written, and 'Not saved' is gone:", await disk_doc_title(page, 1) == 'Waited, then taken over' and 'Not saved' not in st, st)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+    # The token revoked meanwhile and connected again (another tab): the tick's retry writes it and says so.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await hold_back_change(page, 'Waited')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
+    await page.evaluate("window.__SYNC.token = 'new-tok'")
+    await tick(page)
+    print("token revoked: not connected, still held back:", (await sync_state(page))['state'] == 'unconnected' and (await sync_state(page))['unsaved'], await sync_state(page))
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'granted'; }", state(3))
+    await page.evaluate("([k, t]) => localStorage.setItem(k, t)", [TOKEN_KEY, 'new-tok'])
+    await tick(page)
     await page.wait_for_timeout(300)
     st = await status(page)
-    print("written by the tick: the status line says it's saved now:", await disk_doc_title(page, 1) == 'Waited' and 'Not saved' not in st and 'in the library now' in st, st)
+    print("connected again: the tick writes it, the status line says it's saved now:", await disk_doc_title(page, 1) == 'Waited' and 'Not saved' not in st and 'in the library now' in st, st)
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1801,17 +1818,22 @@ async def scenario_base_marker(p):
     print("no page errors:", not errors, errors)
     await browser.close()
 
-    # A change held back (the service not answering) and written by the retry gets its marker too.
+    # A change made while the service doesn't answer is written at once, with its marker.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await page.evaluate("window.__SYNC.down = true")
-    await edit_title(page, 'Held back')
-    print("held back while the service doesn't answer: nothing written, no marker:",
-          (await sync_state(page))['unsaved'] and await base_marker(page) is None)
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page, 61 * 1000)
-    await page.wait_for_timeout(300)
+    await edit_title(page, 'Not answering')
     m = await base_marker(page)
-    print("...the retry writes it with its marker:", await disk_doc_title(page, 1) == 'Held back' and marker_ok(m, 3), m)
+    print("the service not answering: the change is written with its marker:",
+          not (await sync_state(page))['unsaved'] and await disk_doc_title(page, 1) == 'Not answering' and marker_ok(m, 3), m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # A change made with no token in this browser: written at once, with its marker.
+    browser, page, errors = await open_app(p, seed=SEED2, token=None, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'No token')
+    m = await base_marker(page)
+    print("no token: the change is written with its marker:",
+          not (await sync_state(page))['unsaved'] and await disk_doc_title(page, 1) == 'No token' and marker_ok(m, 3), m)
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -1864,37 +1886,35 @@ async def state_gets(page):
 
 
 async def scenario_confirm_unanswered(p):
-    # Concern 2: the confirm before a write gets no answer → "not answering", the change held back, not written.
+    # Concern 2: the confirm before a write gets no answer → "not answering", and the change is written anyway.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await edit_title(page, 'First')
     await open_edit(page)
     await page.fill('#e-title', 'Unconfirmed')
     await page.evaluate("window.__DEBUG_syncClockSkip(10 * 1000); window.__SYNC.down = true;")
-    w = await writes(page)
     await page.click('#save-edit-btn')
     await page.wait_for_timeout(400)
     st = await sync_state(page)
-    print("no answer to the confirm: not written, held back as 'not answering':",
-          await writes(page) == w and st['unsaved'] and st['state'] == 'unsynced' and await disk_doc_title(page, 1) == 'First', st)
-    print("...the marker says so:", 'not answering' in (await marker(page))['text'], await marker(page))
-    await page.evaluate("window.__SYNC.down = false")
-    await tick(page, 61 * 1000)
-    await page.wait_for_timeout(300)
-    print("...written once the service answers again:", await disk_doc_title(page, 1) == 'Unconfirmed' and not (await sync_state(page))['unsaved'])
+    print("no answer to the confirm: 'not answering', and the change is written:",
+          not st['unsaved'] and st['state'] == 'unsynced' and await disk_doc_title(page, 1) == 'Unconfirmed', st)
+    print("...the marker reads 'not synced yet':", (await marker(page))['text'] == 'not synced yet', await marker(page))
+    print("...with the base marker:", marker_ok(await base_marker(page), 3), await base_marker(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
-    # Concern 1: a hung service delays the confirm about 3 s, not 15.
+    # Concern 1: a hung service delays the confirm about 3 s, not 15; then the change is written.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await edit_title(page, 'First')
     await open_edit(page)
     await page.fill('#e-title', 'Hung')
     await page.evaluate("window.__DEBUG_syncClockSkip(10 * 1000); window.__SYNC.hang = true;")
     await page.click('#save-edit-btn')
-    await page.wait_for_timeout(4000)
+    await page.wait_for_timeout(2000)
+    print("a hung service: not written within 2 s (the confirm still waits):", await disk_doc_title(page, 1) == 'First')
+    await page.wait_for_timeout(2000)
     st = await sync_state(page)
-    print("a hung service: the confirm gives up after about 3 s and holds the change back:",
-          st['state'] == 'unsynced' and st['unsaved'] and await disk_doc_title(page, 1) == 'First', st)
+    print("...after about 4 s the confirm has given up and the change is written:",
+          st['state'] == 'unsynced' and not st['unsaved'] and await disk_doc_title(page, 1) == 'Hung', st)
     await page.evaluate("window.__SYNC.hang = false")
     print("no page errors:", not errors, errors)
     await browser.close()
@@ -1988,6 +2008,142 @@ async def scenario_export_open_asks(p):
     await browser.close()
 
 
+DISCONNECTED_SINCE = "2026-10-20T10:00:00Z"
+
+
+def disconnected_sync():
+    return {"token": "admin-tok", "state": dict(state(3), disconnectedSince=DISCONNECTED_SINCE)}
+
+
+async def scenario_disconnected(p):
+    # Disconnected on this Mac: edits are written at once, with no lease call, no hold-back and no warning text.
+    browser, page, errors = await open_app(p, seed=SEED2, sync=disconnected_sync())
+    await tick(page)
+    print("the poll turns the state to disconnected:", (await sync_state(page))['state'] == 'disconnected', await sync_state(page))
+    m = await marker(page)
+    print("...marker reads 'disconnected':", m['visible'] and m['text'] == 'disconnected', m)
+    print("...its tooltip says nothing is sent until reconnecting:", 'until you reconnect' in m['title'], m['title'])
+    n = len(await lease_calls(page))
+    await edit_title(page, 'Disconnected change')
+    print("an edit is written at once:", await disk_doc_title(page, 1) == 'Disconnected change')
+    print("...with no lease call:", len(await lease_calls(page)) == n)
+    st = await sync_state(page)
+    print("...nothing held back:", not st['unsaved'] and st['state'] == 'disconnected', st)
+    m = await marker(page)
+    shown = (m['text'] + ' ' + m['title'] + ' ' + await status(page)).lower()
+    print("...no warning wording:", 'not saved' not in shown and 'offline' not in shown, shown)
+    print("...the base marker names the version and the bytes:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(300)
+    print("a view preference is written too:", await sort_on_disk(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_disconnected_first_write(p):
+    # The first edit, before any poll: the acquire answer says 'disconnected' and the write goes through.
+    browser, page, errors = await open_app(p, seed=SEED2, sync=disconnected_sync())
+    await edit_title(page, 'Before any poll')
+    st = await sync_state(page)
+    print("the first edit writes and the state is disconnected:", await disk_doc_title(page, 1) == 'Before any poll' and st['state'] == 'disconnected' and not st['unsaved'], st)
+    n = len(await lease_calls(page, 'acquire'))
+    await edit_title(page, 'Second')
+    print("...later edits ask nothing more:", len(await lease_calls(page, 'acquire')) == n and await disk_doc_title(page, 1) == 'Second', n)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def open_devices_dialog(page):
+    await page.click('#tools-btn')
+    await page.click('#devices-btn')
+    await page.wait_for_timeout(500)
+
+
+async def scenario_devices_disconnect(p):
+    # The devices dialog switches a library to "work disconnected" and back; the marker follows at once.
+    # A second library whose state answers 404 (a Mac running as origin, or a library the editor doesn't know).
+    libs = [{"id": LIB_ID, "name": "Household", "available": True}, {"id": "lib-origin", "name": "Shared from here", "available": True}]
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3), "disconnectAt": DISCONNECTED_SINCE, "libraries": libs})
+    await open_devices_dialog(page)
+    print("a connected library offers 'Work disconnected':", await page.locator(f'.devices-lib-disconnect-btn[data-library="{LIB_ID}"]').count() == 1)
+    print("...a library whose state answers 404 offers no button:", await page.locator('.devices-lib-disconnect-btn[data-library="lib-origin"], .devices-lib-reconnect-btn[data-library="lib-origin"]').count() == 0,
+          await page.locator('.devices-lib-disconnect-btn').count())
+    await page.click('.devices-lib-disconnect-btn')
+    await page.wait_for_timeout(500)
+    calls = [c for c in await admin_calls(page) if c['url'].endswith('/connection')]
+    print("...it posts connected:false as JSON:", len(calls) == 1 and calls[0]['body'] == {"connected": False} and calls[0]['contentType'] == 'application/json', calls)
+    print("...the dialog now shows the note and Reconnect:", await page.locator('.devices-lib-reconnect-btn').count() == 1 and await page.locator('.devices-lib-disconnected-note').count() == 1)
+    print("...marker reads 'disconnected':", (await marker(page))['text'] == 'disconnected', await marker(page))
+    await page.click('.devices-lib-reconnect-btn')
+    await page.wait_for_timeout(500)
+    print("Reconnect posts connected:true:", [c['body'] for c in await admin_calls(page) if c['url'].endswith('/connection')][-1] == {"connected": True})
+    print("...the button flips back and the marker clears:", await page.locator('.devices-lib-disconnect-btn').count() == 1 and (await sync_state(page))['state'] != 'disconnected', await sync_state(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_leaseless_write_pulled_over(p):
+    # C1/I1: no token, an edit is written without a lease, then a pull of another Mac's version lands over it
+    # (the service's check failed to stop it, or it raced). Opening Edit must not reload the edit away: it is kept
+    # aside with a notice (without a token no state poll ever reports the service's own keep-aside).
+    browser, page, errors = await open_app(p, seed=SEED2, token=None)
+    await edit_title(page, 'Lease-less edit')
+    print("lease-less: the edit is written:", await disk_doc_title(page, 1) == 'Lease-less edit')
+    await disk_change(page, {1: 'Invoice', 2: 'Receipt (iMac)'}, sync_version=4)
+    await open_edit(page)
+    names = await kept_aside_names(page)
+    in_library = 'Lease-less edit' in await row_text(page, 1)
+    kept = bool(names) and await kept_aside_title(page, names[-1]) == 'Lease-less edit'
+    print("...opening Edit after a pull over it keeps the edit (library or .kept-aside):", in_library or kept, names)
+    print("...it is in .kept-aside:", kept, names)
+    notice = await page.inner_text('#sync-notice-dialog') if await page.locator('#sync-notice-dialog').count() else ''
+    print("...a notice names the folder:", bool(names) and f'.kept-aside/{names[-1]}' in notice, repr(notice))
+    print("...the library shows the newer version:", 'Receipt (iMac)' in await row_text(page, 2), await row_text(page, 2))
+    if await page.locator('#sync-notice-ok-btn').count():
+        await page.click('#sync-notice-ok-btn'); await page.wait_for_timeout(150)
+    if await page.evaluate("document.getElementById('modal-root').innerHTML !== ''"):
+        await page.keyboard.press('Escape'); await page.wait_for_timeout(150)   # the Edit form opened (the bug)
+    # The same through a view preference (sorting), which reloads when it meets a newer version.
+    await edit_title(page, 'Second lease-less edit')
+    await disk_change(page, {1: 'Invoice', 2: 'Receipt (iMac 2)'}, sync_version=5)
+    await page.click('th[data-key="title"]')
+    await page.wait_for_timeout(600)
+    names2 = await kept_aside_names(page)
+    fresh = [n for n in names2 if n not in names]
+    print("...a sort click after a pull over the next edit keeps it aside too:", len(fresh) == 1 and await kept_aside_title(page, fresh[0]) == 'Second lease-less edit', names2)
+    print("...with the notice:", await page.locator('#sync-notice-dialog').count() == 1)
+    print("...and the newer version loaded:", 'Receipt (iMac 2)' in await row_text(page, 2))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_leaseless_disk_ours_keeps_base(p):
+    # C1: no lease, this tab's edit written, then the sync file says version 4 while library.sqlite is still this
+    # tab's bytes (its own push -- or another Mac's version 4 that this write landed on top of; the tab can't tell).
+    # The tab takes over the number (memory isn't behind) but the next marker keeps naming version 3, so Dossiary
+    # Sync pushes it only if 4 was this Mac's own push and keeps it aside otherwise.
+    browser, page, errors = await open_app(p, seed=SEED2, token=None)
+    await edit_title(page, 'First lease-less edit')
+    m = await base_marker(page)
+    print("lease-less write names version 3:", marker_ok(m, 3), m)
+    await page.evaluate("""() => {
+        const f = window.__TEST_ROOT._children.get('.dossiary-sync.json');
+        f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: 4 }));
+    }""")
+    await edit_title(page, 'Second lease-less edit')
+    m = await base_marker(page)
+    st = await sync_state(page)
+    print("...the next edit is written, not kept aside:", await disk_doc_title(page, 1) == 'Second lease-less edit' and not await kept_aside_names(page))
+    print("...the tab knows version 4:", st['version'] == 4, st)
+    print("...but the marker still names version 3:", marker_ok(m, 3), m)
+    await tick(page)
+    await edit_title(page, 'Third lease-less edit')
+    m = await base_marker(page)
+    print("...and after a tick too:", marker_ok(m, 3) and await disk_doc_title(page, 1) == 'Third lease-less edit', m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -2004,7 +2160,10 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_open_race, scenario_takeover_window, scenario_sleep_window, scenario_offline_window,
              scenario_view_prefs_not_holding, scenario_reserved_ids,
              scenario_base_marker, scenario_offline_exit_pulled, scenario_confirm_unanswered,
-             scenario_no_reload_while_opening, scenario_export_open_asks]
+             scenario_no_reload_while_opening, scenario_export_open_asks,
+             scenario_disconnected, scenario_disconnected_first_write,
+             scenario_devices_disconnect, scenario_leaseless_write_pulled_over,
+             scenario_leaseless_disk_ours_keeps_base]
 
 
 async def main():

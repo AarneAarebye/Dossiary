@@ -1259,11 +1259,10 @@ the bump not taken as this Mac's, the save kept aside; the heartbeat's
 re-acquire with a newer version reloading); `background_files` (a queued OCR
 fallback job stays queued while the iMac edits and while the lease is busy, no
 dialog, then runs once the lease is taken silently, and that lease goes back
-a minute later). Fix round 2: no token and service down now hold the change
-back (marker "… — changes not saved", status line, `beforeunload`, a
-background write held back too) until connecting in the devices dialog (the
-fake serves `/admin/connect/start` and `/admin/connect`) or the service
-answering again (the next tick writes it); `idle_and_forms` (no idle release
+a minute later). Fix round 2: no token and service down first held the change
+back until connecting in the devices dialog (the fake serves
+`/admin/connect/start` and `/admin/connect`) or the service answering again;
+since the offline-first round (below) the change is written at once instead; `idle_and_forms` (no idle release
 under an open Edit form, release 10 minutes after it closes);
 `dialog_open_refuses` (Set up fields from a stale Edit form after a foreign
 bump: no reload under it, "close this dialog and start again", the Save kept
@@ -1329,14 +1328,46 @@ reload, written by the held-back retry, never inside a `.kept-aside` copy, the
 live one untouched by a keep-aside), `offline_exit_pulled` (N2: the offline
 period ends with this Mac holding after the service pulled the iMac's v4 --
 reloaded, not taken as this Mac's own, the edit on top, marker 4),
-`confirm_unanswered` (no answer to the confirm → `unsynced`, held back, written
-once the service answers; the fake's `hang` makes a hung service give up
+`confirm_unanswered` (no answer to the confirm → `unsynced`, the change written at once; the fake's `hang` makes a hung service give up
 after ~3 s; a save right after an answered poll sends no second state
 request), `no_reload_while_opening` (N3: a tick while `loadDb()` is paused in
 the stable-uid migration doesn't reload; the next one after opening does) and
 `export_open_asks` (Export as library's "Open it" asks first with a change
 held back; the exported library has no sync file or marker); `no_sync_file`
 writes no marker, and `backup` leaves it out)).
+Offline-first round (spec `2026-10-23-offline-first-sync-design.md` in
+dossiary-ios): the lease state `disconnected` (a library switched to "Work
+disconnected" on this Mac; entered from the state poll's `disconnectedSince`
+or an acquire answering `disconnected`) writes straight to disk with the base
+marker, no lease call, no hold-back, marker "disconnected" (default dim colour).
+New scenarios: `disconnected`, `disconnected_first_write` and
+`devices_disconnect` (the dialog's "Work disconnected" / "Reconnect" buttons
+and "Disconnected {when}" note, `POST /admin/libraries/<id>/connection`).
+Rewritten because `unconnected` (no admin token) and `unsynced` (the service
+not answering) no longer hold a change back -- it is written at once and the
+base marker decides later whether the service pushes it or keeps it aside; only
+another Mac editing (`other`, take-over Cancel) still holds back, and
+file-writing jobs (`syncMayWriteFiles()`) still wait in the two states:
+`no_token`, `service_down`, `held_back_copy`, `held_back_copy_race`,
+`held_back_saved_status`, `job_data_retried`, `unanswered_backoff`,
+`connected_elsewhere`, `confirm_unanswered`, `base_marker` and `offline` (the
+marker reads "connected · offline"). Strings removed with the hold-back:
+`syncNotSavedUnconnectedStatus`, `syncNotSavedUnsyncedStatus`,
+`syncMarkerNotConnectedUnsaved`, `syncMarkerNotAnsweringUnsaved`,
+`syncDiscardTextNoService`.
+Fix wave (final review): `leaseless_write_pulled_over` (C1/I1: no token, an
+edit written, then a pull of another Mac's version lands over it; opening
+Edit and, for a second edit, a sort click keep memory aside with the notice
+instead of reloading the edit away); `devices_disconnect` also checks that a
+library whose `GET …/state` answers 404 gets no "Work disconnected" button;
+`no_token`, `service_down` and `offline` check the marker's computed colour is
+the neutral `--text-dim` (`marker_colour()`), and `last_error` that a
+`lastError` while holding is red only while the hub answered
+(`hubReachable === false` reads "connected · offline", dim).
+Merge review: `leaseless_disk_ours_keeps_base` (no token, the sync file bumped
+to 4 while library.sqlite is still the tab's own bytes: the tab knows 4 and
+keeps writing, but the base marker keeps naming 3, so a write that landed on
+another Mac's freshly installed version can't be pushed over it).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

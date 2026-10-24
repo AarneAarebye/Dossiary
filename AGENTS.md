@@ -2517,13 +2517,45 @@ this repo's git tags.
 
   | State | Real save (person) | Real save (job) | View preference | How loud |
   |---|---|---|---|---|
-  | `holding` | confirm (`syncConfirmLease()`: state poll unless one answered in the last 3 s; heartbeat if the last is > 120 s old; 3 s timeout each; no answer → `unsynced`, held back), then write | same | write | marker "✎ editing" |
-  | `offline` | confirm (poll, as above), then write | same | write | marker "✎ editing offline" |
+  | `holding` | confirm (`syncConfirmLease()`: state poll unless one answered in the last 3 s; heartbeat if the last is > 120 s old; 3 s timeout each; no answer → `unsynced`: the write goes ahead, the base marker decides later), then write | same | write | marker "✎ editing" |
+  | `offline` | confirm (poll, as above), then write | same | write | marker "connected · offline" in the default dim colour (no colour rule; only `holding` is green) |
   | `none` (lease free) | acquire, then write | acquire silently, then write | memory only | -- |
   | `other` (another Mac holds it) | take-over dialog: Take over → write; Cancel → held back | held back silently | memory only | marker "editing on {device}" / "unsaved changes", status line "Not saved: …" |
-  | `unconnected` (no admin token) | held back | held back silently | memory only | marker "not connected — changes not saved", status line |
-  | `unsynced` (no answer / error) | held back; the tick retries | held back silently | memory only | marker "Dossiary Sync not answering — changes not saved", reason as tooltip |
+  | `disconnected` (this library is switched to "Work disconnected" on this Mac) | straight to disk with the base marker; no lease call, no hold-back | same | write | marker "disconnected" in the default dim colour (`syncMarkerDisconnected`, tooltip `syncMarkerDisconnectedTitle`; no colour rule for the state) |
+  | `unconnected` (no admin token) | written at once; the base marker decides later whether the service pushes it or keeps it aside | written at once, except file-writing jobs (`syncMayWriteFiles()`: OCR, previews), which wait | memory only | marker "not connected" in the default dim colour (no warning: changes are saved here), a link (`sub-sync-link`) that opens the devices dialog, tooltip "Click to connect Dossiary Sync." |
+  | `unsynced` (no answer / error) | written at once, as `unconnected`; the tick retries the lease | as `unconnected` | memory only | marker "not synced yet" in the default dim colour, reason as tooltip |
   | any, memory behind a newer version (`syncBehind()`, disk not this tab's) | kept aside + reload, notice (`#sync-notice-dialog`) | kept aside quietly (plain status line), reload when free | -- | notice vs. plain line |
+  | after a lease-less write (`syncWroteWithoutLease`: the last real write was in `unconnected`/`unsynced`), a newer version is found with disk not this tab's | the next reload (`maybeReload()`, a poll, a view preference) or flow start (`ensureEditLease()`) keeps memory aside with the notice instead of reloading it away; the flow doesn't start | same, never quiet | -- | notice |
+
+  **Disconnected** (offline-first, spec `2026-10-23-offline-first-sync-design.md`
+  in dossiary-ios). A library can be switched to work on this Mac only: the
+  devices dialog lists each shared library with "Work disconnected" /
+  "Reconnect" (`.devices-lib-disconnect-btn`, `.devices-lib-reconnect-btn`)
+  and a "Disconnected {when}" note, calling `POST /admin/libraries/<id>/connection
+  {connected}` (`setLibraryConnection()`). The switch is stored per library
+  per Mac in Dossiary Sync's state, not in the browser. The state poll
+  (`pollSyncState()`, `st.disconnectedSince`) or an acquire answering
+  `disconnected` moves the tab into `disconnected`; reconnecting is seen by
+  the next poll (back to `none`). While disconnected the service skips the
+  library; on reconnect it pushes if the hub did not move, otherwise keeps the
+  whole disconnected version aside (`.kept-aside/`), as the lease spec's
+  keep-aside does. There is no per-document merge yet (lease spec "part 3").
+  For `unconnected` and `unsynced` a change is no longer held back: it is
+  written at once and the base marker (below) is what keeps that safe. Only
+  another Mac editing (`other`, take-over Cancel) still holds a change back.
+  Such a lease-less write can race a pull: Dossiary Sync then never installs
+  over it (its guarded apply stops, and the next pass keeps the write aside),
+  and this tab remembers the write (`syncWroteWithoutLease`) and keeps memory
+  aside with the notice rather than reloading over a foreign newer version
+  (without a token no poll reports the service's keep-aside). Cleared by a
+  reload, a keep-aside, or a granted acquire at memory's version. The devices
+  dialog shows "Work disconnected" only for a library whose `GET …/state`
+  answered (`devicesState.stateAnswered`): on a Mac running as origin, or for
+  a library the service doesn't edit, it answers 404 and so would the switch.
+  Reconnect answers at once; the pass it starts runs on in the service.
+  **Colours**: only `holding` is green and `other`/`unsaved` amber; `offline`,
+  `unconnected`, `unsynced` and `disconnected` use the default `--text-dim`
+  (normal ways to work, never warnings); red is only `sync-error`.
 
   **Events.**
   - *Editing starts* (`ensureEditLease()`, first line of ~40 entry points:
@@ -2541,7 +2573,9 @@ this repo's git tags.
     the offline period didn't just end (the service may have pulled another
     Mac's version as it did), otherwise `syncNoteNewer()` -- this tab's own
     bytes are still recognised by `syncDiskIsOurs()`; new `keptAside` entries → one status line
-    each and a reload; `lastError` while holding → marker "not synced yet".
+    each and a reload; `lastError` while holding → marker "not synced yet" in red
+    (`data-state="sync-error"`) when the hub answered, or the neutral "connected · offline"
+    when `hubReachable === false` (the hub merely can't be reached).
   - *Reload* (`maybeReload()` → `reloadLibraryKeepingView()`): when behind
     and nothing is in the way -- no dialog, no save in flight, no acquire
     pending, nothing held back or dirty, no job running. Keeps view, search,
@@ -2566,30 +2600,39 @@ this repo's git tags.
     Export as library's "Open it") ask while a change is held back.
 
   **Invariants.**
-  - Nothing a person changed is ever dropped: written, held back in memory
+  - Nothing a person changed is ever dropped: written, held back in memory (only while another Mac holds the lease)
     (with a `.kept-aside/<this Mac>-<time>/library.sqlite` copy 30 s later,
     `writeHeldBackCopy()`), or kept aside (`syncKeepAsideAndReload()`).
-  - A real write happens only with the lease confirmed or offline confirmed
-    just before it -- an unanswered confirm holds the change back as
-    "not answering", it never writes on "holding as far as anyone knows";
+  - A write with the lease (`holding`/`offline`) happens only with it confirmed
+    just before -- an unanswered confirm sets `unsynced`; without a lease
+    (`disconnected`, `unconnected`, `unsynced`) the write goes ahead too and
+    the base marker, not a hold-back, keeps it from being pushed on a stale base;
     a view preference is written only while holding or offline (otherwise a
     pull may be running; check-then-write isn't atomic, and a write with a
     current marker would make Dossiary Sync take the lease to push it).
   - Every live write of `library.sqlite` (real, view preference, the
     held-back retry -- all through `persistDb()`) is followed by the base
     marker `.dossiary-base.json` (`writeSyncBaseMarker()`): `{version,
-    sha256, writtenAt}`, the version memory was at when the bytes were
-    exported and their SHA-256. Keep-aside copies never get one. Dossiary
+    sha256, writtenAt}`, the version memory is provably based on
+    (`syncLibrary.base`) when the bytes were exported, and their SHA-256. Keep-aside copies never get one. Dossiary
     Sync pushes a changed database only when the marker matches the bytes
     and names the folder's version (or the start of this Mac's own pushes
     that led to it); any other base, or no matching marker after 10 s, is
     kept aside on both sides and the hub's version pulled -- never pushed.
     So a version number this tab claims must never be newer than its
-    memory: only an acquire's answer, a poll while holding (not just after
-    offline) or `syncDiskIsOurs()` move `syncLibrary.version`.
-  - Never write over a version this tab didn't load or write
+    memory: only a reload, an acquire granted at memory's version, a poll
+    while holding (not just after offline), or `syncDiskIsOurs()` while
+    holding or offline move `syncLibrary.base`. Without a lease,
+    `syncDiskIsOurs()` takes over the newer `version` (memory isn't behind)
+    but leaves `base`: the tab's bytes may have landed on top of another
+    Mac's version just installed, so the marker keeps naming the old one and
+    Dossiary Sync pushes it only along this Mac's own-push chain.
+  - Never write over a version this tab knows is newer than its memory
     (`syncDiskIsOurs()` hashes the file against `syncLoadedHash` /
-    `syncLastWrittenHash`).
+    `syncLastWrittenHash`). A lease-less write can't know of a pull landing
+    just after it; that case is covered by Dossiary Sync's guarded apply and
+    `syncWroteWithoutLease` (set by writes in `unconnected`, `unsynced` and
+    `disconnected`; see Disconnected above).
   - Real changes in memory are counted (`trackDbChanges()`, `syncDirty()`);
     a reload never replaces them.
   - Background jobs write files only while holding or offline
