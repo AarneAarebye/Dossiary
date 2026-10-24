@@ -47,6 +47,8 @@ FAKE_SYNC = """
         if(cn && opts.method === 'POST'){
             if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
             const body = JSON.parse(opts.body);
+            if(S.connectionDelay) await new Promise(r => setTimeout(r, S.connectionDelay));
+            if(S.connectionFail) return json(500, { error: S.connectionFail });
             S.state = Object.assign({}, S.state || {}, { disconnectedSince: body.connected ? null : (S.disconnectAt || new Date().toISOString()), lease: null });
             return json(200, S.state);
         }
@@ -2144,6 +2146,99 @@ async def scenario_leaseless_disk_ours_keeps_base(p):
     await browser.close()
 
 
+async def scenario_disconnected_token_rejected(p):
+    # M1: a token rejected while disconnected turns the state to "not connected" (no poll could ever see a Reconnect).
+    browser, page, errors = await open_app(p, seed=SEED2, sync=disconnected_sync())
+    await tick(page)
+    print("disconnected first:", (await sync_state(page))['state'] == 'disconnected')
+    await page.evaluate("window.__SYNC.token = 'another-token'")
+    await tick(page, 6000)
+    st = await sync_state(page)
+    print("a 401 turns it to unconnected:", st['state'] == 'unconnected', st)
+    print("...marker reads 'not connected':", (await marker(page))['text'] == 'not connected', await marker(page))
+    await edit_title(page, 'After the 401')
+    print("...edits are still written:", await disk_doc_title(page, 1) == 'After the 401')
+    print("...and remembered as lease-less:", (await sync_state(page))['wroteWithoutLease'] is True)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_leased_write_clears_leaseless_flag(p):
+    # M2: a lease-less write (no token) sets the flag; once connected, the acquire answers "offline" and the next
+    # write goes out under that. It clears the flag, so after the offline period the next ordinary pull reloads
+    # quietly instead of keeping memory aside with a notice although nothing is unsaved.
+    browser, page, errors = await open_app(p, seed=SEED2, token=None, sync={"token": "admin-tok", "state": state(3, offline=True), "acquire": "offline"})
+    await edit_title(page, 'Lease-less')
+    print("a write without a token sets the flag:", (await sync_state(page))['wroteWithoutLease'] is True)
+    await page.evaluate(f"localStorage.setItem('{TOKEN_KEY}', 'admin-tok')")
+    await tick(page)
+    await edit_title(page, 'Offline under the service')
+    st = await sync_state(page)
+    print("...a write while offline clears it:", st['state'] == 'offline' and st['wroteWithoutLease'] is False and await disk_doc_title(page, 1) == 'Offline under the service', st)
+    # Dossiary Sync pushes it as version 4 when the hub is back; the lease goes back; then the iMac's version 5.
+    await page.evaluate("""() => {
+        const f = window.__TEST_ROOT._children.get('.dossiary-sync.json');
+        f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: 4 }));
+    }""")
+    await page.evaluate("(s) => { window.__SYNC.state = s; window.__SYNC.acquire = 'granted'; }", state(4))
+    await tick(page, 61 * 1000)
+    await page.evaluate("window.__DEBUG_syncNow(11 * 60 * 1000)")
+    await page.wait_for_timeout(200)
+    await disk_change(page, {1: 'Invoice (iMac)', 2: 'Receipt'}, sync_version=5)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(5))
+    await tick(page)
+    await tick(page)
+    print("...another Mac's version then reloads quietly:", 'Invoice (iMac)' in await row_text(page, 1) and not await kept_aside_names(page)
+          and await page.locator('#sync-notice-dialog').count() == 0, await kept_aside_names(page), await sync_state(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_devices_connection_busy_and_error(p):
+    # M3/M4: the button is disabled while its request runs (a double click sends one request); a failure shows
+    # under the library inside the dialog, and a later success clears it.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3), "disconnectAt": DISCONNECTED_SINCE, "connectionDelay": 600})
+    await open_devices_dialog(page)
+    btn = page.locator('.devices-lib-disconnect-btn')
+    await btn.click()
+    await page.wait_for_timeout(100)
+    print("while the request runs the button is disabled:", await page.locator('.devices-lib-disconnect-btn[disabled]').count() == 1)
+    await page.evaluate("document.querySelector('.devices-lib-disconnect-btn').click()")
+    await page.wait_for_timeout(900)
+    calls = [c for c in await admin_calls(page) if c['url'].endswith('/connection')]
+    print("...a second click sends nothing:", len(calls) == 1, len(calls))
+    print("...afterwards Reconnect is enabled:", await page.locator('.devices-lib-reconnect-btn:not([disabled])').count() == 1)
+    await page.evaluate("window.__SYNC.connectionFail = 'Hub folder is busy'; window.__SYNC.connectionDelay = 0")
+    await page.click('.devices-lib-reconnect-btn')
+    await page.wait_for_timeout(400)
+    err = await page.inner_text('.devices-lib-error') if await page.locator('.devices-lib-error').count() else ''
+    print("a failure shows inside the dialog, under the library:", 'Hub folder is busy' in err, repr(err))
+    print("...the button can be clicked again:", await page.locator('.devices-lib-reconnect-btn:not([disabled])').count() == 1)
+    await page.evaluate("window.__SYNC.connectionFail = null")
+    await page.click('.devices-lib-reconnect-btn')
+    await page.wait_for_timeout(400)
+    print("...a success clears it:", await page.locator('.devices-lib-error').count() == 0 and await page.locator('.devices-lib-disconnect-btn').count() == 1)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_held_back_written_when_disconnected(p):
+    # M5: a change held back (take-over Cancel) is written once the library is switched to disconnected.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await hold_back_change(page, 'Held, then disconnected')
+    await page.click('#sync-takeover-cancel-btn')
+    await page.wait_for_timeout(300)
+    print("held back first:", (await sync_state(page))['unsaved'] and await disk_doc_title(page, 1) == 'Invoice')
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", dict(state(3), disconnectedSince=DISCONNECTED_SINCE))
+    await tick(page, 6000)
+    await tick(page)
+    st = await sync_state(page)
+    print("once disconnected the next tick writes it:", await disk_doc_title(page, 1) == 'Held, then disconnected' and not st['unsaved'] and st['state'] == 'disconnected', st)
+    print("...the marker no longer says unsaved:", (await marker(page))['text'] == 'disconnected', await marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -2163,7 +2258,9 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_no_reload_while_opening, scenario_export_open_asks,
              scenario_disconnected, scenario_disconnected_first_write,
              scenario_devices_disconnect, scenario_leaseless_write_pulled_over,
-             scenario_leaseless_disk_ours_keeps_base]
+             scenario_leaseless_disk_ours_keeps_base, scenario_disconnected_token_rejected,
+             scenario_leased_write_clears_leaseless_flag, scenario_devices_connection_busy_and_error,
+             scenario_held_back_written_when_disconnected]
 
 
 async def main():

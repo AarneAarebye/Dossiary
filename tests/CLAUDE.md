@@ -1367,7 +1367,14 @@ the neutral `--text-dim` (`marker_colour()`), and `last_error` that a
 Merge review: `leaseless_disk_ours_keeps_base` (no token, the sync file bumped
 to 4 while library.sqlite is still the tab's own bytes: the tab knows 4 and
 keeps writing, but the base marker keeps naming 3, so a write that landed on
-another Mac's freshly installed version can't be pushed over it).
+another Mac's freshly installed version can't be pushed over it). Minor
+fixes after it: `disconnected_token_rejected` (a 401 while disconnected →
+"not connected"), `leased_write_clears_leaseless_flag` (a write while offline
+clears the lease-less flag, so a later pull isn't kept aside),
+`devices_connection_busy_and_error` (Disconnect/Reconnect disabled while
+sending, one request per double click, its error inside the dialog), and
+`held_back_written_when_disconnected` (a take-over-Cancel change is written
+once the library is disconnected).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

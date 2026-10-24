@@ -2569,11 +2569,17 @@ this repo's git tags.
   and this tab remembers the write (`syncWroteWithoutLease`) and keeps memory
   aside with the notice rather than reloading over a foreign newer version
   (without a token no poll reports the service's keep-aside). Cleared by a
-  reload, a keep-aside, or a granted acquire at memory's version. The devices
+  reload, a keep-aside, a granted acquire at memory's version, or a real write
+  while `holding`/`offline` (memory, the lease-less write included, then goes
+  out under the lease). A 401 while disconnected turns the state to
+  `unconnected`: without a token no poll would ever see a Reconnect. The devices
   dialog shows "Work disconnected" only for a library whose `GET …/state`
   answered (`devicesState.stateAnswered`): on a Mac running as origin, or for
   a library the service doesn't edit, it answers 404 and so would the switch.
-  Reconnect answers at once; the pass it starts runs on in the service.
+  Reconnect answers at once; the pass it starts runs on in the service. Its
+  button is disabled while the request runs (`connectionPending`, one request
+  per library), and a failure shows under the library inside the dialog
+  (`.devices-lib-error`, `connectionError`), not on the status line behind it.
   **Colours**: only `holding` is green and `other`/`unsaved` amber; `offline`,
   `unconnected`, `unsynced` and `disconnected` use the default `--text-dim`
   (normal ways to work, never warnings); red is only `sync-error`.
@@ -2608,7 +2614,8 @@ this repo's git tags.
     acquire every 60 s while offline; release after 10 quiet minutes (one
     minute for a lease only a job took); held-back changes copied to
     `.kept-aside/` 30 s after the last one; retry held-back changes while
-    `unsynced`/after connecting.
+    `unsynced`/after connecting, and write them once `disconnected` (no lease
+    to take there).
   - *Opening*: `loadDb()` reads the sync file **before** `library.sqlite`
     (Dossiary Sync writes the database first, so the version read can only
     be older than the database, never newer) and, for a synced library,
