@@ -15618,7 +15618,7 @@
   // helper. A version 1 helper (scanix500 before 0.4.0) contributes
   // V1_SCANNER, whose one extra is split on blank pages.
   const SCAN_HELPER_PORTS = [8765, 8766];
-  const V1_SCANNER = Object.freeze({ id: 'scanix500', name: 'ScanSnap iX500', sources: [], duplex: false, colorModes: [], resolutions: [], extras: ['splitOnBlank'] });
+  const V1_SCANNER = Object.freeze({ id: 'scanix500', name: 'ScanSnap iX500', sources: [], duplex: false, colorModes: [], resolutions: [], formats: ['pdf'], areas: [], extras: ['splitOnBlank'] });
   const SCAN_EXTRA_LABEL_KEYS = { splitOnBlank: 'scanExtraSplitOnBlank', skipBlankPages: 'scanExtraSkipBlankPages' };
 
   // Helpers listen on this computer only (dossiary-scan-helper's PROTOCOL.md:
@@ -15768,6 +15768,8 @@
     source: { flatbed: 'scanSourceFlatbed', feeder: 'scanSourceFeeder' },
     colorMode: { color: 'scanColorColor', gray: 'scanColorGray', bw: 'scanColorBw' },
   };
+  const SCAN_FORMAT_LABEL_KEYS = { pdf: 'scanFormatPdf', jpeg: 'scanFormatJpeg', png: 'scanFormatPng' };
+  const SCAN_AREA_LABEL_KEYS = { full: 'scanAreaFull', a4: 'scanAreaA4', a5: 'scanAreaA5', a6: 'scanAreaA6', '10x15': 'scanArea10x15', '13x18': 'scanArea13x18' };
 
   function readLastScanSettings(){
     try{
@@ -15924,15 +15926,19 @@
     const pick = (values, wanted) => values.includes(wanted) ? wanted : values[0];
     const source = pick(s.sources, keep && keep.source);
     const selectHtml = (id, labelKey, values, current, labelOf) => values.length > 1 ? `
-      <div class="field">
+      <div class="field" id="${id}-field">
         <label for="${id}">${t(labelKey)}</label>
         <select id="${id}">${values.map(v => `<option value="${escapeHtml(String(v))}" ${v === current ? 'selected' : ''}>${escapeHtml(labelOf(v))}</option>`).join('')}</select>
       </div>` : '';
     const extras = s.extras.filter(x => SCAN_EXTRA_LABEL_KEYS[x]);
     const extraOn = (x) => keep ? !!(keep.extras && keep.extras[x]) : x === 'skipBlankPages';
     const duplexOn = keep ? !!keep.duplex : s.duplex;
+    const format = pick(s.formats, keep && keep.format);
+    const area = pick(s.areas, keep && keep.area);
     box.innerHTML = `
       ${selectHtml('scan-dialog-source', 'scanDialogSourceLabel', s.sources, source, v => t(SCAN_SETTING_LABEL_KEYS.source[v]))}
+      ${selectHtml('scan-dialog-format', 'scanDialogFormatLabel', s.formats, format, v => t(SCAN_FORMAT_LABEL_KEYS[v]))}
+      ${selectHtml('scan-dialog-area', 'scanDialogAreaLabel', s.areas, area, v => t(SCAN_AREA_LABEL_KEYS[v]))}
       <label class="scan-dialog-check" id="scan-dialog-duplex-wrap"><input type="checkbox" id="scan-dialog-duplex" ${duplexOn ? 'checked' : ''} /> ${t('scanDialogDuplex')}</label>
       ${selectHtml('scan-dialog-color', 'scanDialogColorLabel', s.colorModes, pick(s.colorModes, keep && keep.colorMode), v => t(SCAN_SETTING_LABEL_KEYS.colorMode[v]))}
       ${selectHtml('scan-dialog-resolution', 'scanDialogResolutionLabel', s.resolutions, pick(s.resolutions, keep && keep.resolution), v => t('scanDialogDpi', {dpi: v}))}
@@ -15971,8 +15977,48 @@
       el('scan-dialog-duplex-wrap').style.display = allowed ? '' : 'none';
       if(!allowed) el('scan-dialog-duplex').checked = false;
     };
-    if(el('scan-dialog-source')) el('scan-dialog-source').addEventListener('change', syncDuplex);
+    // Images only come from the flatbed, and only a flatbed scan has a scan area: with the feeder as source
+    // Format and Paper size are hidden, the format is pdf and no area applies.
+    const currentSource = () => el('scan-dialog-source') ? el('scan-dialog-source').value : source;
+    const onFlatbed = () => currentSource() !== 'feeder';
+    const effectiveFormat = () => {
+      if(!onFlatbed()) return 'pdf';
+      return el('scan-dialog-format') ? el('scan-dialog-format').value : format;
+    };
+    const effectiveArea = () => {
+      if(!onFlatbed() || !s.areas.length) return null;
+      return el('scan-dialog-area') ? el('scan-dialog-area').value : s.areas[0];
+    };
+    const fillSelect = (select, values, wanted, labelOf) => {
+      select.innerHTML = values.map(v => `<option value="${escapeHtml(String(v))}" ${v === wanted ? 'selected' : ''}>${escapeHtml(labelOf(v))}</option>`).join('');
+    };
+    const syncImageFields = () => {
+      for(const id of ['scan-dialog-format-field', 'scan-dialog-area-field']){
+        if(el(id)) el(id).style.display = onFlatbed() ? '' : 'none';
+      }
+    };
+    // JPEG can't be black & white: the option goes while JPEG is the format.
+    const syncColor = () => {
+      const select = el('scan-dialog-color');
+      if(!select) return;
+      const allowed = effectiveFormat() === 'jpeg' ? s.colorModes.filter(x => x !== 'bw') : s.colorModes;
+      const list = allowed.length ? allowed : s.colorModes;
+      fillSelect(select, list, list.includes(select.value) ? select.value : list[0], v => t(SCAN_SETTING_LABEL_KEYS.colorMode[v]));
+    };
+    // Resolutions over the helpers' pixel limit are not offered for an area of known size.
+    const syncResolution = () => {
+      const select = el('scan-dialog-resolution');
+      if(!select) return;
+      const list = scanResolutionsFor(s.resolutions, effectiveArea());
+      fillSelect(select, list, scanPickResolution(list, Number(select.value)), v => t('scanDialogDpi', {dpi: v}));
+    };
+    if(el('scan-dialog-source')) el('scan-dialog-source').addEventListener('change', () => { syncDuplex(); syncImageFields(); syncColor(); syncResolution(); });
+    if(el('scan-dialog-format')) el('scan-dialog-format').addEventListener('change', syncColor);
+    if(el('scan-dialog-area')) el('scan-dialog-area').addEventListener('change', syncResolution);
     syncDuplex();
+    syncImageFields();
+    syncColor();
+    syncResolution();
   }
 
   // The start button says what will happen: "Scan", or "Scan and split"
@@ -15994,7 +16040,7 @@
     const value = (id, fallback) => el(id) ? el(id).value : fallback;
     const extras = {};
     modalRoot.querySelectorAll('.scan-dialog-extra').forEach(cb => { extras[cb.dataset.extra] = cb.checked; });
-    return {
+    const settings = {
       scanner: choice.key,
       source: value('scan-dialog-source', s.sources[0]),
       duplex: !!(el('scan-dialog-duplex') && el('scan-dialog-duplex').checked),
@@ -16002,6 +16048,10 @@
       resolution: el('scan-dialog-resolution') ? Number(el('scan-dialog-resolution').value) : s.resolutions[0],
       extras,
     };
+    // Only for a scanner that offers a choice, so a helper without the fields leaves the object as it was.
+    if(s.formats.length > 1) settings.format = value('scan-dialog-format', s.formats[0]);
+    if(s.areas.length) settings.area = value('scan-dialog-area', s.areas[0]);
+    return settings;
   }
 
   function scanNothingFoundHtml(){

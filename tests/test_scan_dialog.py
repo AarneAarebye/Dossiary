@@ -1132,7 +1132,69 @@ async def scenario_photo_data(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs, scenario_photo_data]
+async def option_texts(page, selector):
+    return await page.eval_on_selector_all(f'{selector} option', 'els => els.map(e => e.textContent)')
+
+
+# === Photos, Task 3: the controls ===
+async def scenario_photo_controls(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers=PHOTO_HELPERS)
+    await page.click('#scan-btn')
+    await page.wait_for_timeout(300)
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:flatbed')
+    print("no Format or Paper size for a scanner without them:",
+          await page.locator('#scan-dialog-format').count() == 0 and await page.locator('#scan-dialog-area').count() == 0)
+    settings = await page.evaluate("window.__DEBUG_readScanDialogSettings()")
+    print("...and the settings carry neither:", 'format' not in settings and 'area' not in settings)
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:photo')
+    print("Format lists PDF, JPEG, PNG, PDF first:", await option_texts(page, '#scan-dialog-format') == ['PDF', 'JPEG', 'PNG']
+          and await page.eval_on_selector('#scan-dialog-format', 'e => e.value') == 'pdf')
+    print("Paper size lists the scanner's areas, the first selected:",
+          await option_texts(page, '#scan-dialog-area') == ['A4', '10 × 15 cm'] and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == 'a4')
+    print("A4 hides 1200 dpi:", await option_texts(page, '#scan-dialog-resolution') == ['150 dpi', '300 dpi', '600 dpi'])
+    await page.select_option('#scan-dialog-area', '10x15')
+    print("10 × 15 cm offers 1200 dpi:", await option_texts(page, '#scan-dialog-resolution') == ['150 dpi', '300 dpi', '600 dpi', '1200 dpi'])
+    await page.select_option('#scan-dialog-resolution', '1200')
+    await page.select_option('#scan-dialog-area', 'a4')
+    print("back to A4 the resolution falls to 600 dpi:", await page.eval_on_selector('#scan-dialog-resolution', 'e => e.value') == '600')
+
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    print("JPEG hides black & white:", await option_texts(page, '#scan-dialog-color') == ['Color', 'Grayscale'])
+    await page.select_option('#scan-dialog-format', 'png')
+    print("PNG offers black & white:", await option_texts(page, '#scan-dialog-color') == ['Color', 'Grayscale', 'Black & white'])
+    await page.select_option('#scan-dialog-color', 'bw')
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    print("switching to JPEG moves a chosen black & white to the first mode:", await page.eval_on_selector('#scan-dialog-color', 'e => e.value') == 'color')
+    await page.select_option('#scan-dialog-format', 'pdf')
+    print("PDF offers black & white again:", 'Black & white' in await option_texts(page, '#scan-dialog-color'))
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:odd')
+    print("unknown ids never reach the selects:",
+          await option_texts(page, '#scan-dialog-format') == ['PDF', 'JPEG'] and await option_texts(page, '#scan-dialog-area') == ['A4', '10 × 15 cm'])
+
+    await page.select_option('#scan-dialog-scanner', f'{L2}|fake:glass')
+    print("whole glass is the first area and the default:",
+          await option_texts(page, '#scan-dialog-area') == ['Whole glass', 'A4', 'A5'] and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == 'full')
+    print("the whole glass filters no resolution:", await option_texts(page, '#scan-dialog-resolution') == ['150 dpi', '300 dpi', '600 dpi', '1200 dpi'])
+    await page.select_option('#scan-dialog-source', 'flatbed')  # the glass lists the feeder first
+    await page.select_option('#scan-dialog-format', 'jpeg')
+    await page.select_option('#scan-dialog-source', 'feeder')
+    print("the feeder hides Format and Paper size:",
+          not await page.is_visible('#scan-dialog-format-field') and not await page.is_visible('#scan-dialog-area-field'))
+    print("...the feeder offers black & white even though JPEG is chosen:", 'Black & white' in await option_texts(page, '#scan-dialog-color'))
+    settings = await page.evaluate("window.__DEBUG_readScanDialogSettings()")
+    print("the chosen format and area are still read while hidden:", settings['format'] == 'jpeg' and settings['area'] == 'full')
+    await page.select_option('#scan-dialog-source', 'flatbed')
+    print("back on the flatbed Format shows again with the earlier choice:",
+          await page.is_visible('#scan-dialog-format-field') and await page.eval_on_selector('#scan-dialog-format', 'e => e.value') == 'jpeg')
+    print("...and JPEG hides black & white again:", 'Black & white' not in await option_texts(page, '#scan-dialog-color'))
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs, scenario_photo_data, scenario_photo_controls]
 
 
 async def main():
