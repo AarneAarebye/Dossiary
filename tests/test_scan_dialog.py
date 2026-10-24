@@ -86,9 +86,19 @@ V2_SCANNERS = [
 
 V2_OCR_SCANNER = {"id": "fake:ocr", "name": "Fake OCR Scanner", "sources": ["flatbed"], "duplex": False,
                   "colorModes": ["color"], "resolutions": [300], "extras": [], "ocr": {"languages": ["deu", "eng"]}}
+PHOTO_FLATBED = {"id": "fake:photo", "name": "Fake Photo", "sources": ["flatbed"], "duplex": False,
+                 "colorModes": ["color", "gray", "bw"], "resolutions": [150, 300, 600, 1200], "extras": [],
+                 "formats": ["pdf", "jpeg", "png"], "areas": ["a4", "10x15"], "ocr": {"languages": ["deu", "eng"]}}
+PHOTO_GLASS = {"id": "fake:glass", "name": "Fake Glass", "sources": ["feeder", "flatbed"], "duplex": True,
+               "colorModes": ["color", "gray", "bw"], "resolutions": [150, 300, 600, 1200], "extras": [],
+               "formats": ["pdf", "jpeg", "png"], "areas": ["full", "a4", "a5"]}
+PHOTO_ODD = {"id": "fake:odd", "name": "Fake Odd", "sources": ["flatbed"], "duplex": False,
+             "colorModes": ["color"], "resolutions": [300], "extras": [],
+             "formats": ["pdf", "tiff", "jpeg"], "areas": ["a4", "b5", "10x15"]}
 
 L1 = 'http://localhost:8765'
 L2 = 'http://localhost:8766'
+PHOTO_HELPERS = {L2: {"version": 2, "token": "tok-2", "scanners": [V2_SCANNERS[0], PHOTO_FLATBED, PHOTO_GLASS, PHOTO_ODD]}}
 
 
 async def open_app(p, tokens=None, lang=None, helpers=None, keep_auto_ocr=False):
@@ -1094,7 +1104,35 @@ async def scenario_ocr_jobs(p):
     await browser.close()
 
 
-SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs]
+# === Photos, Task 1: formats and areas are read; the size helpers ===
+async def scenario_photo_data(p):
+    browser, page, errors = await open_app(p, tokens={L2: 'tok-2'}, helpers=PHOTO_HELPERS)
+    found = {s['id']: s for s in await page.evaluate("window.__DEBUG_scanScanners()")}
+    print("a scanner without the fields gets formats ['pdf'] and no areas:",
+          found['fake:flatbed']['formats'] == ['pdf'] and found['fake:flatbed']['areas'] == [])
+    print("formats and areas are read as listed:",
+          found['fake:photo']['formats'] == ['pdf', 'jpeg', 'png'] and found['fake:glass']['areas'] == ['full', 'a4', 'a5'])
+    print("unknown format and area ids are dropped:",
+          found['fake:odd']['formats'] == ['pdf', 'jpeg'] and found['fake:odd']['areas'] == ['a4', '10x15'])
+    px = lambda a, d: page.evaluate("([a, d]) => window.__DEBUG_scanPixels(a, d)", [a, d])
+    print("10x15 at 300 dpi is 1181 x 1772 px:", await px('10x15', 300) == 1181 * 1772)
+    print("A4 at 1200 dpi is 139,201,551 px:", await px('a4', 1200) == 139201551)
+    print("A5 at 1200 dpi is 69,367,632 px:", await px('a5', 1200) == 69367632)
+    print("full has no known size:", await px('full', 300) is None)
+    res = lambda r, a: page.evaluate("([r, a]) => window.__DEBUG_scanResolutionsFor(r, a)", [r, a])
+    print("A4 drops 1200 dpi, keeps the rest:", await res([150, 300, 600, 1200], 'a4') == [150, 300, 600])
+    print("10x15 keeps every resolution:", await res([150, 300, 600, 1200], '10x15') == [150, 300, 600, 1200])
+    print("full and no area filter nothing:", await res([150, 1200], 'full') == [150, 1200] and await res([150, 1200], None) == [150, 1200])
+    print("nothing left keeps the lowest:", await res([2400, 4800], 'a4') == [2400])
+    pick = lambda l, w: page.evaluate("([l, w]) => window.__DEBUG_scanPickResolution(l, w)", [l, w])
+    print("pick keeps a listed value:", await pick([150, 300, 600], 300) == 300)
+    print("pick falls to the next lower value:", await pick([150, 300, 600], 1200) == 600 and await pick([150, 600], 300) == 150)
+    print("pick falls to the first when none is lower:", await pick([300, 600], 150) == 300)
+    print("no page errors:", errors == [])
+    await browser.close()
+
+
+SCENARIOS = [scenario_discovery, scenario_dialog, scenario_scan_v1, scenario_scan_v2, scenario_pairing, scenario_split, scenario_ocr_request, scenario_ocr_jobs, scenario_photo_data]
 
 
 async def main():

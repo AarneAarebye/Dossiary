@@ -15662,6 +15662,31 @@
     }
   }
 
+  // Photo scans (protocol "Formats and areas"): the formats and scan areas a scanner can list, the sizes of
+  // the fixed areas in mm ('full' is the scanner's own whole glass: no size known here), and the helpers'
+  // limit on the pixels of one scan (inclusive).
+  const SCAN_FORMAT_IDS = ['pdf', 'jpeg', 'png'];
+  const SCAN_AREA_IDS = ['full', 'a4', 'a5', 'a6', '10x15', '13x18'];
+  const SCAN_AREA_MM = { a4: [210, 297], a5: [148, 210], a6: [105, 148], '10x15': [100, 150], '13x18': [130, 180] };
+  const SCAN_MAX_PIXELS = 100000000;
+  function scanPixelCount(areaId, dpi){
+    const mm = SCAN_AREA_MM[areaId];
+    if(!mm) return null;
+    return Math.round(mm[0] / 25.4 * dpi) * Math.round(mm[1] / 25.4 * dpi);
+  }
+  // The resolutions a scan of this area may use; with no area, or one of unknown size ('full'), all of them.
+  // If none is within the limit the lowest is kept, so the helper's refusal explains.
+  function scanResolutionsFor(resolutions, areaId){
+    const ok = resolutions.filter(r => { const n = scanPixelCount(areaId, r); return n === null || n <= SCAN_MAX_PIXELS; });
+    return ok.length ? ok : [Math.min(...resolutions)];
+  }
+  // `wanted` if it is in the list, else the largest value below it, else the first.
+  function scanPickResolution(list, wanted){
+    if(list.includes(wanted)) return wanted;
+    const lower = list.filter(r => r < wanted);
+    return lower.length ? Math.max(...lower) : list[0];
+  }
+
   function validHelperScanner(s){
     return !!s && typeof s.id === 'string' && !!s.id && typeof s.name === 'string'
       && Array.isArray(s.sources) && Array.isArray(s.colorModes) && Array.isArray(s.resolutions);
@@ -15684,6 +15709,8 @@
         resolutions: s.resolutions.filter(Number.isInteger),
         extras: Array.isArray(s.extras) ? s.extras.filter(x => typeof x === 'string') : [],
         ocr: s.ocr && typeof s.ocr === 'object' ? s.ocr : null,
+        formats: Array.isArray(s.formats) ? s.formats.filter(x => SCAN_FORMAT_IDS.includes(x)) : ['pdf'],
+        areas: Array.isArray(s.areas) ? s.areas.filter(x => SCAN_AREA_IDS.includes(x)) : [],
       }));
     }catch(e){ /* unreachable mid-way: no scanners from it */ }
     return helper;
@@ -15713,6 +15740,13 @@
       choices: scannerChoices(helpers).map(c => ({ key: c.key, label: c.label })),
     };
   };
+  window.__DEBUG_scanScanners = async () => {
+    const helpers = await discoverScanHelpers();
+    return helpers.flatMap(h => h.scanners.map(s => ({ helper: h.url, id: s.id, formats: s.formats, areas: s.areas })));
+  };
+  window.__DEBUG_scanPixels = (areaId, dpi) => scanPixelCount(areaId, dpi);
+  window.__DEBUG_scanResolutionsFor = (resolutions, areaId) => scanResolutionsFor(resolutions, areaId);
+  window.__DEBUG_scanPickResolution = (list, wanted) => scanPickResolution(list, wanted);
   window.__DEBUG_setScanBridgeUrl = (value) => saveScanBridgeUrl(value);
 
   // ---- Scan dialog ----
