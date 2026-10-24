@@ -16163,12 +16163,17 @@
     const s = choice.scanner;
     const extras = {};
     for(const x of s.extras) if(SCAN_EXTRA_LABEL_KEYS[x]) extras[x] = !!extrasChosen[x];
-    const body = { scanner: s.id, format: 'pdf', extras };
+    // Images only come from the flatbed (the helpers refuse them from a feeder), and only a flatbed scan has an
+    // area. A format or area the scanner doesn't list is never sent.
+    const flatbed = settings.source !== 'feeder';
+    const format = flatbed && s.formats.includes(settings.format) ? settings.format : 'pdf';
+    const body = { scanner: s.id, format, extras };
+    if(flatbed && s.areas.length) body.area = s.areas.includes(settings.area) ? settings.area : s.areas[0];
     if(settings.source) body.source = settings.source;
     if(settings.colorMode) body.colorMode = settings.colorMode;
     if(Number.isInteger(settings.resolution)) body.resolution = settings.resolution;
     body.duplex = !!(settings.duplex && s.duplex && settings.source === 'feeder');
-    if(scanAutoOcr && s.ocr && typeof s.ocr === 'object'){
+    if(format === 'pdf' && scanAutoOcr && s.ocr && typeof s.ocr === 'object'){
       body.ocr = true;
       const languages = scanOcrLanguagesFor(s);
       if(languages.length) body.ocrLanguages = languages;
