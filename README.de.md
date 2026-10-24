@@ -108,7 +108,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Scannen** — 📷 **Scannen** öffnet einen Dialog mit allen Scannern, die
   ein Scan-Helfer auf diesem Computer anbietet, und nur den Einstellungen,
   die der jeweilige Scanner kann (Papierquelle, beidseitig, Farbe,
-  Auflösung, beim ScanSnap iX500 „An leeren Seiten trennen“). Zwei Helfer
+  Auflösung, bei Flachbettscannern, die es anbieten, Format (PDF, JPEG oder
+  PNG, für Fotos) und Papiergröße, beim ScanSnap iX500 „An leeren Seiten
+  trennen“). Zwei Helfer
   werden unterstützt:
   [dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
   für die meisten Scanner (macOS und Windows) und

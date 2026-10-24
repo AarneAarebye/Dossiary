@@ -92,8 +92,9 @@ working" problem that motivated this project in the first place.
   scanner hardware directly — see Limitations below.
 - **Scanning** — 📷 **Scan** opens a dialog listing every scanner a scan
   helper on this computer offers, with only the settings that scanner
-  supports (paper source, both sides, color, resolution, and for the
-  ScanSnap iX500 "split on blank pages"). Two helpers are supported:
+  supports (paper source, both sides, color, resolution, for a flatbed
+  scanner that offers them the format (PDF, JPEG or PNG, for photos) and the
+  paper size, and for the ScanSnap iX500 "split on blank pages"). Two helpers are supported:
   [dossiary-scan-helper](https://github.com/AarneAarebye/dossiary-scan-helper)
   for most scanners (macOS and Windows), and
   [scanix500](https://github.com/AarneAarebye/iX500) for a ScanSnap iX500.
