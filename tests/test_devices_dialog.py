@@ -61,11 +61,17 @@ FAKE_SYNC = """
                                addresses: ['https://mac.local:8443'],
                                link: `dossiary-sync://pair?v=1&f=${encodeURIComponent(f)}&c=${code}&a=${encodeURIComponent('https://mac.local:8443')}&n=${S.pairCount}` });
         }
-        const m = /^\\/admin\\/devices\\/([^/]+)(?:\\/(allow|deny))?$/.exec(path);
+        const m = /^\\/admin\\/devices\\/([^/]+)(?:\\/(allow|deny|name))?$/.exec(path);
         if(m){
             const id = decodeURIComponent(m[1]);
             const device = (S.devices || []).find(d => d.id === id);
             if(!device) return json(404, { error: 'Unknown device' });
+            if(m[2] === 'name'){
+                if(S.renameFail) return json(S.renameFail, { error: S.renameFail === 400 ? 'empty-name' : 'hub-unreachable' });
+                const name = JSON.parse(opts.body || '{}').name;
+                device.name = name;
+                return json(200, device);
+            }
             if(m[2]){
                 if(S.failAllow) return json(S.failAllow, { error: 'Unknown library' });
                 const lib = JSON.parse(opts.body || '{}').library;
@@ -618,8 +624,90 @@ async def scenario_start_screen(p):
     await browser.close()
 
 
+async def scenario_rename(p):
+    sync = sample_sync()
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    row = '.devices-row[data-id="dev-1"]'
+    print("each device has a Rename button:", await page.locator('.devices-rename-btn').count() == 3
+          and await page.get_attribute(row + ' .devices-rename-btn', 'aria-label') == 'Rename')
+    await page.click(row + ' .devices-rename-btn')
+    inp = row + ' .devices-rename-input'
+    print("pencil opens an input with the current name:", await page.input_value(inp) == "Arne's iPhone"
+          and await page.get_attribute(inp, 'maxlength') == '64'
+          and 'all your Macs' in await page.get_attribute(inp, 'title'))
+    n0 = len(await calls(page))
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("Escape closes the input, no request, dialog stays open:", await page.locator('.devices-rename-input').count() == 0
+          and await page.locator('#devices-dialog-body').count() == 1 and len(await calls(page)) == n0)
+    await page.click(row + ' .devices-rename-btn')
+    await page.keyboard.press('Enter')
+    await page.wait_for_timeout(100)
+    print("unchanged name sends nothing:", await page.locator('.devices-rename-input').count() == 0 and len(await calls(page)) == n0)
+    await page.click(row + ' .devices-rename-btn')
+    await page.fill(inp, '   ')
+    await page.keyboard.press('Enter')
+    await page.wait_for_timeout(100)
+    print("empty name sends nothing:", await page.locator('.devices-rename-input').count() == 0 and len(await calls(page)) == n0)
+    await page.click(row + ' .devices-rename-btn')
+    await page.fill(inp, ' My-Private ')
+    await page.keyboard.press('Enter')
+    await page.wait_for_timeout(300)
+    posts = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/name')]
+    print("Enter posts the trimmed name as JSON:", len(posts) == 1 and posts[0]['method'] == 'POST'
+          and posts[0]['contentType'] == 'application/json' and json.loads(posts[0]['body']) == {"name": "My-Private"}
+          and posts[0]['auth'] == 'Bearer admin-tok')
+    print("list shows the new name:", await page.inner_text(row + ' .devices-name') == 'My-Private'
+          and await page.locator('.devices-rename-input').count() == 0)
+    # blur saves
+    await page.click(row + ' .devices-rename-btn')
+    await page.fill(inp, 'Blurred')
+    await page.click('#devices-dialog-body h3')
+    await page.wait_for_timeout(300)
+    print("blur saves:", await page.inner_text(row + ' .devices-name') == 'Blurred')
+    # failures keep the input open
+    for status, text in ((400, 'empty-name'), (503, 'hub-unreachable')):
+        await page.evaluate("(s) => { window.__SYNC.renameFail = s; }", status)
+        await page.click(row + ' .devices-rename-btn')
+        await page.fill(inp, 'Nope')
+        await page.keyboard.press('Enter')
+        await page.wait_for_timeout(300)
+        err = await page.inner_text(row + ' .devices-rename-error') if await page.locator(row + ' .devices-rename-error').count() else ''
+        print(f"{status}: reason shown under the input, input open and usable:", text in err or str(status) in err,
+              await page.locator(inp).count() == 1 and not await page.is_disabled(inp), err)
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+    print("name unchanged after failures:", await page.inner_text(row + ' .devices-name') == 'Blurred')
+    await page.evaluate("() => { window.__SYNC.renameFail = 0; }")
+    # hostile name is text
+    await page.click(row + ' .devices-rename-btn')
+    await page.fill(inp, HOSTILE)
+    await page.keyboard.press('Enter')
+    await page.wait_for_timeout(300)
+    print("hostile name shown as text:", await page.inner_text(row + ' .devices-name') == HOSTILE
+          and await page.locator(row + ' img').count() == 0 and not await page.evaluate("window.__xss"))
+    # 401 drops the token
+    await page.evaluate("() => { window.__SYNC.forgotten = true; }")
+    await page.click(row + ' .devices-rename-btn')
+    await page.fill(inp, 'Again')
+    await page.keyboard.press('Enter')
+    await page.wait_for_timeout(300)
+    print("401 sends back to Connect:", await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
+    print("no page errors:", not [e for e in errors if '400' not in e and '503' not in e], errors)
+    await browser.close()
+    # German
+    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok', lang='de')
+    await open_dialog(page)
+    btn = '.devices-row[data-id="dev-1"] .devices-rename-btn'
+    print("German labels:", await page.get_attribute(btn, 'title') == 'Umbenennen')
+    await page.click(btn)
+    print("German hint:", 'Macs angezeigt' in await page.get_attribute('.devices-rename-input', 'title'))
+    await browser.close()
+
+
 SCENARIOS = [scenario_start_screen, scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german,
-             scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write]
+             scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write, scenario_rename]
 
 
 async def main():

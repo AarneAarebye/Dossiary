@@ -2488,7 +2488,10 @@ this repo's git tags.
   Connected: devices with role labels (phone/mirror/restore), relative
   last-seen (`Intl.RelativeTimeFormat`), one checkbox per shared library
   for phones (allow/deny at once, status line, a refusal undoes the tick),
-  Remove behind `confirm()`, shared libraries read-only with the
+  Remove behind `confirm()`, a ✎ next to each name (`startDeviceRename()`, `POST
+  /admin/devices/<id>/name {name}`: inline input, Enter/blur saves, Escape
+  cancels with `stopPropagation()`, unchanged/empty sends nothing, a failure
+  keeps the input open with `.devices-rename-error`), shared libraries read-only with the
   `dossiary-sync share <folder>` note, Disconnect. An answer in the wrong
   shape says so (`devicesUnexpectedAnswer`), and when libraries and devices
   are fetched together the error shown is the one that actually failed.

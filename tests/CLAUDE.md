@@ -1185,7 +1185,10 @@ code, the right one normalised and its token stored; a 429 naming the wait;
 a stored valid token going straight to the devices with role labels and
 relative last-seen times; per-library checkboxes for phones only, allow and
 deny requests with the status line, a refused change undone; Remove behind
-`confirm()`; the language switch blocked while open; Disconnect; a revoked
+`confirm()`; the ✎ rename (input with the current name, Enter/blur posts the
+trimmed name as JSON, Escape/unchanged/empty send nothing and keep the dialog,
+400/503 shown under the input, hostile name as text, 401 back to Connect);
+the language switch blocked while open; Disconnect; a revoked
 token dropped on open and on a 401; a blocked `localStorage`, and one that
 reads but won't store (the token stays in memory); German labels and
 relative times; "Add iPhone or iPad…" with a fake `window.qrcode` (the
