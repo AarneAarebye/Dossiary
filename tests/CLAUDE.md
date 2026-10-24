@@ -1364,6 +1364,10 @@ library whose `GET …/state` answers 404 gets no "Work disconnected" button;
 the neutral `--text-dim` (`marker_colour()`), and `last_error` that a
 `lastError` while holding is red only while the hub answered
 (`hubReachable === false` reads "connected · offline", dim).
+Merge review: `leaseless_disk_ours_keeps_base` (no token, the sync file bumped
+to 4 while library.sqlite is still the tab's own bytes: the tab knows 4 and
+keeps writing, but the base marker keeps naming 3, so a write that landed on
+another Mac's freshly installed version can't be pushed over it).
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

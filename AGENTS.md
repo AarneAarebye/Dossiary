@@ -2613,20 +2613,26 @@ this repo's git tags.
   - Every live write of `library.sqlite` (real, view preference, the
     held-back retry -- all through `persistDb()`) is followed by the base
     marker `.dossiary-base.json` (`writeSyncBaseMarker()`): `{version,
-    sha256, writtenAt}`, the version memory was at when the bytes were
-    exported and their SHA-256. Keep-aside copies never get one. Dossiary
+    sha256, writtenAt}`, the version memory is provably based on
+    (`syncLibrary.base`) when the bytes were exported, and their SHA-256. Keep-aside copies never get one. Dossiary
     Sync pushes a changed database only when the marker matches the bytes
     and names the folder's version (or the start of this Mac's own pushes
     that led to it); any other base, or no matching marker after 10 s, is
     kept aside on both sides and the hub's version pulled -- never pushed.
     So a version number this tab claims must never be newer than its
-    memory: only an acquire's answer, a poll while holding (not just after
-    offline) or `syncDiskIsOurs()` move `syncLibrary.version`.
+    memory: only a reload, an acquire granted at memory's version, a poll
+    while holding (not just after offline), or `syncDiskIsOurs()` while
+    holding or offline move `syncLibrary.base`. Without a lease,
+    `syncDiskIsOurs()` takes over the newer `version` (memory isn't behind)
+    but leaves `base`: the tab's bytes may have landed on top of another
+    Mac's version just installed, so the marker keeps naming the old one and
+    Dossiary Sync pushes it only along this Mac's own-push chain.
   - Never write over a version this tab knows is newer than its memory
     (`syncDiskIsOurs()` hashes the file against `syncLoadedHash` /
     `syncLastWrittenHash`). A lease-less write can't know of a pull landing
     just after it; that case is covered by Dossiary Sync's guarded apply and
-    `syncWroteWithoutLease` (see Disconnected above).
+    `syncWroteWithoutLease` (set by writes in `unconnected`, `unsynced` and
+    `disconnected`; see Disconnected above).
   - Real changes in memory are counted (`trackDbChanges()`, `syncDirty()`);
     a reload never replaces them.
   - Background jobs write files only while holding or offline

@@ -5337,9 +5337,11 @@
   // A reload never replaces unwritten changes (syncDirty()) or runs under an open dialog
   // unless forced by a flow about to start. Every write of library.sqlite is
   // followed by the base marker (.dossiary-base.json: the version memory is
-  // at, the SHA-256 of the bytes written), from which Dossiary Sync decides
+  // provably based on, syncLibrary.base -- never a number taken over without
+  // a lease -- and the SHA-256 of the bytes written), from which Dossiary Sync decides
   // whether the change may be pushed or is kept aside.
-  // disconnected: write at once (the service skips this library); no lease, no confirm, no hold-back.
+  // disconnected: write at once (the service skips this library); no lease, no confirm, no hold-back;
+  //                       remembered as lease-less (a reconnect may pull over it).
   // opts.viewOnly marks a view preference (sort, columns, view mode, ...),
   // which never takes the lease. In a synced library it's written only while
   // holding (or offline), and even then not while a change is held back or
@@ -5431,13 +5433,13 @@
             await syncKeepAsideAndReload(false, quiet);
             return false;
           }
-          leaseless = syncLease.state === 'unconnected' || syncLease.state === 'unsynced';
+          leaseless = syncLease.state === 'unconnected' || syncLease.state === 'unsynced' || syncLease.state === 'disconnected';
         }
       }
       const seq = syncChangeSeq;
-      // The version memory is at, taken with the bytes: the base marker names it.
+      // The version memory is based on, taken with the bytes: the base marker names it.
       const markerLib = syncLibrary, markerRoot = rootDirHandle;
-      const baseVersion = markerLib ? markerLib.version : null;
+      const baseVersion = markerLib ? markerLib.base : null;
       const bytes = db.export();
       const writable = await dbFileHandle.createWritable();
       await writable.write(bytes);
@@ -16307,7 +16309,10 @@
   const SYNC_HEARTBEAT_MS = 60 * 1000;
   const SYNC_IDLE_RELEASE_MS = 10 * 60 * 1000;
   const SYNC_TICK_MS = 5 * 1000;
-  let syncLibrary = null;               // {libraryId, version} from .dossiary-sync.json, or null
+  // {libraryId, version, base} from .dossiary-sync.json, or null. `version`: the newest version this tab
+  // knows memory is not behind; `base`: the version the base marker names (what memory is provably based
+  // on). They differ only after syncDiskIsOurs() took over a newer number without a lease (see there).
+  let syncLibrary = null;
   let syncLease = { state: 'none' };    // 'none' | 'holding' | 'offline' | 'disconnected' (+since) | 'other' (+deviceName, since) | 'unconnected' | 'unsynced' (+reason)
   let syncUnsavedChanges = false;       // Cancel in the take-over dialog: a real change is held back in memory
   let syncLeasePending = null;          // the acquire in flight; concurrent saves share it (one dialog)
@@ -16390,7 +16395,7 @@
       const file = await (await root.getFileHandle(SYNC_FILE_NAME)).getFile();
       const data = JSON.parse(await file.text());
       if(data && typeof data.libraryId === 'string' && data.libraryId && Number.isInteger(data.version)){
-        found = { libraryId: data.libraryId, version: data.version };
+        found = { libraryId: data.libraryId, version: data.version, base: data.version };
       }
     }catch(e){ /* missing or unreadable: not a synced library */ }
     if(root !== rootDirHandle) return;
@@ -16501,8 +16506,13 @@
     }catch(e){ return null; }
   }
   // A newer version number with library.sqlite on disk still exactly what
-  // this tab loaded or last wrote is this Mac's own push (or nothing at
-  // all): nothing foreign to protect, so the number is simply taken over.
+  // this tab loaded or last wrote: nothing foreign on disk to protect, so the
+  // number is taken over (memory isn't behind). Only with the lease is it
+  // also this Mac's own push for certain; without one, Dossiary Sync may have
+  // installed another Mac's version just before this tab's write landed on
+  // top of it. So the base marker keeps naming the old version then
+  // (`base`): Dossiary Sync pushes it only if the newer version was this
+  // Mac's own push (its own-push chain), and keeps it aside otherwise.
   async function syncDiskIsOurs(){
     const lib = syncLibrary;
     if(!lib || !dbFileHandle) return false;
@@ -16510,6 +16520,7 @@
     try{ hash = await syncHashBytes(new Uint8Array(await (await dbFileHandle.getFile()).arrayBuffer())); }catch(e){ hash = null; }
     if(lib !== syncLibrary || !hash || (hash !== syncLoadedHash && hash !== syncLastWrittenHash)) return false;
     lib.version = Math.max(lib.version, syncKnownNewer);
+    if(syncLease.state === 'holding' || syncLease.state === 'offline') lib.base = lib.version;
     return true;
   }
 
@@ -16953,7 +16964,12 @@
       if(result === 'granted') syncNoteNewer(res.body.version);
       // Granted at memory's version: nothing was pulled over a lease-less write (it is this Mac's change on
       // the hub's version, pushed by the service).
-      if(result === 'granted' && syncLibrary && res.body.version === syncLibrary.version && !syncBehind()) syncWroteWithoutLease = false;
+      // The service brought the folder up to that version before answering, pushing or keeping aside
+      // whatever was on disk, so memory is now provably based on it.
+      if(result === 'granted' && syncLibrary && res.body.version === syncLibrary.version && !syncBehind()){
+        syncWroteWithoutLease = false;
+        syncLibrary.base = syncLibrary.version;
+      }
       const lease = syncLeaseHolder(res);
       if(lease && lease.holder === 'this' && typeof lease.deviceName === 'string' && lease.deviceName) syncThisDeviceName = lease.deviceName;
       setSyncLease({ state: result === 'granted' ? 'holding' : 'offline' });
@@ -17177,7 +17193,7 @@
     // as an offline period ends -- syncDiskIsOurs() still recognises this
     // tab's own bytes).
     if(syncLease.state === 'holding' && thisHolds && !leftOffline){
-      if(st.version > lib.version && !syncBehind()) lib.version = st.version;
+      if(st.version > lib.version && !syncBehind()) lib.version = lib.base = st.version;
     }else if(syncLease.state !== 'offline'){
       syncNoteNewer(st.version);
     }
@@ -17269,6 +17285,7 @@
     const lib = syncLibrary;
     if(!lib || syncReloadBlocked(force)) return false;
     if(!syncReloadWanted && !syncBehind()) return false;
+    let oursWithoutLease = false;   // reloading this tab's own lease-less bytes: they stay on their old base
     if(syncWroteWithoutLease){
       // The last write had no lease: a foreign library.sqlite may have been pulled over it. Not a plain
       // reload then -- memory, which holds that write, is kept aside first, with the notice.
@@ -17279,11 +17296,13 @@
       }
       if(lib !== syncLibrary || syncReloadBlocked(force)) return false;
       if(!syncReloadWanted && !syncBehind()) return false;
+      oursWithoutLease = syncLease.state !== 'holding' && syncLease.state !== 'offline';
     }
     const target = Math.max(lib.version, syncKnownNewer);
     const ok = await reloadLibraryKeepingView(force);
     if(!ok || lib !== syncLibrary) return false;
     lib.version = target;
+    if(!oursWithoutLease) lib.base = target;
     syncReloadWanted = false;
     syncWroteWithoutLease = false;
     if(syncViewWriteDropped){

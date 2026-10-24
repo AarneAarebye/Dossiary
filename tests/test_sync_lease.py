@@ -2117,6 +2117,33 @@ async def scenario_leaseless_write_pulled_over(p):
     await browser.close()
 
 
+async def scenario_leaseless_disk_ours_keeps_base(p):
+    # C1: no lease, this tab's edit written, then the sync file says version 4 while library.sqlite is still this
+    # tab's bytes (its own push -- or another Mac's version 4 that this write landed on top of; the tab can't tell).
+    # The tab takes over the number (memory isn't behind) but the next marker keeps naming version 3, so Dossiary
+    # Sync pushes it only if 4 was this Mac's own push and keeps it aside otherwise.
+    browser, page, errors = await open_app(p, seed=SEED2, token=None)
+    await edit_title(page, 'First lease-less edit')
+    m = await base_marker(page)
+    print("lease-less write names version 3:", marker_ok(m, 3), m)
+    await page.evaluate("""() => {
+        const f = window.__TEST_ROOT._children.get('.dossiary-sync.json');
+        f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: 4 }));
+    }""")
+    await edit_title(page, 'Second lease-less edit')
+    m = await base_marker(page)
+    st = await sync_state(page)
+    print("...the next edit is written, not kept aside:", await disk_doc_title(page, 1) == 'Second lease-less edit' and not await kept_aside_names(page))
+    print("...the tab knows version 4:", st['version'] == 4, st)
+    print("...but the marker still names version 3:", marker_ok(m, 3), m)
+    await tick(page)
+    await edit_title(page, 'Third lease-less edit')
+    m = await base_marker(page)
+    print("...and after a tick too:", marker_ok(m, 3) and await disk_doc_title(page, 1) == 'Third lease-less edit', m)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenario_offline, scenario_no_token,
              scenario_service_down, scenario_heartbeat, scenario_release, scenario_backup, scenario_german, scenario_header_height,
              scenario_reload_keeps_view, scenario_reload_keeps_scroll, scenario_reload_waits_for_dialog, scenario_holding_no_reload,
@@ -2135,7 +2162,8 @@ SCENARIOS = [scenario_no_sync_file, scenario_first_change, scenario_busy, scenar
              scenario_base_marker, scenario_offline_exit_pulled, scenario_confirm_unanswered,
              scenario_no_reload_while_opening, scenario_export_open_asks,
              scenario_disconnected, scenario_disconnected_first_write,
-             scenario_devices_disconnect, scenario_leaseless_write_pulled_over]
+             scenario_devices_disconnect, scenario_leaseless_write_pulled_over,
+             scenario_leaseless_disk_ours_keeps_base]
 
 
 async def main():
