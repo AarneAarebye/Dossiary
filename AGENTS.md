@@ -2369,9 +2369,10 @@ this repo's git tags.
   on a scanner with areas, and `ocr` only for PDFs; a scanned image has no
   `ocrJob`, so `queueScanOcr()` queues it for Dossiary's own OCR when
   `scan_auto_ocr` is on, and it ends as a searchable PDF with the image kept
-  as the original. `scan_last_settings` gains `format` and `area` only for a
-  scanner that offers a choice (so older saved objects and helpers without
-  the fields are unchanged).
+  as the original. `scan_last_settings` gains `format` only for a
+  scanner that lists more than one format, and `area` whenever the scanner
+  lists any area (`readScanDialogSettings()`), so older saved objects and
+  helpers without the fields are unchanged.
   **Background OCR (2026-10-11)**: when `scan_auto_ocr` is on (default;
   Field Settings, with `scan_ocr_language`, default Auto = eng+deu), a scan
   asks a helper that offers `ocr` to make the pages searchable

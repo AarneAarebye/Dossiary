@@ -119,7 +119,7 @@ macOS helper, into a library, and the searchable-PDF swap on one.
    document is an image file) may need a check in `runOcrJobPass()`/`makeDocumentSearchable()`
    when the file's extension changes from `.jpg` to `.pdf`. The plan verifies this first.
 2. The size table is a copy of the protocol's; if a helper's areas change the dialog filters
-   wrongly, not dangerously (the helper still refuses). tests pin the pixel counts of three known cases (10x15 at 300, A4 and A5 at 1200 dpi).
+   wrongly, not dangerously (the helper still refuses). Tests pin the pixel counts of three known cases (10x15 at 300, A4 and A5 at 1200 dpi).
 
 ## Out of scope
 

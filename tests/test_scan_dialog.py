@@ -1249,12 +1249,15 @@ async def scenario_photo_request(p):
           and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == '10x15')
     await page.keyboard.press('Escape')
     # An area the scanner no longer lists is ignored.
-    narrowed = dict(PHOTO_FLATBED, areas=["a4"])
+    narrowed = dict(PHOTO_FLATBED, areas=["a4", "a5"])
     await page.evaluate("(s) => { window.__HELPERS['%s'].scanners = [s]; }" % L2, narrowed)
     await page.click('#scan-btn'); await page.wait_for_timeout(300)
-    print("a remembered area that is gone falls back to the first:", await page.locator('#scan-dialog-area').count() == 0
-          and (await page.evaluate("window.__DEBUG_readScanDialogSettings()"))['area'] == 'a4')
-    await page.keyboard.press('Escape')
+    print("a remembered area that is gone falls back to the first:",
+          await page.locator('#scan-dialog-area').count() == 1
+          and await page.eval_on_selector('#scan-dialog-area', 'e => e.value') == 'a4'
+          and await page.eval_on_selector_all('#scan-dialog-area option', 'os => os.map(o => o.textContent)') == ['A4', 'A5'])
+    await start_scan(page)
+    print("the request then carries the first area:", (await last_scan_body(page)).get('area') == 'a4')
     await page.evaluate("(s) => { window.__HELPERS['%s'].scanners = s; }" % L2, PHOTO_HELPERS[L2]["scanners"])
 
     # The feeder: pdf, no area, whatever format was chosen.
