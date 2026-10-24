@@ -314,7 +314,7 @@ async def scenario_photo_controls(p):
 Run: `cd tests && python3 test_scan_dialog.py 2>&1 | sed -n '/scenario_photo_controls/,$p' | head -8`
 Expected: first photo checks print `False` (no `#scan-dialog-format`).
 
-- [ ] **Step 3: Implement the label tables**
+- [ ] **Step 3: Implement the label tables** (also give `V1_SCANNER` `formats: ['pdf'], areas: []`, or the dialog throws for a version 1 helper; and in the test, select the flatbed source on `fake:glass` before choosing Format, since its default source is the feeder, which hides it)
 
 Directly after `const SCAN_SETTING_LABEL_KEYS = { ... };` (in the scan-dialog section) add:
 
