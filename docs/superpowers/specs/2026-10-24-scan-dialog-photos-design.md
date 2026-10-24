@@ -54,7 +54,7 @@ none or none valid) and `areas` (strings in `full`, `a4`, `a5`, `a6`, `10x15`, `
   sends it.
 - **Images only from the flatbed.** With the feeder as source the Format select is hidden and the
   format is `pdf`; going back to the flatbed restores the earlier choice. A scanner with only a
-  feeder never shows Format.
+  feeder never shows Format. Paper size is hidden too and no `area` is sent: only a flatbed scan has a scan area.
 - **Black & white** is hidden from the Color select while JPEG is chosen (JPEG can't be 1-bit);
   if it was selected, Color falls back to the first remaining mode.
 - **Resolutions over the limit are hidden** for the standard areas: pixel count is
@@ -71,7 +71,7 @@ none or none valid) and `areas` (strings in `full`, `a4`, `a5`, `a6`, `10x15`, `
 ### The request (`buildScanRequest()`)
 
 Version 2 body: `format` is the chosen format (not always `'pdf'`); `area` is added when the
-scanner lists areas. `ocr`/`ocrLanguages` are added only when the format is `pdf` (and the existing
+scanner lists areas and the source is the flatbed. `ocr`/`ocrLanguages` are added only when the format is `pdf` (and the existing
 conditions hold). Version 1 requests are unchanged.
 
 ### Remembering (`scan_last_settings`)
@@ -119,7 +119,7 @@ macOS helper, into a library, and the searchable-PDF swap on one.
    document is an image file) may need a check in `runOcrJobPass()`/`makeDocumentSearchable()`
    when the file's extension changes from `.jpg` to `.pdf`. The plan verifies this first.
 2. The size table is a copy of the protocol's; if a helper's areas change the dialog filters
-   wrongly, not dangerously (the helper still refuses). A test pins the table to the protocol.
+   wrongly, not dangerously (the helper still refuses). tests pin the pixel counts of three known cases (10x15 at 300, A4 and A5 at 1200 dpi).
 
 ## Out of scope
 

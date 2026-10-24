@@ -175,6 +175,11 @@ escáner que puede separar una pila en las hojas en blanco, marca
 pila en varios documentos: basta con poner una hoja en blanco entre ellos
 (Scan Multi).
 
+Para escanear una foto, elija **JPEG** o **PNG** en **Formato** (el
+alimentador de documentos solo escanea PDF) y el tamaño de la copia en
+**Tamaño del papel**, por ejemplo 10 × 15 cm. Las resoluciones que darían
+una imagen enorme no se ofrecen para los tamaños estándar.
+
 ## Tu iPhone o iPad
 
 La aplicación Dossiary para iPhone y iPad te muestra tus bibliotecas lejos

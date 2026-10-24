@@ -2352,7 +2352,27 @@ this repo's git tags.
   message, never a status line stuck on "Scanning…". A pairing token is
   stored as soon as `/pair` answers, even if the dialog was redrawn
   meanwhile (another helper's pairing, a 401), since the code is used up by
-  then. **Background OCR (2026-10-11)**: when `scan_auto_ocr` is on (default;
+  then.
+  **Photos (2026-10-24)** (spec
+  `docs/superpowers/specs/2026-10-24-scan-dialog-photos-design.md`): a
+  scanner that lists `formats` (pdf/jpeg/png) and `areas`
+  (full/a4/a5/a6/10x15/13x18) gets a Format and a Paper size select (shown
+  when there is more than one value; ids `scan-dialog-format`/`-area`,
+  wrappers `-field`). Both are hidden with the feeder as source: images only
+  come from the flatbed (the helpers refuse them from a feeder), so the
+  request says `pdf` and carries no `area`. Black & white is not offered
+  with JPEG. For the standard areas `scanResolutionsFor()` hides resolutions
+  over the helpers' 100-megapixel limit (`SCAN_MAX_PIXELS`, inclusive;
+  `scanPixelCount()` = round(w/25.4*dpi)*round(h/25.4*dpi), sizes in
+  `SCAN_AREA_MM`); `full` has no known size, so nothing is filtered and a
+  helper's 422 message is shown. The request has `area` for a flatbed scan
+  on a scanner with areas, and `ocr` only for PDFs; a scanned image has no
+  `ocrJob`, so `queueScanOcr()` queues it for Dossiary's own OCR when
+  `scan_auto_ocr` is on, and it ends as a searchable PDF with the image kept
+  as the original. `scan_last_settings` gains `format` and `area` only for a
+  scanner that offers a choice (so older saved objects and helpers without
+  the fields are unchanged).
+  **Background OCR (2026-10-11)**: when `scan_auto_ocr` is on (default;
   Field Settings, with `scan_ocr_language`, default Auto = eng+deu), a scan
   asks a helper that offers `ocr` to make the pages searchable
   (`ocr: true`, `ocrLanguages` the setting's codes the scanner supports) and

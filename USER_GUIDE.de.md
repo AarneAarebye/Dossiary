@@ -180,6 +180,11 @@ Scanner einen Stapel an leeren Blättern trennen, hake im Dialog
 **Stapel an leeren Blättern trennen** an, um aus einem Stapel mehrere
 Dokumente zu machen: Lege einfach ein leeres Blatt zwischen sie (Scan Multi).
 
+Um ein Foto zu scannen, wähle unter **Format** **JPEG** oder **PNG** (der
+Dokumenteneinzug scannt nur PDF) und unter **Papiergröße** die Größe des
+Abzugs, zum Beispiel 10 × 15 cm. Auflösungen, die ein riesiges Bild
+ergäben, werden für die Standardgrößen nicht angeboten.
+
 ## Dein iPhone oder iPad
 
 Die Dossiary-App auf iPhone und iPad zeigt deine Bibliotheken auch unterwegs.
