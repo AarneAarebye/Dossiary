@@ -2555,10 +2555,20 @@ this repo's git tags.
   Trash), so the result names the folder to trash in Finder. **Deleted
   elsewhere**: `pollSyncState()` seeing `deleted` in the state calls
   `syncLibraryDeletedElsewhere()` (after the save, when the poll is a
-  save's confirm): keep aside what memory holds, close any dialog,
-  `resetAll({skipLeaseRelease: true})`, forget the Recent entry, and a
-  notice (`#sync-deleted-dialog`) naming the device and any kept-aside
-  folder. Closing every dialog loses text typed into an open form (memory's
+  save's confirm) -- also a late one, after the folder is already in the
+  Trash (`trashed: true`, other fields possibly missing), and a lease call
+  answering 404 `library-deleted` (`syncLeaseSaysDeleted()`: poll the state,
+  then the same path, with "another Mac" if the state doesn't say). Nothing
+  unsaved: close any dialog, `resetAll({skipLeaseRelease: true})`, forget
+  the Recent entry, and a notice (`#sync-deleted-dialog`) naming the device.
+  Something in memory that isn't on disk: kept aside inside the folder first
+  (not tried when `trashed`); if that isn't possible the library stays open
+  read-only (`syncLibraryGone`: `persistDb()` and `ensureEditLease()`
+  refuse, the sync timer and OCR runner stop, no admin calls) with a notice
+  offering "Download unsaved changes" (`db.export()` as `<name> unsaved
+  <yyyy-mm-dd hhmm>.sqlite`, a Blob and `<a download>`) and "Close library"
+  -- no ✕ or Escape -- so memory is never dropped without the person
+  choosing to. Closing every dialog loses text typed into an open form (memory's
   changes are kept aside), and a running dialog's job finds its library gone. Every name in the dialog is escaped. Tested by
   `tests/test_delete_library.py`.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios

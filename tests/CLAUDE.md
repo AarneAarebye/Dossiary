@@ -1223,7 +1223,16 @@ permission noted on the row; deleted on another Mac via the state poll,
 with nothing unsaved (no `.kept-aside`) and with an unwritten change (a
 `.kept-aside` copy holding it, named in the notice) and with a change held
 back by a take-over Cancel (kept aside, then closed); ordinary, `deleted:
-null` and 404 state answers never closing it; German labels; a hostile
+null` and 404 state answers never closing it; a late tab: a `{deleted,
+trashed: true}` answer closing a clean tab, and with an unwritten change
+making no kept-aside attempt, staying open read-only (saves and editing
+refused, nothing written, no admin calls), Escape not dismissing the
+offer, "Download unsaved changes" producing exactly `db.export()` (via
+`expect_download()` and `__DEBUG_dbExportText()`) named `<name> unsaved
+<date time>.sqlite`, Close library closing without a release; a failed
+kept-aside copy (not trashed) giving the same offer; a lease call answering
+404 `library-deleted` closing a clean tab ("another Mac" when the state
+says nothing) and giving the offer for a dirty one; German labels; a hostile
 folder name, busy device and `deletedBy` shown as text).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded

@@ -44,6 +44,7 @@ FAKE_SYNC = """
         const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(path);
         if(m && opts.method === 'POST'){
             const body = JSON.parse(opts.body);
+            if(S.leaseDeleted) return json(404, { error: 'library-deleted' });
             if(body.action === 'acquire' && S.acquire === 'busy' && !body.takeOver) return json(200, { result: 'busy', lease: S.busyLease, version: 3 });
             if(body.action === 'acquire') return json(200, { result: 'granted', lease: { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() }, version: 3 });
             return json(200, { result: body.action === 'release' ? 'released' : 'granted', lease: null, version: 3 });
@@ -487,6 +488,92 @@ async def main():
         print("15 hostile deletedBy as text:", evil in notice and await page.locator('#sync-deleted-dialog img').count() == 0
               and not await page.evaluate("!!window.__PWNED"), notice)
         print("15 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 16. Late tab: deleted and already trashed, nothing unsaved → closed with the notice ===
+        gone = {"deleted": {"deletedBy": "iMac", "deletedAt": "2026-10-25T10:00:00Z"}, "trashed": True}
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("(s) => { window.__SYNC.state = s; }", gone)
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        print("16 trashed answer without the other fields closes a clean tab:", await library_closed(page))
+        print("16 with the notice:", "“Household” was deleted on iMac. Its folder is in this Mac's Trash." in await text_of(page, '#sync-deleted-dialog'))
+        print("16 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 17. Late tab with unsaved changes, already trashed: no kept-aside attempt, open read-only, download, close ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("""() => { const r = window.__TEST_ROOT, orig = r.getDirectoryHandle.bind(r); window.__KEPT_TRIES = 0;
+            r.getDirectoryHandle = async (name, o) => { if(name === '.kept-aside') window.__KEPT_TRIES++; return orig(name, o); }; }""")
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Late change', 1])")
+        disk_before = await page.evaluate("async () => await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()")
+        await page.evaluate("(s) => { window.__SYNC.state = s; }", gone)
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        print("17 no kept-aside attempt:", await page.evaluate("window.__KEPT_TRIES") == 0)
+        print("17 library stays open:", not await library_closed(page))
+        text = await text_of(page, '#sync-deleted-text')
+        print("17 the notice:", text == "“Household” was deleted on iMac. Changes made here since the last save weren't saved.", text)
+        print("17 Download and Close offered:", (await text_of(page, '#sync-deleted-download-btn')) == 'Download unsaved changes'
+              and (await text_of(page, '#sync-deleted-close-btn')) == 'Close library')
+        await page.keyboard.press('Escape')
+        print("17 Escape doesn't dismiss it:", await page.locator('#sync-deleted-dialog').count() == 1)
+        async with page.expect_download() as info:
+            await page.click('#sync-deleted-download-btn')
+        dl = await info.value
+        path = await dl.path()
+        data = open(path, 'rb').read().decode('utf-8')
+        print("17 the download is db.export():", data == await page.evaluate("window.__DEBUG_dbExportText()") and 'Late change' in data)
+        import re as _re
+        print("17 named '<name> unsaved <yyyy-mm-dd hhmm>.sqlite':", bool(_re.fullmatch(r'Household unsaved \d{4}-\d\d-\d\d \d{4}\.sqlite', dl.suggested_filename)), dl.suggested_filename)
+        print("17 'Downloaded' note:", (await text_of(page, '#sync-deleted-downloaded')) == f'Downloaded “{dl.suggested_filename}”.')
+        n = len(await admin_calls(page))
+        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
+        editing = await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.evaluate("window.__DEBUG_syncNow(70000)")
+        await page.wait_for_timeout(300)
+        disk_after = await page.evaluate("async () => await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()")
+        print("17 saves and editing blocked, nothing written:", saved is False and editing is False and disk_after == disk_before)
+        print("17 no admin calls while open read-only:", (await admin_calls(page))[n:] == [])
+        await page.click('#sync-deleted-close-btn')
+        await page.wait_for_timeout(300)
+        print("17 Close closes the library:", await library_closed(page) and await page.locator('#sync-deleted-dialog').count() == 0)
+        print("17 Recent entry gone:", 'Household.dossiary' not in await recent_names(page))
+        print("17 no release sent:", not any(c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release' for c in await admin_calls(page)))
+        print("17 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 18. Not trashed, but the kept-aside copy fails: the same offer ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Unsaved', 1])")
+        await page.evaluate("""() => { const r = window.__TEST_ROOT, orig = r.getDirectoryHandle.bind(r);
+            r.getDirectoryHandle = async (name, o) => { if(name === '.kept-aside') throw new DOMException('The folder is read-only.', 'NoModificationAllowedError'); return orig(name, o); }; }""")
+        await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        text = await text_of(page, '#sync-deleted-text')
+        print("18 library stays open with the offer:", not await library_closed(page) and await page.locator('#sync-deleted-download-btn').count() == 1)
+        print("18 the notice names the failed copy:", text.startswith("“Household” was deleted on iMac. Changes made here since the last save weren't saved. What wasn't saved yet couldn't be kept aside:"), text)
+        print("18 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 19. A lease call answering 404 library-deleted is handled the same way ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("() => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = null; }")   # the state says nothing (404)
+        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.wait_for_timeout(500)
+        print("19 lease 404 library-deleted closes a clean tab:", await library_closed(page))
+        print("19 notice with the unknown device:", "“Household” was deleted on another Mac." in await text_of(page, '#sync-deleted-dialog'))
+        print("19 JS errors:", errors == [], errors)
+        await browser.close()
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Unsaved', 1])")
+        await page.evaluate("(s) => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = s; }", gone)
+        await page.evaluate("() => { window.__DEBUG_ensureEditLease(); }")   # starting to edit asks for the lease
+        await page.wait_for_timeout(500)
+        print("19 lease 404 then a trashed state, dirty: open read-only with the offer:", not await library_closed(page)
+              and "was deleted on iMac" in await text_of(page, '#sync-deleted-text'))
+        print("19 JS errors (dirty):", errors == [], errors)
         await browser.close()
 
 asyncio.run(main())
