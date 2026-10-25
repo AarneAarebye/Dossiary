@@ -2573,7 +2573,10 @@ this repo's git tags.
   -- no ✕ or Escape -- so memory is never dropped without the person
   choosing to. **Only a tab that saw the library live runs this path**
   (`syncSeenLive`: an answered state without `deleted`, or an answered lease
-  call, since it opened). A tab whose first answer already says `deleted` --
+  call, since it opened). A tab whose first answer already says `deleted`
+  with `trashed: true` (a first answer in the grace period, not trashed yet,
+  takes the normal path above; a first lease 404 polls the state and
+  decides by its `trashed`) --
   a folder taken back out of the Trash keeps its `.dossiary-sync.json` and
   meets the service's persisted record -- calls `syncDetachDeleted()`
   instead: `syncLibrary` = null (no admin calls, lease or marker; saves go

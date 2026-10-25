@@ -1239,7 +1239,10 @@ first, `open_app(live=False)`) staying open as a local library -- no notice,
 Recent kept, no marker, editing and a save writing to disk, no admin calls
 after the first answer, the sync file left, Delete taking the unsynced
 path, a reopen this session still local -- also when its first answer is a
-lease 404 (every other scenario first gets one ordinary answer); German labels; a hostile
+lease 404 (then the state decides: trashed → local, grace period → the
+deleted path), while a first answer in the grace period (deleted, not
+trashed) closes with the notice, keeping an unwritten change aside first
+(every other scenario first gets one ordinary answer); German labels; a hostile
 folder name, busy device and `deletedBy` shown as text).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded

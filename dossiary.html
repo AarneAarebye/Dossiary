@@ -17092,15 +17092,11 @@
       { method: 'POST', body: { action, takeOver: !!takeOver }, keepalive: !!opts.keepalive, timeoutMs: opts.timeoutMs })
       .then(res => {
         if(res && res.status === 404 && res.body && res.body.error === 'library-deleted'){
-          if(lib === syncLibrary && !syncSeenLive){
-            // Never seen live in this tab: a copy opened after it was deleted
-            // (taken back out of the Trash). It works on as a local library.
-            syncDetachDeleted(lib, null);
-          }else{
-            // A definite answer, not "no answer": no write goes out after it.
-            if(lib === syncLibrary) syncLibraryDeletedSeen = lib;
-            setTimeout(() => syncLeaseSaysDeleted(lib), 0);
-          }
+          // A definite answer, not "no answer": no write goes out after it
+          // until the state says whether this is a deletion to follow or (never
+          // seen live, already trashed) a copy that goes on as a local library.
+          if(lib === syncLibrary) syncLibraryDeletedSeen = lib;
+          setTimeout(() => syncLeaseSaysDeleted(lib), 0);
         }else if(res && res.ok && lib === syncLibrary) syncSeenLive = true;
         return res;
       });
@@ -17377,10 +17373,11 @@
     // the confirm has returned -- by then that save has taken its bytes, though
     // its write may still be in flight; it lands in the folder going to the
     // Trash anyway, and anything not yet written is kept aside first.
-    if(st && st.deleted && typeof st.deleted === 'object' && !syncSeenLive){
-      // The first answer since this tab opened it already says deleted: a
-      // copy opened afterwards (from the Trash). Not this tab's concern to
-      // close -- it works on as a local, unsynced library.
+    if(st && st.deleted && typeof st.deleted === 'object' && !syncSeenLive && st.trashed === true){
+      // The first answer since this tab opened it says deleted and already
+      // trashed: a copy opened afterwards (taken back out of the Trash). It
+      // works on as a local, unsynced library. Deleted but not trashed yet
+      // (the grace period) is a deletion to follow, below.
       syncDetachDeleted(lib, st.deleted);
       return true;
     }

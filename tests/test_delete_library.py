@@ -650,6 +650,7 @@ async def main():
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": None, "leaseDeleted": True}, live=False)
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local edit', 1])")
         await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.wait_for_timeout(300)   # the state is asked, then the decision: local
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
         await page.wait_for_timeout(300)
         disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
@@ -658,6 +659,46 @@ async def main():
         print("21 status line names it local:", "this copy is now a local library that isn't synced." in await text_of(page, '#status'))
         print("21 Recent entry kept:", 'Household.dossiary' in await recent_names(page))
         print("21 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # 21b. First answer a lease 404, then a state saying deleted and trashed: local too.
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone), "leaseDeleted": True}, live=False)
+        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.wait_for_timeout(400)
+        print("21b lease 404 + trashed state: local, open, Recent kept:", not await library_closed(page)
+              and "this copy is now a local library that isn't synced." in await text_of(page, '#status')
+              and 'Household.dossiary' in await recent_names(page))
+        print("21b JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 22. First answer: deleted but not trashed yet (grace period) → the normal deleted path ===
+        grace = {"version": 3, "lease": None, "deleted": {"deletedBy": "iMac", "deletedAt": "2026-10-25T10:00:00Z"}}
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(grace)}, live=False)
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        print("22 clean: closed with the notice:", await library_closed(page)
+              and "“Household” was deleted on iMac." in await text_of(page, '#sync-deleted-dialog'))
+        print("22 clean: Recent entry gone:", 'Household.dossiary' not in await recent_names(page))
+        print("22 JS errors (clean):", errors == [], errors)
+        await browser.close()
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(grace)}, live=False)
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Grace change', 1])")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        folders = await kept_aside_folders(page)
+        copy_title = await page.evaluate("""async (name) => {
+            const f = window.__TEST_ROOT._children.get('.kept-aside')._children.get(name)._children.get('library.sqlite');
+            return JSON.parse(await (await f.getFile()).text()).documents[0].title; }""", folders[0]) if folders else None
+        print("22 dirty: kept aside, then closed:", copy_title == 'Grace change' and await library_closed(page), folders, copy_title)
+        print("22 JS errors (dirty):", errors == [], errors)
+        await browser.close()
+        # Lease 404 first, the state in its grace period: the deleted path too.
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(grace), "leaseDeleted": True}, live=False)
+        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.wait_for_timeout(400)
+        print("22 lease 404 + grace state: closed with the notice:", await library_closed(page)
+              and await page.locator('#sync-deleted-dialog').count() == 1)
+        print("22 JS errors (lease):", errors == [], errors)
         await browser.close()
 
 asyncio.run(main())
