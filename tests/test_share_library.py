@@ -59,12 +59,22 @@ FAKE_SYNC = """
             window.__SHARED_DB = dir && dir._children.get('library.sqlite') ? new TextDecoder().decode(dir._children.get('library.sqlite')._bytes) : null;
             const list = S.shares || [];
             const answer = list.length > 1 ? list.shift() : (list[0] || null);
+            // As the Mac does: the sync file, so reopening makes it a synced library.
+            const writeSync = async () => {
+                const w = await (await dir.getFileHandle('.dossiary-sync.json', { create: true })).createWritable();
+                await w.write(new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-new', hub: 'https://pi.local:8443', version: 0 })));
+                await w.close();
+            };
+            // hang: wait for window.__releaseShare() (an abort of the request rejects, as fetch does).
+            if(answer && answer.hang) await new Promise((res, rej) => {
+                window.__releaseShare = res;
+                if(opts.signal) opts.signal.addEventListener('abort', () => { window.__SHARE_ABORTED = true; rej(new DOMException('The user aborted a request.', 'AbortError')); });
+            });
+            // status 0: no answer reaches Dossiary (write: the Mac shared it anyway).
+            if(answer && answer.status === 0){ if(answer.write) await writeSync(); throw new TypeError('Failed to fetch'); }
             if(answer && answer.status !== 200) return json(answer.status, answer.body);
             const name = (answer && answer.body && answer.body.name) || body.folder.replace(/\\.dossiary$/, '');
-            // As the Mac does: the sync file, so reopening makes it a synced library.
-            const w = await (await dir.getFileHandle('.dossiary-sync.json', { create: true })).createWritable();
-            await w.write(new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-new', hub: 'https://pi.local:8443', version: 0 })));
-            await w.close();
+            await writeSync();
             return json(200, { id: 'lib-new', name, uploading: true });
         }
         const st = /^\\/admin\\/libraries\\/([^/]+)\\/state$/.exec(path);
@@ -493,6 +503,157 @@ async def main():
         slot = await text_of(page, '#devices-available-slot')
         print("7 German Get it section:", 'Auf dem Pi, nicht auf diesem Mac' in slot and 'Holen' in slot, slot)
         print("7 no errors:", errors == [], errors)
+        await browser.close()
+
+        # === 9. The share call has no timeout; background saves are held meanwhile ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "shares": [{"hang": True, "status": 200, "body": {}}]}, store_root=True)
+        # Every 15 s timer fires at once: an admin call with the default timeout would be aborted.
+        await page.evaluate("""() => { const real = window.setTimeout; window.setTimeout = (fn, ms, ...a) => real(fn, ms === 15000 ? 0 : ms, ...a); }""")
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(500)
+        print("9 share call still waiting, not aborted:", await page.evaluate("!window.__SHARE_ABORTED") and len(await calls(page, SHARE_URL)) == 1 and await page.locator('#share-library-body').count() == 1)
+        held = await page.evaluate("""async () => {
+            window.__DEBUG_dbRun("INSERT OR REPLACE INTO settings (key, value) VALUES ('from_background', 'yes')");
+            const r = await window.__DEBUG_persistDb({ background: true });
+            const bytes = window.__TEST_ROOT._children.get('library.sqlite')._bytes;
+            return { r, written: new TextDecoder().decode(bytes).includes('from_background') };
+        }""")
+        print("9 a background save during the share is held:", held == {"r": False, "written": False}, held)
+        await page.evaluate("window.__releaseShare()")
+        await page.wait_for_timeout(800)
+        print("9 then shared and reopened:", await page.evaluate("window.__DEBUG_syncState().version") == 0 and await page.locator('#share-library-body').count() == 0)
+        print("9 no errors:", errors == [], errors)
+        await browser.close()
+
+        # A failed share lets background saves through again.
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "shares": [{"status": 503, "body": {"error": "hub-unreachable"}}]}, store_root=True)
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(500)
+        after = await page.evaluate("""async () => {
+            window.__DEBUG_dbRun("INSERT OR REPLACE INTO settings (key, value) VALUES ('from_background', 'yes')");
+            return await window.__DEBUG_persistDb({ background: true });
+        }""")
+        print("9 after a failed share background saves work again:", after is not False, after)
+        print("9 no errors (failed share):", errors == [], errors)
+        await browser.close()
+
+        # === 10. No answer, but the Mac shared it: finished from the folder's sync file ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "shares": [{"status": 0, "write": True}]}, in_place=False, store_root=True)
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(1000)
+        print("10 no answer, sync file written: reopened on the copy, synced:", (await text_of(page, '#sub-label')) == 'Tax 2026.dossiary' and await page.evaluate("window.__DEBUG_syncState().version") == 0)
+        print("10 the copy in the libraries folder is open:", await page.evaluate("window.__LIB_ROOT._children.get('Tax 2026.dossiary') !== undefined"))
+        result = await text_of(page, '#share-library-result')
+        print("10 result shown:", result == 'Shared “Tax 2026” — uploading to the Pi.', result)
+        print("10 no errors:", errors == [], errors)
+        await browser.close()
+
+        # No answer and nothing written: kept copy; Try again answers 409 once the Mac had shared it -> finished.
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "shares": [{"status": 0}, {"status": 409, "body": {"error": "already-shared"}}]}, in_place=False, store_root=True)
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(800)
+        st = await text_of(page, '#share-library-status')
+        print("10 no answer, no sync file: error and copy kept:", "didn't answer" in st and 'was kept' in st and (await text_of(page, '#share-library-share-btn')) == 'Try again', st)
+        await page.evaluate("""async () => {
+            const dir = window.__LIB_ROOT._children.get('Tax 2026.dossiary');
+            const w = await (await dir.getFileHandle('.dossiary-sync.json', { create: true })).createWritable();
+            await w.write(new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-new', hub: 'https://pi.local:8443', version: 0 })));
+            await w.close();
+        }""")
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(1000)
+        print("10 Try again: 409 with the sync file there -> finished:", len(await calls(page, SHARE_URL)) == 2 and await page.evaluate("window.__DEBUG_syncState().version") == 0 and (await text_of(page, '#sub-label')) == 'Tax 2026.dossiary')
+        print("10 no errors (409):", errors == [], errors)
+        await browser.close()
+
+        # 409 with no sync file stays an error.
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "shares": [{"status": 409, "body": {"error": "already-shared"}}]}, store_root=True)
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(600)
+        print("10 409 without a sync file: already shared:", (await text_of(page, '#share-library-status')) == 'This library is already shared.')
+        await browser.close()
+
+        # === 11. A same-named folder appearing between the name check and the create is not used ===
+        files = {f"files/{i}_d.pdf": f"doc {i}" for i in range(1, 5)}
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES}, in_place=False, extra_files=files, store_root=True)
+        await page.evaluate("""() => {
+            const root = window.__LIB_ROOT;
+            const real = root.getDirectoryHandle.bind(root);
+            root.getDirectoryHandle = async (name, opts) => {
+                if(name === 'Tax 2026.dossiary' && opts && opts.create && !window.__RACED){
+                    window.__RACED = true;
+                    const other = await real(name, { create: true });   // someone else's folder, just made
+                    const w = await (await other.getFileHandle('theirs.txt', { create: true })).createWritable();
+                    await w.write(new TextEncoder().encode('not ours')); await w.close();
+                }
+                return real(name, opts);
+            };
+            window.__GATE = new Promise(r => { window.__OPEN_GATE = r; });
+            for(const h of window.__TEST_ROOT._children.get('files')._children.values()){
+                const orig = Object.getPrototypeOf(h).getFile;
+                h.getFile = async function(){ await window.__GATE; return orig.call(this); };
+            }
+        }""")
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(400)
+        print("11 the copy goes to the next free name:", 'Tax 2026 2.dossiary' in await children(page, 'window.__LIB_ROOT'))
+        await page.click('#share-library-stop-btn')
+        await page.evaluate("window.__OPEN_GATE()")
+        await page.wait_for_timeout(500)
+        kids = await children(page, 'window.__LIB_ROOT')
+        print("11 Stop removes only our copy:", 'Tax 2026 2.dossiary' not in kids and 'Tax 2026.dossiary' in kids, kids)
+        print("11 the other folder is untouched:", await tree(page, "window.__LIB_ROOT._children.get('Tax 2026.dossiary')") == ['theirs.txt'])
+        print("11 nothing shared:", len(await calls(page, SHARE_URL)) == 0)
+        print("11 no errors:", errors == [], errors)
+        await browser.close()
+
+        # === 12. The libraries folder is the open library itself: refused ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES}, store_root=True)
+        await page.evaluate("""async () => {
+            const req = indexedDB.open('dossiary-libraries-root', 1);
+            const idb = await new Promise(r => { req.onsuccess = () => r(req.result); });
+            await new Promise(r => { const q = idb.transaction('librariesRoot', 'readwrite').objectStore('librariesRoot').put({ id: 'root', handle: window.__TEST_ROOT, root: '/Users/test/Tax 2026.dossiary' }); q.onsuccess = r; });
+        }""")
+        before = await tree(page, 'window.__TEST_ROOT')
+        await open_share(page)
+        await page.click('#share-library-share-btn')
+        await page.wait_for_timeout(500)
+        st = await text_of(page, '#share-library-status')
+        print("12 refused with a message:", st == "Dossiary Sync's libraries folder (/Users/test/Tax 2026.dossiary) is this library's own folder or lies inside it, so the library can't be copied there. Move the library into a folder of its own, open it from there and share it again.", st)
+        print("12 nothing copied into the library:", await tree(page, 'window.__TEST_ROOT') == before)
+        print("12 nothing shared:", len(await calls(page, SHARE_URL)) == 0)
+        print("12 Share can be clicked again:", await page.locator('#share-library-share-btn').is_enabled())
+        print("12 no errors:", errors == [], errors)
+        await browser.close()
+
+        # === 13. Devices dialog: the share note; Get it refreshes the libraries; a dropped chooser frees its row ===
+        available = [{"id": "lib-a", "name": "Household", "available": True}, {"id": "lib-c", "name": "Cars", "available": True}]
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "available": available, "libraries": [],
+                                                   "gets": [{"status": 200, "body": {"id": "lib-c", "name": "Cars", "folder": f"{ROOT_PATH}/Cars.dossiary"}}]})
+        await page.click('#tools-btn'); await page.click('#devices-btn'); await page.wait_for_timeout(500)
+        nt = await text_of(page, '#devices-share-note')
+        print("13 share note points at Tools:", nt == 'To share another library, open it in Dossiary and choose “Share this library…” in the Tools menu.', nt)
+        print("13 no command line in the dialog:", 'dossiary-sync share' not in await text_of(page, '#devices-dialog-body'))
+        await page.click('#devices-available-list li[data-library="lib-a"] .devices-get-btn')
+        await page.wait_for_timeout(300)
+        print("13 chooser under Household, its button disabled:", await page.locator('#devices-available-list li[data-library="lib-a"] .libraries-root-choose-btn').count() == 1 and await page.locator('#devices-available-list li[data-library="lib-a"] .devices-get-btn').is_disabled())
+        await page.click('#devices-available-list li[data-library="lib-c"] .devices-get-btn')
+        await page.wait_for_timeout(300)
+        await page.evaluate("""() => { window.__SYNC.libraries = [{ id: 'lib-c', name: 'Cars', available: true }]; window.__NEXT_PICKED_DIR = window.__LIB_ROOT; }""")
+        await page.click('#devices-available-list li[data-library="lib-c"] .libraries-root-choose-btn')
+        await page.wait_for_timeout(600)
+        libs = await text_of(page, '#devices-libraries')
+        print("13 after Get it the library is listed at once:", 'Cars' in libs, libs)
+        print("13 ...and offered to the phone:", await page.locator('.devices-row[data-id="phone-1"] .devices-lib-checkbox[data-library="lib-c"]').count() == 1)
+        print("13 Open still offered:", await page.locator('#devices-available-list li[data-library="lib-c"] .devices-open-btn').count() == 1)
+        print("13 the dropped chooser frees Household's Get it:", await page.locator('#devices-available-list li[data-library="lib-a"] .devices-get-btn').is_enabled())
+        print("13 no errors:", errors == [], errors)
         await browser.close()
 
         # === 8. The libraries-folder database blocked or failing: the chooser, never a hang ===

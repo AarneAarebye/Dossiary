@@ -2491,8 +2491,8 @@ this repo's git tags.
   Remove behind `confirm()`, a ✎ next to each name (`startDeviceRename()`, `POST
   /admin/devices/<id>/name {name}`: inline input, Enter/blur saves, Escape
   cancels with `stopPropagation()`, unchanged/empty sends nothing, a failure
-  keeps the input open with `.devices-rename-error`), shared libraries read-only with the
-  `dossiary-sync share <folder>` note, Disconnect. An answer in the wrong
+  keeps the input open with `.devices-rename-error`), shared libraries read-only with a
+  note pointing at Tools › "Share this library…" (`#devices-share-note`), Disconnect. An answer in the wrong
   shape says so (`devicesUnexpectedAnswer`), and when libraries and devices
   are fetched together the error shown is the one that actually failed.
   **"Add iPhone or iPad…"** (`#devices-add-slot`, `renderDevicesAddSlot()`,
@@ -2612,18 +2612,32 @@ this repo's git tags.
   (the devices dialog); otherwise a name (the folder name without
   `.dossiary`, read-only once the library is known to be in place) and one
   unticked checkbox per paired phone (`GET /admin/devices`, role `phone`).
-  Share: the libraries folder, then `persistDb()` (the share route hashes
-  `library.sqlite` at call time -- deliberately after the folder choice, so
-  the save sits right before the call), then either in place
-  (`root.resolve(rootDirHandle)` is one step long) → `POST
-  /admin/libraries/share {folder, phones}`, or a copy into a new
-  `<Name>.dossiary` (numbered " 2", … when taken) by `copyLibraryInto()` --
+  Share: the libraries folder (refused with `shareLibraryRootIsLibrary` when
+  it is the open library's own folder or inside it, `isInsideLibraryFolder()`),
+  then background jobs are held (`holdBackgroundForShare()`:
+  `shareHoldsBackground` stops a preview run after its current preview,
+  skips OCR runner passes and makes `persistDb({background: true})` a no-op,
+  until the reopen's `resetAll()` or a failure releases it), then
+  `persistDb()` (the share route hashes `library.sqlite` at call time --
+  deliberately after the folder choice, so the save sits right before the
+  call), then either in place (`root.resolve(rootDirHandle)` is one step
+  long) → `POST /admin/libraries/share {folder, phones}` with no timeout (the
+  Mac creates the library on the Pi first), or a copy into a new
+  `<Name>.dossiary` (numbered " 2", … when taken;
+  `createEmptyLibraryFolder()` checks the folder it got is empty -- a
+  same-named folder that appeared between the name check and the create is
+  never used or removed, the next name is tried) by `copyLibraryInto()` --
   Back up's copier, pulled out of it unchanged: `library.sqlite` from
   `db.export()`, every other file from `listLibraryFiles()` (no sync
   bookkeeping, no `.DS_Store`/`._*`), 4 at a time -- with progress and Stop;
   Stop or the first unreadable/unwritable file removes the copy and says
   which file and why. A share that fails after the copy keeps it, says so,
-  and the button becomes "Try again" (the same copy, posted again). Success:
+  and the button becomes "Try again" (the same copy, posted again). No
+  answer, or a 409 `already-shared` (a Try again after an answer that never
+  arrived): when the folder's `.dossiary-sync.json` now names a library (not
+  the one it named before the first attempt, `ctx.priorSyncIds`, nor a
+  detached one), the share went through and is finished as a success.
+  Success:
   `resetAll()` + `proceedWithRootDirHandle()` on the shared folder (so the new
   sync file is read), a copy replaces the original in Recent libraries
   (`forgetRecentLibrary()` first, the open records the copy), the status line
@@ -2643,7 +2657,11 @@ this repo's git tags.
   {noTimeout: true})`) shows "Downloading…", and success offers "Open", which
   opens the last path component of `folder` inside the libraries folder
   (`switchLibraryAsking()` + `proceedWithRootDirHandle()`; Recent records it).
-  Errors show under the row. Tested by `tests/test_share_library.py`; a
+  After a successful Get the libraries are fetched again, so the new one
+  shows under Libraries and in the phones' checkboxes at once. Errors show
+  under the row. A re-render drops a chooser still open under a row and
+  frees that row's button (each attempt is an object in `gets`; one no
+  longer there is ignored when it resumes). Tested by `tests/test_share_library.py`; a
   directory handle's `_granted` in the stub makes `queryPermission()` answer
   granted.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios

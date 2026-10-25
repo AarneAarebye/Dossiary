@@ -256,7 +256,7 @@ async def scenario_connected(p):
     print("a mirror gets none:", await page.locator('.devices-row[data-id="dev-2"] .devices-lib-checkbox').count() == 0)
     libs = await page.inner_text('#devices-libraries')
     print("shared libraries listed read-only, unavailable marked:", 'Household' in libs and 'Taxes' in libs and 'not available' in libs)
-    print("...with the share-command note:", 'dossiary-sync share' in await page.inner_text('#devices-dialog-body'))
+    print("...with the note pointing at Tools › Share this library:", (await page.inner_text('#devices-share-note')) == 'To share another library, open it in Dossiary and choose “Share this library…” in the Tools menu.' and 'dossiary-sync share' not in await page.inner_text('#devices-dialog-body'))
 
     # Allow
     await page.check('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]')
