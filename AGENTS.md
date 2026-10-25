@@ -2536,10 +2536,14 @@ this repo's git tags.
   holding the lease turns the button into "Take over and delete"
   (`takeOver: true`). On click the open library is closed first --
   anything memory holds that isn't on disk is written to `.kept-aside/`
-  inside the folder (`keepAsideBeforeClosing()`), then
+  inside the folder (`keepAsideBeforeClosing()`; if that copy can't be
+  written, nothing is closed or sent and the dialog shows why), then
   `resetAll({skipLeaseRelease: true})`, so no release (or any later admin
   call) goes out for an id the hub is about to forget -- then `POST
-  /admin/libraries/<id>/delete {takeOver}`. 200 `deleted` (with `trashed`
+  /admin/libraries/<id>/delete {takeOver}`. When the delete then fails, the
+  lease this Mac held is released after all (the hub still knows the id) and
+  the error adds "… was closed but not deleted" (`deleteLibraryClosedNotDeleted`);
+  the Recent entry stays. 200 `deleted` (with `trashed`
   true or false) and 404 `unknown-library` (already gone) forget the Recent
   entry (`forgetRecentLibrary()`, by `isSameEntry()`) and show the outcome in
   the dialog and on the status line; 409 offers take over; 501 (hub too
@@ -2554,7 +2558,8 @@ this repo's git tags.
   save's confirm): keep aside what memory holds, close any dialog,
   `resetAll({skipLeaseRelease: true})`, forget the Recent entry, and a
   notice (`#sync-deleted-dialog`) naming the device and any kept-aside
-  folder. Every name in the dialog is escaped. Tested by
+  folder. Closing every dialog loses text typed into an open form (memory's
+  changes are kept aside), and a running dialog's job finds its library gone. Every name in the dialog is escaped. Tested by
   `tests/test_delete_library.py`.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios
   `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md`). Two Macs edit

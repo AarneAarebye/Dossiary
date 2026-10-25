@@ -44,6 +44,7 @@ FAKE_SYNC = """
         const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(path);
         if(m && opts.method === 'POST'){
             const body = JSON.parse(opts.body);
+            if(body.action === 'acquire' && S.acquire === 'busy' && !body.takeOver) return json(200, { result: 'busy', lease: S.busyLease, version: 3 });
             if(body.action === 'acquire') return json(200, { result: 'granted', lease: { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() }, version: 3 });
             return json(200, { result: body.action === 'release' ? 'released' : 'granted', lease: null, version: 3 });
         }
@@ -153,6 +154,16 @@ async def main():
         # === 1. Synced delete from Tools ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}, "deletes": [DELETED_200]})
         header_before = await page.evaluate("document.querySelector('header').getBoundingClientRect().height")
+        # Baseline: the same header with the library-name line reduced to one short word and no marker or link.
+        header_base = await page.evaluate("""() => {
+            const sub = document.getElementById('sub-label'), saved = sub.textContent;
+            const hide = ['sync-marker', 'reload-btn'].map(id => document.getElementById(id)).filter(Boolean);
+            const prev = hide.map(e => e.style.display);
+            sub.textContent = 'X'; hide.forEach(e => e.style.display = 'none');
+            const h = document.querySelector('header').getBoundingClientRect().height;
+            sub.textContent = saved; hide.forEach((e, i) => e.style.display = prev[i]);
+            return h; }""")
+        print("1 header with the library open is one line, as the baseline:", abs(header_before - header_base) < 0.5, header_before, header_base)
         print("1 recent entry recorded before:", 'Household.dossiary' in await recent_names(page))
         print("1 Tools has the Delete item:", (await text_of(page, '#delete-library-btn')).strip() == '🗑 Delete this library…')
         await open_delete_from_tools(page)
@@ -186,7 +197,7 @@ async def main():
         await page.click('#delete-library-ok-btn')
         print("1 OK closes the dialog:", await page.locator('#delete-library-body').count() == 0)
         header_after = await page.evaluate("document.querySelector('header').getBoundingClientRect().height")
-        print("1 header height unchanged:", header_before == header_after, header_before, header_after)
+        print("1 header back at the start screen keeps the baseline height:", abs(header_after - header_base) < 0.5, header_after, header_base)
         print("1 JS errors:", errors == [], errors)
         await browser.close()
 
@@ -207,26 +218,37 @@ async def main():
         print("2 JS errors:", errors == [], errors)
         await browser.close()
 
-        # === 3. 409 after typing → take over offered; then the errors; then 404 unknown-library ===
+        # === 3. Errors keep the dialog open; the lease this Mac held goes back; 409 offers take over; 404 unknown-library ===
+        CLOSED = 'Household was closed but not deleted. Open it again from Recent libraries.'.replace('Household', '“Household”')
         answers = [
-            {"status": 409, "body": {"error": "busy", "lease": {"holder": "other", "deviceName": "iMac", "since": "2026-10-25T09:00:00Z"}}},
             {"status": 501, "body": {"error": "hub-too-old"}},
+            {"status": 409, "body": {"error": "busy", "lease": {"holder": "other", "deviceName": "iMac", "since": "2026-10-25T09:00:00Z"}}},
             {"status": 503, "body": {"error": "hub-unreachable"}},
             {"status": 502, "body": {"error": "hub-unauthorized"}},
             {"status": 404, "body": {"error": "Not found"}},
             {"status": 404, "body": {"error": "unknown-library"}},
         ]
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}, "deletes": answers})
+        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.wait_for_timeout(200)
+        print("3 this Mac holds the lease before deleting:", (await page.evaluate("window.__DEBUG_syncLease()"))['state'] == 'holding')
         await open_delete_from_tools(page)
         await page.fill('#delete-library-name-input', 'Household')
+        await page.click('#delete-library-confirm-btn')
+        await page.wait_for_timeout(400)
+        err = await text_of(page, '#delete-library-error')
+        print("3 501: the reason plus 'closed but not deleted':", err == 'Update Dossiary Sync on the Raspberry Pi first. ' + CLOSED, err)
+        print("3 the library was closed before the request:", await library_closed(page))
+        print("3 its Recent entry stays:", 'Household.dossiary' in await recent_names(page))
+        releases = [c for c in await admin_calls(page) if c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release']
+        print("3 the lease this Mac held released once, as JSON:", len(releases) == 1 and releases[0]['contentType'] == 'application/json')
         await page.click('#delete-library-confirm-btn')
         await page.wait_for_timeout(400)
         print("3 409: dialog stays open:", await page.locator('#delete-library-body').count() == 1)
         print("3 409: busy line and take-over button:", (await text_of(page, '#delete-library-busy')) == 'Being edited on iMac.'
               and (await text_of(page, '#delete-library-confirm-btn')) == 'Take over and delete')
-        print("3 the library was closed before the request:", await library_closed(page))
+        print("3 409: still says it was closed:", (await text_of(page, '#delete-library-error')) == CLOSED)
         expected = [
-            ('501', 'Update Dossiary Sync on the Raspberry Pi first.'),
             ('503', "The Raspberry Pi can't be reached. Try again when it's on and connected."),
             ('502', "The Raspberry Pi didn't accept this Mac. Pair this Mac with the Pi again in Dossiary Sync."),
             ('404 (old Mac service)', 'Update Dossiary Sync on this Mac first.'),
@@ -236,9 +258,12 @@ async def main():
             await page.wait_for_timeout(300)
             err = await text_of(page, '#delete-library-error')
             open_still = await page.locator('#delete-library-body').count() == 1
-            print(f"3 {label} keeps the dialog open with the reason:", open_still and err == text and await page.locator('#delete-library-error').is_visible(), err)
+            print(f"3 {label} keeps the dialog open with the reason:", open_still and err == text + ' ' + CLOSED and await page.locator('#delete-library-error').is_visible(), err)
+        releases = [c for c in await admin_calls(page) if c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release']
+        print("3 no further release once given back:", len(releases) == 1)
+        print("3 Recent entry still there after the failures:", 'Household.dossiary' in await recent_names(page))
         calls = await delete_calls(page)
-        print("3 retries after the 409 take over:", all(c['body'] == {"takeOver": True} for c in calls[1:]) and calls[0]['body'] == {"takeOver": False})
+        print("3 retries after the 409 take over:", all(c['body'] == {"takeOver": True} for c in calls[2:]) and all(c['body'] == {"takeOver": False} for c in calls[:2]))
         await page.click('#delete-library-confirm-btn')
         await page.wait_for_timeout(400)
         result = await text_of(page, '#delete-library-result')
@@ -387,6 +412,81 @@ async def main():
         print("11 hostile name escaped:", await page.locator('#delete-library-body img').count() == 0
               and '<img src=x' in await text_of(page, '#delete-library-body')
               and not await page.evaluate("!!window.__PWNED"))
+        await browser.close()
+
+        # === 12. The .kept-aside copy can't be written: nothing closed, nothing sent ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}, "deletes": [DELETED_200]})
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Unsaved', 1])")
+        await page.evaluate("""() => { const r = window.__TEST_ROOT, orig = r.getDirectoryHandle.bind(r);
+            r.getDirectoryHandle = async (name, o) => { if(name === '.kept-aside') throw new DOMException('The folder is read-only.', 'NoModificationAllowedError'); return orig(name, o); }; }""")
+        await open_delete_from_tools(page)
+        await page.fill('#delete-library-name-input', 'Household')
+        await page.click('#delete-library-confirm-btn')
+        await page.wait_for_timeout(400)
+        err = await text_of(page, '#delete-library-error')
+        print("12 the reason shown:", err.startswith("What wasn't saved yet couldn't be kept aside:") and 'read-only' in err, err)
+        print("12 no delete sent:", len(await delete_calls(page)) == 0)
+        print("12 library still open:", not await library_closed(page))
+        print("12 memory still holds the unwritten change:", (await page.evaluate("window.__DEBUG_syncState()"))['dirty'])
+        print("12 dialog usable again:", not await page.is_disabled('#delete-library-confirm-btn') and not await page.is_disabled('#delete-library-cancel-btn'))
+        print("12 Recent entry kept:", 'Household.dossiary' in await recent_names(page))
+        await page.click('#delete-library-cancel-btn')
+        await page.evaluate("() => window.__DEBUG_persistDb()")
+        await page.wait_for_timeout(300)
+        saved = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
+        print("12 ...and a later save writes it:", saved == 'Unsaved', saved)
+        print("12 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 13. Held-back changes (take-over Cancel) when deleted elsewhere: kept aside, then closed ===
+        busy = {"holder": "other", "deviceName": "iMac", "since": "2026-10-25T09:00:00Z"}
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": busy}, "acquire": "busy", "busyLease": busy})
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Held back', 1])")
+        await page.evaluate("() => { window.__DEBUG_persistDb(); }")
+        await page.wait_for_timeout(300)
+        await page.click('#sync-takeover-cancel-btn')
+        await page.wait_for_timeout(300)
+        print("13 a change held back:", (await page.evaluate("window.__DEBUG_syncState()"))['unsaved'])
+        await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        folders = await kept_aside_folders(page)
+        copy_title = await page.evaluate("""async (name) => {
+            const f = window.__TEST_ROOT._children.get('.kept-aside')._children.get(name)._children.get('library.sqlite');
+            return JSON.parse(await (await f.getFile()).text()).documents[0].title; }""", folders[0]) if folders else None
+        print("13 kept aside first, holding the held-back change:", len(folders) == 1 and copy_title == 'Held back', folders, copy_title)
+        print("13 then closed:", await library_closed(page))
+        print("13 notice names the copy:", 'kept in “.kept-aside/' in await text_of(page, '#sync-deleted-dialog'))
+        print("13 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 14. A state answer without `deleted` (or a 404) never closes the library ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        for _ in range(3):
+            await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: null }")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__SYNC.state = null")   # the fake answers 404
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(300)
+        print("14 still open after ordinary, deleted: null and 404 answers:", not await library_closed(page)
+              and await page.locator('#sync-deleted-dialog').count() == 0)
+        print("14 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 15. Hostile device names shown as text ===
+        evil = '<img src=x onerror=window.__PWNED=1>'
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": {"holder": "other", "deviceName": evil, "since": "2026-10-25T09:00:00Z"}}})
+        await open_delete_from_tools(page)
+        print("15 hostile busy device as text:", evil in await text_of(page, '#delete-library-busy') and await page.locator('#delete-library-body img').count() == 0)
+        await page.click('#delete-library-cancel-btn')
+        await page.evaluate("(e) => { window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: e, deletedAt: '2026-10-25T10:00:00Z' } }; }", evil)
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(400)
+        notice = await text_of(page, '#sync-deleted-dialog')
+        print("15 hostile deletedBy as text:", evil in notice and await page.locator('#sync-deleted-dialog img').count() == 0
+              and not await page.evaluate("!!window.__PWNED"), notice)
+        print("15 JS errors:", errors == [], errors)
         await browser.close()
 
 asyncio.run(main())

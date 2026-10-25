@@ -1206,19 +1206,25 @@ Delete library (`test_delete_library.py` -- a fake `fetch` playing the
 admin API's state and delete routes: a synced delete from Tools (the typed
 name enabling the button, one JSON POST with `takeOver: false`, the library
 closed, the Recent entry gone, the success text in the dialog and on the
-status line, no lease release and no admin call afterwards, header height
-unchanged); another device holding the lease → "Take over and delete"
-posting `takeOver: true` and the `trashed: false` text; a 409 after typing
-offering take over, then 501/503/502/an old service's 404 each keeping the
-dialog open with its reason, then 404 `unknown-library` counted as gone;
+status line, no lease release and no admin call afterwards, the header
+the same height as a one-word, marker-less baseline); another device
+holding the lease → "Take over and delete" posting `takeOver: true` and the
+`trashed: false` text; while holding the lease, a 501 releasing it once and
+saying the library was closed but not deleted (Recent entry kept), a 409
+offering take over, 503/502/an old service's 404 each keeping the dialog
+open with its reason, then 404 `unknown-library` counted as gone; a
+`.kept-aside` write failing (the root's `getDirectoryHandle` patched)
+leaving the library open, sending nothing, the change still saved later;
 Escape blocked while the request runs; no token → the connect hint and the
 devices button; unsynced → Close and forget, no admin call at all, the
 folder named and left on disk; the Recent row's 🗑 asking for read
 permission first and deleting a library that isn't open, and a denied
 permission noted on the row; deleted on another Mac via the state poll,
 with nothing unsaved (no `.kept-aside`) and with an unwritten change (a
-`.kept-aside` copy holding it, named in the notice); German labels; a
-hostile folder name shown as text).
+`.kept-aside` copy holding it, named in the notice) and with a change held
+back by a take-over Cancel (kept aside, then closed); ordinary, `deleted:
+null` and 404 state answers never closing it; German labels; a hostile
+folder name, busy device and `deletedBy` shown as text).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded
 with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping
