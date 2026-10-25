@@ -51,7 +51,7 @@ CLAUDE.md                Imports AGENTS.md
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (107 scripts) + shared
+tests/                   Playwright regression suite (108 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2522,6 +2522,40 @@ this repo's git tags.
   service, and the cdnjs QR request is aborted). The real library was
   checked once by rendering a link and decoding the screenshot with
   OpenCV.
+- **Delete library** (`openDeleteLibraryDialog(handle, {open})`, Tools →
+  `#delete-library-btn`, and the 🗑 `.recent-delete-btn` on each Recent
+  libraries row, which asks for read permission on the stored handle first,
+  like reconnect; spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-25-delete-library-design.md`). The dialog
+  reads `.dossiary-sync.json` (`readSyncLibraryIdOf()`; the open library's
+  `syncLibrary` when it's the one being deleted). **Synced**: needs an admin
+  token (without one it says to connect in iPhone & other devices… and
+  offers that button); the library's name ("Household" for
+  `Household.dossiary`, `libraryDisplayName()`; the folder name works too)
+  must be typed to enable Delete; a `GET …/state` first, and another device
+  holding the lease turns the button into "Take over and delete"
+  (`takeOver: true`). On click the open library is closed first --
+  anything memory holds that isn't on disk is written to `.kept-aside/`
+  inside the folder (`keepAsideBeforeClosing()`), then
+  `resetAll({skipLeaseRelease: true})`, so no release (or any later admin
+  call) goes out for an id the hub is about to forget -- then `POST
+  /admin/libraries/<id>/delete {takeOver}`. 200 `deleted` (with `trashed`
+  true or false) and 404 `unknown-library` (already gone) forget the Recent
+  entry (`forgetRecentLibrary()`, by `isSameEntry()`) and show the outcome in
+  the dialog and on the status line; 409 offers take over; 501 (hub too
+  old), 503, 502, a 404 without `unknown-library` (this Mac's dossiary-sync
+  too old) and no answer keep the dialog open with the reason; a 401 drops
+  the token. `deleteLibraryRunning` blocks closing while the request runs.
+  **Unsynced**: "Close and forget" without typing and without any admin
+  call -- the browser never erases a folder (it can't move one to the
+  Trash), so the result names the folder to trash in Finder. **Deleted
+  elsewhere**: `pollSyncState()` seeing `deleted` in the state calls
+  `syncLibraryDeletedElsewhere()` (after the save, when the poll is a
+  save's confirm): keep aside what memory holds, close any dialog,
+  `resetAll({skipLeaseRelease: true})`, forget the Recent entry, and a
+  notice (`#sync-deleted-dialog`) naming the device and any kept-aside
+  folder. Every name in the dialog is escaped. Tested by
+  `tests/test_delete_library.py`.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios
   `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md`). Two Macs edit
   one library through a Raspberry Pi hub; each Mac's Dossiary Sync hands

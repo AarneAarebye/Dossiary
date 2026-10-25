@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **107
-scripts covering most of the app's actual functionality** (104 of them
+There's a real, runnable Playwright regression suite in `tests/` — **108
+scripts covering most of the app's actual functionality** (105 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1202,6 +1202,23 @@ fingerprint names shown as text; the service going down after connecting
 (toggle, Remove and Show QR code each end in a clear error, nothing stuck
 disabled); an answer in the wrong shape and the failing one of the two
 list requests reported; every call carrying a timeout signal).
+Delete library (`test_delete_library.py` -- a fake `fetch` playing the
+admin API's state and delete routes: a synced delete from Tools (the typed
+name enabling the button, one JSON POST with `takeOver: false`, the library
+closed, the Recent entry gone, the success text in the dialog and on the
+status line, no lease release and no admin call afterwards, header height
+unchanged); another device holding the lease → "Take over and delete"
+posting `takeOver: true` and the `trashed: false` text; a 409 after typing
+offering take over, then 501/503/502/an old service's 404 each keeping the
+dialog open with its reason, then 404 `unknown-library` counted as gone;
+Escape blocked while the request runs; no token → the connect hint and the
+devices button; unsynced → Close and forget, no admin call at all, the
+folder named and left on disk; the Recent row's 🗑 asking for read
+permission first and deleting a library that isn't open, and a denied
+permission noted on the row; deleted on another Mac via the state poll,
+with nothing unsaved (no `.kept-aside`) and with an unwritten change (a
+`.kept-aside` copy holding it, named in the notice); German labels; a
+hostile folder name shown as text).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded
 with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping
