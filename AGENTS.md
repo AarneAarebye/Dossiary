@@ -2558,7 +2558,10 @@ this repo's git tags.
   save's confirm) -- also a late one, after the folder is already in the
   Trash (`trashed: true`, other fields possibly missing), and a lease call
   answering 404 `library-deleted` (`syncLeaseSaysDeleted()`: poll the state,
-  then the same path, with "another Mac" if the state doesn't say). Nothing
+  then the same path, with "another Mac" if the state doesn't say). That 404
+  is a definite answer, not "no answer": `syncLibraryDeletedSeen` makes
+  `persistDb()` hold the write back and `ensureEditLease()` refuse, so
+  nothing is written after it and memory goes to the deleted path as is. Nothing
   unsaved: close any dialog, `resetAll({skipLeaseRelease: true})`, forget
   the Recent entry, and a notice (`#sync-deleted-dialog`) naming the device.
   Something in memory that isn't on disk: kept aside inside the folder first

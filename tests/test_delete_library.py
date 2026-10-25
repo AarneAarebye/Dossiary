@@ -576,4 +576,37 @@ async def main():
         print("19 JS errors (dirty):", errors == [], errors)
         await browser.close()
 
+        # A save that meets the 404: held back, nothing written, then the deleted path (not trashed → kept aside, closed).
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Saved late', 1])")
+        await page.evaluate("""() => { window.__WRITES = 0; const h = window.__TEST_ROOT._children.get('library.sqlite');
+            const orig = h.createWritable.bind(h); h.createWritable = async (...a) => { window.__WRITES++; return orig(...a); }; }""")
+        await page.evaluate("() => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }; }")
+        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
+        print("19 a save meeting the 404 is held back:", saved is False and await page.evaluate("window.__WRITES") == 0)
+        await page.wait_for_timeout(500)
+        folders = await kept_aside_folders(page)
+        copy_title = await page.evaluate("""async (name) => {
+            const f = window.__TEST_ROOT._children.get('.kept-aside')._children.get(name)._children.get('library.sqlite');
+            return JSON.parse(await (await f.getFile()).text()).documents[0].title; }""", folders[0]) if folders else None
+        print("19 ...nothing written to library.sqlite after it:", await page.evaluate("window.__WRITES") == 0)
+        print("19 ...the change kept aside, then closed:", copy_title == 'Saved late' and await library_closed(page), folders, copy_title)
+        print("19 JS errors (save):", errors == [], errors)
+        await browser.close()
+
+        # The same with a trashed folder: held back, then open read-only with the download offer.
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Saved late', 1])")
+        await page.evaluate("""() => { window.__WRITES = 0; const h = window.__TEST_ROOT._children.get('library.sqlite');
+            const orig = h.createWritable.bind(h); h.createWritable = async (...a) => { window.__WRITES++; return orig(...a); }; }""")
+        await page.evaluate("(s) => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = s; }", gone)
+        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
+        await page.wait_for_timeout(500)
+        print("19 trashed: save held back, nothing written:", saved is False and await page.evaluate("window.__WRITES") == 0)
+        print("19 trashed: open read-only with the offer, memory dirty:", not await library_closed(page)
+              and await page.locator('#sync-deleted-download-btn').count() == 1
+              and (await page.evaluate("window.__DEBUG_syncState()"))['dirty'])
+        print("19 JS errors (save, trashed):", errors == [], errors)
+        await browser.close()
+
 asyncio.run(main())

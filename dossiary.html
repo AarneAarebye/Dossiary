@@ -5433,6 +5433,7 @@
   // check it.
   async function persistDb(opts = {}){
     if(syncLibraryGone){ syncRefuseGone(); return false; }   // deleted elsewhere, kept open read-only
+    if(syncLibraryDeletedSeen && syncLibraryDeletedSeen === syncLibrary) return false;   // the deleted path is on its way
     syncPersistsInFlight++;
     let leaseless = false;   // a real write with no lease to be had (see syncWroteWithoutLease)
     let leased = false;      // a real write under a confirmed lease: memory, earlier lease-less writes included, is pushed from it
@@ -5516,6 +5517,9 @@
           leased = syncLease.state === 'holding' || syncLease.state === 'offline';
         }
       }
+      // Deleted on the hub (a lease call said so): hold the write back; memory
+      // stays as it is for the deleted path (keep aside or the download offer).
+      if(syncLibraryDeletedSeen && syncLibraryDeletedSeen === syncLibrary) return false;
       const seq = syncChangeSeq;
       // The version memory is based on, taken with the bytes: the base marker names it.
       const markerLib = syncLibrary, markerRoot = rootDirHandle;
@@ -16484,6 +16488,7 @@
   // on). They differ only after syncDiskIsOurs() took over a newer number without a lease (see there).
   let syncLibrary = null;
   let syncLease = { state: 'none' };    // 'none' | 'holding' | 'offline' | 'disconnected' (+since) | 'other' (+deviceName, since) | 'unconnected' | 'unsynced' (+reason)
+  let syncLibraryDeletedSeen = null;  // the syncLibrary a lease call answered 404 library-deleted for: nothing more is written
   let syncLibraryGone = null;   // {name, deletedBy, keptError} while a deleted library stays open read-only (see syncLibraryDeletedElsewhere())
   let syncUnsavedChanges = false;       // Cancel in the take-over dialog: a real change is held back in memory
   let syncLeasePending = null;          // the acquire in flight; concurrent saves share it (one dialog)
@@ -16590,7 +16595,7 @@
 
   function clearSyncState(){
     stopSyncTimer();
-    syncLibraryGone = null;
+    syncLibraryGone = null; syncLibraryDeletedSeen = null;
     syncLibrary = null;
     syncLoadedHash = null; syncLastWrittenHash = null; syncWroteWithoutLease = false;
     syncReservedDocIds = new Set();
@@ -16811,6 +16816,7 @@
   // as for a save.
   async function ensureEditLease(){
     if(syncLibraryGone){ syncRefuseGone(); return false; }
+    if(syncLibraryDeletedSeen && syncLibraryDeletedSeen === syncLibrary) return false;
     if(syncReadPromise) await syncReadPromise;
     const lib = syncLibrary, root = rootDirHandle;
     if(!lib) return true;
@@ -16827,6 +16833,7 @@
       if(!backingOff){
         const ok = await ensureLease(false);
         if(lib !== syncLibrary || root !== rootDirHandle) return false;
+        if(syncLibraryDeletedSeen === lib) return false;   // the lease call said the library is deleted
         if(!ok){
           const device = syncLease.deviceName || t('syncAnotherMac');
           setStatusLive(() => t('syncNotStartedStatus', { device }), 'err');
@@ -17072,7 +17079,11 @@
     return syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/lease`,
       { method: 'POST', body: { action, takeOver: !!takeOver }, keepalive: !!opts.keepalive, timeoutMs: opts.timeoutMs })
       .then(res => {
-        if(res && res.status === 404 && res.body && res.body.error === 'library-deleted') setTimeout(() => syncLeaseSaysDeleted(lib), 0);
+        if(res && res.status === 404 && res.body && res.body.error === 'library-deleted'){
+          // A definite answer, not "no answer": no write goes out after it.
+          if(lib === syncLibrary) syncLibraryDeletedSeen = lib;
+          setTimeout(() => syncLeaseSaysDeleted(lib), 0);
+        }
         return res;
       });
   }
