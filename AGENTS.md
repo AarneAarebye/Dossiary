@@ -2571,7 +2571,16 @@ this repo's git tags.
   offering "Download unsaved changes" (`db.export()` as `<name> unsaved
   <yyyy-mm-dd hhmm>.sqlite`, a Blob and `<a download>`) and "Close library"
   -- no ✕ or Escape -- so memory is never dropped without the person
-  choosing to. Closing every dialog loses text typed into an open form (memory's
+  choosing to. **Only a tab that saw the library live runs this path**
+  (`syncSeenLive`: an answered state without `deleted`, or an answered lease
+  call, since it opened). A tab whose first answer already says `deleted` --
+  a folder taken back out of the Trash keeps its `.dossiary-sync.json` and
+  meets the service's persisted record -- calls `syncDetachDeleted()`
+  instead: `syncLibrary` = null (no admin calls, lease or marker; saves go
+  straight to disk), the id joins `syncDetachedLibraryIds` so reopening it
+  this session stays local and the Delete dialog takes the unsynced path,
+  the Recent entry stays, the sync file is left alone (it may be shared
+  again), and the status line says `syncLibraryDetachedLocal`. Closing every dialog loses text typed into an open form (memory's
   changes are kept aside), and a running dialog's job finds its library gone. Every name in the dialog is escaped. Tested by
   `tests/test_delete_library.py`.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios

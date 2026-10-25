@@ -69,7 +69,7 @@ DELETED_200 = {"status": 200, "body": {"deleted": {"id": LIB_ID, "name": "Househ
 DELETE_URL = f'http://127.0.0.1:8769/admin/libraries/{LIB_ID}/delete'
 
 
-async def open_app(p, sync, token='admin-tok', sync_file=True, lang=None, open_library=True):
+async def open_app(p, sync, token='admin-tok', sync_file=True, lang=None, open_library=True, live=True):
     browser = await p.chromium.launch()
     context = await browser.new_context(viewport={'width': 1440, 'height': 900}, timezone_id='UTC', locale='en-US')
     page = await context.new_page()
@@ -107,6 +107,11 @@ async def open_app(p, sync, token='admin-tok', sync_file=True, lang=None, open_l
     if open_library:
         await page.click('#open-btn')
         await page.wait_for_timeout(400)
+        if live and sync_file and token:
+            # One ordinary answer first: this tab has seen the library live (a tab that never
+            # did treats a `deleted` answer as a copy opened afterwards -- scenario 20).
+            await page.evaluate("window.__DEBUG_syncNow(6000)")
+            await page.wait_for_timeout(100)
     return browser, page, errors
 
 
@@ -607,6 +612,52 @@ async def main():
               and await page.locator('#sync-deleted-download-btn').count() == 1
               and (await page.evaluate("window.__DEBUG_syncState()"))['dirty'])
         print("19 JS errors (save, trashed):", errors == [], errors)
+        await browser.close()
+
+        # === 20. Opened after deletion (a folder taken back out of the Trash): a local library ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone)}, live=False)
+        await page.evaluate("window.__SYNC.state.deleted.deletedAt = '2026-10-20T10:00:00Z'")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(300)
+        print("20 stays open, no notice:", not await library_closed(page) and await page.locator('#sync-deleted-dialog').count() == 0)
+        status = await text_of(page, '#status')
+        print("20 status line names the date:", status == "“Household” was deleted from your devices on Oct 20, 2026; this copy is now a local library that isn't synced.", status)
+        print("20 Recent entry kept:", 'Household.dossiary' in await recent_names(page))
+        print("20 no sync marker:", not await page.locator('#sync-marker').is_visible())
+        n = len(await admin_calls(page))
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local now', 1])")
+        editing = await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
+        await page.evaluate("window.__DEBUG_syncNow(70000)")
+        await page.wait_for_timeout(300)
+        disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
+        print("20 editing allowed and a save writes to disk:", editing is True and saved is not False and disk == 'Local now', editing, saved, disk)
+        print("20 no admin calls after the first state answer:", (await admin_calls(page))[n:] == [], (await admin_calls(page))[n:])
+        print("20 .dossiary-sync.json left alone:", await page.evaluate("window.__TEST_ROOT._children.has('.dossiary-sync.json')"))
+        await open_delete_from_tools(page)
+        print("20 Delete uses the unsynced path:", (await text_of(page, '#delete-library-confirm-btn')) == 'Close and forget'
+              and (await admin_calls(page))[n:] == [])
+        await page.click('#delete-library-cancel-btn')
+        await page.click('#reload-btn'); await page.wait_for_timeout(300)
+        await page.click('.recent-lib-target'); await page.wait_for_timeout(400)
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.wait_for_timeout(200)
+        print("20 reopened this session: still local, no admin calls:", not await library_closed(page) and (await admin_calls(page))[n:] == [])
+        print("20 JS errors:", errors == [], errors)
+        await browser.close()
+
+        # === 21. Opened after deletion, the first answer a lease 404 library-deleted: local too ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": None, "leaseDeleted": True}, live=False)
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local edit', 1])")
+        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
+        await page.wait_for_timeout(300)
+        disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
+        print("21 stays open as a local library, the save written:", not await library_closed(page) and disk == 'Local edit'
+              and await page.locator('#sync-deleted-dialog').count() == 0, disk)
+        print("21 status line names it local:", "this copy is now a local library that isn't synced." in await text_of(page, '#status'))
+        print("21 Recent entry kept:", 'Household.dossiary' in await recent_names(page))
+        print("21 JS errors:", errors == [], errors)
         await browser.close()
 
 asyncio.run(main())

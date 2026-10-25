@@ -1234,7 +1234,12 @@ kept-aside copy (not trashed) giving the same offer; a lease call answering
 404 `library-deleted` closing a clean tab ("another Mac" when the state
 says nothing) and giving the offer for a dirty one, and a save meeting it
 held back with no write to `library.sqlite` (kept aside then closed, or the
-offer when trashed); German labels; a hostile
+offer when trashed); a tab opened after the deletion (no live answer
+first, `open_app(live=False)`) staying open as a local library -- no notice,
+Recent kept, no marker, editing and a save writing to disk, no admin calls
+after the first answer, the sync file left, Delete taking the unsynced
+path, a reopen this session still local -- also when its first answer is a
+lease 404 (every other scenario first gets one ordinary answer); German labels; a hostile
 folder name, busy device and `deletedBy` shown as text).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded
