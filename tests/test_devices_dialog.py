@@ -429,10 +429,33 @@ async def scenario_pair(p):
     print("countdown:", cd in ('Valid for 0:03', 'Valid for 0:02'), cd)
     print("New code hidden while valid:", not await page.is_visible('#devices-qr-new-btn'))
 
+    # Copy link: copies exactly the QR's link, confirms briefly, shows no link text.
+    await page.evaluate("""() => { window.__COPIED = [];
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async t => { window.__COPIED.push(t); } } }); }""")
+    print("Copy link button visible while valid:", await page.is_visible('#devices-copy-link-btn'))
+    print("...with the hint:", 'send it this link' in await page.inner_text('#devices-copy-link-area'))
+    await page.click('#devices-copy-link-btn')
+    await page.wait_for_timeout(100)
+    print("...copies exactly the pair link:", await page.evaluate("window.__COPIED") == [link])
+    print("...confirms 'Link copied':", await page.inner_text('#devices-link-copied') == 'Link copied')
+    print("...never shows the link as text:", 'dossiary-sync://' not in await page.inner_text('#devices-add-slot'))
+    # Fallback: no async clipboard -> hidden textarea + execCommand('copy').
+    await page.evaluate("""() => { window.__COPIED = [];
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+        document.execCommand = c => { const ta = document.querySelector('textarea'); if(c === 'copy' && ta){ window.__COPIED.push(ta.value); return true; } return false; }; }""")
+    await page.click('#devices-copy-link-btn')
+    await page.wait_for_timeout(100)
+    print("fallback copies the link via textarea:", await page.evaluate("window.__COPIED") == [link]
+          and await page.locator('textarea').count() == 0)
+    await page.wait_for_timeout(2200)
+    print("confirmation disappears:", await page.inner_text('#devices-link-copied') == '')
+    print("link not in localStorage:", not await page.evaluate("Object.values(localStorage).some(v => v.includes('dossiary-sync://'))"))
+
     await page.wait_for_timeout(3500)
     print("expired: says so:", await page.inner_text('#devices-pair-countdown') == 'This code has expired.')
     print("...removes the QR:", await page.locator('#devices-qr svg').count() == 0)
     print("...offers New code:", await page.is_visible('#devices-qr-new-btn'))
+    print("...hides Copy link:", not await page.is_visible('#devices-copy-link-btn'))
 
     await page.evaluate("window.__SYNC.pairExpiresIn = 125")
     await page.click('#devices-qr-new-btn')
