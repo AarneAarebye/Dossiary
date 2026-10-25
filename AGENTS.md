@@ -2593,10 +2593,15 @@ this repo's git tags.
   `renderSyncMarker()` and when Tools opens); spec in dossiary-ios
   `docs/superpowers/specs/2026-10-25-share-library-design.md`). Every synced
   library lives in this Mac's **libraries folder**; a page never learns real
-  paths, so Dossiary keeps a handle to that folder in `dossiary-app-db`'s new
-  `librariesRoot` store (`{id: 'root', handle, root}`; the DB went to version
-  2, the upgrade creates whichever store is missing and keeps
-  `recentLibraries`). `ensureLibrariesRootHandle({slot, isOpen})` uses the
+  paths, so Dossiary keeps a handle to that folder in a database of its own,
+  `dossiary-libraries-root` (version 1, store `librariesRoot`, `{id: 'root',
+  handle, root}`). `dossiary-app-db` deliberately stays at version 1: bumping
+  it would block forever while an older Dossiary tab held the old connection,
+  and an older copy on the shared `file://` origin would then hit a
+  VersionError and show no Recent libraries. A blocked or failing open of the
+  new database rejects (`onblocked`/`onerror`), so the stored folder counts as
+  missing and the chooser appears instead of a hang (a choice that can't be
+  stored is used for that time only). `ensureLibrariesRootHandle({slot, isOpen})` uses the
   stored handle when its permission is (or is again) granted; otherwise the
   slot names the folder to choose (the `root` a `POST
   /admin/libraries-root/check` with a probe that doesn't exist answers) and
@@ -2638,9 +2643,9 @@ this repo's git tags.
   {noTimeout: true})`) shows "Downloading…", and success offers "Open", which
   opens the last path component of `folder` inside the libraries folder
   (`switchLibraryAsking()` + `proceedWithRootDirHandle()`; Recent records it).
-  Errors show under the row. Tested by `tests/test_share_library.py`; the
-  stub's IndexedDB fake gained versions and `objectStoreNames`, and a
-  directory handle's `_granted` makes `queryPermission()` answer granted.
+  Errors show under the row. Tested by `tests/test_share_library.py`; a
+  directory handle's `_granted` in the stub makes `queryPermission()` answer
+  granted.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios
   `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md`). Two Macs edit
   one library through a Raspberry Pi hub; each Mac's Dossiary Sync hands

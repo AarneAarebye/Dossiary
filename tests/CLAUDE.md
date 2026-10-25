@@ -1263,7 +1263,11 @@ opening the devices dialog; in place known up front (read-only name); 409
 already-shared and an unknown code with its status; Get it: the list, the
 uploading one disabled, the chooser under the row, Downloading…, `{}` as
 JSON, Open opening the folder and Recent recording it, errors under the row,
-the section hidden for an empty list and a 404; German labels).
+the section hidden for an empty list and a 404; German labels; an
+IndexedDB spy (`IDB_SPY`) confirming the folder lives in its own
+`dossiary-libraries-root` database at version 1 while `dossiary-app-db` stays
+at version 1 with only `recentLibraries`, and `window.__IDB_FAIL = 'blocked' |
+'error'` showing the chooser instead of a hang, the share going ahead).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded
 with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping

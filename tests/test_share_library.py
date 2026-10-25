@@ -92,6 +92,25 @@ FAKE_SYNC = """
 }
 """ % ROOT_PATH
 
+IDB_SPY = """
+(() => {
+    window.__IDB_OPENS = [];
+    const real = window.indexedDB.open.bind(window.indexedDB);
+    window.indexedDB.open = (name, version) => {
+        window.__IDB_OPENS.push([name, version]);
+        if(name === 'dossiary-libraries-root' && window.__IDB_FAIL){
+            const req = { onsuccess: null, onerror: null, onblocked: null, onupgradeneeded: null, result: undefined, error: null };
+            setTimeout(() => {
+                if(window.__IDB_FAIL === 'blocked'){ if(req.onblocked) req.onblocked({ target: req }); }
+                else { req.error = new DOMException('Simulated failure', 'UnknownError'); if(req.onerror) req.onerror({ target: req }); }
+            }, 0);
+            return req;
+        }
+        return real(name, version);
+    };
+})();
+"""
+
 TOKEN_KEY = 'dossiary_sync_admin_token'
 SEED = {
     "documents": [{
@@ -127,6 +146,9 @@ async def open_app(p, sync, token='admin-tok', lang=None, in_place=True, extra_f
     if lang:
         await page.add_init_script(f"localStorage.setItem('dossiary_lang', '{lang}')")
     await page.add_init_script(open('stub_studio2.js').read())
+    # Log every IndexedDB open; window.__IDB_FAIL = 'blocked' | 'error' makes
+    # opens of the libraries-folder database fail that way.
+    await page.add_init_script(IDB_SPY)
     await page.goto(f"file://{APP_PATH}")
     await page.wait_for_timeout(200)
     if token:
@@ -152,7 +174,8 @@ async def open_app(p, sync, token='admin-tok', lang=None, in_place=True, extra_f
     await page.wait_for_timeout(400)
     if store_root:
         await page.evaluate("""async (root) => {
-            const req = indexedDB.open('dossiary-app-db', 2);
+            const req = indexedDB.open('dossiary-libraries-root', 1);
+            req.onupgradeneeded = () => req.result.createObjectStore('librariesRoot', { keyPath: 'id' });
             const idb = await new Promise(r => { req.onsuccess = () => r(req.result); });
             await new Promise(r => { const q = idb.transaction('librariesRoot', 'readwrite').objectStore('librariesRoot').put({ id: 'root', handle: window.__LIB_ROOT, root }); q.onsuccess = r; });
         }""", ROOT_PATH)
@@ -174,7 +197,7 @@ async def recent_names(page):
 
 
 async def stored_root(page):
-    return await page.evaluate("() => { const s = window.__FAKE_IDB_DATABASES.get('dossiary-app-db')._stores.get('librariesRoot'); const e = s && s.map.get('root'); return e ? { name: e.handle.name, root: e.root } : null; }")
+    return await page.evaluate("() => { const d = window.__FAKE_IDB_DATABASES.get('dossiary-libraries-root'); const s = d && d._stores.get('librariesRoot'); const e = s && s.map.get('root'); return e ? { name: e.handle.name, root: e.root } : null; }")
 
 
 async def children(page, expr):
@@ -243,6 +266,10 @@ async def main():
         print("1 right folder: probe found by the check:", probes[-1]['where'] == ['root'])
         print("1 ...and removed again:", not any(n.startswith('.dossiary-probe-') for n in await children(page, 'window.__LIB_ROOT')))
         print("1 right folder stored with its path:", await stored_root(page) == {"name": "Dossiary", "root": ROOT_PATH})
+        opens = await page.evaluate("window.__IDB_OPENS")
+        print("1 the folder lives in its own database, version 1:", ['dossiary-libraries-root', 1] in opens and all(v == 1 for n, v in opens if n == 'dossiary-libraries-root'))
+        print("1 Recent libraries still opens dossiary-app-db at version 1:", all(v == 1 for n, v in opens if n == 'dossiary-app-db') and any(n == 'dossiary-app-db' for n, v in opens))
+        print("1 dossiary-app-db holds only recentLibraries:", await page.evaluate("[...window.__FAKE_IDB_DATABASES.get('dossiary-app-db')._stores.keys()]") == ['recentLibraries'])
         shares = await calls(page, SHARE_URL)
         print("1 one share POST {folder, phones: []} as JSON:", len(shares) == 1 and shares[0]['body'] == {"folder": "Tax 2026.dossiary", "phones": []} and shares[0]['contentType'] == 'application/json', shares)
         print("1 library.sqlite was saved before the share call:", await page.evaluate("window.__SHARED_DB !== null"))
@@ -382,7 +409,8 @@ async def main():
         await page.evaluate("([k, t]) => localStorage.setItem(k, t)", [TOKEN_KEY, 'admin-tok'])
         await page.evaluate("window.__SYNC.shares = [{status: 409, body: {error: 'already-shared'}}]")
         await page.evaluate("""async (root) => {
-            const req = indexedDB.open('dossiary-app-db', 2);
+            const req = indexedDB.open('dossiary-libraries-root', 1);
+            req.onupgradeneeded = () => req.result.createObjectStore('librariesRoot', { keyPath: 'id' });
             const idb = await new Promise(r => { req.onsuccess = () => r(req.result); });
             await new Promise(r => { const q = idb.transaction('librariesRoot', 'readwrite').objectStore('librariesRoot').put({ id: 'root', handle: window.__LIB_ROOT, root }); q.onsuccess = r; });
             window.__LIB_ROOT._granted = true;
@@ -466,6 +494,24 @@ async def main():
         print("7 German Get it section:", 'Auf dem Pi, nicht auf diesem Mac' in slot and 'Holen' in slot, slot)
         print("7 no errors:", errors == [], errors)
         await browser.close()
+
+        # === 8. The libraries-folder database blocked or failing: the chooser, never a hang ===
+        for mode in ('blocked', 'error'):
+            browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES}, store_root=True)
+            await page.evaluate(f"window.__IDB_FAIL = '{mode}'")
+            await open_share(page)
+            print(f"8 {mode}: the dialog still opens:", await page.locator('#share-library-share-btn').count() == 1)
+            await page.click('#share-library-share-btn')
+            await page.wait_for_timeout(400)
+            print(f"8 {mode}: falls back to the chooser:", f"Choose this Mac's libraries folder: {ROOT_PATH}." in await text_of(page, '#share-library-root-slot'))
+            await page.evaluate("window.__NEXT_PICKED_DIR = window.__LIB_ROOT")
+            await page.click('#share-library-root-slot .libraries-root-choose-btn')
+            await page.wait_for_timeout(800)
+            shares = await calls(page, SHARE_URL)
+            print(f"8 {mode}: the chosen folder is used anyway and the share goes ahead:", len(shares) == 1 and await page.evaluate("window.__DEBUG_syncState().version") == 0)
+            print(f"8 {mode}: Recent libraries unaffected:", 'Tax 2026.dossiary' in await recent_names(page))
+            print(f"8 {mode}: no errors:", errors == [], errors)
+            await browser.close()
 
 
 asyncio.run(main())

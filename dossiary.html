@@ -4631,25 +4631,36 @@
   const RECENT_LIBRARIES_STORE = 'recentLibraries';
   const MAX_RECENT_LIBRARIES = 5;
 
-  // Version 2 added the librariesRoot store (this Mac's libraries folder,
-  // see ensureLibrariesRootHandle()); recentLibraries is kept as it is.
-  const LIBRARIES_ROOT_STORE = 'librariesRoot';
-  const APP_DB_VERSION = 2;
   function openRecentLibrariesDb(){
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(RECENT_LIBRARIES_DB_NAME, APP_DB_VERSION);
+      const req = indexedDB.open(RECENT_LIBRARIES_DB_NAME, 1);
       req.onupgradeneeded = () => {
-        const idb = req.result;
-        const has = (n) => idb.objectStoreNames && idb.objectStoreNames.contains(n);
-        if(!has(RECENT_LIBRARIES_STORE)) idb.createObjectStore(RECENT_LIBRARIES_STORE, { keyPath: 'id', autoIncrement: true });
-        if(!has(LIBRARIES_ROOT_STORE)) idb.createObjectStore(LIBRARIES_ROOT_STORE, { keyPath: 'id' });
+        req.result.createObjectStore(RECENT_LIBRARIES_STORE, { keyPath: 'id', autoIncrement: true });
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  // This Mac's libraries folder (see ensureLibrariesRootHandle()) lives in a
+  // database of its own, so dossiary-app-db stays at version 1: an older
+  // Dossiary copy on the same file:// origin keeps reading Recent libraries,
+  // and no upgrade can be blocked by one of its tabs. An open that is
+  // blocked or fails rejects, and the caller falls back to the chooser.
+  const LIBRARIES_ROOT_DB_NAME = 'dossiary-libraries-root';
+  const LIBRARIES_ROOT_STORE = 'librariesRoot';
+  function openLibrariesRootDb(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(LIBRARIES_ROOT_DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore(LIBRARIES_ROOT_STORE, { keyPath: 'id' });
       };
       req.onsuccess = () => {
-        // A newer Dossiary in another tab may need to upgrade: let it.
         try{ req.result.onversionchange = () => req.result.close(); }catch(e){ /* best effort */ }
         resolve(req.result);
       };
-      req.onerror = () => reject(req.error);
+      req.onerror = () => reject(req.error || new Error('IndexedDB open failed'));
+      req.onblocked = () => reject(new Error('IndexedDB open blocked'));
     });
   }
 
@@ -4657,7 +4668,7 @@
   // absolute path Dossiary Sync named for it), or null.
   async function readStoredLibrariesRoot(){
     try{
-      const idb = await openRecentLibrariesDb();
+      const idb = await openLibrariesRootDb();
       const entry = await new Promise((resolve, reject) => {
         const req = idb.transaction(LIBRARIES_ROOT_STORE, 'readonly').objectStore(LIBRARIES_ROOT_STORE).get('root');
         req.onsuccess = () => resolve(req.result || null);
@@ -4667,7 +4678,7 @@
     }catch(e){ return null; }
   }
   async function storeLibrariesRoot(handle, root){
-    const idb = await openRecentLibrariesDb();
+    const idb = await openLibrariesRootDb();
     await new Promise((resolve, reject) => {
       const req = idb.transaction(LIBRARIES_ROOT_STORE, 'readwrite').objectStore(LIBRARIES_ROOT_STORE).put({ id: 'root', handle, root });
       req.onsuccess = () => resolve();

@@ -144,9 +144,7 @@ class FakeIDBObjectStore {
   delete(id) { return this._run(() => { this._state.map.delete(id); }); }
 }
 class FakeIDBDatabase {
-  constructor() { this._stores = new Map(); this.version = 0; } // name -> { map, keyPath, nextId }
-  get objectStoreNames() { const stores = this._stores; return { contains: (n) => stores.has(n), get length() { return stores.size; } }; }
-  close() {}
+  constructor() { this._stores = new Map(); } // name -> { map, keyPath, nextId }
   createObjectStore(name, opts) {
     this._stores.set(name, { map: new Map(), keyPath: (opts && opts.keyPath) || 'id', nextId: 1 });
     return { name };
@@ -175,21 +173,14 @@ Object.defineProperty(window, 'indexedDB', {
   configurable: true,
   writable: true,
   value: {
-    // A higher version than the stored one upgrades (like the real API); a
-    // lower one is simply opened (the real API would refuse it -- tests read
-    // the app's stores with version 1).
-    open(name, version) {
+    open(name) {
       const req = new FakeIDBRequest();
       queueMicrotask(() => {
         let db = window.__FAKE_IDB_DATABASES.get(name);
         const isNew = !db;
         if (isNew) { db = new FakeIDBDatabase(); window.__FAKE_IDB_DATABASES.set(name, db); }
         req.result = db;
-        const wanted = version || 1;
-        const oldVersion = db.version;
-        const upgrade = isNew || wanted > oldVersion;
-        if (wanted > oldVersion) db.version = wanted;
-        if (upgrade && req.onupgradeneeded) req.onupgradeneeded({ target: req, oldVersion });
+        if (isNew && req.onupgradeneeded) req.onupgradeneeded({ target: req });
         if (req.onsuccess) req.onsuccess({ target: req });
       });
       return req;
