@@ -13,8 +13,8 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-There's a real, runnable Playwright regression suite in `tests/` — **108
-scripts covering most of the app's actual functionality** (105 of them
+There's a real, runnable Playwright regression suite in `tests/` — **109
+scripts covering most of the app's actual functionality** (106 of them
 Playwright-driven; three aren't — see their own descriptions: `test_i18n_coverage.py`
 is a plain static check with no browser involved. `test_user_guides.py` is
 also a static check: every User Guide's images exist, every guide links all
@@ -1244,6 +1244,26 @@ deleted path), while a first answer in the grace period (deleted, not
 trashed) closes with the notice, keeping an unwritten change aside first
 (every other scenario first gets one ordinary answer); German labels; a hostile
 folder name, busy device and `deletedBy` shown as text).
+Share this library and Get it (`test_share_library.py` -- a fake `fetch`
+playing the Mac's check, share, state, available and get routes, and a fake
+libraries folder `window.__LIB_ROOT`: the Tools item only for an unsynced
+library; phones only, none ticked; no stored folder → the chooser naming the
+root from a check with a probe that doesn't exist; a wrong folder refused
+(probe written there, then removed, nothing stored); the right one stored
+with its path; in place: one JSON share `{folder, phones: []}` after
+`library.sqlite` was saved, no copy, reopened synced, the status line, the
+marker "uploading…" until the state stops saying so, the header height
+unchanged, no Share item afterwards; from elsewhere with the stored folder
+(no picker): the numbered " 2" copy with the ticked phone, every file but
+the sync bookkeeping and clutter, `library.sqlite` from memory, the original
+unchanged, Recent replaced, the hub's name and the note; Stop (Escape
+blocked meanwhile) and an unreadable file removing the copy; a 503 after the
+copy keeping it and Try again posting the same copy; not connected → Connect
+opening the devices dialog; in place known up front (read-only name); 409
+already-shared and an unknown code with its status; Get it: the list, the
+uploading one disabled, the chooser under the row, Downloading…, `{}` as
+JSON, Open opening the folder and Recent recording it, errors under the row,
+the section hidden for an empty list and a 404; German labels).
 The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
 Sync's lease endpoint per scenario, a stored admin token, a library seeded
 with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping

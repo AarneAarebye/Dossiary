@@ -85,7 +85,8 @@ class FakeDirHandle {
     }
     return null;
   }
-  async queryPermission(desc) { return this._forceDenied ? 'denied' : 'prompt'; }
+  // _granted: a test's stand-in for a stored handle whose permission is still granted.
+  async queryPermission(desc) { return this._forceDenied ? 'denied' : (this._granted ? 'granted' : 'prompt'); }
   async requestPermission(desc) {
     if (this._forceThrow) { const e = new Error('Simulated failure'); e.name = this._forceThrow; throw e; }
     return this._forceDenied ? 'denied' : 'granted';
@@ -143,7 +144,9 @@ class FakeIDBObjectStore {
   delete(id) { return this._run(() => { this._state.map.delete(id); }); }
 }
 class FakeIDBDatabase {
-  constructor() { this._stores = new Map(); } // name -> { map, keyPath, nextId }
+  constructor() { this._stores = new Map(); this.version = 0; } // name -> { map, keyPath, nextId }
+  get objectStoreNames() { const stores = this._stores; return { contains: (n) => stores.has(n), get length() { return stores.size; } }; }
+  close() {}
   createObjectStore(name, opts) {
     this._stores.set(name, { map: new Map(), keyPath: (opts && opts.keyPath) || 'id', nextId: 1 });
     return { name };
@@ -172,14 +175,21 @@ Object.defineProperty(window, 'indexedDB', {
   configurable: true,
   writable: true,
   value: {
-    open(name) {
+    // A higher version than the stored one upgrades (like the real API); a
+    // lower one is simply opened (the real API would refuse it -- tests read
+    // the app's stores with version 1).
+    open(name, version) {
       const req = new FakeIDBRequest();
       queueMicrotask(() => {
         let db = window.__FAKE_IDB_DATABASES.get(name);
         const isNew = !db;
         if (isNew) { db = new FakeIDBDatabase(); window.__FAKE_IDB_DATABASES.set(name, db); }
         req.result = db;
-        if (isNew && req.onupgradeneeded) req.onupgradeneeded({ target: req });
+        const wanted = version || 1;
+        const oldVersion = db.version;
+        const upgrade = isNew || wanted > oldVersion;
+        if (wanted > oldVersion) db.version = wanted;
+        if (upgrade && req.onupgradeneeded) req.onupgradeneeded({ target: req, oldVersion });
         if (req.onsuccess) req.onsuccess({ target: req });
       });
       return req;

@@ -51,7 +51,7 @@ CLAUDE.md                Imports AGENTS.md
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
-tests/                   Playwright regression suite (108 scripts) + shared
+tests/                   Playwright regression suite (109 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -2586,6 +2586,61 @@ this repo's git tags.
   again), and the status line says `syncLibraryDetachedLocal`. Closing every dialog loses text typed into an open form (memory's
   changes are kept aside), and a running dialog's job finds its library gone. Every name in the dialog is escaped. Tested by
   `tests/test_delete_library.py`.
+- **Share this library and Get it** (`openShareLibraryDialog()`,
+  `ensureLibrariesRootHandle()`, `copyLibraryInto()`, `loadDevicesAvailable()`,
+  `getLibraryHere()`; Tools → `#share-library-btn`, shown only for an open
+  library without `.dossiary-sync.json` (`updateShareLibraryItem()`, run from
+  `renderSyncMarker()` and when Tools opens); spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-25-share-library-design.md`). Every synced
+  library lives in this Mac's **libraries folder**; a page never learns real
+  paths, so Dossiary keeps a handle to that folder in `dossiary-app-db`'s new
+  `librariesRoot` store (`{id: 'root', handle, root}`; the DB went to version
+  2, the upgrade creates whichever store is missing and keeps
+  `recentLibraries`). `ensureLibrariesRootHandle({slot, isOpen})` uses the
+  stored handle when its permission is (or is again) granted; otherwise the
+  slot names the folder to choose (the `root` a `POST
+  /admin/libraries-root/check` with a probe that doesn't exist answers) and
+  "Choose folder…" picks it: a `.dossiary-probe-<uuid>` file is written into
+  the choice, the check is asked, and the probe is removed again either way;
+  `ok: false` → "That isn't {root}. Choose that folder." and nothing stored.
+  **Share**: without an admin token the dialog explains and offers Connect
+  (the devices dialog); otherwise a name (the folder name without
+  `.dossiary`, read-only once the library is known to be in place) and one
+  unticked checkbox per paired phone (`GET /admin/devices`, role `phone`).
+  Share: the libraries folder, then `persistDb()` (the share route hashes
+  `library.sqlite` at call time -- deliberately after the folder choice, so
+  the save sits right before the call), then either in place
+  (`root.resolve(rootDirHandle)` is one step long) → `POST
+  /admin/libraries/share {folder, phones}`, or a copy into a new
+  `<Name>.dossiary` (numbered " 2", … when taken) by `copyLibraryInto()` --
+  Back up's copier, pulled out of it unchanged: `library.sqlite` from
+  `db.export()`, every other file from `listLibraryFiles()` (no sync
+  bookkeeping, no `.DS_Store`/`._*`), 4 at a time -- with progress and Stop;
+  Stop or the first unreadable/unwritable file removes the copy and says
+  which file and why. A share that fails after the copy keeps it, says so,
+  and the button becomes "Try again" (the same copy, posted again). Success:
+  `resetAll()` + `proceedWithRootDirHandle()` on the shared folder (so the new
+  sync file is read), a copy replaces the original in Recent libraries
+  (`forgetRecentLibrary()` first, the open records the copy), the status line
+  "Shared “<hub's name>” — uploading to the Pi.", and for a copy a notice
+  naming `<root>/<Name>.dossiary` and the original (never touched). The marker
+  reads "uploading…" while `GET …/state` says `uploading: true`
+  (`renderSyncMarker()`, states none/holding/offline/unsynced). Error codes
+  are mapped (already-shared, not-a-library, unknown-device, hub-*; a 404
+  without a known code = an older Dossiary Sync); any other is shown with its
+  code and status. `shareLibraryRunning` blocks closing while saving, copying
+  or sharing. **Get it**: the devices dialog's `#devices-available-slot` lists
+  `GET /admin/libraries/available` under "On the Pi, not on this Mac"
+  (hidden when empty or not OK -- an older service's 404, an origin Mac's
+  `[]`); "Get it" is disabled with "being uploaded" while `available` is
+  false; a click makes sure of the libraries folder (the chooser opens under
+  the row), then `POST …/<id>/get {}` with no timeout (`syncAdminFetch(...,
+  {noTimeout: true})`) shows "Downloading…", and success offers "Open", which
+  opens the last path component of `folder` inside the libraries folder
+  (`switchLibraryAsking()` + `proceedWithRootDirHandle()`; Recent records it).
+  Errors show under the row. Tested by `tests/test_share_library.py`; the
+  stub's IndexedDB fake gained versions and `objectStoreNames`, and a
+  directory handle's `_granted` makes `queryPermission()` answer granted.
 - **The sync lease (two-Mac editing, part 2)** (spec in dossiary-ios
   `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md`). Two Macs edit
   one library through a Raspberry Pi hub; each Mac's Dossiary Sync hands

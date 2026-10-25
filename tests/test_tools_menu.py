@@ -24,7 +24,7 @@ SEED = {
     "tags": [], "document_tags": [],
 }
 
-MENU_IDS = ['manage-fields-btn', 'manage-collections-btn', 'manage-values-btn', 'library-check-btn', 'storage-stats-btn', 'import-folder-btn', 'backup-btn', 'devices-btn', 'delete-library-btn', 'toolbar-buttons-btn']
+MENU_IDS = ['manage-fields-btn', 'manage-collections-btn', 'manage-values-btn', 'library-check-btn', 'storage-stats-btn', 'import-folder-btn', 'backup-btn', 'devices-btn', 'share-library-btn', 'delete-library-btn', 'toolbar-buttons-btn']
 TOOLBAR_IDS = ['inbox-check-btn', 'check-reminders-btn', 'scan-btn', 'add-btn', 'detail-panel-toggle-btn', 'columns-btn', 'tools-btn']
 
 async def main():

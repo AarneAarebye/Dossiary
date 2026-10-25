@@ -638,6 +638,9 @@
   #recent-libraries .review-queue-actions{ display:flex; gap:2px; }
   .delete-library-dialog input[type=text]{ width:100%; box-sizing:border-box; }
   .delete-library-error{ font-size:12.5px; color:var(--red); line-height:1.5; margin:8px 0 0; }
+  .share-library-error, .libraries-root-error{ font-size:12.5px; color:var(--red); line-height:1.5; margin:8px 0 0; }
+  .libraries-root-chooser{ margin:8px 0; }
+  #share-library-phones label{ display:flex; text-transform:none; letter-spacing:normal; font-size:12px; margin-bottom:4px; }
   .delete-library-busy{ font-size:12.5px; color:var(--amber); line-height:1.5; margin:0 0 12px; }
 
   /* modal shared */
@@ -969,6 +972,7 @@
             <button type="button" class="tools-menu-item" role="menuitem" id="import-folder-btn" data-i18n="toolbarImportFolder">📂 Import a folder…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="backup-btn" data-i18n="toolbarBackup">🗄 Back up library…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="devices-btn" data-i18n="toolbarDevices">📱 iPhone &amp; other devices…</button>
+            <button type="button" class="tools-menu-item" role="menuitem" id="share-library-btn" data-i18n="toolbarShareLibrary" style="display:none;">⇪ Share this library…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="delete-library-btn" data-i18n="toolbarDeleteLibrary">🗑 Delete this library…</button>
             <button type="button" class="tools-menu-item" role="menuitem" id="toolbar-buttons-btn" data-i18n="toolbarButtonsMenu">👁 Toolbar buttons…</button>
           </div>
@@ -1188,6 +1192,7 @@
       syncLibraryDetachedLocal: "“{name}” was deleted from your devices on {date}; this copy is now a local library that isn't synced.",
       syncLibraryDeletedUnsaved: "“{name}” was deleted on {device}. Changes made here since the last save weren't saved.", syncDeletedDownloadBtn: "Download unsaved changes", syncDeletedCloseBtn: "Close library", syncDeletedDownloaded: "Downloaded “{file}”.",
       deleteLibraryClosedNotDeleted: "“{name}” was closed but not deleted. Open it again from Recent libraries.",
+      toolbarShareLibrary: "⇪ Share this library…", shareLibraryTitle: "Share this library", shareLibraryConnectText: "Sharing a library goes through Dossiary Sync. Connect Dossiary to it first.", shareLibraryIntro: "Dossiary Sync uploads this library to the Raspberry Pi. Your other Mac can then get it, and the iPhones and iPads you tick can see it.", shareLibraryNameLabel: "Name", shareLibraryCopyHint: "Unless it's already in this Mac's libraries folder, Dossiary first copies it there under this name. The original stays as it is.", shareLibraryInPlaceHint: "This library is already in this Mac's libraries folder and is shared as it is.", shareLibraryPhonesLabel: "iPhones and iPads that may see it", shareLibraryNoPhones: "No iPhone or iPad is paired yet. You can allow one later in iPhone & other devices….", shareLibraryShareBtn: "Share", shareLibraryStopBtn: "Stop", shareLibraryTryAgainBtn: "Try again", shareLibrarySaving: "Saving…", shareLibrarySaveFailed: "Couldn't save the library first: {error}", shareLibraryListing: "Listing files…", shareLibraryCopying: "Copying to “{folder}”… {done} of {total}", shareLibrarySharing: "Sharing…", shareLibraryStopped: "Stopped. The copy was removed; nothing was shared.", shareLibraryCopyFailed: "{error} The copy was removed; nothing was shared.", shareLibraryCopyKept: "The copy “{folder}” was kept but isn't shared yet. Try again to share it.", shareLibraryAlreadyShared: "This library is already shared.", shareLibraryNotALibrary: "Dossiary Sync didn't find this library in {root}.", shareLibraryUnknownDevice: "One of the ticked devices is no longer paired. Close this dialog and open it again.", shareLibraryFailedCode: "Sharing failed: {code} ({status}).", shareLibraryDone: "Shared “{name}” — uploading to the Pi.", shareLibraryOriginalNote: "Dossiary now uses {path}. The original at {original} is no longer used — once you've checked the shared copy, you can move it to the Trash.", librariesRootChecking: "Asking Dossiary Sync for the libraries folder…", librariesRootChooseText: "Choose this Mac's libraries folder: {root}. Dossiary asks for it only once.", librariesRootChooseBtn: "Choose folder…", librariesRootWrong: "That isn't {root}. Choose that folder.", librariesRootCouldNotCheck: "Couldn't check that folder: {error}", syncMarkerUploading: "uploading…", syncMarkerUploadingTitle: "Dossiary Sync is uploading this library to the Raspberry Pi.", devicesAvailableHeading: "On the Pi, not on this Mac", devicesGetIt: "Get it", devicesBeingUploaded: "being uploaded", devicesDownloading: "Downloading…", devicesOpenLibrary: "Open", devicesGotIt: "“{name}” is now on this Mac.", devicesGetNotReady: "It hasn't finished uploading yet. Try again in a moment.", devicesGetAlreadyHere: "This Mac already has it.", devicesGetUnknown: "The Pi no longer has it.", devicesGetFailedCode: "Couldn't get it: {code} ({status}).", devicesOpenFailed: "Couldn't find “{folder}” in the libraries folder.",
       syncMarkerDisconnected: "disconnected", syncMarkerDisconnectedTitle: "This library works on this Mac only. Nothing is sent to or received from the Raspberry Pi until you reconnect in Tools › iPhone & other devices…", syncMarkerEditing: "✎ editing", syncMarkerEditingTitle: "This Mac is editing this library. The other Mac waits until it is free again.", syncMarkerEditingOffline: "connected · offline", syncMarkerEditingOfflineTitle: "The Raspberry Pi can't be reached. Changes are saved on this Mac and sent once it can be reached again.", syncMarkerEditingOn: "editing on {device}", syncMarkerEditingOnTitle: "Your next change asks whether to take over.", syncMarkerNotConnected: "not connected", syncMarkerNotConnectedTitle: "Click to connect Dossiary Sync.", syncMarkerNotSynced: "not synced yet", syncMarkerUnsaved: "unsaved changes", syncMarkerUnsavedTitle: "Being edited on {device}. Your change stays in this window; your next change asks again.", syncAnotherMac: "another Mac", syncTakeOverTitle: "Being edited on another Mac", syncTakeOverText: "Being edited on {device} since {time}.", syncTakeOverTextNoTime: "Being edited on {device}.", syncTakeOverHint: "Take over to save your change here; {device} then stops editing. Cancel keeps your change in this window, unsaved, and your next change asks again.", syncTakeOverBtn: "Take over",
       syncTookOverStatus: "{device} took over editing this library.", syncKeptAside: "Changes made on this Mac on {date} couldn't be combined with {device}'s. They're kept safe and will be merged by a later update.", syncNotSavedStatus: "Not saved: {device} is editing this library. Your change stays in this window; your next change asks again.", syncDiscardTitle: "Discard the unsaved change?", syncDiscardText: "A change in this window isn't saved yet, because {device} is editing this library. Switching library discards it.", syncDiscardBtn: "Switch anyway",
       syncNotStartedStatus: "Not started: {device} is editing this library.", syncKeptAsideHereTitle: "Change not saved", syncKeptAsideHere: "Your change couldn't be saved: {device} changed this library meanwhile. It's kept safe in {folder} — please make it again.", syncKeptAsideFailed: "Your change couldn't be saved: {device} changed this library meanwhile, and keeping it aside failed ({error}). It stays in this window, unsaved.", syncNoticeOk: "OK", syncKeptAsideQuiet: "Loading {device}'s newer version of this library. What this window hadn't saved yet is kept in {folder}, just in case.", syncFlowKeptAside: "Part of this couldn't be saved: {device} changed this library meanwhile. It's kept safe in {folder} — please check and redo what's missing.", syncHeldBackSavedStatus: "Saved: the change waiting in this window is in the library now.", syncDocIdTakenError: "This library changed on another Mac while the file was being added. Please add it again.",
@@ -1420,6 +1425,7 @@
       syncLibraryDetachedLocal: "«{name}» se eliminó de sus dispositivos el {date}; esta copia es ahora una biblioteca local que no se sincroniza.",
       syncLibraryDeletedUnsaved: "«{name}» se eliminó en {device}. Los cambios hechos aquí desde la última vez que se guardó no se guardaron.", syncDeletedDownloadBtn: "Descargar los cambios no guardados", syncDeletedCloseBtn: "Cerrar la biblioteca", syncDeletedDownloaded: "Se descargó «{file}».",
       deleteLibraryClosedNotDeleted: "«{name}» se cerró, pero no se eliminó. Vuelva a abrirla desde Bibliotecas recientes.",
+      toolbarShareLibrary: "⇪ Compartir esta biblioteca…", shareLibraryTitle: "Compartir esta biblioteca", shareLibraryConnectText: "Compartir una biblioteca pasa por Dossiary Sync. Conecte primero Dossiary con él.", shareLibraryIntro: "Dossiary Sync sube esta biblioteca a la Raspberry Pi. Su otro Mac podrá obtenerla, y los iPhone y iPad que marque podrán verla.", shareLibraryNameLabel: "Nombre", shareLibraryCopyHint: "Si no está ya en la carpeta de bibliotecas de este Mac, Dossiary primero la copia allí con este nombre. El original queda como está.", shareLibraryInPlaceHint: "Esta biblioteca ya está en la carpeta de bibliotecas de este Mac y se comparte tal como está.", shareLibraryPhonesLabel: "iPhone y iPad que pueden verla", shareLibraryNoPhones: "Aún no hay ningún iPhone o iPad emparejado. Puede permitir uno más tarde en iPhone y otros dispositivos….", shareLibraryShareBtn: "Compartir", shareLibraryStopBtn: "Detener", shareLibraryTryAgainBtn: "Reintentar", shareLibrarySaving: "Guardando…", shareLibrarySaveFailed: "No se pudo guardar antes la biblioteca: {error}", shareLibraryListing: "Listando archivos…", shareLibraryCopying: "Copiando en «{folder}»… {done} de {total}", shareLibrarySharing: "Compartiendo…", shareLibraryStopped: "Detenido. Se eliminó la copia; no se compartió nada.", shareLibraryCopyFailed: "{error} Se eliminó la copia; no se compartió nada.", shareLibraryCopyKept: "Se conservó la copia «{folder}», pero aún no está compartida. Vuelva a intentarlo para compartirla.", shareLibraryAlreadyShared: "Esta biblioteca ya está compartida.", shareLibraryNotALibrary: "Dossiary Sync no encontró esta biblioteca en {root}.", shareLibraryUnknownDevice: "Uno de los dispositivos marcados ya no está emparejado. Cierre este cuadro de diálogo y vuelva a abrirlo.", shareLibraryFailedCode: "No se pudo compartir: {code} ({status}).", shareLibraryDone: "«{name}» compartida: subiéndose a la Pi.", shareLibraryOriginalNote: "Dossiary usa ahora {path}. El original en {original} ya no se usa; cuando haya comprobado la copia compartida, puede moverlo a la Papelera.", librariesRootChecking: "Preguntando a Dossiary Sync por la carpeta de bibliotecas…", librariesRootChooseText: "Elija la carpeta de bibliotecas de este Mac: {root}. Dossiary la pide solo una vez.", librariesRootChooseBtn: "Elegir carpeta…", librariesRootWrong: "Esa no es {root}. Elija esa carpeta.", librariesRootCouldNotCheck: "No se pudo comprobar esa carpeta: {error}", syncMarkerUploading: "subiendo…", syncMarkerUploadingTitle: "Dossiary Sync está subiendo esta biblioteca a la Raspberry Pi.", devicesAvailableHeading: "En la Pi, no en este Mac", devicesGetIt: "Obtener", devicesBeingUploaded: "subiéndose", devicesDownloading: "Descargando…", devicesOpenLibrary: "Abrir", devicesGotIt: "«{name}» ya está en este Mac.", devicesGetNotReady: "Aún no ha terminado de subirse. Vuelva a intentarlo en un momento.", devicesGetAlreadyHere: "Este Mac ya la tiene.", devicesGetUnknown: "La Pi ya no la tiene.", devicesGetFailedCode: "No se pudo obtener: {code} ({status}).", devicesOpenFailed: "No se encontró «{folder}» en la carpeta de bibliotecas.",
       syncMarkerDisconnected: "desconectada", syncMarkerDisconnectedTitle: "Esta biblioteca solo funciona en este Mac. No se envía ni se recibe nada de la Raspberry Pi hasta que vuelva a conectarla en Herramientas › iPhone y otros dispositivos…", syncMarkerEditing: "✎ editando", syncMarkerEditingTitle: "Este Mac está editando esta biblioteca. El otro Mac espera hasta que vuelva a quedar libre.", syncMarkerEditingOffline: "conectada · sin conexión", syncMarkerEditingOfflineTitle: "No se puede conectar con la Raspberry Pi. Los cambios se guardan en este Mac y se envían cuando vuelva a estar disponible.", syncMarkerEditingOn: "editando en {device}", syncMarkerEditingOnTitle: "Su próximo cambio le preguntará si desea tomar el control.", syncMarkerNotConnected: "no conectado", syncMarkerNotConnectedTitle: "Haga clic para conectar Dossiary Sync.", syncMarkerNotSynced: "aún no sincronizado", syncMarkerUnsaved: "cambios sin guardar", syncMarkerUnsavedTitle: "Se está editando en {device}. Su cambio se conserva en esta ventana; el próximo cambio volverá a preguntar.", syncAnotherMac: "otro Mac", syncTakeOverTitle: "Se está editando en otro Mac", syncTakeOverText: "Se está editando en {device} desde las {time}.", syncTakeOverTextNoTime: "Se está editando en {device}.", syncTakeOverHint: "Tome el control para guardar su cambio aquí; {device} dejará de editar. Cancelar conserva su cambio en esta ventana, sin guardar, y el próximo cambio volverá a preguntar.", syncTakeOverBtn: "Tomar el control",
       syncTookOverStatus: "{device} ha tomado el control de la edición de esta biblioteca.", syncKeptAside: "Los cambios hechos en este Mac el {date} no se pudieron combinar con los de {device}. Están guardados a salvo y se combinarán en una actualización posterior.", syncNotSavedStatus: "Sin guardar: {device} está editando esta biblioteca. Su cambio se conserva en esta ventana; el próximo cambio volverá a preguntar.", syncDiscardTitle: "¿Descartar el cambio sin guardar?", syncDiscardText: "Un cambio en esta ventana aún no está guardado porque {device} está editando esta biblioteca. Al cambiar de biblioteca se descarta.", syncDiscardBtn: "Cambiar de todos modos",
       syncNotStartedStatus: "No se ha iniciado: {device} está editando esta biblioteca.", syncKeptAsideHereTitle: "Cambio no guardado", syncKeptAsideHere: "Su cambio no se pudo guardar: {device} modificó esta biblioteca mientras tanto. Se conserva a salvo en {folder}; vuelva a hacerlo, por favor.", syncKeptAsideFailed: "Su cambio no se pudo guardar: {device} modificó esta biblioteca mientras tanto, y no se pudo apartar ({error}). Se conserva en esta ventana, sin guardar.", syncNoticeOk: "Aceptar", syncKeptAsideQuiet: "Cargando la versión más reciente de esta biblioteca de {device}. Lo que esta ventana aún no había guardado se conserva en {folder}, por si acaso.", syncFlowKeptAside: "Una parte no se pudo guardar: {device} modificó esta biblioteca mientras tanto. Se conserva a salvo en {folder}; compruebe y vuelva a hacer lo que falte, por favor.", syncHeldBackSavedStatus: "Guardado: el cambio que esperaba en esta ventana ya está en la biblioteca.", syncDocIdTakenError: "Esta biblioteca cambió en otro Mac mientras se añadía el archivo. Vuelva a añadirlo, por favor.",
@@ -1652,6 +1658,7 @@
       syncLibraryDetachedLocal: "« {name} » a été supprimée de vos appareils le {date} ; cette copie est désormais une bibliothèque locale non synchronisée.",
       syncLibraryDeletedUnsaved: "« {name} » a été supprimée sur {device}. Les modifications faites ici depuis le dernier enregistrement n’ont pas été enregistrées.", syncDeletedDownloadBtn: "Télécharger les modifications non enregistrées", syncDeletedCloseBtn: "Fermer la bibliothèque", syncDeletedDownloaded: "« {file} » a été téléchargé.",
       deleteLibraryClosedNotDeleted: "« {name} » a été fermée, mais pas supprimée. Rouvrez-la depuis Bibliothèques récentes.",
+      toolbarShareLibrary: "⇪ Partager cette bibliothèque…", shareLibraryTitle: "Partager cette bibliothèque", shareLibraryConnectText: "Le partage passe par Dossiary Sync. Connectez d'abord Dossiary à celui-ci.", shareLibraryIntro: "Dossiary Sync envoie cette bibliothèque vers le Raspberry Pi. Votre autre Mac pourra ensuite la récupérer, et les iPhone et iPad que vous cochez pourront la voir.", shareLibraryNameLabel: "Nom", shareLibraryCopyHint: "Si elle n'est pas déjà dans le dossier des bibliothèques de ce Mac, Dossiary l'y copie d'abord sous ce nom. L'original reste tel quel.", shareLibraryInPlaceHint: "Cette bibliothèque est déjà dans le dossier des bibliothèques de ce Mac et est partagée telle quelle.", shareLibraryPhonesLabel: "iPhone et iPad qui peuvent la voir", shareLibraryNoPhones: "Aucun iPhone ni iPad n'est encore jumelé. Vous pourrez en autoriser un plus tard dans iPhone et autres appareils….", shareLibraryShareBtn: "Partager", shareLibraryStopBtn: "Arrêter", shareLibraryTryAgainBtn: "Réessayer", shareLibrarySaving: "Enregistrement…", shareLibrarySaveFailed: "Impossible d'enregistrer d'abord la bibliothèque : {error}", shareLibraryListing: "Liste des fichiers…", shareLibraryCopying: "Copie vers « {folder} »… {done} sur {total}", shareLibrarySharing: "Partage…", shareLibraryStopped: "Arrêté. La copie a été supprimée ; rien n'a été partagé.", shareLibraryCopyFailed: "{error} La copie a été supprimée ; rien n'a été partagé.", shareLibraryCopyKept: "La copie « {folder} » a été conservée, mais n'est pas encore partagée. Réessayez pour la partager.", shareLibraryAlreadyShared: "Cette bibliothèque est déjà partagée.", shareLibraryNotALibrary: "Dossiary Sync n'a pas trouvé cette bibliothèque dans {root}.", shareLibraryUnknownDevice: "L'un des appareils cochés n'est plus jumelé. Fermez cette fenêtre et rouvrez-la.", shareLibraryFailedCode: "Échec du partage : {code} ({status}).", shareLibraryDone: "« {name} » partagée — envoi vers le Pi en cours.", shareLibraryOriginalNote: "Dossiary utilise désormais {path}. L'original dans {original} n'est plus utilisé — une fois la copie partagée vérifiée, vous pouvez le mettre à la Corbeille.", librariesRootChecking: "Demande du dossier des bibliothèques à Dossiary Sync…", librariesRootChooseText: "Choisissez le dossier des bibliothèques de ce Mac : {root}. Dossiary ne le demande qu'une fois.", librariesRootChooseBtn: "Choisir le dossier…", librariesRootWrong: "Ce n'est pas {root}. Choisissez ce dossier.", librariesRootCouldNotCheck: "Impossible de vérifier ce dossier : {error}", syncMarkerUploading: "envoi en cours…", syncMarkerUploadingTitle: "Dossiary Sync envoie cette bibliothèque vers le Raspberry Pi.", devicesAvailableHeading: "Sur le Pi, pas sur ce Mac", devicesGetIt: "Récupérer", devicesBeingUploaded: "envoi en cours", devicesDownloading: "Téléchargement…", devicesOpenLibrary: "Ouvrir", devicesGotIt: "« {name} » est maintenant sur ce Mac.", devicesGetNotReady: "L'envoi n'est pas encore terminé. Réessayez dans un instant.", devicesGetAlreadyHere: "Ce Mac l'a déjà.", devicesGetUnknown: "Le Pi ne l'a plus.", devicesGetFailedCode: "Récupération impossible : {code} ({status}).", devicesOpenFailed: "« {folder} » est introuvable dans le dossier des bibliothèques.",
       syncMarkerDisconnected: "déconnectée", syncMarkerDisconnectedTitle: "Cette bibliothèque ne fonctionne que sur ce Mac. Rien n’est envoyé à la Raspberry Pi ni reçu d’elle tant que vous ne vous reconnectez pas dans Outils › iPhone et autres appareils…", syncMarkerEditing: "✎ en cours de modification", syncMarkerEditingTitle: "Ce Mac modifie cette bibliothèque. L’autre Mac attend qu’elle soit de nouveau libre.", syncMarkerEditingOffline: "connectée · hors ligne", syncMarkerEditingOfflineTitle: "Le Raspberry Pi est injoignable. Les modifications sont enregistrées sur ce Mac et envoyées dès qu’il est de nouveau joignable.", syncMarkerEditingOn: "en cours de modification sur {device}", syncMarkerEditingOnTitle: "Votre prochaine modification vous demandera si vous voulez prendre la main.", syncMarkerNotConnected: "non connecté", syncMarkerNotConnectedTitle: "Cliquez pour connecter Dossiary Sync.", syncMarkerNotSynced: "pas encore synchronisé", syncMarkerUnsaved: "modifications non enregistrées", syncMarkerUnsavedTitle: "En cours de modification sur {device}. Votre modification reste dans cette fenêtre ; la prochaine redemandera.", syncAnotherMac: "un autre Mac", syncTakeOverTitle: "En cours de modification sur un autre Mac", syncTakeOverText: "En cours de modification sur {device} depuis {time}.", syncTakeOverTextNoTime: "En cours de modification sur {device}.", syncTakeOverHint: "Prenez la main pour enregistrer votre modification ici ; {device} arrête alors de modifier. Annuler garde votre modification dans cette fenêtre, non enregistrée, et la prochaine modification redemandera.", syncTakeOverBtn: "Prendre la main",
       syncTookOverStatus: "{device} a pris la main sur la modification de cette bibliothèque.", syncKeptAside: "Les modifications faites sur ce Mac le {date} n’ont pas pu être combinées avec celles de {device}. Elles sont conservées en lieu sûr et seront fusionnées par une mise à jour ultérieure.", syncNotSavedStatus: "Non enregistré : {device} modifie cette bibliothèque. Votre modification reste dans cette fenêtre ; la prochaine redemandera.", syncDiscardTitle: "Abandonner la modification non enregistrée ?", syncDiscardText: "Une modification dans cette fenêtre n’est pas encore enregistrée, car {device} modifie cette bibliothèque. Changer de bibliothèque l’abandonne.", syncDiscardBtn: "Changer quand même",
       syncNotStartedStatus: "Non commencé : {device} modifie cette bibliothèque.", syncKeptAsideHereTitle: "Modification non enregistrée", syncKeptAsideHere: "Votre modification n’a pas pu être enregistrée : {device} a modifié cette bibliothèque entre-temps. Elle est conservée en lieu sûr dans {folder} — veuillez la refaire.", syncKeptAsideFailed: "Votre modification n’a pas pu être enregistrée : {device} a modifié cette bibliothèque entre-temps, et la mettre de côté a échoué ({error}). Elle reste dans cette fenêtre, non enregistrée.", syncNoticeOk: "OK", syncKeptAsideQuiet: "Chargement de la version plus récente de cette bibliothèque venant de {device}. Ce que cette fenêtre n’avait pas encore enregistré est conservé dans {folder}, par précaution.", syncFlowKeptAside: "Une partie n’a pas pu être enregistrée : {device} a modifié cette bibliothèque entre-temps. Elle est conservée en lieu sûr dans {folder} — veuillez vérifier et refaire ce qui manque.", syncHeldBackSavedStatus: "Enregistré : la modification en attente dans cette fenêtre est maintenant dans la bibliothèque.", syncDocIdTakenError: "Cette bibliothèque a été modifiée sur un autre Mac pendant l’ajout du fichier. Veuillez l’ajouter de nouveau.",
@@ -1884,6 +1891,7 @@
       syncLibraryDetachedLocal: "„{name}“ wurde am {date} von deinen Geräten gelöscht; diese Kopie ist jetzt eine lokale Bibliothek, die nicht synchronisiert wird.",
       syncLibraryDeletedUnsaved: "„{name}“ wurde auf {device} gelöscht. Änderungen, die du hier seit dem letzten Speichern gemacht hast, wurden nicht gespeichert.", syncDeletedDownloadBtn: "Nicht gespeicherte Änderungen herunterladen", syncDeletedCloseBtn: "Bibliothek schließen", syncDeletedDownloaded: "„{file}“ wurde heruntergeladen.",
       deleteLibraryClosedNotDeleted: "„{name}“ wurde geschlossen, aber nicht gelöscht. Öffne sie wieder über „Zuletzt geöffnete Bibliotheken“.",
+      toolbarShareLibrary: "⇪ Diese Bibliothek teilen…", shareLibraryTitle: "Diese Bibliothek teilen", shareLibraryConnectText: "Das Teilen läuft über Dossiary Sync. Verbinde Dossiary zuerst damit.", shareLibraryIntro: "Dossiary Sync lädt diese Bibliothek auf den Raspberry Pi hoch. Dein anderer Mac kann sie dann holen, und die iPhones und iPads, die du ankreuzt, können sie sehen.", shareLibraryNameLabel: "Name", shareLibraryCopyHint: "Liegt sie nicht schon im Bibliotheksordner dieses Macs, kopiert Dossiary sie zuerst unter diesem Namen dorthin. Das Original bleibt, wie es ist.", shareLibraryInPlaceHint: "Diese Bibliothek liegt schon im Bibliotheksordner dieses Macs und wird so geteilt, wie sie ist.", shareLibraryPhonesLabel: "iPhones und iPads, die sie sehen dürfen", shareLibraryNoPhones: "Noch ist kein iPhone oder iPad gekoppelt. Du kannst eines später unter iPhone & andere Geräte… zulassen.", shareLibraryShareBtn: "Teilen", shareLibraryStopBtn: "Stopp", shareLibraryTryAgainBtn: "Erneut versuchen", shareLibrarySaving: "Wird gespeichert…", shareLibrarySaveFailed: "Die Bibliothek konnte vorher nicht gespeichert werden: {error}", shareLibraryListing: "Dateien werden aufgelistet…", shareLibraryCopying: "Wird nach „{folder}“ kopiert… {done} von {total}", shareLibrarySharing: "Wird geteilt…", shareLibraryStopped: "Angehalten. Die Kopie wurde entfernt; nichts wurde geteilt.", shareLibraryCopyFailed: "{error} Die Kopie wurde entfernt; nichts wurde geteilt.", shareLibraryCopyKept: "Die Kopie „{folder}“ bleibt erhalten, ist aber noch nicht geteilt. Versuche es erneut, um sie zu teilen.", shareLibraryAlreadyShared: "Diese Bibliothek ist schon geteilt.", shareLibraryNotALibrary: "Dossiary Sync hat diese Bibliothek nicht in {root} gefunden.", shareLibraryUnknownDevice: "Eines der angekreuzten Geräte ist nicht mehr gekoppelt. Schließe diesen Dialog und öffne ihn erneut.", shareLibraryFailedCode: "Teilen fehlgeschlagen: {code} ({status}).", shareLibraryDone: "„{name}“ geteilt – wird auf den Pi hochgeladen.", shareLibraryOriginalNote: "Dossiary verwendet jetzt {path}. Das Original unter {original} wird nicht mehr verwendet – sobald du die geteilte Kopie geprüft hast, kannst du es in den Papierkorb legen.", librariesRootChecking: "Dossiary Sync wird nach dem Bibliotheksordner gefragt…", librariesRootChooseText: "Wähle den Bibliotheksordner dieses Macs: {root}. Dossiary fragt nur einmal danach.", librariesRootChooseBtn: "Ordner wählen…", librariesRootWrong: "Das ist nicht {root}. Wähle diesen Ordner.", librariesRootCouldNotCheck: "Der Ordner konnte nicht geprüft werden: {error}", syncMarkerUploading: "wird hochgeladen…", syncMarkerUploadingTitle: "Dossiary Sync lädt diese Bibliothek auf den Raspberry Pi hoch.", devicesAvailableHeading: "Auf dem Pi, nicht auf diesem Mac", devicesGetIt: "Holen", devicesBeingUploaded: "wird hochgeladen", devicesDownloading: "Wird heruntergeladen…", devicesOpenLibrary: "Öffnen", devicesGotIt: "„{name}“ ist jetzt auf diesem Mac.", devicesGetNotReady: "Sie ist noch nicht fertig hochgeladen. Versuche es gleich noch einmal.", devicesGetAlreadyHere: "Dieser Mac hat sie schon.", devicesGetUnknown: "Der Pi hat sie nicht mehr.", devicesGetFailedCode: "Holen fehlgeschlagen: {code} ({status}).", devicesOpenFailed: "„{folder}“ wurde im Bibliotheksordner nicht gefunden.",
       syncMarkerDisconnected: "getrennt", syncMarkerDisconnectedTitle: "Diese Bibliothek arbeitet nur auf diesem Mac. Bis du sie unter Werkzeuge › iPhone & andere Geräte… wieder verbindest, wird nichts an den Raspberry Pi gesendet oder von ihm empfangen.", syncMarkerEditing: "✎ in Bearbeitung", syncMarkerEditingTitle: "Dieser Mac bearbeitet diese Bibliothek. Der andere Mac wartet, bis sie wieder frei ist.", syncMarkerEditingOffline: "verbunden · offline", syncMarkerEditingOfflineTitle: "Der Raspberry Pi ist nicht erreichbar. Änderungen werden auf diesem Mac gespeichert und gesendet, sobald er wieder erreichbar ist.", syncMarkerEditingOn: "in Bearbeitung auf {device}", syncMarkerEditingOnTitle: "Deine nächste Änderung fragt, ob du übernehmen möchtest.", syncMarkerNotConnected: "nicht verbunden", syncMarkerNotConnectedTitle: "Klicken, um Dossiary Sync zu verbinden.", syncMarkerNotSynced: "noch nicht abgeglichen", syncMarkerUnsaved: "ungespeicherte Änderungen", syncMarkerUnsavedTitle: "Wird auf {device} bearbeitet. Deine Änderung bleibt in diesem Fenster; die nächste Änderung fragt erneut.", syncAnotherMac: "ein anderer Mac", syncTakeOverTitle: "Wird auf einem anderen Mac bearbeitet", syncTakeOverText: "Wird seit {time} auf {device} bearbeitet.", syncTakeOverTextNoTime: "Wird auf {device} bearbeitet.", syncTakeOverHint: "Übernimm, um deine Änderung hier zu speichern; {device} hört dann auf zu bearbeiten. Abbrechen behält deine Änderung ungespeichert in diesem Fenster, und die nächste Änderung fragt erneut.", syncTakeOverBtn: "Übernehmen",
       syncTookOverStatus: "{device} hat die Bearbeitung dieser Bibliothek übernommen.", syncKeptAside: "Änderungen, die am {date} auf diesem Mac gemacht wurden, ließen sich nicht mit denen von {device} zusammenführen. Sie sind sicher aufbewahrt und werden durch ein späteres Update zusammengeführt.", syncNotSavedStatus: "Nicht gespeichert: {device} bearbeitet diese Bibliothek. Deine Änderung bleibt in diesem Fenster; die nächste Änderung fragt erneut.", syncDiscardTitle: "Ungespeicherte Änderung verwerfen?", syncDiscardText: "Eine Änderung in diesem Fenster ist noch nicht gespeichert, weil {device} diese Bibliothek bearbeitet. Beim Wechseln der Bibliothek geht sie verloren.", syncDiscardBtn: "Trotzdem wechseln",
       syncNotStartedStatus: "Nicht begonnen: {device} bearbeitet diese Bibliothek.", syncKeptAsideHereTitle: "Änderung nicht gespeichert", syncKeptAsideHere: "Deine Änderung konnte nicht gespeichert werden: {device} hat diese Bibliothek inzwischen geändert. Sie ist sicher aufbewahrt in {folder} – bitte nimm sie noch einmal vor.", syncKeptAsideFailed: "Deine Änderung konnte nicht gespeichert werden: {device} hat diese Bibliothek inzwischen geändert, und das Beiseitelegen ist fehlgeschlagen ({error}). Sie bleibt ungespeichert in diesem Fenster.", syncNoticeOk: "OK", syncKeptAsideQuiet: "Die neuere Fassung dieser Bibliothek von {device} wird geladen. Was dieses Fenster noch nicht gespeichert hatte, ist vorsichtshalber in {folder} aufbewahrt.", syncFlowKeptAside: "Ein Teil davon konnte nicht gespeichert werden: {device} hat diese Bibliothek inzwischen geändert. Er ist sicher aufbewahrt in {folder} – bitte prüfe und wiederhole, was fehlt.", syncHeldBackSavedStatus: "Gespeichert: Die Änderung, die in diesem Fenster gewartet hat, ist jetzt in der Bibliothek.", syncDocIdTakenError: "Diese Bibliothek wurde auf einem anderen Mac geändert, während die Datei hinzugefügt wurde. Bitte füge sie noch einmal hinzu.",
@@ -2116,6 +2124,7 @@
       syncLibraryDetachedLocal: "“{name}”已于 {date} 从你的设备上删除；此副本现在是一个不同步的本地资料库。",
       syncLibraryDeletedUnsaved: "“{name}”已在 {device} 上删除。自上次保存以来在这里所做的更改尚未保存。", syncDeletedDownloadBtn: "下载未保存的更改", syncDeletedCloseBtn: "关闭资料库", syncDeletedDownloaded: "已下载“{file}”。",
       deleteLibraryClosedNotDeleted: "“{name}”已关闭，但未删除。请从“最近使用的资料库”中重新打开。",
+      toolbarShareLibrary: "⇪ 共享此资料库…", shareLibraryTitle: "共享此资料库", shareLibraryConnectText: "共享资料库需要通过 Dossiary Sync。请先将 Dossiary 连接到它。", shareLibraryIntro: "Dossiary Sync 会将此资料库上传到 Raspberry Pi。之后您的另一台 Mac 可以获取它，您勾选的 iPhone 和 iPad 可以看到它。", shareLibraryNameLabel: "名称", shareLibraryCopyHint: "如果它尚不在此 Mac 的资料库文件夹中，Dossiary 会先以此名称将其复制到那里。原件保持不变。", shareLibraryInPlaceHint: "此资料库已在此 Mac 的资料库文件夹中，将按原样共享。", shareLibraryPhonesLabel: "可以看到它的 iPhone 和 iPad", shareLibraryNoPhones: "尚未配对任何 iPhone 或 iPad。您可以稍后在“iPhone 和其他设备…”中允许。", shareLibraryShareBtn: "共享", shareLibraryStopBtn: "停止", shareLibraryTryAgainBtn: "重试", shareLibrarySaving: "正在保存…", shareLibrarySaveFailed: "无法先保存资料库：{error}", shareLibraryListing: "正在列出文件…", shareLibraryCopying: "正在复制到“{folder}”… {done} / {total}", shareLibrarySharing: "正在共享…", shareLibraryStopped: "已停止。副本已删除；未共享任何内容。", shareLibraryCopyFailed: "{error} 副本已删除；未共享任何内容。", shareLibraryCopyKept: "副本“{folder}”已保留，但尚未共享。请重试以共享它。", shareLibraryAlreadyShared: "此资料库已共享。", shareLibraryNotALibrary: "Dossiary Sync 未在 {root} 中找到此资料库。", shareLibraryUnknownDevice: "勾选的设备中有一台已不再配对。请关闭此对话框后重新打开。", shareLibraryFailedCode: "共享失败：{code}（{status}）。", shareLibraryDone: "已共享“{name}”——正在上传到 Pi。", shareLibraryOriginalNote: "Dossiary 现在使用 {path}。位于 {original} 的原件已不再使用——检查共享副本后，您可以将其移到废纸篓。", librariesRootChecking: "正在向 Dossiary Sync 询问资料库文件夹…", librariesRootChooseText: "请选择此 Mac 的资料库文件夹：{root}。Dossiary 只会询问一次。", librariesRootChooseBtn: "选择文件夹…", librariesRootWrong: "这不是 {root}。请选择该文件夹。", librariesRootCouldNotCheck: "无法检查该文件夹：{error}", syncMarkerUploading: "正在上传…", syncMarkerUploadingTitle: "Dossiary Sync 正在将此资料库上传到 Raspberry Pi。", devicesAvailableHeading: "在 Pi 上，不在此 Mac 上", devicesGetIt: "获取", devicesBeingUploaded: "正在上传", devicesDownloading: "正在下载…", devicesOpenLibrary: "打开", devicesGotIt: "“{name}”现已在此 Mac 上。", devicesGetNotReady: "尚未上传完成。请稍后重试。", devicesGetAlreadyHere: "此 Mac 已有该资料库。", devicesGetUnknown: "Pi 上已没有该资料库。", devicesGetFailedCode: "无法获取：{code}（{status}）。", devicesOpenFailed: "在资料库文件夹中找不到“{folder}”。",
       syncMarkerDisconnected: "已断开", syncMarkerDisconnectedTitle: "此资料库仅在这台 Mac 上使用。在“工具 › iPhone 和其他设备…”中重新连接之前，不会向 Raspberry Pi 发送或从其接收任何内容。", syncMarkerEditing: "✎ 正在编辑", syncMarkerEditingTitle: "这台 Mac 正在编辑此资料库。另一台 Mac 会等到它再次空闲。", syncMarkerEditingOffline: "已连接 · 离线", syncMarkerEditingOfflineTitle: "无法连接 Raspberry Pi。更改会保存在这台 Mac 上，并在可以连接时发送。", syncMarkerEditingOn: "正在 {device} 上编辑", syncMarkerEditingOnTitle: "你的下一次更改会询问是否接管。", syncMarkerNotConnected: "未连接", syncMarkerNotConnectedTitle: "点击以连接 Dossiary Sync。", syncMarkerNotSynced: "尚未同步", syncMarkerUnsaved: "有未保存的更改", syncMarkerUnsavedTitle: "正在 {device} 上编辑。你的更改保留在此窗口中；下一次更改时会再次询问。", syncAnotherMac: "另一台 Mac", syncTakeOverTitle: "正在另一台 Mac 上编辑", syncTakeOverText: "自 {time} 起正在 {device} 上编辑。", syncTakeOverTextNoTime: "正在 {device} 上编辑。", syncTakeOverHint: "接管即可在这里保存你的更改；{device} 随后停止编辑。取消会将你的更改未保存地保留在此窗口中，下一次更改时会再次询问。", syncTakeOverBtn: "接管",
       syncTookOverStatus: "{device} 接管了此资料库的编辑。", syncKeptAside: "这台 Mac 在 {date} 所做的更改无法与 {device} 的更改合并。它们已被妥善保存，将由以后的更新合并。", syncNotSavedStatus: "未保存：{device} 正在编辑此资料库。你的更改保留在此窗口中；下一次更改时会再次询问。", syncDiscardTitle: "放弃未保存的更改？", syncDiscardText: "此窗口中的一项更改尚未保存，因为 {device} 正在编辑此资料库。切换资料库会放弃它。", syncDiscardBtn: "仍然切换",
       syncNotStartedStatus: "未开始：{device} 正在编辑此资料库。", syncKeptAsideHereTitle: "更改未保存", syncKeptAsideHere: "你的更改无法保存：{device} 在此期间更改了此资料库。它已妥善保存在 {folder} 中——请重新进行此更改。", syncKeptAsideFailed: "你的更改无法保存：{device} 在此期间更改了此资料库，且另行保存失败（{error}）。它未保存地保留在此窗口中。", syncNoticeOk: "好", syncKeptAsideQuiet: "正在载入 {device} 上此资料库的较新版本。此窗口尚未保存的内容已保留在 {folder} 中，以防万一。", syncFlowKeptAside: "部分内容无法保存：{device} 在此期间更改了此资料库。它已妥善保存在 {folder} 中——请检查并重新进行缺少的部分。", syncHeldBackSavedStatus: "已保存：在此窗口中等待的更改现已存入资料库。", syncDocIdTakenError: "在添加文件期间，此资料库已在另一台 Mac 上更改。请重新添加。",
@@ -2348,6 +2357,7 @@
       syncLibraryDetachedLocal: "“{name}”已於 {date} 從你的設備上刪除；此副本現在是一個不同步的本地資料庫。",
       syncLibraryDeletedUnsaved: "“{name}”已在 {device} 上刪除。自上次保存以來在這裏所做的更改尚未保存。", syncDeletedDownloadBtn: "下載未保存的更改", syncDeletedCloseBtn: "關閉資料庫", syncDeletedDownloaded: "已下載“{file}”。",
       deleteLibraryClosedNotDeleted: "“{name}”已關閉，但未刪除。請從“最近使用的資料庫”中重新打開。",
+      toolbarShareLibrary: "⇪ 共享此資料庫…", shareLibraryTitle: "共享此資料庫", shareLibraryConnectText: "共享資料庫需要通過 Dossiary Sync。請先將 Dossiary 連接到它。", shareLibraryIntro: "Dossiary Sync 會將此資料庫上傳到 Raspberry Pi。之後您的另一臺 Mac 可以獲取它，您勾選的 iPhone 和 iPad 可以看到它。", shareLibraryNameLabel: "名稱", shareLibraryCopyHint: "如果它尚不在此 Mac 的資料庫文件夾中，Dossiary 會先以此名稱將其複製到那裏。原件保持不變。", shareLibraryInPlaceHint: "此資料庫已在此 Mac 的資料庫文件夾中，將按原樣共享。", shareLibraryPhonesLabel: "可以看到它的 iPhone 和 iPad", shareLibraryNoPhones: "尚未配對任何 iPhone 或 iPad。您可以稍後在“iPhone 和其他設備…”中允許。", shareLibraryShareBtn: "共享", shareLibraryStopBtn: "停止", shareLibraryTryAgainBtn: "重試", shareLibrarySaving: "正在保存…", shareLibrarySaveFailed: "無法先保存資料庫：{error}", shareLibraryListing: "正在列出文件…", shareLibraryCopying: "正在複製到“{folder}”… {done} / {total}", shareLibrarySharing: "正在共享…", shareLibraryStopped: "已停止。副本已刪除；未共享任何內容。", shareLibraryCopyFailed: "{error} 副本已刪除；未共享任何內容。", shareLibraryCopyKept: "副本“{folder}”已保留，但尚未共享。請重試以共享它。", shareLibraryAlreadyShared: "此資料庫已共享。", shareLibraryNotALibrary: "Dossiary Sync 未在 {root} 中找到此資料庫。", shareLibraryUnknownDevice: "勾選的設備中有一臺已不再配對。請關閉此對話框後重新打開。", shareLibraryFailedCode: "共享失敗：{code}（{status}）。", shareLibraryDone: "已共享“{name}”——正在上傳到 Pi。", shareLibraryOriginalNote: "Dossiary 現在使用 {path}。位於 {original} 的原件已不再使用——檢查共享副本後，您可以將其移到廢紙簍。", librariesRootChecking: "正在向 Dossiary Sync 詢問資料庫文件夾…", librariesRootChooseText: "請選擇此 Mac 的資料庫文件夾：{root}。Dossiary 只會詢問一次。", librariesRootChooseBtn: "選擇文件夾…", librariesRootWrong: "這不是 {root}。請選擇該文件夾。", librariesRootCouldNotCheck: "無法檢查該文件夾：{error}", syncMarkerUploading: "正在上傳…", syncMarkerUploadingTitle: "Dossiary Sync 正在將此資料庫上傳到 Raspberry Pi。", devicesAvailableHeading: "在 Pi 上，不在此 Mac 上", devicesGetIt: "獲取", devicesBeingUploaded: "正在上傳", devicesDownloading: "正在下載…", devicesOpenLibrary: "打開", devicesGotIt: "“{name}”現已在此 Mac 上。", devicesGetNotReady: "尚未上傳完成。請稍後重試。", devicesGetAlreadyHere: "此 Mac 已有該資料庫。", devicesGetUnknown: "Pi 上已沒有該資料庫。", devicesGetFailedCode: "無法獲取：{code}（{status}）。", devicesOpenFailed: "在資料庫文件夾中找不到“{folder}”。",
       syncMarkerDisconnected: "已斷開", syncMarkerDisconnectedTitle: "此資料庫僅在這台 Mac 上使用。在“工具 › iPhone 和其他設備…”中重新連接之前，不會向 Raspberry Pi 發送或從其接收任何內容。", syncMarkerEditing: "✎ 正在編輯", syncMarkerEditingTitle: "這臺 Mac 正在編輯此資料庫。另一臺 Mac 會等到它再次空閒。", syncMarkerEditingOffline: "已連接 · 離線", syncMarkerEditingOfflineTitle: "無法連接 Raspberry Pi。更改會保存在這臺 Mac 上，並在可以連接時發送。", syncMarkerEditingOn: "正在 {device} 上編輯", syncMarkerEditingOnTitle: "你的下一次更改會詢問是否接管。", syncMarkerNotConnected: "未連接", syncMarkerNotConnectedTitle: "點擊以連接 Dossiary Sync。", syncMarkerNotSynced: "尚未同步", syncMarkerUnsaved: "有未保存的更改", syncMarkerUnsavedTitle: "正在 {device} 上編輯。你的更改保留在此窗口中；下一次更改時會再次詢問。", syncAnotherMac: "另一臺 Mac", syncTakeOverTitle: "正在另一臺 Mac 上編輯", syncTakeOverText: "自 {time} 起正在 {device} 上編輯。", syncTakeOverTextNoTime: "正在 {device} 上編輯。", syncTakeOverHint: "接管即可在這裏保存你的更改；{device} 隨後停止編輯。取消會將你的更改未保存地保留在此窗口中，下一次更改時會再次詢問。", syncTakeOverBtn: "接管",
       syncTookOverStatus: "{device} 接管了此資料庫的編輯。", syncKeptAside: "這臺 Mac 在 {date} 所做的更改無法與 {device} 的更改合併。它們已被妥善保存，將由以後的更新合併。", syncNotSavedStatus: "未保存：{device} 正在編輯此資料庫。你的更改保留在此窗口中；下一次更改時會再次詢問。", syncDiscardTitle: "放棄未保存的更改？", syncDiscardText: "此窗口中的一項更改尚未保存，因爲 {device} 正在編輯此資料庫。切換資料庫會放棄它。", syncDiscardBtn: "仍然切換",
       syncNotStartedStatus: "未開始：{device} 正在編輯此資料庫。", syncKeptAsideHereTitle: "更改未保存", syncKeptAsideHere: "你的更改無法保存：{device} 在此期間更改了此資料庫。它已妥善保存在 {folder} 中——請重新進行此更改。", syncKeptAsideFailed: "你的更改無法保存：{device} 在此期間更改了此資料庫，且另行保存失敗（{error}）。它未保存地保留在此窗口中。", syncNoticeOk: "好", syncKeptAsideQuiet: "正在載入 {device} 上此資料庫的較新版本。此窗口尚未保存的內容已保留在 {folder} 中，以防萬一。", syncFlowKeptAside: "部分內容無法保存：{device} 在此期間更改了此資料庫。它已妥善保存在 {folder} 中——請檢查並重新進行缺少的部分。", syncHeldBackSavedStatus: "已保存：在此窗口中等待的更改現已存入資料庫。", syncDocIdTakenError: "在添加文件期間，此資料庫已在另一臺 Mac 上更改。請重新添加。",
@@ -2813,6 +2823,7 @@
       syncLibraryDetachedLocal: "«{name}»-ը {date}-ին ջնջվել է ձեր սարքերից․ այս պատճենն այժմ տեղային գրադարան է, որը չի համաժամեցվում։",
       syncLibraryDeletedUnsaved: "«{name}»-ը ջնջվեց {device}-ում։ Վերջին պահպանումից հետո այստեղ ձեր կատարած փոփոխությունները չեն պահպանվել։", syncDeletedDownloadBtn: "Ներբեռնել չպահպանված փոփոխությունները", syncDeletedCloseBtn: "Փակել գրադարանը", syncDeletedDownloaded: "«{file}»-ը ներբեռնվեց։",
       deleteLibraryClosedNotDeleted: "«{name}»-ը փակվեց, բայց չջնջվեց։ Կրկին բացեք այն «Վերջին գրադարանները» ցանկից։",
+      toolbarShareLibrary: "⇪ Կիսել այս գրադարանը…", shareLibraryTitle: "Կիսել այս գրադարանը", shareLibraryConnectText: "Գրադարանը կիսվում է Dossiary Sync-ի միջոցով։ Նախ միացրեք Dossiary-ն դրան։", shareLibraryIntro: "Dossiary Sync-ը այս գրադարանը կվերբեռնի Raspberry Pi։ Այնուհետև ձեր մյուս Mac-ը կկարողանա այն ստանալ, իսկ ձեր նշած iPhone-ներն ու iPad-ները՝ տեսնել։", shareLibraryNameLabel: "Անուն", shareLibraryCopyHint: "Եթե այն արդեն այս Mac-ի գրադարանների թղթապանակում չէ, Dossiary-ն նախ այն կպատճենի այնտեղ այս անունով։ Բնօրինակը մնում է անփոփոխ։", shareLibraryInPlaceHint: "Այս գրադարանն արդեն այս Mac-ի գրադարանների թղթապանակում է և կկիսվի այնպես, ինչպես կա։", shareLibraryPhonesLabel: "iPhone-ներ և iPad-ներ, որոնք կարող են այն տեսնել", shareLibraryNoPhones: "Դեռ ոչ մի iPhone կամ iPad զուգակցված չէ։ Ավելի ուշ կարող եք թույլատրել «iPhone և այլ սարքեր…»-ում։", shareLibraryShareBtn: "Կիսել", shareLibraryStopBtn: "Կանգնեցնել", shareLibraryTryAgainBtn: "Կրկին փորձել", shareLibrarySaving: "Պահպանվում է…", shareLibrarySaveFailed: "Չհաջողվեց նախապես պահպանել գրադարանը՝ {error}", shareLibraryListing: "Ֆայլերի ցանկը կազմվում է…", shareLibraryCopying: "Պատճենվում է «{folder}»… {done}՝ {total}-ից", shareLibrarySharing: "Կիսվում է…", shareLibraryStopped: "Կանգնեցված է։ Պատճենը հեռացվեց, ոչինչ չկիսվեց։", shareLibraryCopyFailed: "{error} Պատճենը հեռացվեց, ոչինչ չկիսվեց։", shareLibraryCopyKept: "«{folder}» պատճենը պահպանվեց, բայց դեռ կիսված չէ։ Կրկին փորձեք՝ այն կիսելու համար։", shareLibraryAlreadyShared: "Այս գրադարանն արդեն կիսված է։", shareLibraryNotALibrary: "Dossiary Sync-ը այս գրադարանը չգտավ {root}-ում։", shareLibraryUnknownDevice: "Նշված սարքերից մեկն այլևս զուգակցված չէ։ Փակեք այս պատուհանը և բացեք նորից։", shareLibraryFailedCode: "Կիսելը ձախողվեց՝ {code} ({status})։", shareLibraryDone: "«{name}»-ը կիսվեց․ վերբեռնվում է Pi։", shareLibraryOriginalNote: "Dossiary-ն այժմ օգտագործում է {path}։ {original}-ի բնօրինակն այլևս չի օգտագործվում․ կիսված պատճենը ստուգելուց հետո կարող եք այն տեղափոխել Աղբարկղ։", librariesRootChecking: "Dossiary Sync-ից հարցվում է գրադարանների թղթապանակը…", librariesRootChooseText: "Ընտրեք այս Mac-ի գրադարանների թղթապանակը՝ {root}։ Dossiary-ն այն հարցնում է միայն մեկ անգամ։", librariesRootChooseBtn: "Ընտրել թղթապանակ…", librariesRootWrong: "Սա {root}-ը չէ։ Ընտրեք այդ թղթապանակը։", librariesRootCouldNotCheck: "Չհաջողվեց ստուգել այդ թղթապանակը՝ {error}", syncMarkerUploading: "վերբեռնվում է…", syncMarkerUploadingTitle: "Dossiary Sync-ը այս գրադարանը վերբեռնում է Raspberry Pi։", devicesAvailableHeading: "Pi-ում, ոչ այս Mac-ում", devicesGetIt: "Ստանալ", devicesBeingUploaded: "վերբեռնվում է", devicesDownloading: "Ներբեռնվում է…", devicesOpenLibrary: "Բացել", devicesGotIt: "«{name}»-ն այժմ այս Mac-ում է։", devicesGetNotReady: "Վերբեռնումը դեռ չի ավարտվել։ Մի փոքր հետո կրկին փորձեք։", devicesGetAlreadyHere: "Այս Mac-ն արդեն ունի այն։", devicesGetUnknown: "Pi-ն այլևս չունի այն։", devicesGetFailedCode: "Չհաջողվեց ստանալ՝ {code} ({status})։", devicesOpenFailed: "«{folder}»-ը գրադարանների թղթապանակում չգտնվեց։",
       syncMarkerDisconnected: "անջատված է", syncMarkerDisconnectedTitle: "Այս գրադարանն աշխատում է միայն այս Mac-ում։ Մինչև չվերամիացնեք «Գործիքներ › iPhone և այլ սարքեր…»-ում, Raspberry Pi-ին ոչինչ չի ուղարկվում և նրանից ոչինչ չի ստացվում։", syncMarkerEditing: "✎ խմբագրվում է", syncMarkerEditingTitle: "Այս Mac-ը խմբագրում է այս գրադարանը։ Մյուս Mac-ը սպասում է, մինչև այն կրկին ազատ լինի։", syncMarkerEditingOffline: "միացված է · անցանց", syncMarkerEditingOfflineTitle: "Raspberry Pi-ն հասանելի չէ։ Փոփոխությունները պահվում են այս Mac-ում և կուղարկվեն, երբ այն կրկին հասանելի լինի։", syncMarkerEditingOn: "խմբագրվում է՝ {device}", syncMarkerEditingOnTitle: "Ձեր հաջորդ փոփոխության ժամանակ կհարցվի՝ արդյոք վերցնել խմբագրումը։", syncMarkerNotConnected: "միացված չէ", syncMarkerNotConnectedTitle: "Սեղմեք՝ Dossiary Sync-ը միացնելու համար։", syncMarkerNotSynced: "դեռ համաժամեցված չէ", syncMarkerUnsaved: "չպահված փոփոխություններ", syncMarkerUnsavedTitle: "Խմբագրվում է՝ {device}։ Ձեր փոփոխությունը մնում է այս պատուհանում, իսկ հաջորդ փոփոխության ժամանակ կրկին կհարցվի։", syncAnotherMac: "մեկ այլ Mac", syncTakeOverTitle: "Խմբագրվում է մեկ այլ Mac-ում", syncTakeOverText: "{time}-ից խմբագրվում է՝ {device}։", syncTakeOverTextNoTime: "Խմբագրվում է՝ {device}։", syncTakeOverHint: "Վերցրեք խմբագրումը՝ ձեր փոփոխությունն այստեղ պահելու համար․ {device}-ը կդադարի խմբագրել։ «Չեղարկել»-ը ձեր փոփոխությունը թողնում է այս պատուհանում՝ չպահված, և հաջորդ փոփոխության ժամանակ կրկին կհարցվի։", syncTakeOverBtn: "Վերցնել խմբագրումը",
       syncTookOverStatus: "{device}-ը ստանձնեց այս գրադարանի խմբագրումը։", syncKeptAside: "Այս Mac-ում {date}-ին կատարված փոփոխությունները հնարավոր չեղավ միավորել {device}-ի փոփոխությունների հետ։ Դրանք ապահով պահված են և կմիավորվեն հետագա թարմացմամբ։", syncNotSavedStatus: "Չի պահվել․ {device}-ը խմբագրում է այս գրադարանը։ Ձեր փոփոխությունը մնում է այս պատուհանում, իսկ հաջորդ փոփոխության ժամանակ կրկին կհարցվի։", syncDiscardTitle: "Հրաժարվե՞լ չպահված փոփոխությունից", syncDiscardText: "Այս պատուհանում մի փոփոխություն դեռ պահված չէ, քանի որ {device}-ը խմբագրում է այս գրադարանը։ Գրադարանը փոխելիս այն կկորչի։", syncDiscardBtn: "Միևնույն է փոխել",
       syncNotStartedStatus: "Չսկսվեց․ {device}-ը խմբագրում է այս գրադարանը։", syncKeptAsideHereTitle: "Փոփոխությունը չպահվեց", syncKeptAsideHere: "Ձեր փոփոխությունը հնարավոր չեղավ պահել․ {device}-ն այդ ընթացքում փոխել է այս գրադարանը։ Այն ապահով պահված է {folder}-ում․ խնդրում ենք կրկին կատարել այն։", syncKeptAsideFailed: "Ձեր փոփոխությունը հնարավոր չեղավ պահել․ {device}-ն այդ ընթացքում փոխել է այս գրադարանը, և այն առանձին պահելը ձախողվեց ({error})։ Այն մնում է այս պատուհանում՝ չպահված։", syncNoticeOk: "Լավ", syncKeptAsideQuiet: "Բեռնվում է այս գրադարանի ավելի նոր տարբերակը՝ {device}-ից։ Այն, ինչ այս պատուհանը դեռ չէր պահել, ամեն դեպքում պահված է {folder}-ում։", syncFlowKeptAside: "Մի մասը հնարավոր չեղավ պահել․ {device}-ն այդ ընթացքում փոխել է այս գրադարանը։ Այն ապահով պահված է {folder}-ում․ խնդրում ենք ստուգել և կրկին կատարել պակասողը։", syncHeldBackSavedStatus: "Պահված է․ այս պատուհանում սպասող փոփոխությունն այժմ գրադարանում է։", syncDocIdTakenError: "Ֆայլն ավելացնելու ընթացքում այս գրադարանը փոխվել է մեկ այլ Mac-ում։ Խնդրում ենք կրկին ավելացնել այն։",
@@ -4620,13 +4631,46 @@
   const RECENT_LIBRARIES_STORE = 'recentLibraries';
   const MAX_RECENT_LIBRARIES = 5;
 
+  // Version 2 added the librariesRoot store (this Mac's libraries folder,
+  // see ensureLibrariesRootHandle()); recentLibraries is kept as it is.
+  const LIBRARIES_ROOT_STORE = 'librariesRoot';
+  const APP_DB_VERSION = 2;
   function openRecentLibrariesDb(){
     return new Promise((resolve, reject) => {
-      const req = indexedDB.open(RECENT_LIBRARIES_DB_NAME, 1);
+      const req = indexedDB.open(RECENT_LIBRARIES_DB_NAME, APP_DB_VERSION);
       req.onupgradeneeded = () => {
-        req.result.createObjectStore(RECENT_LIBRARIES_STORE, { keyPath: 'id', autoIncrement: true });
+        const idb = req.result;
+        const has = (n) => idb.objectStoreNames && idb.objectStoreNames.contains(n);
+        if(!has(RECENT_LIBRARIES_STORE)) idb.createObjectStore(RECENT_LIBRARIES_STORE, { keyPath: 'id', autoIncrement: true });
+        if(!has(LIBRARIES_ROOT_STORE)) idb.createObjectStore(LIBRARIES_ROOT_STORE, { keyPath: 'id' });
       };
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => {
+        // A newer Dossiary in another tab may need to upgrade: let it.
+        try{ req.result.onversionchange = () => req.result.close(); }catch(e){ /* best effort */ }
+        resolve(req.result);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  // This Mac's libraries folder ({handle, root}: the folder handle and the
+  // absolute path Dossiary Sync named for it), or null.
+  async function readStoredLibrariesRoot(){
+    try{
+      const idb = await openRecentLibrariesDb();
+      const entry = await new Promise((resolve, reject) => {
+        const req = idb.transaction(LIBRARIES_ROOT_STORE, 'readonly').objectStore(LIBRARIES_ROOT_STORE).get('root');
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+      return entry && entry.handle ? { handle: entry.handle, root: typeof entry.root === 'string' ? entry.root : entry.handle.name } : null;
+    }catch(e){ return null; }
+  }
+  async function storeLibrariesRoot(handle, root){
+    const idb = await openRecentLibrariesDb();
+    await new Promise((resolve, reject) => {
+      const req = idb.transaction(LIBRARIES_ROOT_STORE, 'readwrite').objectStore(LIBRARIES_ROOT_STORE).put({ id: 'root', handle, root });
+      req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
   }
@@ -8001,7 +8045,7 @@
     e.currentTarget.setAttribute('aria-expanded', opening ? 'true' : 'false');
   }
   el('columns-btn').addEventListener('click', (e) => toggleToolbarMenu(e, el('columns-menu')));
-  el('tools-btn').addEventListener('click', (e) => toggleToolbarMenu(e, el('tools-menu')));
+  el('tools-btn').addEventListener('click', (e) => { updateShareLibraryItem(); toggleToolbarMenu(e, el('tools-menu')); });
   const closeToolsMenu = () => {
     el('tools-menu').style.display = 'none';
     el('tools-btn').setAttribute('aria-expanded', 'false');
@@ -8300,6 +8344,40 @@
     return out;
   }
 
+  // Copies the open library into `dest`: library.sqlite from memory
+  // (db.export(), always the authoritative copy) first, then every other file
+  // as it is (listLibraryFiles(): no sync bookkeeping, no macOS clutter), 4
+  // at a time -- on iCloud Drive each evicted file downloads first. Used by
+  // Back up and Share this library. opts: skip(parts) leaves a file out,
+  // extraTotal counts files the caller writes afterwards, shouldStop() ends
+  // it early (files in flight finish), stopOnError ends it at the first file
+  // that can't be copied. → {copied, total, failed: [{path, op, error}], stopped}
+  async function copyLibraryInto(dest, opts = {}){
+    const files = (await listLibraryFiles(rootDirHandle)).filter(([parts]) => !(opts.skip && opts.skip(parts)));
+    const total = files.length + 1 + (opts.extraTotal || 0);
+    const failed = [];
+    await withFileOp('write', 'library.sqlite', () => writeFileAt(dest, 'library.sqlite', db.export()));
+    let copied = 1;
+    const shouldStop = () => !!(opts.shouldStop && opts.shouldStop()) || (opts.stopOnError && failed.length > 0);
+    let next = 0;
+    const worker = async () => {
+      while(!shouldStop() && next < files.length){
+        const [parts, handle] = files[next++];
+        const path = parts.join('/');
+        let op = 'read';
+        try{
+          const data = await (await handle.getFile()).arrayBuffer();
+          op = 'write';
+          await writeFileAt(dest, path, data);
+        }catch(e){ failed.push({ path, op, error: e }); }
+        copied++;
+        if(opts.onProgress) opts.onProgress(copied, total);
+      }
+    };
+    await Promise.all(Array.from({length: Math.min(4, files.length)}, worker));
+    return { copied, total, failed, stopped: !!(opts.shouldStop && opts.shouldStop()) };
+  }
+
   function openBackupModal(){
     const last = readSetting('last_backup_at');
     modalRoot.innerHTML = `
@@ -8374,30 +8452,15 @@
         statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('backupListing'));
         // A library opened from an earlier backup has these at its top; the
         // fresh ones replace them.
-        const files = (await listLibraryFiles(rootDirHandle))
-          .filter(([parts]) => !(appHtml && parts.length === 1 && (parts[0] === 'dossiary.html' || parts[0] === 'How to open.txt')));
-        total = files.length + 1 + (appHtml ? 2 : 0);
-        const writeTo = async (parts, data) => {
-          let dir = dest;
-          for(const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part, { create: true });
-          const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true })).createWritable();
-          await w.write(data);
-          await w.close();
-        };
-        await writeTo(['library.sqlite'], db.export());
-        copied = 1;
-        // 4 files at a time -- on iCloud Drive each evicted file downloads first.
-        let next = 0;
-        const worker = async () => {
-          while(!stopRequested && next < files.length){
-            const [parts, handle] = files[next++];
-            try{ await writeTo(parts, await (await handle.getFile()).arrayBuffer()); }
-            catch(e){ failed.push(parts.join('/')); }
-            copied++;
-            statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('backupProgress', {done: copied, total}));
-          }
-        };
-        await Promise.all(Array.from({length: Math.min(4, files.length)}, worker));
+        const result = await copyLibraryInto(dest, {
+          skip: (parts) => appHtml && parts.length === 1 && (parts[0] === 'dossiary.html' || parts[0] === 'How to open.txt'),
+          extraTotal: appHtml ? 2 : 0,
+          shouldStop: () => stopRequested,
+          onProgress: (done, all) => { copied = done; total = all; statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('backupProgress', {done, total: all})); },
+        });
+        copied = result.copied; total = result.total;
+        failed.push(...result.failed.map(f => f.path));
+        const writeTo = (parts, data) => writeFileAt(dest, parts.join('/'), data);
         if(stopRequested){
           // A partial copy isn't a backup -- don't leave one around looking like it.
           outcome = 'stopped';
@@ -9673,7 +9736,7 @@
     if(openDocCollectionMenu){ openDocCollectionMenu.remove(); openDocCollectionMenu = null; }
     if(openReminderFlyout){ openReminderFlyout.remove(); openReminderFlyout = null; }
   }
-  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !importRunning && !backupRunning && !exportLibraryRunning && !pageToolsRunning && !scanDialogRunning && !deleteLibraryRunning) closeModal(); }
+  function onModalKeydown(e){ if(e.key === 'Escape' && !findDuplicatesBackfillRunning && !makeSearchableRunning && !exportRunning && !importRunning && !backupRunning && !exportLibraryRunning && !pageToolsRunning && !scanDialogRunning && !deleteLibraryRunning && !shareLibraryRunning) closeModal(); }
 
   const OPEN_SOURCE_LIBRARIES = [
     { name: 'sql.js', url: 'https://github.com/sql-js/sql.js', license: 'MIT', useKey: 'librariesUseSqlJs' },
@@ -16450,7 +16513,8 @@
     }
     const controller = new AbortController();
     init.signal = controller.signal;
-    const timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs || SYNC_ADMIN_TIMEOUT_MS);
+    // opts.noTimeout: a request that may take minutes (Get it downloads a whole library).
+    const timeoutId = opts.noTimeout ? null : setTimeout(() => controller.abort(), opts.timeoutMs || SYNC_ADMIN_TIMEOUT_MS);
     try{
       const response = await fetch(SYNC_ADMIN_URL + path, init);
       syncAdminEverAnswered = true;
@@ -16462,7 +16526,7 @@
     }catch(e){
       return null;
     }finally{
-      clearTimeout(timeoutId);
+      if(timeoutId) clearTimeout(timeoutId);
     }
   }
   function syncErrorText(res){
@@ -17725,6 +17789,11 @@
         title = syncLastState.lastError;
         state = 'sync-error';
       }
+    }else if(syncLastState && syncLastState.uploading === true && ['none', 'holding', 'offline', 'unsynced'].includes(state)){
+      // Just shared (Share this library…): Dossiary Sync is uploading it to the Pi.
+      text = t('syncMarkerUploading');
+      title = t('syncMarkerUploadingTitle');
+      state = 'uploading';
     }else if(SYNC_MARKER_KEYS[state]){
       text = t(SYNC_MARKER_KEYS[state], { device: syncLease.deviceName || '' });
       if(state === 'holding') title = t('syncMarkerEditingTitle');
@@ -17747,6 +17816,7 @@
     if(link){ marker.setAttribute('role', 'button'); marker.tabIndex = 0; }
     else { marker.removeAttribute('role'); marker.removeAttribute('tabindex'); }
     marker.style.display = text ? '' : 'none';
+    updateShareLibraryItem();
   }
 
   window.__DEBUG_syncLease = () => syncLease;
@@ -18111,6 +18181,507 @@
   window.__DEBUG_dbExportText = () => db ? new TextDecoder().decode(db.export()) : null;
   window.__DEBUG_syncLibraryGone = () => syncLibraryGone;
 
+  // ---- Share this library (spec dossiary-ios
+  // docs/superpowers/specs/2026-10-25-share-library-design.md) ----
+  // Every synced library lives in this Mac's libraries folder. Dossiary keeps
+  // a handle to that folder (ensureLibrariesRootHandle(); a page never learns
+  // real paths, so Dossiary Sync confirms the choice). Sharing: save memory,
+  // then either share the open library where it is (already directly in the
+  // libraries folder) or copy it there first as a new <Name>.dossiary
+  // (copyLibraryInto(); the original is never touched), then POST
+  // /admin/libraries/share {folder, phones} and reopen on the shared folder so
+  // its new .dossiary-sync.json is read. Dossiary Sync uploads it to the Pi.
+  let shareLibrarySeq = 0;           // bumped on every open; a late answer for an older dialog is dropped
+  let shareLibraryRunning = false;   // saving, copying or sharing: the dialog can't be closed
+  const shareDialogOpen = (seq) => seq === shareLibrarySeq && !!el('share-library-body');
+  const LIBRARY_PROBE_PREFIX = '.dossiary-probe-';
+
+  // Tools › "Share this library…": only for an open library that isn't synced.
+  function updateShareLibraryItem(){
+    const btn = el('share-library-btn');
+    if(btn) btn.style.display = rootDirHandle && db && !syncLibrary && !syncLibraryGone ? '' : 'none';
+  }
+
+  function newLibraryProbeName(){
+    const id = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, '');
+    return LIBRARY_PROBE_PREFIX + id.slice(0, 64);
+  }
+
+  // Is `child` directly inside `parent`? (resolve() gives the path between them.)
+  async function isDirectlyIn(parent, child){
+    try{
+      const path = await parent.resolve(child);
+      return Array.isArray(path) && path.length === 1;
+    }catch(e){ return false; }
+  }
+
+  // The stored libraries folder, if its permission is still granted (no prompt).
+  async function peekLibrariesRoot(){
+    const stored = await readStoredLibrariesRoot();
+    if(!stored) return null;
+    try{ return (await stored.handle.queryPermission({ mode: 'readwrite' })) === 'granted' ? stored : null; }
+    catch(e){ return null; }
+  }
+
+  // This Mac's libraries folder as {handle, root}, or null (cancelled, or an
+  // error shown in ui.slot). The stored handle when its permission is (or is
+  // again) granted; otherwise ui.slot explains which folder to choose -- the
+  // path from a check call with a probe that doesn't exist -- and "Choose
+  // folder…" picks it. A choice is verified by writing a probe file into it
+  // and asking Dossiary Sync whether that file is in its libraries folder;
+  // the probe is removed again either way. A wrong folder isn't kept.
+  async function ensureLibrariesRootHandle(ui){
+    const stored = await readStoredLibrariesRoot();
+    if(stored){
+      try{
+        let perm = await stored.handle.queryPermission({ mode: 'readwrite' });
+        if(perm !== 'granted') perm = await stored.handle.requestPermission({ mode: 'readwrite' });
+        if(perm === 'granted') return stored;
+      }catch(e){ /* no permission (or no click to ask with): choose it below */ }
+    }
+    return chooseLibrariesRoot(ui);
+  }
+
+  function librariesRootCheckError(res){
+    if(!res) return t('devicesSyncUnreachable');
+    if(res.status === 401){ setSyncAdminToken(null); return t('devicesConnectAgain'); }
+    if(res.status === 404) return t('deleteLibrarySyncTooOld');   // a dossiary-sync without the route
+    return syncErrorText(res);
+  }
+
+  async function chooseLibrariesRoot(ui){
+    const slot = ui.slot;
+    if(!slot) return null;
+    slot.innerHTML = `<p class="scan-dialog-text">${escapeHtml(t('librariesRootChecking'))}</p>`;
+    const first = await syncAdminFetch('/admin/libraries-root/check', { method: 'POST', body: { probe: newLibraryProbeName() } });
+    if(!ui.isOpen()) return null;
+    if(!first || !first.ok || !first.body || typeof first.body.root !== 'string'){
+      slot.innerHTML = `<p class="libraries-root-error">${escapeHtml(first && first.ok ? t('devicesUnexpectedAnswer') : librariesRootCheckError(first))}</p>`;
+      return null;
+    }
+    const root = first.body.root;
+    return new Promise((resolve) => {
+      slot.innerHTML = `
+        <div class="libraries-root-chooser">
+          <p class="scan-dialog-text">${escapeHtml(t('librariesRootChooseText', { root }))}</p>
+          <p class="doc-sub folder-picker-hint">${t('folderPickerHint')}</p>
+          <button type="button" class="primary libraries-root-choose-btn">${escapeHtml(t('librariesRootChooseBtn'))}</button>
+          <button type="button" class="libraries-root-cancel-btn">${escapeHtml(t('commonCancel'))}</button>
+          <p class="libraries-root-error" style="display:none;"></p>
+        </div>`;
+      const chooseBtn = slot.querySelector('.libraries-root-choose-btn');
+      const errorEl = slot.querySelector('.libraries-root-error');
+      const showError = (text) => { errorEl.textContent = text; errorEl.style.display = ''; };
+      slot.querySelector('.libraries-root-cancel-btn').addEventListener('click', () => { slot.innerHTML = ''; resolve(null); });
+      chooseBtn.addEventListener('click', async () => {
+        if(chooseBtn.disabled) return;
+        let picked;
+        try{ picked = await window.showDirectoryPicker({ mode: 'readwrite' }); }
+        catch(e){ return; }   // picker cancelled
+        if(!ui.isOpen()){ resolve(null); return; }
+        chooseBtn.disabled = true;
+        errorEl.style.display = 'none';
+        const probe = newLibraryProbeName();
+        let res = null, writeError = null;
+        try{
+          const w = await (await picked.getFileHandle(probe, { create: true })).createWritable();
+          await w.write(new Uint8Array(0));
+          await w.close();
+          res = await syncAdminFetch('/admin/libraries-root/check', { method: 'POST', body: { probe } });
+        }catch(e){ writeError = e; }
+        finally{
+          try{ await picked.removeEntry(probe); }catch(e){ /* never written, or already gone */ }
+        }
+        chooseBtn.disabled = false;
+        if(!ui.isOpen()){ resolve(null); return; }
+        if(writeError){ showError(t('librariesRootCouldNotCheck', { error: writeError.message || String(writeError) })); return; }
+        if(res && res.ok && res.body && res.body.ok === true){
+          const confirmed = typeof res.body.root === 'string' && res.body.root ? res.body.root : root;
+          try{ await storeLibrariesRoot(picked, confirmed); }catch(e){ /* kept for this time only */ }
+          slot.innerHTML = '';
+          resolve({ handle: picked, root: confirmed });
+          return;
+        }
+        if(res && res.ok && res.body && res.body.ok === false){
+          showError(t('librariesRootWrong', { root: typeof res.body.root === 'string' && res.body.root ? res.body.root : root }));
+          return;
+        }
+        showError(librariesRootCheckError(res));
+      });
+    });
+  }
+
+  // The first free "<name>.dossiary", "<name> 2.dossiary", … in `parent`.
+  async function freeLibraryFolderName(parent, name){
+    const taken = new Set();
+    for await (const [entry] of parent.entries()) taken.add(entry.toLowerCase());
+    let folder = `${name}${LIBRARY_FOLDER_EXT}`;
+    for(let n = 2; taken.has(folder.toLowerCase()); n++) folder = `${name} ${n}${LIBRARY_FOLDER_EXT}`;
+    return folder;
+  }
+
+  function shareLibraryErrorText(res, root){
+    if(!res) return t('devicesSyncUnreachable');
+    const code = res.body && typeof res.body.error === 'string' ? res.body.error : '';
+    if(code === 'already-shared') return t('shareLibraryAlreadyShared');
+    if(code === 'not-a-library') return t('shareLibraryNotALibrary', { root: root || '' });
+    if(code === 'unknown-device') return t('shareLibraryUnknownDevice');
+    if(code === 'hub-too-old') return t('deleteLibraryHubTooOld');
+    if(code === 'hub-unauthorized') return t('deleteLibraryHubUnauthorized');
+    if(code === 'hub-unreachable') return t('deleteLibraryHubUnreachable');
+    if(res.status === 404) return t('deleteLibrarySyncTooOld');   // a dossiary-sync without the route
+    return t('shareLibraryFailedCode', { code: code || '—', status: res.status });
+  }
+
+  async function openShareLibraryDialog(){
+    if(!rootDirHandle || !db || syncLibrary || syncLibraryGone) return;
+    const seq = ++shareLibrarySeq;
+    shareLibraryRunning = false;
+    const ctx = { seq, original: rootDirHandle, name: libraryDisplayName(rootDirHandle.name), phones: [], inPlace: false, root: null, copy: null, stopRequested: false };
+    modalRoot.innerHTML = `
+      <div class="backdrop" id="modal-backdrop">
+        <div class="modal share-library-dialog" role="dialog" aria-modal="true" aria-labelledby="share-library-title">
+          <button class="modal-close" id="modal-close-btn" aria-label="${t('detailCloseAriaLabel')}">✕</button>
+          <h2 id="share-library-title">${t('shareLibraryTitle')}</h2>
+          <div id="share-library-body"><p class="scan-dialog-text">${t('devicesLooking')}</p></div>
+        </div>
+      </div>`;
+    const close = () => { if(!shareLibraryRunning) closeModal(); };
+    el('modal-close-btn').addEventListener('click', close);
+    el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') close(); });
+    document.addEventListener('keydown', onModalKeydown);
+    if(!readSyncAdminToken()){ renderShareNotConnected(ctx); return; }
+    const res = await syncAdminFetch('/admin/devices');
+    if(!shareDialogOpen(seq)) return;
+    if(res && res.status === 401){ setSyncAdminToken(null); renderShareNotConnected(ctx); return; }
+    if(!res || !res.ok || !Array.isArray(res.body)){ renderShareMessage(ctx, syncErrorText(res)); return; }
+    ctx.phones = res.body.filter(d => d && typeof d.id === 'string' && d.role === 'phone').map(normalizeSyncDevice);
+    // Already directly in the libraries folder? Known up front only while
+    // the stored folder's permission is still granted; otherwise on Share.
+    const known = await peekLibrariesRoot();
+    if(!shareDialogOpen(seq)) return;
+    if(known){ ctx.root = known; ctx.inPlace = await isDirectlyIn(known.handle, ctx.original); }
+    if(!shareDialogOpen(seq)) return;
+    renderShareForm(ctx);
+  }
+
+  function shareCancelHtml(){
+    return `<button type="button" id="share-library-cancel-btn">${escapeHtml(t('commonCancel'))}</button>`;
+  }
+  function wireShareCancel(){
+    el('share-library-cancel-btn').addEventListener('click', () => { if(!shareLibraryRunning) closeModal(); });
+  }
+
+  function renderShareNotConnected(ctx, note){
+    el('share-library-body').innerHTML = `
+      ${note ? `<p class="share-library-error" id="share-library-note">${escapeHtml(note)}</p>` : ''}
+      <p class="scan-dialog-text" id="share-library-connect-text">${escapeHtml(t('shareLibraryConnectText'))}</p>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="primary" id="share-library-connect-btn">${escapeHtml(t('devicesConnectButton'))}</button>
+        ${shareCancelHtml()}
+      </div>`;
+    el('share-library-connect-btn').addEventListener('click', () => openDevicesDialog());
+    wireShareCancel();
+  }
+
+  function renderShareMessage(ctx, text){
+    el('share-library-body').innerHTML = `
+      <p class="share-library-error" id="share-library-error">${escapeHtml(text)}</p>
+      <div class="modal-actions" style="margin-top:16px;">${shareCancelHtml()}</div>`;
+    wireShareCancel();
+  }
+
+  function renderShareForm(ctx){
+    const phonesHtml = ctx.phones.length
+      ? ctx.phones.map(d => `<label class="show-archived-toggle"><input type="checkbox" class="share-library-phone" data-id="${escapeHtml(d.id)}" /> ${escapeHtml(d.name)}</label>`).join('')
+      : `<p class="doc-sub" id="share-library-no-phones">${escapeHtml(t('shareLibraryNoPhones'))}</p>`;
+    el('share-library-body').innerHTML = `
+      <p class="scan-dialog-text">${escapeHtml(t('shareLibraryIntro'))}</p>
+      <div class="field">
+        <label for="share-library-name">${escapeHtml(t('shareLibraryNameLabel'))}</label>
+        <input type="text" id="share-library-name" value="${escapeHtml(ctx.name)}" autocomplete="off" spellcheck="false" ${ctx.inPlace ? 'readonly' : ''} />
+        <div class="field-hint" id="share-library-name-hint">${escapeHtml(ctx.inPlace ? t('shareLibraryInPlaceHint') : t('shareLibraryCopyHint'))}</div>
+      </div>
+      <div class="field">
+        <label>${escapeHtml(t('shareLibraryPhonesLabel'))}</label>
+        <div id="share-library-phones">${phonesHtml}</div>
+      </div>
+      <div id="share-library-root-slot"></div>
+      <div class="status" id="share-library-status"></div>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="primary" id="share-library-share-btn">${escapeHtml(t('shareLibraryShareBtn'))}</button>
+        <button type="button" id="share-library-stop-btn" style="display:none;">${escapeHtml(t('shareLibraryStopBtn'))}</button>
+        ${shareCancelHtml()}
+      </div>`;
+    el('share-library-share-btn').addEventListener('click', () => performShare(ctx));
+    el('share-library-stop-btn').addEventListener('click', (e) => { ctx.stopRequested = true; e.currentTarget.disabled = true; });
+    wireShareCancel();
+  }
+
+  function setShareStatus(kind, text){
+    const statusEl = el('share-library-status');
+    if(!statusEl) return;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    statusEl.innerHTML = (kind === 'busy' ? '<span class="spinner"></span> ' : '') + escapeHtml(text);
+  }
+  // While choosing, saving, copying or sharing, nothing in the form changes.
+  function setShareBusy(busy){
+    ['share-library-share-btn', 'share-library-name'].forEach(id => { const e = el(id); if(e) e.disabled = busy; });
+    modalRoot.querySelectorAll('.share-library-phone').forEach(b => { b.disabled = busy; });
+  }
+  function setShareRunning(running){
+    shareLibraryRunning = running;
+    const closeBtn = el('modal-close-btn'), cancel = el('share-library-cancel-btn');
+    if(closeBtn) closeBtn.disabled = running;
+    if(cancel) cancel.disabled = running;
+  }
+
+  // What a copy failure says: the file and the reason (fileErrorText()).
+  function shareCopyErrorText(failure, folder){
+    const e = failure.error || {};
+    if(failure.op === 'read') return fileErrorText({ fileOp: 'read', filePath: failure.path, errorName: e.name, message: e.message || String(e) }, 'fileErrorRead');
+    const path = failure.path === folder ? folder : `${folder}/${failure.path}`;
+    if(e.name === 'NoModificationAllowedError' || /read-only/i.test(e.message || '')) return t('fileErrorReadOnly', { path });
+    return t('fileErrorWrite', { path, error: e.message || String(e) });
+  }
+
+  async function performShare(ctx){
+    if(shareLibraryRunning || !shareDialogOpen(ctx.seq)) return;
+    const phones = [...modalRoot.querySelectorAll('.share-library-phone')].filter(b => b.checked).map(b => b.dataset.id);
+    // A copy made by an earlier attempt that couldn't be shared: share that same copy.
+    if(ctx.copy){
+      setShareBusy(true);
+      setShareRunning(true);
+      await shareFolder(ctx, ctx.copy.handle, ctx.copy.folder, phones);
+      return;
+    }
+    const name = libraryDisplayName(el('share-library-name').value.trim()).trim();
+    setShareBusy(true);
+    setShareStatus('', '');
+    const root = await ensureLibrariesRootHandle({ slot: el('share-library-root-slot'), isOpen: () => shareDialogOpen(ctx.seq) });
+    if(!shareDialogOpen(ctx.seq)) return;
+    if(!root){ setShareBusy(false); return; }
+    ctx.root = root;
+    ctx.inPlace = await isDirectlyIn(root.handle, ctx.original);
+    if(!shareDialogOpen(ctx.seq)) return;
+    if(ctx.inPlace){
+      const input = el('share-library-name');
+      input.value = ctx.name; input.readOnly = true;
+      el('share-library-name-hint').textContent = t('shareLibraryInPlaceHint');
+    }else if(!name || /[\/\\:*?"<>|]/.test(name) || name.startsWith('.')){
+      setShareStatus('err', t('newLibraryNameInvalid'));
+      setShareBusy(false);
+      return;
+    }
+    setShareRunning(true);
+    // 1. Memory to disk: the share route reads library.sqlite's hash now.
+    setShareStatus('busy', t('shareLibrarySaving'));
+    try{ await persistDb(); }
+    catch(e){
+      setShareRunning(false); setShareBusy(false);
+      setShareStatus('err', t('shareLibrarySaveFailed', { error: e.message || String(e) }));
+      return;
+    }
+    if(ctx.inPlace){ await shareFolder(ctx, ctx.original, ctx.original.name, phones); return; }
+    // Elsewhere: copy it into a new <Name>.dossiary in the libraries folder.
+    let folder = '', dest = null, failure = null, stopped = false;
+    try{
+      folder = await freeLibraryFolderName(root.handle, name);
+      dest = await withFileOp('write', folder, () => root.handle.getDirectoryHandle(folder, { create: true }));
+      ctx.stopRequested = false;
+      const stopBtn = el('share-library-stop-btn');
+      stopBtn.disabled = false; stopBtn.style.display = '';
+      setShareStatus('busy', t('shareLibraryListing'));
+      const result = await copyLibraryInto(dest, {
+        stopOnError: true,
+        shouldStop: () => ctx.stopRequested,
+        onProgress: (done, total) => setShareStatus('busy', t('shareLibraryCopying', { folder, done, total })),
+      });
+      stopped = result.stopped;
+      failure = result.failed[0] || null;
+    }catch(e){
+      failure = { path: (e && e.filePath) || folder, op: (e && e.fileOp) || 'write', error: e };
+    }
+    const stopBtn = el('share-library-stop-btn');
+    if(stopBtn) stopBtn.style.display = 'none';
+    if(stopped || failure){
+      // A partial copy isn't a library: don't leave one around.
+      if(dest){ try{ await root.handle.removeEntry(folder, { recursive: true }); }catch(e){ /* best effort */ } }
+      setShareRunning(false); setShareBusy(false);
+      if(!shareDialogOpen(ctx.seq)) return;
+      if(failure && !stopped) setShareStatus('err', t('shareLibraryCopyFailed', { error: shareCopyErrorText(failure, folder) }));
+      else setShareStatus('err', t('shareLibraryStopped'));
+      return;
+    }
+    ctx.copy = { handle: dest, folder };
+    await shareFolder(ctx, dest, folder, phones);
+  }
+
+  async function shareFolder(ctx, handle, folder, phones){
+    setShareStatus('busy', t('shareLibrarySharing'));
+    const res = await syncAdminFetch('/admin/libraries/share', { method: 'POST', body: { folder, phones } });
+    if(res && res.ok && res.body && typeof res.body.id === 'string'){
+      const shared = typeof res.body.name === 'string' && res.body.name ? res.body.name : libraryDisplayName(folder);
+      await finishShare(ctx, handle, shared);
+      return;
+    }
+    setShareRunning(false);
+    if(!shareDialogOpen(ctx.seq)) return;
+    const kept = ctx.copy ? t('shareLibraryCopyKept', { folder: ctx.copy.folder }) : '';
+    if(res && res.status === 401){
+      setSyncAdminToken(null);
+      renderShareNotConnected(ctx, [t('devicesConnectAgain'), kept].filter(Boolean).join(' '));
+      return;
+    }
+    setShareStatus('err', [shareLibraryErrorText(res, ctx.root && ctx.root.root), kept].filter(Boolean).join(' '));
+    // Nothing more to choose for a copy that exists: Try again shares it.
+    if(ctx.copy){
+      el('share-library-share-btn').disabled = false;
+      el('share-library-share-btn').textContent = t('shareLibraryTryAgainBtn');
+      modalRoot.querySelectorAll('.share-library-phone').forEach(b => { b.disabled = false; });
+    }else{
+      setShareBusy(false);
+    }
+  }
+
+  // Shared: reopen on the shared folder (its .dossiary-sync.json is read now),
+  // a copy replaces the original in Recent libraries, and say so.
+  async function finishShare(ctx, handle, sharedName){
+    const original = ctx.original;
+    const isCopy = handle !== original;
+    const rootPath = ctx.root ? ctx.root.root : '';
+    shareLibraryRunning = false;
+    closeModal();
+    resetAll();
+    if(isCopy) await forgetRecentLibrary(original);
+    await proceedWithRootDirHandle(handle);
+    const done = () => t('shareLibraryDone', { name: sharedName });
+    const note = () => isCopy ? t('shareLibraryOriginalNote', { path: `${rootPath}/${handle.name}`, original: original.name }) : '';
+    setStatusLive(() => [done(), note()].filter(Boolean).join(' '), 'ok');
+    if(syncLibrary) pollSyncState();   // the marker shows "uploading…" right away
+    if(isCopy && rootDirHandle === handle && modalRoot.innerHTML === ''){
+      modalRoot.innerHTML = `
+        <div class="backdrop" id="modal-backdrop">
+          <div class="modal share-library-dialog" role="dialog" aria-modal="true">
+            <h2>${t('shareLibraryTitle')}</h2>
+            <p class="scan-dialog-text" id="share-library-result">${escapeHtml(done())}</p>
+            <p class="scan-dialog-text" id="share-library-original-note">${escapeHtml(note())}</p>
+            <div class="modal-actions" style="margin-top:16px;">
+              <button type="button" class="primary" id="share-library-ok-btn">${escapeHtml(t('syncNoticeOk'))}</button>
+            </div>
+          </div>
+        </div>`;
+      el('share-library-ok-btn').addEventListener('click', closeModal);
+      el('modal-backdrop').addEventListener('click', (e) => { if(e.target.id === 'modal-backdrop') closeModal(); });
+      document.addEventListener('keydown', onModalKeydown);
+      el('share-library-ok-btn').focus();
+    }
+  }
+
+  // ---- Get it (iPhone & other devices…): libraries on the Pi this Mac doesn't have ----
+  // GET /admin/libraries/available → [{id, name, available}]; "Get it" makes
+  // sure of the libraries folder, then POST /admin/libraries/<id>/get downloads
+  // it there (it can take minutes: no timeout) and answers {id, name, folder}.
+  // "Open" then opens that folder. The section is hidden when there's nothing
+  // to get, and for an older Dossiary Sync without the route (404).
+  async function loadDevicesAvailable(seq){
+    const state = devicesState;
+    if(!state) return;
+    const res = await syncAdminFetch('/admin/libraries/available');
+    if(!devicesDialogOpen(seq) || devicesState !== state) return;
+    if(res && res.status === 401){ devicesTokenRejected(seq); return; }
+    state.available = res && res.ok && Array.isArray(res.body)
+      ? res.body.filter(l => l && typeof l.id === 'string').map(l => ({ id: l.id, name: typeof l.name === 'string' && l.name ? l.name : l.id, available: l.available !== false }))
+      : [];
+    renderDevicesAvailable(seq);
+  }
+
+  function renderDevicesAvailable(seq){
+    const slot = el('devices-available-slot');
+    if(!slot || !devicesState) return;
+    const list = devicesState.available || [];
+    const gets = devicesState.gets || (devicesState.gets = {});
+    if(!list.length){ slot.innerHTML = ''; return; }
+    slot.innerHTML = `
+      <h3>${t('devicesAvailableHeading')}</h3>
+      <ul class="devices-library-list" id="devices-available-list">${list.map(l => {
+        const g = gets[l.id] || {};
+        const attr = escapeHtml(l.id);
+        let action;
+        if(g.folder) action = `<button type="button" class="devices-open-btn" data-library="${attr}">${t('devicesOpenLibrary')}</button>`;
+        else if(!l.available) action = `<button type="button" class="devices-get-btn" data-library="${attr}" disabled>${t('devicesGetIt')}</button> <span class="devices-unavailable">(${t('devicesBeingUploaded')})</span>`;
+        else action = `<button type="button" class="devices-get-btn" data-library="${attr}"${g.downloading ? ' disabled' : ''}>${g.downloading ? t('devicesDownloading') : t('devicesGetIt')}</button>`;
+        return `<li data-library="${attr}">${escapeHtml(l.name)} ${action}
+          ${g.message ? `<div class="doc-sub devices-get-done">${escapeHtml(g.message)}</div>` : ''}
+          ${g.error ? `<div class="devices-lib-error devices-get-error">${escapeHtml(g.error)}</div>` : ''}
+          <div class="devices-get-root-slot"></div></li>`;
+      }).join('')}</ul>`;
+    slot.querySelectorAll('.devices-get-btn').forEach(b => b.addEventListener('click', () => getLibraryHere(seq, b.dataset.library)));
+    slot.querySelectorAll('.devices-open-btn').forEach(b => b.addEventListener('click', () => openGottenLibrary(seq, b.dataset.library)));
+  }
+
+  function getLibraryErrorText(res){
+    if(!res) return t('devicesSyncUnreachable');
+    const code = res.body && typeof res.body.error === 'string' ? res.body.error : '';
+    if(code === 'not-ready') return t('devicesGetNotReady');
+    if(code === 'already-here') return t('devicesGetAlreadyHere');
+    if(code === 'unknown-library') return t('devicesGetUnknown');
+    if(code === 'hub-unauthorized') return t('deleteLibraryHubUnauthorized');
+    if(code === 'hub-unreachable') return t('deleteLibraryHubUnreachable');
+    if(res.status === 404) return t('deleteLibrarySyncTooOld');
+    return t('devicesGetFailedCode', { code: code || '—', status: res.status });
+  }
+
+  async function getLibraryHere(seq, id){
+    const state = devicesState;
+    if(!state) return;
+    const gets = state.gets || (state.gets = {});
+    if(gets[id] && (gets[id].busy || gets[id].downloading)) return;
+    const lib = (state.available || []).find(l => l.id === id);
+    if(!lib || !lib.available) return;
+    gets[id] = { busy: true };
+    const row = el('devices-available-list') && [...el('devices-available-list').children].find(li => li.dataset.library === id);
+    const btn = row && row.querySelector('.devices-get-btn');
+    if(btn) btn.disabled = true;
+    const live = () => devicesDialogOpen(seq) && devicesState === state;
+    const root = await ensureLibrariesRootHandle({ slot: row && row.querySelector('.devices-get-root-slot'), isOpen: live });
+    if(!live()) return;
+    if(!root){ gets[id] = {}; if(btn) btn.disabled = false; return; }
+    state.root = root;
+    gets[id] = { downloading: true };
+    if(btn){ btn.disabled = true; btn.textContent = t('devicesDownloading'); }
+    const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(id)}/get`, { method: 'POST', body: {}, noTimeout: true });
+    if(res && res.status === 401){ if(live()) devicesTokenRejected(seq); return; }
+    if(!live()) return;
+    if(res && res.ok && res.body && typeof res.body.folder === 'string' && res.body.folder){
+      const name = typeof res.body.name === 'string' && res.body.name ? res.body.name : lib.name;
+      gets[id] = { folder: res.body.folder, message: t('devicesGotIt', { name }) };
+    }else{
+      gets[id] = { error: getLibraryErrorText(res) };
+    }
+    renderDevicesAvailable(seq);
+  }
+
+  // Opens the library just downloaded: the last part of its `folder` path,
+  // inside the libraries folder. Recent libraries records it on open.
+  async function openGottenLibrary(seq, id){
+    const state = devicesState;
+    const g = state && state.gets && state.gets[id];
+    if(!g || !g.folder || !state.root) return;
+    const folderName = g.folder.split('/').filter(Boolean).pop() || '';
+    let handle = null;
+    try{ handle = await state.root.handle.getDirectoryHandle(folderName); }catch(e){ handle = null; }
+    if(!devicesDialogOpen(seq) || devicesState !== state) return;
+    if(!handle){
+      g.error = t('devicesOpenFailed', { folder: folderName });
+      renderDevicesAvailable(seq);
+      return;
+    }
+    closeModal();
+    if(!await switchLibraryAsking()) return;
+    await proceedWithRootDirHandle(handle);
+  }
+
   const DEVICE_ROLE_LABEL_KEYS = { phone: 'devicesRolePhone', mirror: 'devicesRoleMirror', restore: 'devicesRoleRestore' };
   function deviceRoleLabel(role){ return DEVICE_ROLE_LABEL_KEYS[role] ? t(DEVICE_ROLE_LABEL_KEYS[role]) : String(role || ''); }
   function deviceRelativeTime(iso){
@@ -18275,6 +18846,7 @@
     };
     renderDevicesConnected(seq);
     loadDevicesKeptAside(seq);
+    loadDevicesAvailable(seq);
   }
   // Each library's kept-aside versions (GET …/state), shown under it while
   // any exist. Best effort: a library whose state doesn't answer shows none.
@@ -18339,6 +18911,7 @@
       <div id="devices-add-slot"></div>
       <h3>${t('devicesLibrariesHeading')}</h3>
       <div id="devices-libraries">${devicesLibrariesHtml()}</div>
+      <div id="devices-available-slot"></div>
       <p class="scan-dialog-text">${t('devicesShareNote', { command: '<code>dossiary-sync share &lt;folder&gt;</code>' })}</p>
       <button id="devices-disconnect-btn">${t('devicesDisconnect')}</button>`;
     modalRoot.querySelectorAll('.devices-row').forEach(row => {
@@ -18353,6 +18926,7 @@
       if(btn) setLibraryConnection(seq, btn.dataset.library, btn.classList.contains('devices-lib-reconnect-btn'));
     });
     renderDevicesAddSlot(seq);
+    renderDevicesAvailable(seq);
   }
 
   // "Add iPhone or iPad…": pick the libraries the new phone may see, then
@@ -18668,6 +19242,7 @@
   el('devices-btn').addEventListener('click', () => openDevicesDialog());
   // Also on the start screen: managing devices doesn't need an open library.
   el('empty-devices-btn').addEventListener('click', () => openDevicesDialog());
+  el('share-library-btn').addEventListener('click', () => { openShareLibraryDialog(); });
   el('delete-library-btn').addEventListener('click', () => { if(rootDirHandle && db) openDeleteLibraryDialog(rootDirHandle, { open: true }); });
   el('sync-marker').addEventListener('click', () => {
     if(el('sync-marker').dataset.state === 'unconnected' && modalRoot.innerHTML === '') openDevicesDialog();
