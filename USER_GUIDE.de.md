@@ -208,8 +208,12 @@ mehr benutzt.
 Speichern auf dem Mac schreibt direkt in die Bibliothek auf der Festplatte.
 Änderungen vom iPhone werden sofort übernommen, auch wenn Dossiary auf dem Mac
 geöffnet ist. Kollidiert ein Speichern auf dem Mac mit einer Änderung vom
-iPhone, gilt die Änderung vom iPhone, und die Version des Macs wird in einem
-eigenen Ordner beiseitegelegt; eine Mitteilung nennt dir den Ordner.
+iPhone, gilt die Änderung vom iPhone, und die Version des Macs wird im Ordner
+`.kept-aside` der Bibliothek beiseitegelegt. Hast du Dossiary mit Dossiary Sync
+verbunden (Schritt 2 oben), regelt Dossiary Sync das, und Dossiary zeigt nur
+eine Meldung in der Statuszeile: Die Änderungen vom Mac an diesem Tag ließen
+sich nicht zusammenführen und sind sicher aufbewahrt. Hast du es nicht
+verbunden, zeigt Dossiary eine Mitteilung, die den Ordner nennt.
 
 ## Ein kurzer Rundgang durch alles Weitere
 
