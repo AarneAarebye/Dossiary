@@ -1289,13 +1289,16 @@ SET_SYNC_VERSION = """(v) => {
 }"""
 
 
-HUB_SHA = 'b0' * 32   # lastPushedHash after a pull: the SHA-256 of the hub's bytes, never this tab's
+HUB_SHA = 'b0' * 32   # lastPushedHash after a pull of a phone edit: the SHA-256 of bytes this tab never wrote
 
 
 async def scenario_base_follows_own_push(p):
     # The base the marker names follows this Mac's own pushes (Dossiary Sync accepts only its last 1000 own pushes as
-    # a chain from an older base), but only once a state answer confirms it: version W with lastPushedHash equal
-    # to the SHA-256 of bytes this tab wrote (or loaded). Anything else leaves the base where it is.
+    # a chain from an older base; 20 before 0.12.2), but only once a state answer confirms it: version W with
+    # lastPushedHash equal to the SHA-256 of bytes this tab wrote (or loaded). The pair is commit-verified by the hub
+    # (a commit whose bytes don't hash to its sqliteHash is refused; a pull records the hash of what it installs), so
+    # it means "the hub's W holds exactly those bytes": memory descends from them, nothing of W can be pushed over.
+    # Anything else leaves the base where it is.
     # (a) A push of exactly this tab's bytes.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await edit_title(page, 'First')
@@ -1444,7 +1447,8 @@ async def scenario_many_own_pushes(p):
 
 
 # A pull of a phone version installed just before this tab's write closes (the write lands on top of it): what
-# the pull leaves in the state answer is the hub bytes' hash, never this tab's, so base never follows it.
+# the pull leaves in the state answer is the hash of the phone edit's bytes, which this tab never wrote, so base
+# never follows it.
 PULL_UNDER_WRITE = """() => {
     const root = window.__TEST_ROOT;
     const origGet = root.getFileHandle.bind(root);

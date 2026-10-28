@@ -5504,8 +5504,13 @@
         // A pull may have been installed under this write (this tab can't
         // tell from the files). That never moves `base`: base follows only
         // a state answer confirming that Dossiary Sync pushed exactly bytes
-        // this tab wrote (syncConfirmPush(), lastPushedHash == this hash);
-        // a pull installs the hub's bytes, whose hash is never this tab's.
+        // this tab wrote (syncConfirmPush(), lastPushedHash == this hash).
+        // The answer's (version W, lastPushedHash h) always means the hub's
+        // W holds exactly the bytes h: the hub refuses a commit whose bytes
+        // don't hash to the claimed sqliteHash, and a pull records the hash
+        // of the bytes it installs. Memory descends from every hash this tab
+        // listed, so with h among them all of W is in memory and nothing of
+        // W can be pushed over -- whoever made W, pull or push.
         // Until then the marker keeps naming the last confirmed base, which
         // Dossiary Sync accepts along its own-push chain (its last 1000 own
         // pushes from dossiary-sync 0.12.2; 20 before).
@@ -16629,8 +16634,14 @@
   // this tab computes over the bytes it writes -- is the hash of bytes this
   // tab loaded or wrote since (syncLoadedHash, syncWrittenHashes). `version`
   // then holds exactly those bytes, memory continues from them, so memory is
-  // based on `version`. A pull installs the hub's bytes, whose hash is never
-  // this tab's: a pulled phone edit is never taken for this Mac's push. Until
+  // based on `version`. Why that holds whoever made `version`: the pair
+  // (version W, lastPushedHash h) is commit-verified -- the hub refuses a
+  // commit whose bytes don't hash to the claimed sqliteHash (dossiary-sync
+  // HubStore commit), and a pull records the hash of the bytes it installs --
+  // so it always means "the hub's W holds exactly the bytes h". A pull may
+  // well install bytes this tab once wrote (a re-pull of its own push); W's
+  // content is then still all in memory, and nothing of W is pushed over. A
+  // phone edit's bytes are not in the list, so it never confirms. Until
   // confirmed, `base` and each marker keep naming the last confirmed version,
   // which Dossiary Sync accepts along its own-push chain. Without the field
   // (an older Dossiary Sync) or without a token (no poll), `base` stays at

@@ -2699,8 +2699,15 @@ this repo's git tags.
     (`syncLoadedHash`) or wrote since its last open, reload or keep-aside
     (`syncWrittenHashes`, the last 64; not only the last write, since saves can
     come faster than pushes), `base` (and `version`) become the answer's
-    `version`. A pull installs the hub's bytes, whose hash is never the page's,
-    so a pulled phone edit is never taken for this Mac's push: **the old
+    `version`. Why this is safe: the pair (version W, `lastPushedHash` h) is
+    commit-verified by the hub (it refuses a commit whose bytes don't hash to the
+    claimed `sqliteHash`, dossiary-sync `HubStore.swift` commit; a pull records
+    the hash of the bytes it installs), so it always means "the hub's version W
+    holds exactly the bytes h". Memory descends from every hash in the page's
+    list, so with h in it all of W is in memory and nothing of W can be pushed
+    over, whether W came from this Mac's push or from a pull (a pull can install
+    bytes this tab once wrote, e.g. a re-pull of its own push; that is fine). A
+    phone edit's bytes are not in the list, so it never confirms: **the old
     millisecond race of the evidence rule (`markerBefore`, sync-file reads around
     the write, `syncBaseMayFollow()`, all removed) is closed.** Until confirmed,
     `base` and every marker keep naming the last confirmed version, which the
