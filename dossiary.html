@@ -4828,7 +4828,7 @@
   // plus "Open library folder" -- and deliberately does NOT open the folder
   // picker itself: picking a recent library is usually what's wanted, and a
   // picker popping up on top of that list forces an extra cancel.
-  el('reload-btn').addEventListener('click', () => { switchLibraryAsking(); });
+  el('reload-btn').addEventListener('click', () => { resetAll(); });
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
   el('init-btn').addEventListener('click', useFolderAsLibrary);
   el('copy-setup-select').addEventListener('change', onCopySetupChange);
@@ -5505,7 +5505,7 @@
             if(syncBehind() || syncReloadWanted || await syncNewerOnDisk()) setTimeout(() => { maybeReload(); }, 0);
             return false;
           }
-          if(syncUnsavedChanges || syncLeasePending || syncReloading) return false;
+          if(syncLeasePending || syncReloading) return false;
           if(syncBehind() || syncReloadWanted){
             syncViewWriteDropped = true;
             setTimeout(() => { maybeReload(); }, 0);
@@ -5528,7 +5528,6 @@
           }
           const free = syncLease.state !== 'holding' && syncLease.state !== 'offline' && syncLease.state !== 'disconnected';
           if(free){
-            if(opts.background && syncLease.state === 'other'){ syncHoldBack(); return false; }
             await syncNewerOnDisk();   // a pull since the last poll counts too
             const backingOff = syncLease.state === 'unsynced' && syncNow() - syncUnsyncedAt < SYNC_UNANSWERED_RETRY_MS;
             if(!backingOff){
@@ -5539,15 +5538,7 @@
               // A job took the lease here (backfill, "Check for text", a
               // backup's date): give it back soon, unless a person is editing.
               if(ok && opts.background && !wasHolding && syncLease.state === 'holding' && !syncPersonFlowPending) syncLeaseForBackgroundOnly = true;
-              if(!ok){
-                syncHoldBack();
-                if(!opts.background){
-                  const device = syncLease.deviceName || t('syncAnotherMac');
-                  // After the caller's own flow, so nothing overwrites it.
-                  setTimeout(() => { if(syncUnsavedChanges) setStatusLive(() => t('syncNotSavedStatus', { device }), 'err'); }, 0);
-                }
-                return false;
-              }
+              if(!ok) return false;
             }
             // No lease to be had (no admin token in this browser, or the service not answering): nothing
             // confirms who holds it, but the change is written anyway, with the base marker below. The
@@ -5564,7 +5555,7 @@
           // person's change known to be pending keeps them aside quietly
           // (a plain status line, no notice).
           if(syncBehind() && !(await syncDiskIsOurs())){
-            const quiet = !!opts.background && !syncUnsavedChanges && !syncPersonFlowPending && syncPersonFlowHold === 0 && !syncWroteWithoutLease;
+            const quiet = !!opts.background && !syncPersonFlowPending && syncPersonFlowHold === 0 && !syncWroteWithoutLease;
             await syncKeepAsideAndReload(false, quiet);
             return false;
           }
@@ -5596,7 +5587,6 @@
       if(!opts.viewOnly){
         lastRealSaveAt = syncNow();
         if(!opts.background){ syncLeaseForBackgroundOnly = false; syncPersonFlowPending = false; }
-        if(syncUnsavedChanges){ syncUnsavedChanges = false; syncHeldBackEpisode = null; }
       }
       return true;
     }finally{
@@ -8656,7 +8646,7 @@
     el('export-library-open-btn').addEventListener('click', async () => {
       const handle = dest;
       closeModal();
-      if(!(await switchLibraryAsking())) return;   // a held-back change: the person chose to stay
+      resetAll();
       await proceedWithRootDirHandle(handle);
     });
     el('export-library-start-btn').addEventListener('click', async () => {
@@ -15695,7 +15685,7 @@
       if(rootDirHandle !== root || !db) return;
       // Two-Mac editing: while another Mac edits (or this tab is behind a
       // newer version, or holds back a change) the jobs wait, queued.
-      if(syncLibrary && (syncLease.state === 'other' || syncBehind() || syncUnsavedChanges)) return;
+      if(syncLibrary && (syncLease.state === 'other' || syncBehind())) return;
       for(const row of ocrJobRows().filter(r => r.job_id)){
         await pollOcrJob(row, root);
         if(rootDirHandle !== root || !db) return;
@@ -16495,11 +16485,8 @@
       else localStorage.removeItem(SYNC_ADMIN_TOKEN_KEY);
     }catch(e){ syncAdminTokenMemoryOnly = true; }
     // Just connected (devices dialog): a library waiting as "not connected"
-    // can now take the lease, and write what it held back.
-    if(token && syncLibrary && syncLease.state === 'unconnected'){
-      setSyncLease({ state: 'none' });
-      if(syncUnsavedChanges || syncJobDataHeld()) syncRetryHeldBack();
-    }
+    // can now take the lease.
+    if(token && syncLibrary && syncLease.state === 'unconnected') setSyncLease({ state: 'none' });
   }
 
   // Returns {status, ok, body, retryAfter}, or null when nothing answered
@@ -16558,6 +16545,7 @@
   const SYNC_HEARTBEAT_MS = 60 * 1000;
   const SYNC_IDLE_RELEASE_MS = 10 * 60 * 1000;
   const SYNC_TICK_MS = 5 * 1000;
+  const SYNC_EDIT_DIALOG_MAX_MS = 60 * 60 * 1000;
   // {libraryId, version, base} from .dossiary-sync.json, or null. `version`: the newest version this tab
   // knows memory is not behind; `base`: the version the base marker names (what memory is provably based
   // on). They differ only after syncDiskIsOurs() took over a newer number without a lease (see there).
@@ -16570,7 +16558,6 @@
   const syncDetachedLibraryIds = new Set();
   let syncLibraryDeletedSeen = null;  // the syncLibrary a lease call answered 404 library-deleted for: nothing more is written
   let syncLibraryGone = null;   // {name, deletedBy, keptError} while a deleted library stays open read-only (see syncLibraryDeletedElsewhere())
-  let syncUnsavedChanges = false;       // Cancel in the take-over dialog: a real change is held back in memory
   let syncLeasePending = null;          // the acquire in flight; concurrent saves share it (one dialog)
   let syncReadPromise = null;
   let syncLastHeartbeatAt = 0;
@@ -16589,15 +16576,11 @@
   let syncPersonFlowPending = false;     // a person's flow passed ensureEditLease() and hasn't written yet (its change may be in memory)
   let syncEditDialogEl = null;          // the dialog an editing flow opened: activity for the idle clock while it's open
   let syncLastInputAt = 0;              // last key/pointer input (an open dialog stops counting after an hour without it)
-  let syncHeldBackEpisode = null;       // {folder, seq} of the .kept-aside copy of changes held back in memory
-  let syncHeldBackGen = 0;              // counts held-back episodes (a copy is only ever filed under its own)
-  let syncHeldBackCopyRunning = null;   // the writeHeldBackCopy() in flight (tick and pagehide never run two at once)
   let syncQuietEpisode = null;          // {lib, folder, reloads} of the last quiet keep-aside (reused until a reload)
   let syncPersonFlowHold = 0;           // person flows running that save more than once (a multi-file drop, Inbox, import, ...)
   let syncHoldEpisode = null;           // {lib, folder, reloads} of the keep-aside made during such a flow (reused until a reload)
   let syncFlowKeptAside = [];           // folders kept aside while a hold was up (named in the flow's final status)
   let syncHoldNoticeShown = false;      // the keep-aside notice was shown during the current hold
-  let syncLastHeldBackAt = 0;           // when the last change was held back (the copy is written 30 s later)
   let syncAdminEverAnswered = false;    // any admin call answered in this session (else: maybe not running or not installed)
   let syncLeaseForBackgroundOnly = false; // the lease was taken by a background job and no person has changed anything since
   let syncLoadedHash = null;            // SHA-256 of library.sqlite as last loaded or reloaded
@@ -16677,7 +16660,6 @@
     syncLoadedHash = null; syncLastWrittenHash = null; syncWroteWithoutLease = false;
     syncReservedDocIds = new Set();
     syncLease = { state: 'none' };
-    syncUnsavedChanges = false;
     syncLastHeartbeatAt = 0; syncLastAnswerAt = 0;
     lastRealSaveAt = 0;
     syncUnsyncedAt = 0;
@@ -16686,54 +16668,8 @@
     syncLastOtherDevice = '';
     syncLeaseForBackgroundOnly = false;
     syncPersonFlowPending = false; syncEditDialogEl = null;
-    syncHeldBackEpisode = null; syncLastHeldBackAt = 0;
     syncQuietEpisode = null;
     syncPersonFlowHold = 0; syncHoldEpisode = null; syncFlowKeptAside = []; syncHoldNoticeShown = false;
-  }
-
-  // A background write while the other Mac edits: its change stays in memory,
-  // like a Cancel in the take-over dialog, for the next real save to write.
-  function syncHoldBack(){
-    syncLastHeldBackAt = syncNow();
-    if(!syncUnsavedChanges){ syncUnsavedChanges = true; syncHeldBackGen++; }
-  }
-
-  // Changes held back must not live only in memory: 30 s after the last one
-  // (syncTick), and best-effort on pagehide, the held-back database goes to
-  // a .kept-aside copy -- one folder per held-back episode, updated in place
-  // while it continues, never the live library.sqlite. It stays there after
-  // the change is written for real (harmless; nothing is ever removed).
-  const SYNC_HELD_BACK_COPY_MS = 30 * 1000;
-  const SYNC_EDIT_DIALOG_MAX_MS = 60 * 60 * 1000;
-  // One at a time: a call while another runs (a tick and pagehide) waits for
-  // it and then copies again only if something changed, so one episode never
-  // makes two folders and two episodes never share one.
-  function writeHeldBackCopy(){
-    if(syncHeldBackCopyRunning) return syncHeldBackCopyRunning.then(() => writeHeldBackCopy());
-    const run = writeHeldBackCopyNow().finally(() => { if(syncHeldBackCopyRunning === run) syncHeldBackCopyRunning = null; });
-    syncHeldBackCopyRunning = run;
-    return run;
-  }
-  async function writeHeldBackCopyNow(){
-    const lib = syncLibrary, root = rootDirHandle;
-    if(!lib || !root || !db || !syncUnsavedChanges) return;
-    const seq = syncChangeSeq;
-    const episode = syncHeldBackEpisode, gen = syncHeldBackGen;
-    if(episode && episode.seq === seq) return;   // nothing new since the last copy
-    const bytes = db.export();
-    try{
-      if(episode && episode.folder){
-        await writeKeptAsideInto(root, episode.folder, bytes);
-        if(lib === syncLibrary && syncHeldBackEpisode === episode && syncHeldBackGen === gen) episode.seq = seq;
-      }else{
-        const folder = await writeKeptAsideCopy(root, bytes);
-        // Written for real (or the library switched) meanwhile: the copy
-        // stays, harmless, but it no longer stands for a held-back change.
-        if(lib !== syncLibrary || !syncUnsavedChanges || syncHeldBackGen !== gen || syncHeldBackEpisode !== episode) return;
-        syncHeldBackEpisode = { folder, seq };
-        setStatusLive(() => t('syncHeldBackCopyStatus', { folder }), 'err');
-      }
-    }catch(e){ /* tried again on the next tick */ }
   }
 
   // .dossiary-base.json for the bytes just written to library.sqlite (see
@@ -16835,8 +16771,9 @@
     }catch(e){ error = e; }
     if(lib !== syncLibrary || root !== rootDirHandle) return false;
     if(!folder){
-      // Not even kept aside: the change stays in memory, held back.
-      syncHoldBack();
+      // Not even kept aside: the change stays in memory, unwritten (syncDirty():
+      // no reload replaces it, closing the tab asks first); the next save or
+      // flow start tries the copy again.
       setStatusLive(() => t('syncKeptAsideFailed', { device, error: (error && error.message) || '' }), 'err');
       return false;
     }
@@ -16849,8 +16786,6 @@
       if(inline) await finish(); else setTimeout(finish, 0);
       return true;
     }
-    syncHeldBackEpisode = null;
-    syncUnsavedChanges = false;
     const build = () => t('syncKeptAsideHere', { device, folder });
     setStatusLive(build, 'err');
     let showNotice = true;
@@ -16895,10 +16830,10 @@
     const lib = syncLibrary, root = rootDirHandle;
     if(!lib) return true;
     if(syncReloading){ syncRefuseUpdating(); return false; }
-    // A person's change already pending (an earlier flow not yet written, or
-    // held back)? Decides below whether unwritten memory met by a newer
-    // version is that person's change (notice) or only a job's (quiet).
-    const personPendingBefore = syncPersonFlowPending || syncUnsavedChanges || syncPersonFlowHold > 0;
+    // A person's change already pending (an earlier flow not yet written)?
+    // Decides below whether unwritten memory met by a newer version is that
+    // person's change (notice) or only a job's (quiet).
+    const personPendingBefore = syncPersonFlowPending || syncPersonFlowHold > 0;
     syncPersonActivity();
     syncPersonFlowPending = true;
     if(syncLease.state !== 'holding' && syncLease.state !== 'offline' && syncLease.state !== 'disconnected'){
@@ -16908,11 +16843,7 @@
         const ok = await ensureLease(false);
         if(lib !== syncLibrary || root !== rootDirHandle) return false;
         if(syncLibraryDeletedSeen === lib) return false;   // the lease call said the library is deleted
-        if(!ok){
-          const device = syncLease.deviceName || t('syncAnotherMac');
-          setStatusLive(() => t('syncNotStartedStatus', { device }), 'err');
-          return false;
-        }
+        if(!ok) return false;
       }
     }
     if(syncBehind() && await syncDiskIsOurs() && !syncReloadWanted) return lib === syncLibrary;
@@ -16928,13 +16859,13 @@
       }
       // A write made without a lease, and a newer version that isn't this tab's bytes: Dossiary Sync may have
       // pulled it over that write. Keep memory (which has it) aside, with the notice; the person starts again.
-      if(syncWroteWithoutLease && !syncDirty() && !syncUnsavedChanges && !(await syncDiskIsOurs())){
+      if(syncWroteWithoutLease && !syncDirty() && !(await syncDiskIsOurs())){
         if(lib !== syncLibrary || root !== rootDirHandle) return false;
         await syncKeepAsideAndReload(true);
         return false;
       }
-      if(syncDirty() || syncUnsavedChanges){
-        if(!personPendingBefore && !syncUnsavedChanges && syncPersistsInFlight === 0 && !syncWroteWithoutLease){
+      if(syncDirty()){
+        if(!personPendingBefore && syncPersistsInFlight === 0 && !syncWroteWithoutLease){
           // Only a job's unwritten data (held silently while no lease could
           // be had): keep it aside quietly and go on, on the fresh library.
           if(!await syncKeepAsideAndReload(true, true)) return false;
@@ -17067,39 +16998,6 @@
     if(syncLease.state === 'holding' || syncLease.state === 'offline') lastRealSaveAt = syncNow();
   }
 
-  // Changes still held back (from a take-over Cancel) when the state turned
-  // "not connected" or "not answering": ask again, silently; once granted (or offline),
-  // write them -- through persistDb(), so a newer version on the hub still
-  // goes through the safety net.
-  // A job's data held silently the same way (nothing held back, no person's
-  // flow pending) is retried too, as a background write: otherwise it stays
-  // dirty forever, blocks every reload, and a person's next flow meeting a
-  // newer version would take it for their own change.
-  function syncJobDataHeld(){
-    return !syncUnsavedChanges && syncDirty() && !syncPersonFlowPending && syncPersonFlowHold === 0 && syncPersistsInFlight === 0 && !syncBackgroundJobRunning();
-  }
-  async function syncRetryHeldBack(){
-    const lib = syncLibrary;
-    const jobOnly = syncJobDataHeld();
-    if(!lib || !(syncUnsavedChanges || jobOnly) || !readSyncAdminToken()) return;
-    const wasHolding = syncLease.state === 'holding';
-    // Disconnected: no lease to take, the change goes straight to disk (with the base marker).
-    const ok = syncLease.state === 'disconnected' || await ensureLease(true);
-    if(lib !== syncLibrary || !ok) return;
-    if(syncLease.state === 'holding' || syncLease.state === 'offline' || syncLease.state === 'disconnected'){
-      if(jobOnly){
-        if(!wasHolding && syncLease.state === 'holding') syncLeaseForBackgroundOnly = true;
-        try{ await persistDb({ background: true }); }catch(e){ /* the next tick tries again */ }
-      }else{
-        syncLeaseForBackgroundOnly = false;
-        let wrote = false;
-        try{ wrote = await persistDb(); }catch(e){ /* stays held back; the next tick tries again */ }
-        // The "Not saved: …" line from when it was held back is stale now.
-        if(wrote && lib === syncLibrary) setStatusT('syncHeldBackSavedStatus', null, 'ok');
-      }
-    }
-  }
-
   // Background jobs (OCR runner, preview jobs) write files -- never without
   // the lease: only while holding it or offline, or when the library isn't
   // synced. Not while not connected or with the service not answering (no
@@ -17107,7 +17005,7 @@
   // newer version or a change is held back.
   function syncMayWriteFiles(){
     if(!syncLibrary) return true;
-    if(syncBehind() || syncUnsavedChanges) return false;
+    if(syncBehind()) return false;
     return syncLease.state === 'holding' || syncLease.state === 'offline' || syncLease.state === 'disconnected';
   }
   // A job's pass may first take a free lease silently (never a dialog).
@@ -17216,17 +17114,9 @@
     if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return true; }
     const result = syncLeaseResult(res);
     if(result === 'busy'){
-      const other = syncOtherLease(syncLeaseHolder(res) || {});
-      if(background){ setSyncLease(other); return false; }
-      const takeOver = await showTakeOverModal(other);
-      if(lib !== syncLibrary) return false;
-      if(!takeOver){
-        setSyncLease(other);
-        return false;
-      }
-      const res2 = await syncLeaseCall('acquire', true);
-      if(lib !== syncLibrary) return false;
-      applyAcquireAnswer(res2);
+      // Another Mac holds it: no take-over any more -- the change is written
+      // anyway, with the base marker, which decides whether it's pushed.
+      setSyncLease(syncOtherLease(syncLeaseHolder(res) || {}));
       return true;
     }
     applyAcquireAnswer(res);
@@ -17263,14 +17153,6 @@
       const reason = !res && !syncAdminEverAnswered ? t('syncNotRunningReason') : (res && res.ok ? t('devicesUnexpectedAnswer') : syncErrorText(res));
       setSyncLease({ state: 'unsynced', reason });
     }
-  }
-
-  function syncSinceText(iso){
-    const when = iso ? new Date(iso) : null;
-    if(!when || !Number.isFinite(when.getTime())) return '';
-    const locale = DATE_LOCALE[currentLang] || 'en-US';
-    const time = when.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-    return when.toDateString() === new Date().toDateString() ? time : `${formatDate(iso)} ${time}`;
   }
 
   // A sync dialog with one action and Cancel, as a layer of its own
@@ -17318,36 +17200,9 @@
     });
   }
 
-  // "Being edited on <device> since <time>." Take over / Cancel.
-  function showTakeOverModal(other){
-    const since = syncSinceText(other.since);
-    const device = escapeHtml(other.deviceName);
-    return showSyncChoiceModal({
-      ids: { layer: 'sync-takeover-layer', dialog: 'sync-takeover-dialog', ok: 'sync-takeover-btn', cancel: 'sync-takeover-cancel-btn' },
-      title: t('syncTakeOverTitle'),
-      paragraphs: [since ? t('syncTakeOverText', { device, time: escapeHtml(since) }) : t('syncTakeOverTextNoTime', { device }), t('syncTakeOverHint', { device })],
-      okLabel: t('syncTakeOverBtn'),
-    });
-  }
-
-  // Switch library with a change held back in memory asks first.
-  // → true when switched (resetAll() ran), false when the person stayed.
-  async function switchLibraryAsking(){
-    if(syncLibrary && syncUnsavedChanges){
-      const device = escapeHtml(syncLease.deviceName || t('syncAnotherMac'));
-      const discard = await showSyncChoiceModal({
-        ids: { layer: 'sync-discard-layer', dialog: 'sync-discard-dialog', ok: 'sync-discard-btn', cancel: 'sync-discard-cancel-btn' },
-        title: t('syncDiscardTitle'),
-        paragraphs: [t('syncDiscardText', { device })],
-        okLabel: t('syncDiscardBtn'),
-      });
-      if(!discard) return false;
-    }
-    resetAll();
-    return true;
-  }
   window.addEventListener('beforeunload', (e) => {
-    if((syncLibrary && syncUnsavedChanges) || syncLibraryGone){ e.preventDefault(); e.returnValue = ''; }
+    // A change a keep-aside couldn't copy (syncKeepAsideAndReload()) is only in memory.
+    if((syncLibrary && syncBehind() && syncDirty()) || syncLibraryGone){ e.preventDefault(); e.returnValue = ''; }
   });
 
   function startSyncTimer(){
@@ -17368,15 +17223,12 @@
     try{
       const now = syncNow();
       const dialogOpen = modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== '';
-      // Connected in another tab meanwhile: take the lease and write what was held back.
-      if(syncLease.state === 'unconnected' && readSyncAdminToken()){
-        setSyncLease({ state: 'none' });
-        if(syncUnsavedChanges || syncJobDataHeld()) await syncRetryHeldBack();
-      }
+      // Connected in another tab meanwhile: the next change takes the lease.
+      if(syncLease.state === 'unconnected' && readSyncAdminToken()) setSyncLease({ state: 'none' });
       // A person's flow that ended without writing (the form cancelled) is no
       // longer pending; its dialog no longer counts as activity once closed.
       if(!dialogOpen){
-        if(syncPersonFlowPending && syncPersonFlowHold === 0 && !syncDirty() && !syncUnsavedChanges && syncPersistsInFlight === 0) syncPersonFlowPending = false;
+        if(syncPersonFlowPending && syncPersonFlowHold === 0 && !syncDirty() && syncPersistsInFlight === 0) syncPersonFlowPending = false;
       }
       const state = syncLease.state;
       const held = state === 'holding' || state === 'offline';
@@ -17386,8 +17238,6 @@
       // its save never meets a released one -- up to an hour without input.
       const editDialogOpen = !!syncEditDialogEl && syncEditDialogEl.isConnected;
       if(held && !syncLeaseForBackgroundOnly && editDialogOpen && now - syncLastInputAt < SYNC_EDIT_DIALOG_MAX_MS) lastRealSaveAt = now;
-      // Held-back changes go to a .kept-aside copy 30 s after the last one.
-      if(syncUnsavedChanges && now - syncLastHeldBackAt >= SYNC_HELD_BACK_COPY_MS) await writeHeldBackCopy();
       // A lease only a background job took goes back a minute after its last
       // write, not ten: nobody is editing here.
       const idleAfter = syncLeaseForBackgroundOnly ? SYNC_HEARTBEAT_MS : SYNC_IDLE_RELEASE_MS;
@@ -17398,14 +17248,7 @@
       }else if(state === 'offline' && now - syncLastHeartbeatAt >= SYNC_HEARTBEAT_MS){
         await syncRetryFromOffline();
       }
-      const answered = await pollSyncState();
-      // Held back while the service didn't answer: ask again once a minute,
-      // or right away when this tick's poll got an answer.
-      if(syncLease.state === 'unsynced' && (syncUnsavedChanges || syncJobDataHeld()) && (answered || syncNow() - syncUnsyncedAt >= SYNC_UNANSWERED_RETRY_MS)){
-        await syncRetryHeldBack();
-      }else if(syncLease.state === 'disconnected' && (syncUnsavedChanges || syncJobDataHeld())){
-        await syncRetryHeldBack();   // switched to disconnected while a change was held back
-      }
+      await pollSyncState();
     }finally{
       syncTickRunning = false;
     }
@@ -17575,7 +17418,7 @@
   function syncReloadBlocked(force = false){
     return syncReloading || !!syncOpening || !db || !rootDirHandle || !dbFileHandle
       || (!force && (modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== ''))
-      || syncPersistsInFlight > 0 || (!force && !!syncLeasePending) || syncUnsavedChanges || syncDirty() || syncBackgroundJobRunning();
+      || syncPersistsInFlight > 0 || (!force && !!syncLeasePending) || syncDirty() || syncBackgroundJobRunning();
   }
 
   // Reload when a newer version is on disk and nothing is in the way. Never
@@ -17761,12 +17604,12 @@
     if(held && readSyncAdminToken()) await syncLeaseCall('release', false);
     if(lib === syncLibrary && (syncLease.state === 'holding' || syncLease.state === 'offline')) setSyncLease({ state: 'none' });
   }
-  window.addEventListener('pagehide', () => { releaseLease('pagehide'); writeHeldBackCopy(); });
+  window.addEventListener('pagehide', () => { releaseLease('pagehide'); });
   ['keydown', 'pointerdown', 'input'].forEach(type => document.addEventListener(type, () => { syncLastInputAt = syncNow(); }, true));
 
   window.__DEBUG_syncLease = () => syncLease;
   window.__DEBUG_syncNow = async (ms) => { syncClockOffset += ms || 0; await syncTick(); };
-  window.__DEBUG_syncState = () => ({ state: syncLease.state, version: syncLibrary ? syncLibrary.version : null, unsaved: syncUnsavedChanges,
+  window.__DEBUG_syncState = () => ({ state: syncLease.state, version: syncLibrary ? syncLibrary.version : null,
     pending: !!syncLeasePending, reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteWithoutLease: syncWroteWithoutLease });
   window.__DEBUG_persistDb = (opts) => persistDb(opts);
   window.__DEBUG_ensureEditLease = () => ensureEditLease();
@@ -17806,7 +17649,7 @@
   // Anything memory holds that isn't on disk goes to .kept-aside/ inside the
   // folder (which then goes to the Trash with it), never lost with the tab.
   async function keepAsideBeforeClosing(root){
-    if(!db || !root || !syncLibrary || !(syncDirty() || syncUnsavedChanges)) return { folder: null, error: null };
+    if(!db || !root || !syncLibrary || !syncDirty()) return { folder: null, error: null };
     try{ return { folder: await writeKeptAsideCopy(root, db.export()), error: null }; }
     catch(e){ return { folder: null, error: (e && e.message) || String(e) }; }
   }
@@ -18027,7 +17870,6 @@
     syncLibrary = null;
     syncLibraryDeletedSeen = null;
     syncLease = { state: 'none' };
-    syncUnsavedChanges = false;
     setStatusLive(() => t('syncLibraryDetachedLocal', { name, date }), '');
   }
   async function syncLibraryDeletedElsewhere(lib, info, trashed = false){
@@ -18038,7 +17880,7 @@
       const name = libraryDisplayName(root.name);
       const deletedBy = info && typeof info.deletedBy === 'string' ? info.deletedBy : '';
       const device = () => deletedBy || t('syncAnotherMac');
-      const unsaved = !!db && (syncDirty() || syncUnsavedChanges);
+      const unsaved = !!db && syncDirty();
       let kept = { folder: null, error: null };
       if(unsaved && !trashed) kept = await keepAsideBeforeClosing(root);
       if(lib !== syncLibrary || root !== rootDirHandle) return;
@@ -18713,7 +18555,7 @@
       return;
     }
     closeModal();
-    if(!await switchLibraryAsking()) return;
+    resetAll();
     await proceedWithRootDirHandle(handle);
   }
 

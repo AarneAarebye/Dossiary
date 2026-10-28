@@ -441,27 +441,8 @@ async def main():
         print("12 JS errors:", errors == [], errors)
         await browser.close()
 
-        # === 13. Held-back changes (take-over Cancel) when deleted elsewhere: kept aside, then closed ===
-        busy = {"holder": "other", "deviceName": "iMac", "since": "2026-10-25T09:00:00Z"}
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": busy}, "acquire": "busy", "busyLease": busy})
-        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Held back', 1])")
-        await page.evaluate("() => { window.__DEBUG_persistDb(); }")
-        await page.wait_for_timeout(300)
-        await page.click('#sync-takeover-cancel-btn')
-        await page.wait_for_timeout(300)
-        print("13 a change held back:", (await page.evaluate("window.__DEBUG_syncState()"))['unsaved'])
-        await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
-        await page.wait_for_timeout(400)
-        folders = await kept_aside_folders(page)
-        copy_title = await page.evaluate("""async (name) => {
-            const f = window.__TEST_ROOT._children.get('.kept-aside')._children.get(name)._children.get('library.sqlite');
-            return JSON.parse(await (await f.getFile()).text()).documents[0].title; }""", folders[0]) if folders else None
-        print("13 kept aside first, holding the held-back change:", len(folders) == 1 and copy_title == 'Held back', folders, copy_title)
-        print("13 then closed:", await library_closed(page))
-        print("13 notice names the copy:", 'kept in “.kept-aside/' in await text_of(page, '#sync-deleted-dialog'))
-        print("13 JS errors:", errors == [], errors)
-        await browser.close()
+        # (13, held-back changes from a take-over Cancel, went with the take-over dialog; a change only in
+        # memory when the library is deleted elsewhere is scenario 9.)
 
         # === 14. A state answer without `deleted` (or a 404) never closes the library ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
