@@ -5501,7 +5501,7 @@
           // newer library.sqlite right now, and checking for that and then
           // writing can't be made one step. The preference stays in memory
           // (a reload keeps it) and goes to disk with the next real save.
-          if(syncLease.state !== 'holding' && syncLease.state !== 'offline' && syncLease.state !== 'disconnected'){
+          if(syncLease.state !== 'holding' && syncLease.state !== 'offline'){
             if(syncBehind() || syncReloadWanted || await syncNewerOnDisk()) setTimeout(() => { maybeReload(); }, 0);
             return false;
           }
@@ -5526,7 +5526,7 @@
               setSyncLease({ state: 'unsynced', reason: syncAdminEverAnswered ? syncErrorText(null) : t('syncNotRunningReason') });
             }
           }
-          const free = syncLease.state !== 'holding' && syncLease.state !== 'offline' && syncLease.state !== 'disconnected';
+          const free = syncLease.state !== 'holding' && syncLease.state !== 'offline';
           if(free){
             await syncNewerOnDisk();   // a pull since the last poll counts too
             const backingOff = syncLease.state === 'unsynced' && syncNow() - syncUnsyncedAt < SYNC_UNANSWERED_RETRY_MS;
@@ -5559,7 +5559,7 @@
             await syncKeepAsideAndReload(false, quiet);
             return false;
           }
-          leaseless = syncLease.state === 'unconnected' || syncLease.state === 'unsynced' || syncLease.state === 'disconnected';
+          leaseless = syncLease.state === 'unconnected' || syncLease.state === 'unsynced';
           leased = syncLease.state === 'holding' || syncLease.state === 'offline';
         }
       }
@@ -16550,7 +16550,7 @@
   // knows memory is not behind; `base`: the version the base marker names (what memory is provably based
   // on). They differ only after syncDiskIsOurs() took over a newer number without a lease (see there).
   let syncLibrary = null;
-  let syncLease = { state: 'none' };    // 'none' | 'holding' | 'offline' | 'disconnected' (+since) | 'other' (+deviceName, since) | 'unconnected' | 'unsynced' (+reason)
+  let syncLease = { state: 'none' };    // 'none' | 'holding' | 'offline' | 'other' (+deviceName, since) | 'unconnected' | 'unsynced' (+reason)
   let syncSeenLive = false;            // this tab had an answer for this library without `deleted` since it opened
   // Library ids whose first answer this session already said `deleted` (a
   // folder taken back out of the Trash): they open as local, unsynced
@@ -16836,7 +16836,7 @@
     const personPendingBefore = syncPersonFlowPending || syncPersonFlowHold > 0;
     syncPersonActivity();
     syncPersonFlowPending = true;
-    if(syncLease.state !== 'holding' && syncLease.state !== 'offline' && syncLease.state !== 'disconnected'){
+    if(syncLease.state !== 'holding' && syncLease.state !== 'offline'){
       await syncNewerOnDisk();
       const backingOff = syncLease.state === 'unsynced' && syncNow() - syncUnsyncedAt < SYNC_UNANSWERED_RETRY_MS;
       if(!backingOff){
@@ -17006,7 +17006,7 @@
   function syncMayWriteFiles(){
     if(!syncLibrary) return true;
     if(syncBehind()) return false;
-    return syncLease.state === 'holding' || syncLease.state === 'offline' || syncLease.state === 'disconnected';
+    return syncLease.state === 'holding' || syncLease.state === 'offline';
   }
   // A job's pass may first take a free lease silently (never a dialog).
   async function syncBackgroundMayWrite(){
@@ -17128,7 +17128,6 @@
   // later", never "offline" (it may be waiting behind a push or pull).
   function applyAcquireAnswer(res){
     const result = syncLeaseResult(res);
-    if(result === 'disconnected'){ setSyncLease({ state: 'disconnected', since: '' }); return; }
     if(result === 'granted' || result === 'offline'){
       syncLastHeartbeatAt = lastRealSaveAt = syncNow();   // the write follows at once; the idle clock starts here
       // The service pulls a newer version before answering granted, so the
@@ -17295,14 +17294,6 @@
     if(st) syncSeenLive = true;
     if(!st || !Number.isInteger(st.version)) return !!res;   // no answer, or not in the expected shape: ask again next time
     syncLastAnswerAt = syncNow();
-    // Disconnected on this Mac (the user's choice): the service neither pushes nor pulls this library, so edits
-    // are written freely and there is no lease to look after.
-    if(typeof st.disconnectedSince === 'string' && st.disconnectedSince){
-      if(syncLease.state !== 'disconnected') setSyncLease({ state: 'disconnected', since: st.disconnectedSince });
-      noteKeptAside(lib, st.keptAside);
-      return true;
-    }
-    if(syncLease.state === 'disconnected') setSyncLease({ state: 'none' });   // reconnected
     let leftOffline = false;
     const lease = st.lease && typeof st.lease === 'object' ? st.lease : null;
     const otherHolds = !!lease && lease.holder === 'other';
@@ -18716,10 +18707,6 @@
       libraries: normalizeSyncLibraries(libs.body),
       devices: devs.body.filter(d => d && typeof d.id === 'string').map(normalizeSyncDevice),
       keptAside: {},
-      disconnectedSince: {},
-      connectionError: {},   // library id → why the last Disconnect/Reconnect failed
-      connectionPending: {}, // library id → a Disconnect/Reconnect is being sent
-      stateAnswered: {},   // library id → its GET …/state answered OK (only then can it be disconnected)
     };
     renderDevicesConnected(seq);
     loadDevicesKeptAside(seq);
@@ -18734,8 +18721,6 @@
       const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(l.id)}/state`);
       const ok = res && res.ok && res.body;
       state.keptAside[l.id] = ok && Array.isArray(res.body.keptAside) ? res.body.keptAside.filter(k => k && typeof k.stamp === 'string' && k.stamp) : [];
-      state.disconnectedSince[l.id] = ok && typeof res.body.disconnectedSince === 'string' ? res.body.disconnectedSince : null;
-      state.stateAnswered[l.id] = !!ok;
     }));
     if(!devicesDialogOpen(seq) || devicesState !== state) return;
     const slot = el('devices-libraries');
@@ -18745,20 +18730,9 @@
     const { libraries } = devicesState;
     const kept = devicesState.keptAside || {};
     return libraries.length ? `<ul class="devices-library-list">${libraries.map(l => `
-        <li>${escapeHtml(l.name)}${l.available ? '' : ` <span class="devices-unavailable">(${t('devicesLibraryNotAvailable')})</span>`}${l.available ? libraryConnectionHtml(l.id) : ''}${(devicesState.connectionError || {})[l.id] ? `
-          <div class="devices-lib-error">${escapeHtml(devicesState.connectionError[l.id])}</div>` : ''}${(kept[l.id] || []).map(k => `
+        <li>${escapeHtml(l.name)}${l.available ? '' : ` <span class="devices-unavailable">(${t('devicesLibraryNotAvailable')})</span>`}${(kept[l.id] || []).map(k => `
           <div class="devices-kept-aside">${escapeHtml(keptAsideText(k))}</div>`).join('')}</li>`).join('')}</ul>`
         : `<p class="scan-dialog-text">${t('devicesNoLibraries')}</p>`;
-  }
-  // Only for a library whose state answered: on a Mac running as origin (no hub), or for a library the
-  // service doesn't edit, the state GET answers 404 and so would the switch.
-  function libraryConnectionHtml(id){
-    if(!(devicesState.stateAnswered || {})[id]) return '';
-    const since = (devicesState.disconnectedSince || {})[id];
-    const attr = escapeHtml(id);
-    const dis = (devicesState.connectionPending || {})[id] ? ' disabled' : '';
-    if(since) return ` <span class="devices-lib-disconnected-note doc-sub">${escapeHtml(t('devicesLibraryDisconnectedSince', { when: deviceRelativeTime(since) || '' }))}</span> <button class="devices-lib-reconnect-btn" data-library="${attr}"${dis}>${t('devicesLibraryReconnect')}</button>`;
-    return ` <button class="devices-lib-disconnect-btn" data-library="${attr}"${dis}>${t('devicesLibraryDisconnect')}</button>`;
   }
   function normalizeSyncLibraries(list){
     return list.filter(l => l && typeof l.id === 'string').map(l => ({ id: l.id, name: typeof l.name === 'string' ? l.name : l.id, available: l.available !== false }));
@@ -18801,10 +18775,6 @@
       row.querySelector('.devices-rename-btn').addEventListener('click', () => startDeviceRename(seq, row, id));
     });
     el('devices-disconnect-btn').addEventListener('click', () => disconnectSyncAdmin(seq));
-    el('devices-libraries').addEventListener('click', (e) => {
-      const btn = e.target.closest('.devices-lib-disconnect-btn, .devices-lib-reconnect-btn');
-      if(btn) setLibraryConnection(seq, btn.dataset.library, btn.classList.contains('devices-lib-reconnect-btn'));
-    });
     renderDevicesAddSlot(seq);
     renderDevicesAvailable(seq);
   }
@@ -19026,24 +18996,6 @@
       pair.error = syncErrorText(res);
     }
     renderDevicesAddSlot(seq);
-  }
-
-  // POST /admin/libraries/<id>/connection: this Mac's choice to work on a library without the hub (or to go back).
-  async function setLibraryConnection(seq, libraryId, connected){
-    const state = devicesState;
-    if(!state || state.connectionPending[libraryId]) return;   // one request at a time per library
-    const render = () => { const slot = el('devices-libraries'); if(slot && devicesState === state) slot.innerHTML = devicesLibrariesHtml(); };
-    state.connectionPending[libraryId] = true;
-    delete state.connectionError[libraryId];
-    render();
-    const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(libraryId)}/connection`, { method: 'POST', body: { connected } });
-    delete state.connectionPending[libraryId];
-    if(!devicesDialogOpen(seq) || devicesState !== state) return;
-    if(res && res.status === 401){ devicesTokenRejected(seq); return; }
-    if(!res || !res.ok){ state.connectionError[libraryId] = syncErrorText(res); render(); return; }
-    state.disconnectedSince[libraryId] = res.body && typeof res.body.disconnectedSince === 'string' ? res.body.disconnectedSince : null;
-    render();
-    if(syncLibrary && syncLibrary.libraryId === libraryId) await pollSyncState({ noReload: true });
   }
 
   // Ticking allows the library at once, unticking denies it; a refusal undoes the tick.
