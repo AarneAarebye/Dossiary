@@ -2695,10 +2695,16 @@ this repo's git tags.
     the loaded ones, or the last write whose sync-file version did not change
     during it (read before the write, right after it and after the marker;
     `syncLastWriteUnproven`) and whose predecessor marker on disk was the expected
-    one (`syncMarkerOnDisk`) and is still this tab's. **Residual race:** if a pull's
-    own marker write and sync-file write both fall between this tab's marker check
-    and its last sync-file read (milliseconds), `base` could follow wrongly and the
-    next save be pushed over a phone edit. **The real fix is in dossiary-sync:**
+    one (`syncMarkerOnDisk`) and is still this tab's. **Residual race
+    (milliseconds):** a pull installs its database just before the page's
+    `close()`; its marker write lands between the page's marker read
+    (`markerBefore`) and the page's own marker write; its sync-file write lands
+    after the page's last sync-file read. The page's marker then overwrites the
+    pull's and every check passes. If the page saves again before Dossiary
+    Sync's next pass (<= 3 s), `base` moves to V+1 and the Mac version is pushed
+    over the phone edit, with no notice. (If the service's pass comes first it
+    sees a stale base and keeps the Mac version aside: safe.) Known; the person
+    has not yet accepted it. **The real fix is in dossiary-sync:**
     expose `lastPushedHash` in `GET /admin/libraries/<id>/state`, and let `base`
     follow only when it equals `syncLastWrittenHash`. Not done.
   **The guard stays**: `syncBehind()` (memory is based on an older version than
