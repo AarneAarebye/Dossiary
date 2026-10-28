@@ -1293,7 +1293,7 @@ HUB_SHA = 'b0' * 32   # lastPushedHash after a pull: the SHA-256 of the hub's by
 
 
 async def scenario_base_follows_own_push(p):
-    # The base the marker names follows this Mac's own pushes (Dossiary Sync accepts only its last 20 own pushes as
+    # The base the marker names follows this Mac's own pushes (Dossiary Sync accepts only its last 1000 own pushes as
     # a chain from an older base), but only once a state answer confirms it: version W with lastPushedHash equal
     # to the SHA-256 of bytes this tab wrote (or loaded). Anything else leaves the base where it is.
     # (a) A push of exactly this tab's bytes.
@@ -1410,7 +1410,8 @@ async def scenario_base_second_save_before_confirmation(p):
 
 async def scenario_many_own_pushes(p):
     # 25 saves, each pushed by Dossiary Sync as the next version and confirmed by the poll: the marker keeps up
-    # (never more than one behind), past the service's 20 remembered own pushes.
+    # (never more than one behind), past the 20 own pushes an older service (< 0.12.2) remembered;
+    # 0.12.2 remembers 1000.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     ok = True
     for i in range(25):

@@ -2683,8 +2683,9 @@ this repo's git tags.
     lies on this Mac's own-push chain; any other base (or no marker after 10 s)
     is kept aside on both sides and the hub's version pulled (`baseOfDatabaseChange`
     and `continuesOwnPushes` in dossiary-sync's `EditorLoop.swift`). The service
-    keeps only the last 20 own pushes (`ownPushesKept = 20`), so a base that
-    never moved would make the 21st push of a session a kept-aside version.
+    keeps only its last own pushes (`ownPushesKept`: 1000 from dossiary-sync
+    0.12.2, 20 before), so a base that never moved would make the 1001st push of
+    a session (the 21st with an older service) a kept-aside version.
     Keep-aside copies never get a marker.
   - **The base follows this Mac's own pushes only when Dossiary Sync confirms
     them** (dossiary-native `docs/superpowers/specs/2026-10-28-confirmed-push-base-design.md`).
@@ -2706,8 +2707,10 @@ this repo's git tags.
     service accepts along its own-push chain (a second save before the poll is
     fine). **Fallback:** an answer without `lastPushedHash` (an older Dossiary
     Sync) or no token (no poll at all) leaves `base` at the loaded version (or
-    the version a reload of foreign bytes set): safe, but the 21st own push of a
-    session is then kept aside and announced instead of pushed (nothing lost).
+    the version a reload of foreign bytes set): safe, but the 1001st own push of
+    a session is then kept aside and announced instead of pushed (nothing lost).
+    That limit needs dossiary-sync >= 0.12.2; an older service keeps only 20 own
+    pushes, so there it is the 21st.
     **The person must run Dossiary Sync 0.12.2 or newer** for the base to follow.
   **The guard stays**: `syncBehind()` (memory is based on an older version than
   the sync file's) with disk not this tab's (`!syncDiskIsOurs()`) means a save

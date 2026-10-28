@@ -5507,7 +5507,8 @@
         // this tab wrote (syncConfirmPush(), lastPushedHash == this hash);
         // a pull installs the hub's bytes, whose hash is never this tab's.
         // Until then the marker keeps naming the last confirmed base, which
-        // Dossiary Sync accepts along its own-push chain (its last 20).
+        // Dossiary Sync accepts along its own-push chain (its last 1000 own
+        // pushes from dossiary-sync 0.12.2; 20 before).
         if(markerLib === syncLibrary){
           syncLastWrittenHash = hash;
           syncWroteSinceLoad = true;
@@ -16633,8 +16634,9 @@
   // confirmed, `base` and each marker keep naming the last confirmed version,
   // which Dossiary Sync accepts along its own-push chain. Without the field
   // (an older Dossiary Sync) or without a token (no poll), `base` stays at
-  // the loaded version: Dossiary Sync remembers only its last 20 own pushes,
-  // so the 21st push of a session is then kept aside (and announced) instead
+  // the loaded version: Dossiary Sync remembers only its last 1000 own pushes
+  // (dossiary-sync >= 0.12.2; an older one only 20), so the 1001st push of a
+  // session (the 21st with an older service) is then kept aside (and announced) instead
   // of pushed -- nothing is lost.
   function syncConfirmPush(lib, st){
     const hash = st.lastPushedHash;
