@@ -1006,7 +1006,7 @@ async def scenario_doc_ids(p):
     await tick(page)
     print("a reload brought another device's row with the reserved id:", (await sync_state(page))['reloads'] == 1 and 'iMac doc' in await row_text(page, res['id']))
     chk = await page.evaluate("(r) => window.__DEBUG_checkReservedDocId(r)", res)
-    print("...checking the reservation refuses it as taken:", not chk['ok'] and chk['idTaken'] and 'changed on another Mac' in chk['message'], chk)
+    print("...checking the reservation refuses it as taken:", not chk['ok'] and chk['idTaken'] and 'changed on another device' in chk['message'], chk)
     n = await page.evaluate("window.__DEBUG_nextDocId()")
     await page.evaluate("(r) => window.__DEBUG_releaseDocId(r)", res)
     print("...releasing it after the reload leaves the counter alone:", await page.evaluate("window.__DEBUG_nextDocId()") == n)
