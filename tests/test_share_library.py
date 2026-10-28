@@ -291,7 +291,7 @@ async def main():
         print("1 header height unchanged:", abs(await header_height(page) - header_before) < 0.5, header_before, await header_height(page))
         state_gets = [c for c in await calls(page) if c['method'] == 'GET' and c['url'].endswith('/state')]
         await page.evaluate("window.__SYNC.uploading = false")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(200)
         n_state = len(state_gets)
         state_gets = [c for c in await calls(page) if c['method'] == 'GET' and c['url'].endswith('/state')]

@@ -109,7 +109,7 @@ async def open_app(p, sync, token='admin-tok', sync_file=True, lang=None, open_l
         if live and sync_file and token:
             # One ordinary answer first: this tab has seen the library live (a tab that never
             # did treats a `deleted` answer as a copy opened afterwards -- scenario 20).
-            await page.evaluate("window.__DEBUG_syncNow(6000)")
+            await page.evaluate("window.__DEBUG_syncNow()")
             await page.wait_for_timeout(100)
     return browser, page, errors
 
@@ -195,7 +195,7 @@ async def main():
         releases = [c for c in await admin_calls(page) if c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release']
         print("1 no lease release sent for the deleted id:", releases == [], releases)
         n = len(await admin_calls(page))
-        await page.evaluate("window.__DEBUG_syncNow(70000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(300)
         after = (await admin_calls(page))[n:]
         print("1 no admin calls for it afterwards:", after == [], after)
@@ -361,7 +361,7 @@ async def main():
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
         await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }")
         n = len(await admin_calls(page))
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         print("8 library closed:", await library_closed(page))
         notice = await text_of(page, '#sync-deleted-dialog')
@@ -381,7 +381,7 @@ async def main():
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Changed', 1])")
         print("9 memory holds an unwritten change:", (await page.evaluate("window.__DEBUG_syncState()"))['dirty'])
         await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         folders = await kept_aside_folders(page)
         print("9 a .kept-aside copy written first:", len(folders) == 1, folders)
@@ -446,11 +446,11 @@ async def main():
         # === 14. A state answer without `deleted` (or a 404) never closes the library ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
         for _ in range(3):
-            await page.evaluate("window.__DEBUG_syncNow(6000)")
+            await page.evaluate("window.__DEBUG_syncNow()")
         await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: null }")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.evaluate("window.__SYNC.state = null")   # the fake answers 404
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(300)
         print("14 still open after ordinary, deleted: null and 404 answers:", not await library_closed(page)
               and await page.locator('#sync-deleted-dialog').count() == 0)
@@ -464,7 +464,7 @@ async def main():
         print("15 hostile busy device as text:", evil in await text_of(page, '#delete-library-busy') and await page.locator('#delete-library-body img').count() == 0)
         await page.click('#delete-library-cancel-btn')
         await page.evaluate("(e) => { window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: e, deletedAt: '2026-10-25T10:00:00Z' } }; }", evil)
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         notice = await text_of(page, '#sync-deleted-dialog')
         print("15 hostile deletedBy as text:", evil in notice and await page.locator('#sync-deleted-dialog img').count() == 0
@@ -476,7 +476,7 @@ async def main():
         gone = {"deleted": {"deletedBy": "iMac", "deletedAt": "2026-10-25T10:00:00Z"}, "trashed": True}
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
         await page.evaluate("(s) => { window.__SYNC.state = s; }", gone)
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         print("16 trashed answer without the other fields closes a clean tab:", await library_closed(page))
         print("16 with the notice:", "“Household” was deleted on iMac. Its folder is in this Mac's Trash." in await text_of(page, '#sync-deleted-dialog'))
@@ -490,7 +490,7 @@ async def main():
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Late change', 1])")
         disk_before = await page.evaluate("async () => await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()")
         await page.evaluate("(s) => { window.__SYNC.state = s; }", gone)
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         print("17 no kept-aside attempt:", await page.evaluate("window.__KEPT_TRIES") == 0)
         print("17 library stays open:", not await library_closed(page))
@@ -512,7 +512,7 @@ async def main():
         n = len(await admin_calls(page))
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
         editing = await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")
-        await page.evaluate("window.__DEBUG_syncNow(70000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(300)
         disk_after = await page.evaluate("async () => await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()")
         print("17 saves and editing blocked, nothing written:", saved is False and editing is False and disk_after == disk_before)
@@ -531,7 +531,7 @@ async def main():
         await page.evaluate("""() => { const r = window.__TEST_ROOT, orig = r.getDirectoryHandle.bind(r);
             r.getDirectoryHandle = async (name, o) => { if(name === '.kept-aside') throw new DOMException('The folder is read-only.', 'NoModificationAllowedError'); return orig(name, o); }; }""")
         await page.evaluate("window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         text = await text_of(page, '#sync-deleted-text')
         print("18 library stays open with the offer:", not await library_closed(page) and await page.locator('#sync-deleted-download-btn').count() == 1)
@@ -543,7 +543,7 @@ async def main():
         # the only way a tab learns of a deletion.) A deleted answer that names no device; a save before the poll. ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
         await page.evaluate("() => { window.__SYNC.state = { version: 3, lease: null, deleted: {} }; }")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(500)
         print("19 deleted with no device named closes a clean tab:", await library_closed(page))
         print("19 notice with the unknown device:", "“Household” was deleted on another Mac." in await text_of(page, '#sync-deleted-dialog'))
@@ -553,7 +553,7 @@ async def main():
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Unsaved', 1])")
         await page.evaluate("(s) => { window.__SYNC.state = s; }", gone)
         await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")   # starting to edit asks the hub nothing
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(500)
         print("19 dirty, then a trashed state: open read-only with the offer:", not await library_closed(page)
               and "was deleted on iMac" in await text_of(page, '#sync-deleted-text'))
@@ -571,7 +571,7 @@ async def main():
             saved = await page.evaluate("() => window.__DEBUG_persistDb()")
             disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
             print(f"19 trashed={trashed}: the save is written, with no admin call:", saved is True and disk == 'Saved late' and (await admin_calls(page))[n:] == [], saved, disk)
-            await page.evaluate("window.__DEBUG_syncNow(6000)")
+            await page.evaluate("window.__DEBUG_syncNow()")
             await page.wait_for_timeout(500)
             print(f"19 trashed={trashed}: ...then the poll closes it with the notice, nothing kept aside:", await library_closed(page)
                   and await page.locator('#sync-deleted-dialog').count() == 1 and await kept_aside_folders(page) == [])
@@ -581,7 +581,7 @@ async def main():
         # === 20. Opened after deletion (a folder taken back out of the Trash): a local library ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone)}, live=False)
         await page.evaluate("window.__SYNC.state.deleted.deletedAt = '2026-10-20T10:00:00Z'")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(300)
         print("20 stays open, no notice:", not await library_closed(page) and await page.locator('#sync-deleted-dialog').count() == 0)
         status = await text_of(page, '#status')
@@ -592,7 +592,7 @@ async def main():
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local now', 1])")
         editing = await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
-        await page.evaluate("window.__DEBUG_syncNow(70000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(300)
         disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
         print("20 editing allowed and a save writes to disk:", editing is True and saved is not False and disk == 'Local now', editing, saved, disk)
@@ -604,7 +604,7 @@ async def main():
         await page.click('#delete-library-cancel-btn')
         await page.click('#reload-btn'); await page.wait_for_timeout(300)
         await page.click('.recent-lib-target'); await page.wait_for_timeout(400)
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(200)
         print("20 reopened this session: still local, no admin calls:", not await library_closed(page) and (await admin_calls(page))[n:] == [])
         print("20 JS errors:", errors == [], errors)
@@ -615,7 +615,7 @@ async def main():
         # now scenario 20.) ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone)}, live=False)
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local edit', 1])")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(300)   # the state is asked, then the decision: local
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
         await page.wait_for_timeout(300)
@@ -631,7 +631,7 @@ async def main():
         # === 22. First answer: deleted but not trashed yet (grace period) → the normal deleted path ===
         grace = {"version": 3, "lease": None, "deleted": {"deletedBy": "iMac", "deletedAt": "2026-10-25T10:00:00Z"}}
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(grace)}, live=False)
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         print("22 clean: closed with the notice:", await library_closed(page)
               and "“Household” was deleted on iMac." in await text_of(page, '#sync-deleted-dialog'))
@@ -640,7 +640,7 @@ async def main():
         await browser.close()
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(grace)}, live=False)
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Grace change', 1])")
-        await page.evaluate("window.__DEBUG_syncNow(6000)")
+        await page.evaluate("window.__DEBUG_syncNow()")
         await page.wait_for_timeout(400)
         folders = await kept_aside_folders(page)
         copy_title = await page.evaluate("""async (name) => {

@@ -5448,7 +5448,7 @@
   // (the write survives as this Mac's change and is kept aside, reported in
   // GET …/state's keptAside), and without an admin token -- so no poll that
   // would report it -- this tab keeps such a write aside itself rather than
-  // reloading it away (syncWroteWithoutLease, syncWriteUnreported()).
+  // reloading it away (syncWroteSinceLoad, syncWriteUnreported()).
   // A reload never replaces unwritten changes (syncDirty()) or runs under an
   // open dialog unless forced by a flow about to start.
   // opts.viewOnly marks a view preference (sort, columns, view mode, ...,
@@ -5513,7 +5513,7 @@
         const expected = markerLib === syncLibrary ? syncMarkerOnDisk : undefined;
         if(markerLib === syncLibrary){
           syncLastWrittenHash = hash;
-          syncWroteWithoutLease = true;
+          syncWroteSinceLoad = true;
           syncLastWriteUnproven = true;   // until the checks below have run
           syncLastMarker = { version: baseVersion, sha256: hash };
         }
@@ -16513,7 +16513,7 @@
   // have been pulled over it. Without an admin token nothing reports Dossiary Sync's own keep-aside, so
   // memory (which has the write) is then kept aside with the notice rather than reloaded away
   // (syncWriteUnreported()). Cleared by a reload or a keep-aside.
-  let syncWroteWithoutLease = false;
+  let syncWroteSinceLoad = false;
   // The sync file's version changed while the last write was under way (a pull may have landed under it):
   // the bytes it wrote never count as proof that a newer version is this tab's own (syncBaseMayFollow()).
   let syncLastWriteUnproven = false;
@@ -16538,7 +16538,7 @@
   const KEPT_ASIDE_SEEN_KEY = 'dossiary_kept_aside_seen';
   // With an admin token the state poll reports Dossiary Sync's own keep-aside (keptAside), so a newer
   // version after a write is an ordinary reload; without one nothing would.
-  const syncWriteUnreported = () => syncWroteWithoutLease && !readSyncAdminToken();
+  const syncWriteUnreported = () => syncWroteSinceLoad && !readSyncAdminToken();
 
   function trackDbChanges(database){
     const run = database.run.bind(database);
@@ -16585,7 +16585,7 @@
     stopSyncTimer();
     syncLibraryGone = null; syncSeenLive = false;
     syncLibrary = null;
-    syncLoadedHash = null; syncLastWrittenHash = null; syncWroteWithoutLease = false;
+    syncLoadedHash = null; syncLastWrittenHash = null; syncWroteSinceLoad = false;
     syncLastWriteUnproven = false; syncLastMarker = null; syncMarkerOnDisk = null;
     syncReservedDocIds = new Set();
     syncReloadWanted = false; syncKnownNewer = 0;
@@ -16730,7 +16730,7 @@
       return false;
     }
     if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // safe on disk, aside
-    syncWroteWithoutLease = false;                   // memory (with that write) is aside too
+    syncWroteSinceLoad = false;                   // memory (with that write) is aside too
     if(quiet){
       syncQuietEpisode = { lib, folder, reloads: syncReloadCount };
       setStatusLive(() => t('syncKeptAsideQuiet', { device, folder }), '');
@@ -17171,7 +17171,7 @@
     const marker = await syncReadBaseMarker(rootDirHandle);   // the pull's (see persistDb())
     if(lib === syncLibrary) syncMarkerOnDisk = marker;
     syncReloadWanted = false;
-    syncWroteWithoutLease = false;
+    syncWroteSinceLoad = false;
     return true;
   }
 
@@ -17265,10 +17265,10 @@
     }
   }
 
-  // Tests: run the tick now (the argument, once a clock offset, is ignored).
+  // Tests: run the tick now (no argument).
   window.__DEBUG_syncNow = async () => { await syncTick(); };
   window.__DEBUG_syncState = () => ({ version: syncLibrary ? syncLibrary.version : null, base: syncLibrary ? syncLibrary.base : null,
-    reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteWithoutLease: syncWroteWithoutLease });
+    reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteSinceLoad: syncWroteSinceLoad });
   window.__DEBUG_persistDb = (opts) => persistDb(opts);
   window.__DEBUG_ensureCurrentVersion = () => ensureCurrentVersion();
   window.__DEBUG_reserveDocId = () => reserveDocId();

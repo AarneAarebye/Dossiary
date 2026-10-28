@@ -247,8 +247,8 @@ async def disk_change(page, titles=None, sync_version=None):
         }
     }""", [{str(k): v for k, v in (titles or {}).items()}, sync_version])
 
-async def tick(page, ms=0):
-    await page.evaluate(f"window.__DEBUG_syncNow({ms})")
+async def tick(page):
+    await page.evaluate(f"window.__DEBUG_syncNow()")
     await page.wait_for_timeout(200)
 
 
@@ -430,7 +430,7 @@ async def scenario_poll_deleted(p):
     await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Changed', 1])")
     await page.evaluate("(s) => { window.__SYNC.state = s; }",
                         dict(state(3), deleted={"deletedBy": "iMac", "deletedAt": "2026-10-25T10:00:00Z"}))
-    await tick(page, 6000)
+    await tick(page)
     await page.wait_for_timeout(300)
     notice = await page.inner_text('#sync-deleted-dialog') if await page.locator('#sync-deleted-dialog').count() else ''
     print("a library deleted elsewhere: the notice is shown:", 'iMac' in notice, repr(notice))
@@ -826,7 +826,7 @@ HOOK_FILES = """([copyName, sidecarName, tickBeforeCopy]) => {
     files.getFileHandle = async (name, opts) => {
         if(tickBeforeCopy && name.endsWith(copyName) && !window.__HOOK_COPY_DONE){
             window.__HOOK_COPY_DONE = true;
-            await window.__DEBUG_syncNow(0);          // a tick between the gate and the first INSERT
+            await window.__DEBUG_syncNow();          // a tick between the gate and the first INSERT
             window.__HOOK_LOG.push('tick');
         }
         if(name.endsWith(sidecarName) && !window.__HOOK_SIDECAR_DONE){
@@ -838,7 +838,7 @@ HOOK_FILES = """([copyName, sidecarName, tickBeforeCopy]) => {
             h._bytes = new TextEncoder().encode(JSON.stringify(data));
             root._children.get('.dossiary-sync.json')._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: 4 }));
             window.__SYNC.state = { libraryId: 'lib-7f3a', version: 4, hubReachable: true, lease: null, offline: false, keptAside: [], lastError: null };
-            await window.__DEBUG_syncNow(0);          // the poll: v4 exists
+            await window.__DEBUG_syncNow();          // the poll: v4 exists
             window.__HOOK_LOG.push('job:' + await window.__DEBUG_persistDb({ background: true }));   // a job's save, behind
             await new Promise(r => setTimeout(r, 400));   // the sidecar write takes a while (iCloud)
         }
@@ -1097,7 +1097,7 @@ async def scenario_no_reload_while_opening(p):
     print("opening paused after the database was set up:", await page.evaluate("window.__OPEN_PAUSED"))
     await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
     await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
-    await page.evaluate("window.__DEBUG_syncNow(0)")
+    await page.evaluate("window.__DEBUG_syncNow()")
     await page.wait_for_timeout(300)
     print("a tick while opening doesn't reload:", (await sync_state(page))['reloads'] == 0, await sync_state(page))
     await page.evaluate("window.__OPEN_RELEASE()")
@@ -1270,7 +1270,7 @@ async def scenario_token_rejected(p):
     # (disconnected_token_rejected) A 401 from the state poll forgets the token; edits are still written.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await page.evaluate("window.__SYNC.token = 'another-token'")
-    await tick(page, 6000)
+    await tick(page)
     print("a 401 forgets the token:", await page.evaluate(f"localStorage.getItem('{TOKEN_KEY}')") is None)
     await edit_title(page, 'After the 401')
     print("...edits are still written:", await disk_doc_title(page, 1) == 'After the 401')
@@ -1392,7 +1392,7 @@ async def scenario_many_own_pushes(p):
         ok = ok and marker_ok(m, 3 + i)
         await page.evaluate(SET_SYNC_VERSION, 4 + i)
         await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4 + i))
-        await page.evaluate("window.__DEBUG_syncNow(0)")
+        await page.evaluate("window.__DEBUG_syncNow()")
     print("25 own pushes: each save's marker names the version before it:", ok, await base_marker(page))
     print("...nothing kept aside, never reloaded:", not await kept_aside_names(page) and (await sync_state(page))['reloads'] == 0, await sync_state(page))
     print("no page errors:", not errors, errors)
