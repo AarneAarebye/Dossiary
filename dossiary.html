@@ -40,14 +40,6 @@
   header .sub #sub-label{ overflow:hidden; text-overflow:ellipsis; min-width:0; }
   .sub-switch-btn{ flex-shrink:0; background:transparent; border:none; padding:0 0 0 10px; font-family:var(--font-mono); font-size:11.5px; line-height:inherit; color:var(--text-dim); text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--line); cursor:pointer; }
   .sub-switch-btn::before{ content:'⇄'; text-decoration:none; display:inline-block; margin-right:6px; }
-  .sub-sync-marker{ flex-shrink:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-left:12px; font-size:11.5px; line-height:inherit; color:var(--text-dim); }
-  /* Not connected, not synced yet and offline are normal ways to work (changes are saved here): the neutral
-     --text-dim above, never a warning colour. Red is only for a sync that really failed (sync-error). */
-  .sub-sync-marker[data-state="holding"]{ color:var(--phosphor); }
-  .sub-sync-marker[data-state="other"], .sub-sync-marker[data-state="unsaved"]{ color:var(--amber); }
-  .sub-sync-marker[data-state="sync-error"]{ color:var(--red); }
-  .sub-sync-marker.sub-sync-link{ cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
-  .sub-sync-marker.sub-sync-link:focus-visible{ outline:1px solid currentColor; outline-offset:-1px; }
   .devices-kept-aside{ font-size:12px; color:var(--amber); margin-top:2px; }
   .devices-lib-error{ font-size:12px; color:var(--red); margin-top:2px; }
   .devices-rename-error{ font-size:12px; color:var(--red); margin-top:2px; }
@@ -854,7 +846,7 @@
         <h1>Dossiary</h1>
         <span class="tagline">Your documents. Your disk. Nothing else.</span>
       </div>
-      <div class="sub"><span id="sub-label">No library open</span><button type="button" id="reload-btn" class="sub-switch-btn" data-i18n="toolbarSwitchLibrary" style="display:none;">Switch library</button><span id="sync-marker" class="sub-sync-marker" style="display:none;"></span></div>
+      <div class="sub"><span id="sub-label">No library open</span><button type="button" id="reload-btn" class="sub-switch-btn" data-i18n="toolbarSwitchLibrary" style="display:none;">Switch library</button></div>
     </div>
     <div class="stats" id="stats"></div>
   </header>
@@ -3576,7 +3568,6 @@
       updateNewLibraryHint();
     }
     updateUserGuideLink();
-    renderSyncMarker();
     // The status line (#status) is set via setStatusT() at every point something
     // just happened (library opened, document saved, inbox file added, ...) and,
     // unlike the containers re-rendered above, is never touched again until the
@@ -5605,7 +5596,7 @@
       if(!opts.viewOnly){
         lastRealSaveAt = syncNow();
         if(!opts.background){ syncLeaseForBackgroundOnly = false; syncPersonFlowPending = false; }
-        if(syncUnsavedChanges){ syncUnsavedChanges = false; syncHeldBackEpisode = null; renderSyncMarker(); }
+        if(syncUnsavedChanges){ syncUnsavedChanges = false; syncHeldBackEpisode = null; }
       }
       return true;
     }finally{
@@ -16591,7 +16582,6 @@
   const SYNC_UNANSWERED_RETRY_MS = 60 * 1000;
   let syncLeasePendingBackground = false;  // the acquire in flight was a background write's (it never asks)
   let syncUnsyncedAt = 0;               // when an acquire last went unanswered: don't ask again for a minute
-  let syncLastState = null;             // the last GET /admin/libraries/<id>/state answer
   let syncReloadWanted = false;         // reload as soon as nothing is in the way, whatever the versions say
   let syncKnownNewer = 0;               // the newest version another Mac is known to have made (syncNoteNewer())
   let syncThisDeviceName = '';          // this Mac's name, from the lease answers (for .kept-aside folder names)
@@ -16666,7 +16656,6 @@
     if(root !== rootDirHandle) return;
     syncLibrary = found;
     if(syncLibrary) startSyncTimer();
-    renderSyncMarker();
     // Read after library.sqlite (a new library): if the file on disk isn't
     // what this tab loaded or wrote, it may be newer than the version just
     // read -- reload as soon as nothing is in the way.
@@ -16679,7 +16668,6 @@
 
   function setSyncLease(lease){
     syncLease = lease;
-    renderSyncMarker();
   }
 
   function clearSyncState(){
@@ -16693,7 +16681,6 @@
     syncLastHeartbeatAt = 0; syncLastAnswerAt = 0;
     lastRealSaveAt = 0;
     syncUnsyncedAt = 0;
-    syncLastState = null;
     syncReloadWanted = false; syncKnownNewer = 0;
     syncViewWriteDropped = false;
     syncLastOtherDevice = '';
@@ -16702,14 +16689,13 @@
     syncHeldBackEpisode = null; syncLastHeldBackAt = 0;
     syncQuietEpisode = null;
     syncPersonFlowHold = 0; syncHoldEpisode = null; syncFlowKeptAside = []; syncHoldNoticeShown = false;
-    renderSyncMarker();
   }
 
   // A background write while the other Mac edits: its change stays in memory,
   // like a Cancel in the take-over dialog, for the next real save to write.
   function syncHoldBack(){
     syncLastHeldBackAt = syncNow();
-    if(!syncUnsavedChanges){ syncUnsavedChanges = true; syncHeldBackGen++; renderSyncMarker(); }
+    if(!syncUnsavedChanges){ syncUnsavedChanges = true; syncHeldBackGen++; }
   }
 
   // Changes held back must not live only in memory: 30 s after the last one
@@ -16747,7 +16733,6 @@
         syncHeldBackEpisode = { folder, seq };
         setStatusLive(() => t('syncHeldBackCopyStatus', { folder }), 'err');
       }
-      renderSyncMarker();
     }catch(e){ /* tried again on the next tick */ }
   }
 
@@ -16865,7 +16850,7 @@
       return true;
     }
     syncHeldBackEpisode = null;
-    if(syncUnsavedChanges){ syncUnsavedChanges = false; renderSyncMarker(); }
+    syncUnsavedChanges = false;
     const build = () => t('syncKeptAsideHere', { device, folder });
     setStatusLive(build, 'err');
     let showNotice = true;
@@ -17466,14 +17451,12 @@
     }
     if(st) syncSeenLive = true;
     if(!st || !Number.isInteger(st.version)) return !!res;   // no answer, or not in the expected shape: ask again next time
-    syncLastState = st;
     syncLastAnswerAt = syncNow();
     // Disconnected on this Mac (the user's choice): the service neither pushes nor pulls this library, so edits
     // are written freely and there is no lease to look after.
     if(typeof st.disconnectedSince === 'string' && st.disconnectedSince){
       if(syncLease.state !== 'disconnected') setSyncLease({ state: 'disconnected', since: st.disconnectedSince });
       noteKeptAside(lib, st.keptAside);
-      renderSyncMarker();
       return true;
     }
     if(syncLease.state === 'disconnected') setSyncLease({ state: 'none' });   // reconnected
@@ -17517,7 +17500,6 @@
     }else if(syncLease.state !== 'offline'){
       syncNoteNewer(st.version);
     }
-    renderSyncMarker();
     if(!opts.noReload) await maybeReload();
     return true;
   }
@@ -17781,56 +17763,6 @@
   }
   window.addEventListener('pagehide', () => { releaseLease('pagehide'); writeHeldBackCopy(); });
   ['keydown', 'pointerdown', 'input'].forEach(type => document.addEventListener(type, () => { syncLastInputAt = syncNow(); }, true));
-
-  const SYNC_MARKER_KEYS = { holding: 'syncMarkerEditing', offline: 'syncMarkerEditingOffline', other: 'syncMarkerEditingOn', unconnected: 'syncMarkerNotConnected', unsynced: 'syncMarkerNotSynced', disconnected: 'syncMarkerDisconnected' };
-  function renderSyncMarker(){
-    const marker = el('sync-marker');
-    if(!marker) return;
-    let state = syncLibrary ? (syncUnsavedChanges ? 'unsaved' : syncLease.state) : 'none';
-    let text = '', title = '';
-    if(state === 'unsaved'){
-      text = t('syncMarkerUnsaved');
-      title = t('syncMarkerUnsavedTitle', { device: syncLease.deviceName || t('syncAnotherMac') });
-    }else if(state === 'holding' && syncLastState && typeof syncLastState.lastError === 'string' && syncLastState.lastError){
-      if(syncLastState.hubReachable === false){
-        // The hub merely can't be reached: the neutral offline marker (changes are saved here, sent later).
-        text = t('syncMarkerEditingOffline');
-        title = t('syncMarkerEditingOfflineTitle');
-        state = 'offline';
-      }else{
-        text = t('syncMarkerNotSynced');   // holding, but the last push failed although the hub answered: the service retries
-        title = syncLastState.lastError;
-        state = 'sync-error';
-      }
-    }else if(syncLastState && syncLastState.uploading === true && ['none', 'holding', 'offline', 'unsynced'].includes(state)){
-      // Just shared (Share this library…): Dossiary Sync is uploading it to the Pi.
-      text = t('syncMarkerUploading');
-      title = t('syncMarkerUploadingTitle');
-      state = 'uploading';
-    }else if(SYNC_MARKER_KEYS[state]){
-      text = t(SYNC_MARKER_KEYS[state], { device: syncLease.deviceName || '' });
-      if(state === 'holding') title = t('syncMarkerEditingTitle');
-      else if(state === 'offline') title = t('syncMarkerEditingOfflineTitle');
-      else if(state === 'other') title = t('syncMarkerEditingOnTitle');
-      else if(state === 'disconnected') title = t('syncMarkerDisconnectedTitle');
-      else if(state === 'unconnected') title = t('syncMarkerNotConnectedTitle');
-      else if(state === 'unsynced') title = syncLease.reason || '';
-    }
-    // Held back: a .kept-aside copy is kept meanwhile (writeHeldBackCopy()).
-    if(syncUnsavedChanges && syncHeldBackEpisode && syncHeldBackEpisode.folder){
-      title = [title, t('syncHeldBackCopyTitle', { folder: syncHeldBackEpisode.folder })].filter(Boolean).join(' ');
-    }
-    marker.textContent = text;
-    marker.title = title;
-    marker.dataset.state = state;
-    // Not connected: the marker itself opens the devices dialog, where Connect is.
-    const link = state === 'unconnected';
-    marker.classList.toggle('sub-sync-link', link);
-    if(link){ marker.setAttribute('role', 'button'); marker.tabIndex = 0; }
-    else { marker.removeAttribute('role'); marker.removeAttribute('tabindex'); }
-    marker.style.display = text ? '' : 'none';
-    updateShareLibraryItem();
-  }
 
   window.__DEBUG_syncLease = () => syncLease;
   window.__DEBUG_syncNow = async (ms) => { syncClockOffset += ms || 0; await syncTick(); };
@@ -18096,7 +18028,6 @@
     syncLibraryDeletedSeen = null;
     syncLease = { state: 'none' };
     syncUnsavedChanges = false;
-    renderSyncMarker();
     setStatusLive(() => t('syncLibraryDetachedLocal', { name, date }), '');
   }
   async function syncLibraryDeletedElsewhere(lib, info, trashed = false){
@@ -18649,7 +18580,6 @@
     const done = () => t('shareLibraryDone', { name: sharedName });
     const note = () => isCopy ? t('shareLibraryOriginalNote', { path: `${rootPath}/${handle.name}`, original: original.name }) : '';
     setStatusLive(() => [done(), note()].filter(Boolean).join(' '), 'ok');
-    if(syncLibrary) pollSyncState();   // the marker shows "uploading…" right away
     if(isCopy && rootDirHandle === handle && modalRoot.innerHTML === ''){
       modalRoot.innerHTML = `
         <div class="backdrop" id="modal-backdrop">
@@ -19387,15 +19317,6 @@
   el('empty-devices-btn').addEventListener('click', () => openDevicesDialog());
   el('share-library-btn').addEventListener('click', () => { openShareLibraryDialog(); });
   el('delete-library-btn').addEventListener('click', () => { if(rootDirHandle && db) openDeleteLibraryDialog(rootDirHandle, { open: true }); });
-  el('sync-marker').addEventListener('click', () => {
-    if(el('sync-marker').dataset.state === 'unconnected' && modalRoot.innerHTML === '') openDevicesDialog();
-  });
-  el('sync-marker').addEventListener('keydown', (e) => {
-    if((e.key === 'Enter' || e.key === ' ') && el('sync-marker').dataset.state === 'unconnected'){
-      e.preventDefault(); e.stopPropagation();
-      if(modalRoot.innerHTML === '') openDevicesDialog();
-    }
-  });
 
   // Drag-and-drop, anywhere on the page, while a library is open. dragCounter
   // (not a simple "is a drag happening" boolean) is the standard fix for a

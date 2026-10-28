@@ -288,15 +288,14 @@ async def main():
         print("1 reopened on the same folder, now synced:", await page.evaluate("window.__DEBUG_syncState().version") == 0 and (await text_of(page, '#sub-label')) == 'Tax 2026.dossiary')
         status = await page.get_attribute('#status', 'title') or await text_of(page, '#status')
         print("1 status line:", status.startswith('Shared “Tax 2026” — uploading to the Pi.'), status)
-        state_gets = [c for c in await calls(page) if c['method'] == 'GET' and c['url'].endswith('/state')]
-        print("1 the page read GET .../state after the share (it learns the upload is running):", len(state_gets) >= 1, len(state_gets))
         print("1 header height unchanged:", abs(await header_height(page) - header_before) < 0.5, header_before, await header_height(page))
+        state_gets = [c for c in await calls(page) if c['method'] == 'GET' and c['url'].endswith('/state')]
         await page.evaluate("window.__SYNC.uploading = false")
         await page.evaluate("window.__DEBUG_syncNow(6000)")
         await page.wait_for_timeout(200)
         n_state = len(state_gets)
         state_gets = [c for c in await calls(page) if c['method'] == 'GET' and c['url'].endswith('/state')]
-        print("1 the page polls the state again once uploading is over:", len(state_gets) > n_state, n_state, len(state_gets))
+        print("1 the shared library is polled like any synced one (GET .../state):", len(state_gets) > n_state, n_state, len(state_gets))
         await page.click('#tools-btn')
         print("1 a synced library has no Share item:", not await page.locator('#share-library-btn').is_visible())
         await page.keyboard.press('Escape')
