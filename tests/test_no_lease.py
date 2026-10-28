@@ -773,7 +773,7 @@ async def scenario_reload_refused(p):
 async def scenario_person_change_not_dropped(p):
     # (person_change_not_dropped) A person's flow is mid-way when a job's save meets a newer version.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
-    await page.evaluate("window.__DEBUG_ensureEditLease()")
+    await page.evaluate("window.__DEBUG_ensureCurrentVersion()")
     await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Person change', 1])")
     await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
     await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
@@ -1298,6 +1298,107 @@ async def scenario_ocr_job_runs(p):
     await browser.close()
 
 
+SET_SYNC_VERSION = """(v) => {
+    const f = window.__TEST_ROOT._children.get('.dossiary-sync.json');
+    f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'https://pi.local:8443', version: v }));
+}"""
+
+
+async def scenario_base_follows_own_push(p):
+    # The base the marker names follows this Mac's own pushes (Dossiary Sync accepts only its last 20 own pushes as
+    # a chain from an older base), but only when nothing can have been pulled under this tab's last write.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'First')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("own push: the first save names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    await page.evaluate(SET_SYNC_VERSION, 4)   # Dossiary Sync pushed it as version 4; library.sqlite untouched
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("...the poll takes version 4 over, base too, with no reload:", st['version'] == 4 and st['base'] == 4 and st['reloads'] == 0, st)
+    await edit_title(page, 'Second')
+    print("...the next save names version 4:", marker_ok(await base_marker(page), 4), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # No token (no poll): the sync file alone, read by the next save.
+    browser, page, errors = await open_app(p, seed=SEED2, token=None)
+    await edit_title(page, 'First')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    await page.evaluate(SET_SYNC_VERSION, 4)
+    await edit_title(page, 'Second')
+    st = await sync_state(page)
+    print("no token, own push: the next save is written, not kept aside:", await disk_doc_title(page, 1) == 'Second' and not await kept_aside_names(page))
+    print("...and names version 4:", st['version'] == 4 and marker_ok(await base_marker(page), 4), st, await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # The sync file changed while the write was under way (a pull may have landed under it): the number is taken
+    # over, the base is not.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("""() => {
+        const h = window.__TEST_ROOT._children.get('library.sqlite');
+        const orig = h.createWritable.bind(h);
+        h.createWritable = async () => {
+            const w = await orig();
+            const close = w.close.bind(w);
+            w.close = async () => { await close(); if(window.__RACE_ONCE){ window.__RACE_ONCE = false;
+                const f = window.__TEST_ROOT._children.get('.dossiary-sync.json');
+                f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 })); } };
+            return w;
+        };
+        window.__RACE_ONCE = true;
+    }""")
+    await edit_title(page, 'Raced')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("a write the sync file changed under: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3 and st['reloads'] == 0, st)
+    await edit_title(page, 'After the race')
+    print("...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # Dossiary Sync's own base marker replaced this tab's (it installs one with every pull): base stays.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'Mine')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    await page.evaluate("""() => {
+        const f = window.__TEST_ROOT._children.get('.dossiary-base.json');
+        f._bytes = new TextEncoder().encode(JSON.stringify({ version: 4, sha256: 'feed', writtenAt: '2026-10-28T10:00:00Z' }));
+    }""")
+    await page.evaluate(SET_SYNC_VERSION, 4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("a base marker that isn't this tab's: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_many_own_pushes(p):
+    # 25 saves, each pushed by Dossiary Sync as the next version: the marker keeps up (never more than one behind).
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    ok = True
+    for i in range(25):
+        await page.evaluate("(t) => window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', [t, 1])", f'Save {i}')
+        await page.evaluate("window.__DEBUG_persistDb()")
+        m = await base_marker(page)
+        ok = ok and marker_ok(m, 3 + i)
+        await page.evaluate(SET_SYNC_VERSION, 4 + i)
+        await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4 + i))
+        await page.evaluate("window.__DEBUG_syncNow(0)")
+    print("25 own pushes: each save's marker names the version before it:", ok, await base_marker(page))
+    print("...nothing kept aside, never reloaded:", not await kept_aside_names(page) and (await sync_state(page))['reloads'] == 0, await sync_state(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 async def main():
     import sys
     only = sys.argv[1:]
@@ -1311,7 +1412,8 @@ async def main():
                          scenario_reload_race, scenario_doc_ids, scenario_open_race, scenario_no_reload_while_opening,
                          scenario_sync_read_before_writes, scenario_view_prefs, scenario_kept_aside,
                          scenario_export_leaves_sync_files, scenario_tokenless_write_pulled_over,
-                         scenario_token_write_then_foreign_reloads_quietly, scenario_token_rejected, scenario_ocr_job_runs):
+                         scenario_token_write_then_foreign_reloads_quietly, scenario_token_rejected, scenario_ocr_job_runs,
+                         scenario_base_follows_own_push, scenario_many_own_pushes):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

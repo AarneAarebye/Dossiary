@@ -4253,7 +4253,7 @@
     }
   }
   async function openToolbarButtonsModal(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -5191,7 +5191,7 @@
     setStatusT('statusLoadingSqliteEngine', null, 'busy');
     await ensureSqlJs();
     setStatusT('statusReadingLibrary', null, 'busy');
-    // Two-Mac editing: the sync file first, then library.sqlite. Dossiary Sync
+    // A synced library: the sync file first, then library.sqlite. Dossiary Sync
     // writes the database first and the sync file after it, so read in this
     // order the version can only be older than the database, never newer --
     // a newer database is then simply reloaded by the next poll, while the
@@ -5205,8 +5205,8 @@
     if(synced) syncLoadedHash = await syncHashBytes(new Uint8Array(buf));
     db = trackDbChanges(new SQL.Database(new Uint8Array(buf)));
     // A synced library's migrations stay in memory (as on a reload): the
-    // open-time write would go to disk without the lease, maybe over a newer
-    // version the service just pulled. They're written with the next real save.
+    // open-time write could go to disk over a newer version the service just
+    // pulled. They're written with the next real save.
     if(synced) db.__untracked = true;
     db.run(SCHEMA); // no-op if tables already exist (CREATE TABLE IF NOT EXISTS)
     applySchemaMigrations(); // adds any columns introduced after this library was created
@@ -5245,11 +5245,7 @@
     if(ocrJobRows().length) startOcrJobRunner();
   }
 
-  // opts.skipLeaseRelease: the library was just deleted (here or on another
-  // Mac) -- the hub no longer knows its id, so no release (or any other admin
-  // call) is sent for it.
-  function resetAll(opts){
-    if(!(opts && opts.skipLeaseRelease === true)) releaseLease('switch');   // fires its request before anything is cleared
+  function resetAll(){
     clearSyncState();
     stopOcrJobRunner();
     shareHoldsBackground = false;
@@ -5432,140 +5428,64 @@
     openDetail(selectedDocId); // populates the panel's empty state immediately, rather than leaving #detail-panel-body blank until the first row click
   }
 
-  // Every write of library.sqlite. A synced library (.dossiary-sync.json at its
-  // root) first takes the edit lease for a real change -- see ensureLease().
-  //
-  // Two-Mac editing at a glance (states are syncLease.state; "real" = not
-  // opts.viewOnly). Nothing a person changed is ever dropped: it's written,
-  // held back in memory (with a .kept-aside copy after 30 s), or kept aside.
-  //   holding / offline : confirm first (syncConfirmLease(): a state poll
-  //                       unless one answered in the last 3 s, and a
-  //                       heartbeat when the last one is over 2 minutes old;
-  //                       3 s each at most); still holding/offline → real
-  //                       write; no answer → unsynced, and the real write
-  //                       goes ahead with the base marker (as below); view
-  //                       preference → write.
-  //   none / other      : real → acquire (other/busy: take-over dialog for a
-  //                       person, silent hold-back for a job); view preference
-  //                       → memory only, written with the next real save.
-  //   unconnected / unsynced : real → written at once (the base marker decides
-  //                       later whether the service pushes or keeps it aside),
-  //                       and remembered (syncWroteWithoutLease): a newer
-  //                       version found later with library.sqlite not this
-  //                       tab's bytes is then kept aside with the notice, never
-  //                       a plain reload; view preference → memory.
-  //   behind a newer version (syncBehind(), disk not ours) on a real write
-  //                       → keep aside + reload: with a notice for a person's
-  //                       change, quietly for a job's data alone.
-  // Invariants: a real write only with the lease confirmed, offline
-  // confirmed, or no lease to be had (unconnected / unsynced, where the base
-  // marker guards the push); never over a version this tab knows is newer
-  // than its memory (syncBehind(): kept aside instead). Without a lease a
-  // pull may still land just after the write (the tab can't know): Dossiary
-  // Sync never installs over a folder file that isn't the one it last
-  // synced (the write survives as this Mac's change and is kept aside), and
-  // this tab keeps a lease-less write aside rather than reloading it away.
-  // A reload never replaces unwritten changes (syncDirty()) or runs under an open dialog
-  // unless forced by a flow about to start. Every write of library.sqlite is
-  // followed by the base marker (.dossiary-base.json: the version memory is
-  // provably based on, syncLibrary.base -- never a number taken over without
-  // a lease -- and the SHA-256 of the bytes written), from which Dossiary Sync decides
-  // whether the change may be pushed or is kept aside.
-  // disconnected: write at once (the service skips this library); no lease, no confirm, no hold-back;
-  //                       remembered as lease-less (a reconnect may pull over it).
-  // opts.viewOnly marks a view preference (sort, columns, view mode, ...),
-  // which never takes the lease. In a synced library it's written only while
-  // holding (or offline), and even then not while a change is held back or
-  // memory is behind a newer version (the library reloads first); otherwise
-  // it stays in memory and goes out with the next real save.
+  // Every write of library.sqlite. It goes straight to disk; in a synced
+  // library (.dossiary-sync.json at its root, kept in step with the hub by
+  // Dossiary Sync) two things are added:
+  //   - The guard: memory based on an older version than the library's
+  //     newest (syncBehind(); the sync file is read first, so a pull since
+  //     the last poll counts too) is never written over it. If
+  //     library.sqlite is still this tab's own bytes nothing foreign is on
+  //     disk and the write goes ahead (syncDiskIsOurs()); otherwise memory is
+  //     kept aside and the newer version reloaded (syncKeepAsideAndReload()):
+  //     with the notice for a person's change, quietly for a job's data alone.
+  //   - The base marker (.dossiary-base.json, writeSyncBaseMarker()) after
+  //     every write: the version memory is based on (syncLibrary.base) and the
+  //     SHA-256 of the bytes written. From it Dossiary Sync decides whether to
+  //     push the change or keep it aside (never pushed on a stale base).
+  // A pull may still land just after the write (the tab can't know): Dossiary
+  // Sync never installs over a folder file that isn't the one it last synced
+  // (the write survives as this Mac's change and is kept aside, reported in
+  // GET …/state's keptAside), and without an admin token -- so no poll that
+  // would report it -- this tab keeps such a write aside itself rather than
+  // reloading it away (syncWroteWithoutLease, syncWriteUnreported()).
+  // A reload never replaces unwritten changes (syncDirty()) or runs under an
+  // open dialog unless forced by a flow about to start.
+  // opts.viewOnly marks a view preference (sort, columns, view mode, ...,
+  // SYNC_VIEW_PREF_KEYS). In a synced library it stays in memory (a pull may
+  // be running right now, and checking for that and then writing can't be
+  // made one step) and goes to disk with the next real save.
   // opts.background marks a write no click asked for (the OCR job runner,
-  // Library check's backfill, preview jobs): it never opens the take-over
-  // dialog; while the other Mac edits, its change waits in memory for the next
-  // real save (or the job's next pass).
-  // → true when library.sqlite was written; false when it wasn't (held back,
-  // kept aside, a view preference skipped). Callers that report "Saved …"
-  // check it.
+  // Library check's backfill, preview jobs); it only changes how loudly the
+  // guard keeps memory aside.
+  // → true when library.sqlite was written; false when it wasn't (kept aside,
+  // a view preference kept in memory). Callers that report "Saved …" check it.
   async function persistDb(opts = {}){
     if(syncLibraryGone){ syncRefuseGone(); return false; }   // deleted elsewhere, kept open read-only
     if(opts.background && shareHoldsBackground) return false;   // a share is under way (see shareHoldsBackground)
-    if(syncLibraryDeletedSeen && syncLibraryDeletedSeen === syncLibrary) return false;   // the deleted path is on its way
     syncPersistsInFlight++;
-    let leaseless = false;   // a real write with no lease to be had (see syncWroteWithoutLease)
-    let leased = false;      // a real write under a confirmed lease: memory, earlier lease-less writes included, is pushed from it
     try{
       if(syncReadPromise) await syncReadPromise;
+      let versionBefore = null;   // the sync file's version right before the write (see syncLastWriteUnproven)
       if(syncLibrary){
         if(opts.viewOnly){
-          // Only while this Mac holds the lease (or is offline, where every
-          // change is this Mac's): otherwise Dossiary Sync may be pulling a
-          // newer library.sqlite right now, and checking for that and then
-          // writing can't be made one step. The preference stays in memory
-          // (a reload keeps it) and goes to disk with the next real save.
-          if(syncLease.state !== 'holding' && syncLease.state !== 'offline'){
-            if(syncBehind() || syncReloadWanted || await syncNewerOnDisk()) setTimeout(() => { maybeReload(); }, 0);
-            return false;
-          }
-          if(syncLeasePending || syncReloading) return false;
-          if(syncBehind() || syncReloadWanted){
-            syncViewWriteDropped = true;
-            setTimeout(() => { maybeReload(); }, 0);
-            return false;
-          }
-        }else{
-          // "Holding" or "offline" may be out of date: taken over since the
-          // last poll, expired while the Mac slept, the offline period over.
-          // Ask first; the answer may turn this into an acquire below.
-          if(syncLease.state === 'holding' || syncLease.state === 'offline'){
-            const root = rootDirHandle;
-            const answered = await syncConfirmLease();
-            if(root !== rootDirHandle || !db) return false;
-            // No answer: not "holding as far as anyone knows" -- "not
-            // answering"; the change is written below with the base marker.
-            if(!answered && (syncLease.state === 'holding' || syncLease.state === 'offline')){
-              syncUnsyncedAt = syncNow();
-              setSyncLease({ state: 'unsynced', reason: syncAdminEverAnswered ? syncErrorText(null) : t('syncNotRunningReason') });
-            }
-          }
-          const free = syncLease.state !== 'holding' && syncLease.state !== 'offline';
-          if(free){
-            await syncNewerOnDisk();   // a pull since the last poll counts too
-            const backingOff = syncLease.state === 'unsynced' && syncNow() - syncUnsyncedAt < SYNC_UNANSWERED_RETRY_MS;
-            if(!backingOff){
-              const root = rootDirHandle;
-              const wasHolding = syncLease.state === 'holding';
-              const ok = await ensureLease(!!opts.background);
-              if(root !== rootDirHandle || !db) return false;
-              // A job took the lease here (backfill, "Check for text", a
-              // backup's date): give it back soon, unless a person is editing.
-              if(ok && opts.background && !wasHolding && syncLease.state === 'holding' && !syncPersonFlowPending) syncLeaseForBackgroundOnly = true;
-              if(!ok) return false;
-            }
-            // No lease to be had (no admin token in this browser, or the service not answering): nothing
-            // confirms who holds it, but the change is written anyway, with the base marker below. The
-            // service pushes it only when it is provably based on the hub's current version, and otherwise
-            // keeps it aside (never overwritten), so nothing is lost and nothing is held back or warned about.
-          }
-          // The safety net: memory is based on an older version than the
-          // library's newest (another Mac changed it; the service may already
-          // have pulled that version onto disk). Never write over it -- keep
-          // this tab's bytes aside, reload, and say so. Nothing in memory is
-          // ever dropped: even a job's save keeps them aside, since a
-          // person's change made between its db.run and its own save may be
-          // in there too. Only how loudly differs -- a job's save with no
-          // person's change known to be pending keeps them aside quietly
-          // (a plain status line, no notice).
-          if(syncBehind() && !(await syncDiskIsOurs())){
-            const quiet = !!opts.background && !syncPersonFlowPending && syncPersonFlowHold === 0 && !syncWroteWithoutLease;
-            await syncKeepAsideAndReload(false, quiet);
-            return false;
-          }
-          leaseless = syncLease.state === 'unconnected' || syncLease.state === 'unsynced';
-          leased = syncLease.state === 'holding' || syncLease.state === 'offline';
+          if(syncBehind() || syncReloadWanted || await syncNewerOnDisk()) setTimeout(() => { maybeReload(); }, 0);
+          return false;
+        }
+        const lib = syncLibrary, root = rootDirHandle;
+        versionBefore = await syncFileVersion(lib, root);
+        if(lib !== syncLibrary || root !== rootDirHandle || !db) return false;
+        syncNoteNewer(versionBefore);
+        // The guard (above). Nothing in memory is ever dropped: even a job's
+        // save keeps it aside, since a person's change made between its db.run
+        // and its own save may be in there too. Only how loudly differs -- a
+        // job's save with no person's change known to be pending keeps it
+        // aside quietly (a plain status line, no notice).
+        if(syncBehind() && !(await syncDiskIsOurs())){
+          const quiet = !!opts.background && !syncPersonFlowPending && syncPersonFlowHold === 0 && !syncWriteUnreported();
+          await syncKeepAsideAndReload(false, quiet);
+          return false;
         }
       }
-      // Deleted on the hub (a lease call said so): hold the write back; memory
-      // stays as it is for the deleted path (keep aside or the download offer).
-      if(syncLibraryDeletedSeen && syncLibraryDeletedSeen === syncLibrary) return false;
       const seq = syncChangeSeq;
       // The version memory is based on, taken with the bytes: the base marker names it.
       const markerLib = syncLibrary, markerRoot = rootDirHandle;
@@ -5577,17 +5497,18 @@
       if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // everything changed up to the export is on disk now
       if(markerLib){
         const hash = await syncHashBytes(bytes);
+        // Read again before the marker goes out: a version that changed while
+        // this write was under way may be a pull this write landed on top of.
+        const versionAfter = await syncFileVersion(markerLib, markerRoot);
         if(markerLib === syncLibrary){
           syncLastWrittenHash = hash;
-          if(leaseless) syncWroteWithoutLease = true;
-          else if(leased) syncWroteWithoutLease = false;
+          syncWroteWithoutLease = true;
+          syncLastWriteUnproven = versionAfter !== versionBefore;
+          syncLastMarker = { version: baseVersion, sha256: hash };
         }
         await writeSyncBaseMarker(markerRoot, baseVersion, hash);
       }
-      if(!opts.viewOnly){
-        lastRealSaveAt = syncNow();
-        if(!opts.background){ syncLeaseForBackgroundOnly = false; syncPersonFlowPending = false; }
-      }
+      if(!opts.viewOnly && !opts.background) syncPersonFlowPending = false;
       return true;
     }finally{
       syncPersistsInFlight--;
@@ -5929,7 +5850,7 @@
   }
 
   async function setNotDuplicate(key, marked){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     if(marked){
       db.run('INSERT OR REPLACE INTO not_duplicate_groups (group_key) VALUES (?)', [key]);
       notDuplicateKeys.add(key);
@@ -8218,7 +8139,7 @@
   }
 
   async function openManageValuesModal(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -8404,7 +8325,7 @@
       const n = parseInt(e.target.value, 10);
       const days = Number.isInteger(n) && n >= 0 ? n : BACKUP_REMINDER_DEFAULT_DAYS;
       e.target.value = days;
-      if(!await ensureEditLease()) return;
+      if(!await ensureCurrentVersion()) return;
       writeSetting('backup_reminder_days', days);
       await persistDb();
     });
@@ -8465,8 +8386,8 @@
             await writeTo(['How to open.txt'], bundleReadmeText(folderName));
             copied += 2;
           }
-          // Only with the lease to hand (taken silently if free): a backup
-          // never asks to take over, and never writes over another Mac's version.
+          // Never while memory is behind a newer version: a backup never
+          // writes over another device's version.
           if(await syncBackgroundMayWrite()){
             writeSetting('last_backup_at', nowIso());
             await persistDb({ background: true });
@@ -9491,7 +9412,7 @@
   }
 
   async function openImportModal(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal" role="dialog" aria-modal="true">
@@ -9927,7 +9848,7 @@
   // first). Every DELETE is queued first and persisted once, the same bulk
   // convention deleteOrphanedTags() uses.
   async function deleteFields(fieldIds){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const doomed = fieldDefs.filter(f => fieldIds.includes(f.id) && !NON_RENAMEABLE_FIELD_NAMES.includes(f.name));
     const doomedNames = doomed.map(f => f.name);
     for(const f of doomed){
@@ -10167,7 +10088,7 @@
   // unchecked, so the next run retries it. The modal's close controls stay
   // gated on findDuplicatesBackfillRunning for the duration.
   async function runTextLayerCheck(docs){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const CONCURRENCY = 4, PERSIST_EVERY = 25;
     const total = docs.length;
     const progressEl = el('text-check-progress');
@@ -10244,7 +10165,7 @@
   }
 
   async function deleteUnusedPreviewFiles(files){
-    if(!await ensureEditLease()) return 0; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return 0; // synced library: reload first if a newer version is on disk
     let removed = 0;
     for(const file of files){
       try{ await file.dir.removeEntry(file.name); clearThumbCache(file.path); removed++; }catch(e){ /* left in place */ }
@@ -10556,7 +10477,7 @@
   // it isn't; any earlier error on the same indicator is cleared first so a
   // retry doesn't stack duplicate messages.
   async function performRelink(documentId, pathField, file, indicatorEl){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === documentId);
     if(!d) return;
     const path = d[pathField];
@@ -10597,7 +10518,7 @@
   // existing bulk-action convention (bulkSetArchived() and siblings) rather
   // than persisting once per row.
   async function deleteOrphanedTags(names){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     names.forEach(name => {
       const id = tagNameToId[name];
       if(id === undefined) return;
@@ -10623,7 +10544,7 @@
   // Same shape as deleteOrphanedTags() but for people -- DELETE FROM people
   // plus a cascade DELETE FROM document_field_people WHERE person_id = ?.
   async function deleteOrphanedPeople(names){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     names.forEach(name => {
       const id = personNameToId[name];
       if(id === undefined) return;
@@ -10761,7 +10682,7 @@
   }
 
   async function snoozeReminder(documentId, fieldId, snoozedUntil){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     reminderSnoozes[`${documentId}:${fieldId}`] = { snoozedUntil, dismissed: false };
     // A snooze is identified by its (document, field) pair, so its uid is always
     // the derived one: the same pair snoozed on two Macs is the same record.
@@ -10778,7 +10699,7 @@
   // at `snoozedUntil`, so a null snoozedUntil here has no separate effect on that
   // check -- it's written anyway to keep the row's own stored state honest.
   async function dismissReminder(documentId, fieldId){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     reminderSnoozes[`${documentId}:${fieldId}`] = { snoozedUntil: null, dismissed: true };
     const uid = await derivedUid('reminder_snoozes', `${documentId}:${fieldId}`); // see snoozeReminder()
     db.run('INSERT OR REPLACE INTO reminder_snoozes (document_id, field_id, snoozed_until, dismissed, uid) VALUES (?, ?, ?, ?, ?)', [documentId, fieldId, null, 1, uid]);
@@ -10792,7 +10713,7 @@
   // reminder_snoozes row either, so "re-enabled" and "never touched" end up in
   // the identical, simplest state.
   async function reenableReminder(documentId, fieldId){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     delete reminderSnoozes[`${documentId}:${fieldId}`];
     db.run('DELETE FROM reminder_snoozes WHERE document_id = ? AND field_id = ?', [documentId, fieldId]);
     await persistDb();
@@ -10814,7 +10735,7 @@
   // issue (the underlying data is already correct; only that one already-open
   // view hasn't repainted yet).
   async function clearReminderFieldValue(documentId, fieldId){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === documentId);
     if(!d) return;
     const fieldDef = fieldDefs.find(f => f.id === fieldId);
@@ -11206,7 +11127,7 @@
           actions.push({
             key: 'remove-from-collection', label: t('detailRemoveFromCollection'), variant: null,
             onClick: async () => {
-              if(!await ensureEditLease()) return; // two-Mac editing: the lease first
+              if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
               const collectionId = Number(currentView.slice('collection-'.length));
               db.run('DELETE FROM collection_documents WHERE collection_id = ? AND document_id = ?', [collectionId, id]);
               await persistDb();
@@ -11393,7 +11314,7 @@
   // applyFilters()'s showArchived check) until someone checks "Show archived" in the
   // toolbar; nothing about the document's own data changes.
   async function toggleArchived(id){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
     d.archived = !d.archived;
@@ -11410,7 +11331,7 @@
   // (matching toggleArchived()'s own approach) so a following render()/openDetail()
   // picks up the change with no extra lookup needed.
   async function setDefaultReminder(documentId, dateIso){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === documentId);
     if(!d) return;
     const fieldId = fieldNameToId['Reminder'];
@@ -11453,7 +11374,7 @@
   // itself -- its one call site (the detail view's own button, below) does that,
   // keeping the toggle itself decoupled from whether a modal happens to be open.
   async function toggleNeedsReview(id){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
     d.needs_review = !d.needs_review;
@@ -11474,7 +11395,7 @@
   // modal itself -- its one call site (the detail view's own button, below) does
   // that, keeping the toggle itself decoupled from whether a modal happens to be open.
   async function toggleDeleted(id){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
     d.deleted = !d.deleted;
@@ -11497,7 +11418,7 @@
   // deliberately includes archived/needs-review documents) toggling each
   // independently would produce a confusing, non-uniform result.
   async function bulkSetArchived(ids, value){
-    if(!await ensureEditLease()) return false; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return false; // synced library: reload first if a newer version is on disk
     ids.forEach(id => db.run('UPDATE documents SET archived = ? WHERE id = ?', [value ? 1 : 0, id]));
     ids.forEach(id => { const d = allDocs.find(x => x.id === id); if(d) d.archived = value; });
     await persistDb();
@@ -11506,7 +11427,7 @@
   }
 
   async function bulkSetDeleted(ids, value){
-    if(!await ensureEditLease()) return false; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return false; // synced library: reload first if a newer version is on disk
     ids.forEach(id => db.run('UPDATE documents SET deleted = ? WHERE id = ?', [value ? 1 : 0, id]));
     ids.forEach(id => { const d = allDocs.find(x => x.id === id); if(d) d.deleted = value; });
     if(value) ids.forEach(deleteOcrJob);
@@ -11518,7 +11439,7 @@
   }
 
   async function bulkSetNeedsReview(ids, value){
-    if(!await ensureEditLease()) return false; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return false; // synced library: reload first if a newer version is on disk
     ids.forEach(id => db.run('UPDATE documents SET needs_review = ? WHERE id = ?', [value ? 1 : 0, id]));
     ids.forEach(id => { const d = allDocs.find(x => x.id === id); if(d) d.needs_review = value; });
     await persistDb();
@@ -11527,7 +11448,7 @@
   }
 
   async function regenerateThumbnail(id){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
     const statusEl = el('thumb-status');
@@ -11565,7 +11486,7 @@
   // --- bulk-edit modal (update metadata for 2+ selected documents at once) ---
 
   async function openBulkEditForm(ids){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
@@ -11796,7 +11717,7 @@
       renderStats(); populateFilters(); populateDatalists();
       render();
 
-      // false: held back (another Mac edits) or kept aside -- persistDb() says so itself.
+      // false: kept aside -- persistDb() says so itself.
       if(saved) setStatusT(ids.length === 1 ? 'bulkEditSavedStatusSingular' : 'bulkEditSavedStatusPlural', {count: ids.length}, 'ok');
       closeModal();
       return true;
@@ -12019,7 +11940,7 @@
   }
 
   async function openEditForm(id){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === id);
     if(!d) return;
 
@@ -12521,7 +12442,7 @@
   // this a second layer above the capture/Edit form instead of replacing it --
   // closing it calls onClose, which rebuilds the form's fields from the new setup.
   async function openFieldSettingsModal(opts = {}){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const stacked = typeof opts.onClose === 'function';
     fsExtraType = stacked && opts.selectType ? opts.selectType : null;
     const usedTypes = fieldSettingsTypes();
@@ -12911,7 +12832,7 @@
   }
 
   async function openCaptureModal(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     pendingFile = null;
     pendingOcrText = '';
     pendingOcrWords = null;
@@ -13500,7 +13421,7 @@
   // as it finishes (makeDocumentSearchable() saves per document), so Stop --
   // which lets the current document finish -- or a closed tab keeps what's done.
   async function openMakeSearchableModal(ids){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const docs = ids.map(id => allDocs.find(x => x.id === id)).filter(canMakeSearchable);
     if(!docs.length) return;
     const single = docs.length === 1;
@@ -14129,7 +14050,7 @@
   // `afterClose` runs once the dialog closes (saved or cancelled) -- the
   // Manage Collections dialog uses it to reopen itself.
   async function openSmartCollectionEditor(collectionId, afterClose){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const existing = collectionId != null ? collections.find(c => c.id === collectionId) : null;
     let parsed = {};
     try{ parsed = existing && existing.criteria ? JSON.parse(existing.criteria) : {}; }catch(e){ parsed = {}; }
@@ -14487,13 +14408,13 @@
   // next time. The previous preview file is left on disk (Storage stats
   // shows it as untracked).
   async function runPreviewJob(docs, mode){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     previewsRun = { stop: false, done: 0, total: docs.length, mode };
     updatePreviewsButton([]);
     let sinceSave = 0, recreated = 0, kept = 0;
     for(const d of docs){
       if(previewsRun.stop || shareHoldsBackground) break;
-      if(!syncMayWriteFiles()){ previewsRun.stop = true; break; }   // two-Mac editing: no lease, no preview files
+      if(!syncMayWriteFiles()){ previewsRun.stop = true; break; }   // behind a newer version: no preview files
       try{
         if(mode === 'upgrade'){
           let size = 0;
@@ -14730,7 +14651,7 @@
   }
 
   async function openPageToolsModal(id){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const d = allDocs.find(x => x.id === id);
     if(!canEditPages(d)) return;
     modalRoot.innerHTML = `
@@ -14907,7 +14828,7 @@
   // shown. The kept document gets the combined file (its own original stays);
   // the others go to the Waste bin untouched, so restoring them undoes it.
   async function openCombineModal(ids){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const docs = ids.map(id => allDocs.find(x => x.id === id)).filter(canCombine);
     if(docs.length < 2) return;
     let keepId = docs[0].id;
@@ -15003,7 +14924,7 @@
   // --- Manage Collections modal (rename, delete, create manual collections) ---
 
   async function openManageCollectionsModal(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     modalRoot.innerHTML = `
       <div class="backdrop" id="modal-backdrop">
         <div class="modal wide" role="dialog" aria-modal="true">
@@ -15379,7 +15300,7 @@
   // addAllInboxFilesAndShowStatus(); a drop that adds nothing (empty or every
   // file failed) reports on the status line without navigating anywhere.
   async function addDroppedFiles(files){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     // Saves once per file: one person's flow for its whole length (beginPersonFlowHold()).
     return withPersonFlowHold(async () => {
       let added = 0, skipped = 0, failed = 0, lastTitle = null, lastId = null;
@@ -15434,7 +15355,7 @@
   // immediately visible (subject to any active search/filter), and reports what
   // happened via the status line (including any partial failures).
   async function addAllInboxFilesAndShowStatus(onAdded){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     // Saves once per file: one person's flow for its whole length (beginPersonFlowHold()).
     return withPersonFlowHold(async () => {
       const count = pendingInboxFiles.length;
@@ -15542,7 +15463,7 @@
   // The Edit form's "Make searchable": Dossiary's own OCR in the background,
   // like a scan's fallback, whatever the scan setting says -- it was asked for.
   async function queueEditOcr(d, lang){
-    if(!await ensureEditLease()) return false; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return false; // synced library: reload first if a newer version is on disk
     db.run('INSERT OR REPLACE INTO ocr_jobs (document_id, helper_url, job_id, file_hash, created_at, ocr_language, requested_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [d.id, null, null, d.file_hash || null, nowIso(), lang, 'edit']);
     await persistDb();
@@ -15626,7 +15547,7 @@
     try{ currentHash = await computeFileHash(await (await resolveFileHandle(d.file_path, false)).getFile()); }catch(e){}
     if(rootDirHandle !== root) return;
     if(!currentHash || currentHash !== row.file_hash){ await switchToFallback(d.id); return; }
-    // Writes files: only with the lease to hand (taken silently if free); otherwise the job stays queued.
+    // Writes files: never while memory is behind a newer version; the job stays queued then.
     if(!(await syncBackgroundMayWrite()) || rootDirHandle !== root) return;
     try{
       const stale = () => rootDirHandle !== root;
@@ -15650,7 +15571,7 @@
     const row = ocrJobRows().find(r => r.document_id === docId);
     try{
       if(d && !d.deleted && canMakeSearchableBase(d)){
-        if(!syncMayWriteFiles()) return;   // the lease went meanwhile: the row stays queued
+        if(!syncMayWriteFiles()) return;   // a newer version came meanwhile: the row stays queued
         outcome = await makeDocumentSearchable(docId, (row && row.ocr_language) || scanOcrLanguage, () => {}, () => rootDirHandle !== root, { background: true });
       }
     }catch(e){ error = e; }
@@ -15683,9 +15604,9 @@
       }
       if(dropped) await persistDb({ background: true });
       if(rootDirHandle !== root || !db) return;
-      // Two-Mac editing: while another Mac edits (or this tab is behind a
-      // newer version, or holds back a change) the jobs wait, queued.
-      if(syncLibrary && (syncLease.state === 'other' || syncBehind())) return;
+      // A synced library behind a newer version: the jobs wait, queued (the
+      // library reloads first).
+      if(syncLibrary && syncBehind()) return;
       for(const row of ocrJobRows().filter(r => r.job_id)){
         await pollOcrJob(row, root);
         if(rootDirHandle !== root || !db) return;
@@ -16367,7 +16288,7 @@
   }
 
   async function startScanFromDialog(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const choice = currentScanChoice();
     const settings = readScanDialogSettings();
     if(!choice || !settings || scanDialogRunning) return;
@@ -16484,9 +16405,6 @@
       if(token) localStorage.setItem(SYNC_ADMIN_TOKEN_KEY, token);
       else localStorage.removeItem(SYNC_ADMIN_TOKEN_KEY);
     }catch(e){ syncAdminTokenMemoryOnly = true; }
-    // Just connected (devices dialog): a library waiting as "not connected"
-    // can now take the lease.
-    if(token && syncLibrary && syncLease.state === 'unconnected') setSyncLease({ state: 'none' });
   }
 
   // Returns {status, ok, body, retryAfter}, or null when nothing answered
@@ -16508,7 +16426,6 @@
     const timeoutId = opts.noTimeout ? null : setTimeout(() => controller.abort(), opts.timeoutMs || SYNC_ADMIN_TIMEOUT_MS);
     try{
       const response = await fetch(SYNC_ADMIN_URL + path, init);
-      syncAdminEverAnswered = true;
       const body = await response.json().catch(() => null);
       const fromBody = body && Number(body.retryAfter);
       const retry = Number.isFinite(fromBody) && fromBody > 0 ? fromBody
@@ -16527,70 +16444,63 @@
     return message ? t('devicesRequestFailedWith', { status: res.status, message }) : t('devicesRequestFailed', { status: res.status });
   }
 
-  // ---- Sync lease (two-Mac editing; spec dossiary-ios
-  // docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md) ----
+  // ---- Synced libraries (Dossiary Sync; the hub cut, spec dossiary-native
+  // docs/superpowers/specs/2026-10-28-dossiary-html-hub-cut-design.md) ----
   // A library Dossiary Sync keeps in step with the Pi has .dossiary-sync.json
-  // at its root. For such a library the first real change takes the edit
-  // lease from this Mac's service (POST /admin/libraries/<id>/lease), so only
-  // one Mac changes it at a time. No sync file → no admin calls at all.
+  // at its root ({libraryId, hub, version}; Dossiary Sync writes it after
+  // every pull or push). Dossiary saves such a library straight to disk like
+  // any other, with two additions (see persistDb()): the guard against
+  // writing over a newer version, and the base marker. While it is open, a
+  // state poll (pollSyncState(), only with an admin token) learns of a newer
+  // version, versions Dossiary Sync kept aside, and a deletion elsewhere.
+  // No sync file → no admin calls at all.
   const SYNC_FILE_NAME = '.dossiary-sync.json';
   // The base marker: right after every write of library.sqlite in a synced
   // library, {version, sha256, writtenAt} -- the hub version this tab's
-  // memory is at and the hash of the bytes just written. Dossiary Sync pushes
+  // memory is based on and the hash of the bytes just written. Dossiary Sync pushes
   // a changed library.sqlite only when its marker names the version the
-  // folder holds (or the start of this Mac's own pushes that led to it); any
-  // other base, or no marker for those bytes, is kept aside, never pushed.
-  // Never written for a .kept-aside copy; left out of backups.
+  // folder holds (or the start of this Mac's own pushes that led to it -- the
+  // last 20 of them); any other base, or no marker for those bytes, is kept
+  // aside, never pushed. Never written for a .kept-aside copy; left out of
+  // backups.
   const SYNC_BASE_FILE_NAME = '.dossiary-base.json';
-  const SYNC_HEARTBEAT_MS = 60 * 1000;
-  const SYNC_IDLE_RELEASE_MS = 10 * 60 * 1000;
   const SYNC_TICK_MS = 5 * 1000;
-  const SYNC_EDIT_DIALOG_MAX_MS = 60 * 60 * 1000;
   // {libraryId, version, base} from .dossiary-sync.json, or null. `version`: the newest version this tab
   // knows memory is not behind; `base`: the version the base marker names (what memory is provably based
-  // on). They differ only after syncDiskIsOurs() took over a newer number without a lease (see there).
+  // on). Both are the loaded version after an open or a reload; `version` moves past `base` when a newer
+  // number turns out to be this tab's own bytes, and `base` follows it only when that is proven (see
+  // syncDiskIsOurs()).
   let syncLibrary = null;
-  let syncLease = { state: 'none' };    // 'none' | 'holding' | 'offline' | 'other' (+deviceName, since) | 'unconnected' | 'unsynced' (+reason)
   let syncSeenLive = false;            // this tab had an answer for this library without `deleted` since it opened
   // Library ids whose first answer this session already said `deleted` (a
   // folder taken back out of the Trash): they open as local, unsynced
   // libraries for the rest of the session. Not cleared by resetAll().
   const syncDetachedLibraryIds = new Set();
-  let syncLibraryDeletedSeen = null;  // the syncLibrary a lease call answered 404 library-deleted for: nothing more is written
   let syncLibraryGone = null;   // {name, deletedBy, keptError} while a deleted library stays open read-only (see syncLibraryDeletedElsewhere())
-  let syncLeasePending = null;          // the acquire in flight; concurrent saves share it (one dialog)
   let syncReadPromise = null;
-  let syncLastHeartbeatAt = 0;
-  let lastRealSaveAt = 0;
-  let syncClockOffset = 0;              // tests advance the clock through __DEBUG_syncNow()
   let syncTimer = null;
   let syncTickRunning = false;
-  const syncNow = () => Date.now() + syncClockOffset;
-  const SYNC_UNANSWERED_RETRY_MS = 60 * 1000;
-  let syncLeasePendingBackground = false;  // the acquire in flight was a background write's (it never asks)
-  let syncUnsyncedAt = 0;               // when an acquire last went unanswered: don't ask again for a minute
   let syncReloadWanted = false;         // reload as soon as nothing is in the way, whatever the versions say
-  let syncKnownNewer = 0;               // the newest version another Mac is known to have made (syncNoteNewer())
-  let syncThisDeviceName = '';          // this Mac's name, from the lease answers (for .kept-aside folder names)
-  let syncLastOtherDevice = '';         // the last other holder seen, for messages
-  let syncPersonFlowPending = false;     // a person's flow passed ensureEditLease() and hasn't written yet (its change may be in memory)
-  let syncEditDialogEl = null;          // the dialog an editing flow opened: activity for the idle clock while it's open
-  let syncLastInputAt = 0;              // last key/pointer input (an open dialog stops counting after an hour without it)
+  let syncKnownNewer = 0;               // the newest version another device is known to have made (syncNoteNewer())
+  let syncThisDeviceName = '';          // this Mac's name, when a state answer names it (for .kept-aside folder names)
+  let syncLastOtherDevice = '';         // the last other device seen, for messages
+  let syncPersonFlowPending = false;     // a person's flow passed ensureCurrentVersion() and hasn't written yet (its change may be in memory)
   let syncQuietEpisode = null;          // {lib, folder, reloads} of the last quiet keep-aside (reused until a reload)
   let syncPersonFlowHold = 0;           // person flows running that save more than once (a multi-file drop, Inbox, import, ...)
   let syncHoldEpisode = null;           // {lib, folder, reloads} of the keep-aside made during such a flow (reused until a reload)
   let syncFlowKeptAside = [];           // folders kept aside while a hold was up (named in the flow's final status)
   let syncHoldNoticeShown = false;      // the keep-aside notice was shown during the current hold
-  let syncAdminEverAnswered = false;    // any admin call answered in this session (else: maybe not running or not installed)
-  let syncLeaseForBackgroundOnly = false; // the lease was taken by a background job and no person has changed anything since
   let syncLoadedHash = null;            // SHA-256 of library.sqlite as last loaded or reloaded
   let syncLastWrittenHash = null;       // ...and as this tab last wrote it
-  // The last real write had no lease (not connected / not synced yet): a newer version with a foreign
-  // library.sqlite may have been pulled over it, so it is kept aside (with the notice) rather than
-  // reloaded away. Cleared by a reload, a keep-aside, or a granted acquire at memory's version.
+  // A real write since the last reload or keep-aside: a newer version with a foreign library.sqlite may
+  // have been pulled over it. Without an admin token nothing reports Dossiary Sync's own keep-aside, so
+  // memory (which has the write) is then kept aside with the notice rather than reloaded away
+  // (syncWriteUnreported()). Cleared by a reload or a keep-aside.
   let syncWroteWithoutLease = false;
-  let syncLastAnswerAt = 0;             // when a state poll or a heartbeat last answered (a confirm right after is skipped)
-  let syncAnswerSeq = 0;                // counts answers of any kind from the service (did this confirm get one?)
+  // The sync file's version changed while the last write was under way (a pull may have landed under it):
+  // the bytes it wrote never count as proof that a newer version is this tab's own (syncBaseMayFollow()).
+  let syncLastWriteUnproven = false;
+  let syncLastMarker = null;            // {version, sha256} of the base marker this tab last wrote
   let syncOpening = null;               // loadDb() is opening the library: no reload meanwhile
   // Ids this tab has handed out whose INSERT hasn't run yet: a reload resets
   // nextDocId from the fresh database, which doesn't know them, so a second
@@ -16598,15 +16508,17 @@
   let syncReservedDocIds = new Set();
   let syncReloading = false;
   let syncReloadCount = 0;
-  let syncViewWriteDropped = false;     // a view preference wasn't written because a newer library was on disk
   let syncPersistsInFlight = 0;
   // Real changes in memory not yet written: every db.run counts except the
-  // view-preference settings, which never take the lease.
+  // view-preference settings, which stay in memory in a synced library.
   let syncChangeSeq = 0, syncWrittenSeq = 0;
   const syncDirty = () => syncChangeSeq !== syncWrittenSeq;
   const SYNC_VIEW_PREF_KEYS = ['nav_style', 'sort_key', 'sort_dir', 'detail_panel_expanded', 'collections_nav_expanded',
     'visible_columns', 'view_mode', 'grid_tile_size', 'collapsed_collection_folders', 'scan_last_settings'];
   const KEPT_ASIDE_SEEN_KEY = 'dossiary_kept_aside_seen';
+  // With an admin token the state poll reports Dossiary Sync's own keep-aside (keptAside), so a newer
+  // version after a write is an ordinary reload; without one nothing would.
+  const syncWriteUnreported = () => syncWroteWithoutLease && !readSyncAdminToken();
 
   function trackDbChanges(database){
     const run = database.run.bind(database);
@@ -16649,25 +16561,16 @@
     }
   }
 
-  function setSyncLease(lease){
-    syncLease = lease;
-  }
-
   function clearSyncState(){
     stopSyncTimer();
-    syncLibraryGone = null; syncLibraryDeletedSeen = null; syncSeenLive = false;
+    syncLibraryGone = null; syncSeenLive = false;
     syncLibrary = null;
     syncLoadedHash = null; syncLastWrittenHash = null; syncWroteWithoutLease = false;
+    syncLastWriteUnproven = false; syncLastMarker = null;
     syncReservedDocIds = new Set();
-    syncLease = { state: 'none' };
-    syncLastHeartbeatAt = 0; syncLastAnswerAt = 0;
-    lastRealSaveAt = 0;
-    syncUnsyncedAt = 0;
     syncReloadWanted = false; syncKnownNewer = 0;
-    syncViewWriteDropped = false;
     syncLastOtherDevice = '';
-    syncLeaseForBackgroundOnly = false;
-    syncPersonFlowPending = false; syncEditDialogEl = null;
+    syncPersonFlowPending = false;
     syncQuietEpisode = null;
     syncPersonFlowHold = 0; syncHoldEpisode = null; syncFlowKeptAside = []; syncHoldNoticeShown = false;
   }
@@ -16694,21 +16597,40 @@
   }
   // A newer version number with library.sqlite on disk still exactly what
   // this tab loaded or last wrote: nothing foreign on disk to protect, so the
-  // number is taken over (memory isn't behind). Only with the lease is it
-  // also this Mac's own push for certain; without one, Dossiary Sync may have
-  // installed another Mac's version just before this tab's write landed on
-  // top of it. So the base marker keeps naming the old version then
-  // (`base`): Dossiary Sync pushes it only if the newer version was this
-  // Mac's own push (its own-push chain), and keeps it aside otherwise.
+  // number is taken over (memory isn't behind). Usually the newer version is
+  // this Mac's own push of those bytes -- but Dossiary Sync may also have
+  // installed another device's version just before this tab's write landed on
+  // top of it. So `base` (what the next base marker names) follows only when
+  // that is ruled out (syncBaseMayFollow()); otherwise it keeps naming the old
+  // version, which Dossiary Sync accepts along this Mac's own-push chain.
   async function syncDiskIsOurs(){
-    const lib = syncLibrary;
+    const lib = syncLibrary, root = rootDirHandle;
     if(!lib || !dbFileHandle) return false;
     let hash = null;
     try{ hash = await syncHashBytes(new Uint8Array(await (await dbFileHandle.getFile()).arrayBuffer())); }catch(e){ hash = null; }
     if(lib !== syncLibrary || !hash || (hash !== syncLoadedHash && hash !== syncLastWrittenHash)) return false;
     lib.version = Math.max(lib.version, syncKnownNewer);
-    if(syncLease.state === 'holding' || syncLease.state === 'offline') lib.base = lib.version;
+    if(lib.base < lib.version && await syncBaseMayFollow(hash, root) && lib === syncLibrary) lib.base = lib.version;
     return true;
+  }
+  // `base` may move up to `version` (the bytes on disk are this tab's, see
+  // syncDiskIsOurs()) when those bytes are:
+  //   - the ones this tab loaded and hasn't written over since: memory is
+  //     based on whatever version holds exactly them;
+  //   - the ones this tab last wrote, and nothing was pulled under them: the
+  //     sync file's version didn't change while they were being written
+  //     (syncLastWriteUnproven), and the base marker on disk is still the one
+  //     written for them -- a pull since would have replaced it with Dossiary
+  //     Sync's own. Then the newer version is this Mac's own push of them.
+  // Dossiary Sync remembers only the last 20 own pushes, so a `base` that
+  // never moved would turn the 21st push of a session into a kept-aside one.
+  async function syncBaseMayFollow(hash, root){
+    if(hash !== syncLastWrittenHash) return hash === syncLoadedHash;
+    if(syncLastWriteUnproven || !syncLastMarker || syncLastMarker.sha256 !== hash || !root) return false;
+    try{
+      const m = JSON.parse(await (await (await root.getFileHandle(SYNC_BASE_FILE_NAME)).getFile()).text());
+      return !!m && m.sha256 === hash && m.version === syncLastMarker.version;
+    }catch(e){ return false; }
   }
 
   // The safety net (see persistDb()): this tab's database, based on an older
@@ -16817,15 +16739,13 @@
   }
 
   // Before a person starts an editing flow (the Edit form, capture, bulk
-  // edit, a dialog that changes the library, a one-shot action): take the
-  // lease first, and if the library is newer than this tab's memory, reload
-  // it before anything changes -- so the change is made on the newest
-  // version. Cancel in the take-over dialog → false: the flow doesn't start.
-  // Offline, not connected, the service not answering, no sync file → true,
-  // as for a save.
-  async function ensureEditLease(){
+  // edit, a dialog that changes the library, a one-shot action): if the
+  // library is newer than this tab's memory, reload it before anything
+  // changes -- so the change is made on the newest version. → false: the
+  // flow doesn't start (refused under an open dialog or while a reload is
+  // refused; memory kept aside). No sync file → true.
+  async function ensureCurrentVersion(){
     if(syncLibraryGone){ syncRefuseGone(); return false; }
-    if(syncLibraryDeletedSeen && syncLibraryDeletedSeen === syncLibrary) return false;
     if(syncReadPromise) await syncReadPromise;
     const lib = syncLibrary, root = rootDirHandle;
     if(!lib) return true;
@@ -16834,18 +16754,9 @@
     // Decides below whether unwritten memory met by a newer version is that
     // person's change (notice) or only a job's (quiet).
     const personPendingBefore = syncPersonFlowPending || syncPersonFlowHold > 0;
-    syncPersonActivity();
     syncPersonFlowPending = true;
-    if(syncLease.state !== 'holding' && syncLease.state !== 'offline'){
-      await syncNewerOnDisk();
-      const backingOff = syncLease.state === 'unsynced' && syncNow() - syncUnsyncedAt < SYNC_UNANSWERED_RETRY_MS;
-      if(!backingOff){
-        const ok = await ensureLease(false);
-        if(lib !== syncLibrary || root !== rootDirHandle) return false;
-        if(syncLibraryDeletedSeen === lib) return false;   // the lease call said the library is deleted
-        if(!ok) return false;
-      }
-    }
+    await syncNewerOnDisk();
+    if(lib !== syncLibrary || root !== rootDirHandle) return false;
     if(syncBehind() && await syncDiskIsOurs() && !syncReloadWanted) return lib === syncLibrary;
     if(syncBehind() || syncReloadWanted){
       // Started from inside an open dialog (Field Settings over the Edit
@@ -16857,21 +16768,22 @@
         setStatusLive(() => device ? t('syncCloseDialogFirst', { device }) : t('syncCloseDialogFirstUnknown'), 'err');
         return false;
       }
-      // A write made without a lease, and a newer version that isn't this tab's bytes: Dossiary Sync may have
-      // pulled it over that write. Keep memory (which has it) aside, with the notice; the person starts again.
-      if(syncWroteWithoutLease && !syncDirty() && !(await syncDiskIsOurs())){
+      // A write nothing would report as kept aside, and a newer version that isn't this tab's bytes: Dossiary
+      // Sync may have pulled it over that write. Keep memory (which has it) aside, with the notice; the person
+      // starts again.
+      if(syncWriteUnreported() && !syncDirty() && !(await syncDiskIsOurs())){
         if(lib !== syncLibrary || root !== rootDirHandle) return false;
         await syncKeepAsideAndReload(true);
         return false;
       }
       if(syncDirty()){
-        if(!personPendingBefore && syncPersistsInFlight === 0 && !syncWroteWithoutLease){
-          // Only a job's unwritten data (held silently while no lease could
-          // be had): keep it aside quietly and go on, on the fresh library.
+        if(!personPendingBefore && syncPersistsInFlight === 0 && !syncWriteUnreported()){
+          // Only a job's unwritten data: keep it aside quietly and go on, on
+          // the fresh library.
           if(!await syncKeepAsideAndReload(true, true)) return false;
         }else{
-          // A change held back from before can't go onto the newer version:
-          // keep it aside; the person starts again on the fresh library.
+          // A change from before can't go onto the newer version: keep it
+          // aside; the person starts again on the fresh library.
           await syncKeepAsideAndReload(true);
           return false;
         }
@@ -16883,10 +16795,6 @@
     }
     if(syncReloading){ syncRefuseUpdating(); return false; }
     if(lib !== syncLibrary || root !== rootDirHandle) return false;
-    // The dialog the flow opens right after this (synchronously, in the same
-    // turn) is editing in progress; a one-shot action opens none.
-    setTimeout(() => { syncEditDialogEl = modalRoot.firstElementChild || null; }, 0);
-    syncLastInputAt = syncNow();
     return true;
   }
   function syncRefuseUpdating(){ setStatusT('syncLibraryUpdating', null, 'err'); }
@@ -16990,168 +16898,43 @@
     try{ return await fn(); }
     finally{ folders = endPersonFlowHold(token); announceFlowKeptAside(folders); }
   }
-  // A person starting something: the lease is no longer a background job's
-  // alone, and an editing flow counts as activity for the idle release.
-  function syncPersonActivity(){
-    syncLeaseForBackgroundOnly = false;
-    syncPersonFlowPending = true;
-    if(syncLease.state === 'holding' || syncLease.state === 'offline') lastRealSaveAt = syncNow();
-  }
 
-  // Background jobs (OCR runner, preview jobs) write files -- never without
-  // the lease: only while holding it or offline, or when the library isn't
-  // synced. Not while not connected or with the service not answering (no
-  // lease confirms who may write files), and never while memory is behind a
-  // newer version or a change is held back.
+  // Background jobs (OCR runner, preview jobs) write files -- never while
+  // memory is behind a newer version (the library reloads first).
   function syncMayWriteFiles(){
-    if(!syncLibrary) return true;
-    if(syncBehind()) return false;
-    return syncLease.state === 'holding' || syncLease.state === 'offline';
+    return !syncLibrary || !syncBehind();
   }
-  // A job's pass may first take a free lease silently (never a dialog).
   async function syncBackgroundMayWrite(){
     if(syncReadPromise) await syncReadPromise;
-    if(!syncLibrary) return true;
-    if(syncLease.state === 'none'){
-      const ok = await ensureLease(true);
-      if(!ok) return false;
-      if(syncLease.state === 'holding') syncLeaseForBackgroundOnly = true;   // given back soon (syncTick)
-    }
     return syncMayWriteFiles();
   }
 
-  // A version another Mac made, newer than the one this tab's memory is
-  // based on. Only foreign signals note one: an acquire's answer, a poll
-  // while this tab doesn't hold the lease (or the state says it doesn't),
-  // the sync file while not holding. While holding, a higher version is this
-  // Mac's own push (pollSyncState()), which never lands here.
+  // A version another device made, newer than the one this tab's memory is
+  // based on: from the state poll or the sync file. One that turns out to be
+  // this tab's own bytes is taken over by syncDiskIsOurs() instead.
   function syncNoteNewer(version){
     if(syncLibrary && Number.isInteger(version) && version > syncLibrary.version && version > syncKnownNewer) syncKnownNewer = version;
   }
   const syncBehind = () => !!syncLibrary && syncKnownNewer > syncLibrary.version;
 
-  // Dossiary Sync writes the version on disk into the sync file when it pulls,
-  // so a write can check it without an admin call. Not while holding: then a
-  // higher number on disk is this Mac's own push.
+  // The version in the sync file (Dossiary Sync writes it after every pull or
+  // push), or null when it can't be read or names another library.
+  async function syncFileVersion(lib, root){
+    if(!lib || !root) return null;
+    try{
+      const data = JSON.parse(await (await (await root.getFileHandle(SYNC_FILE_NAME)).getFile()).text());
+      if(data && data.libraryId === lib.libraryId && Number.isInteger(data.version)) return data.version;
+    }catch(e){ /* unreadable: no newer version known */ }
+    return null;
+  }
+  // So a write or a flow can check for a newer version without an admin call.
   async function syncNewerOnDisk(){
     const lib = syncLibrary, root = rootDirHandle;
     if(!lib || !root) return false;
-    let version = null;
-    try{
-      const data = JSON.parse(await (await (await root.getFileHandle(SYNC_FILE_NAME)).getFile()).text());
-      if(data && data.libraryId === lib.libraryId && Number.isInteger(data.version)) version = data.version;
-    }catch(e){ /* unreadable: no newer version known */ }
+    const version = await syncFileVersion(lib, root);
     if(lib !== syncLibrary) return false;
-    if(syncLease.state !== 'holding') syncNoteNewer(version);
+    syncNoteNewer(version);
     return syncBehind();
-  }
-
-  function syncLeaseCall(action, takeOver, opts = {}){
-    const lib = syncLibrary;
-    return syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/lease`,
-      { method: 'POST', body: { action, takeOver: !!takeOver }, keepalive: !!opts.keepalive, timeoutMs: opts.timeoutMs })
-      .then(res => {
-        if(res && res.status === 404 && res.body && res.body.error === 'library-deleted'){
-          // A definite answer, not "no answer": no write goes out after it
-          // until the state says whether this is a deletion to follow or (never
-          // seen live, already trashed) a copy that goes on as a local library.
-          if(lib === syncLibrary) syncLibraryDeletedSeen = lib;
-          setTimeout(() => syncLeaseSaysDeleted(lib), 0);
-        }else if(res && res.ok && lib === syncLibrary) syncSeenLive = true;
-        return res;
-      });
-  }
-  // A lease call answered 404 library-deleted: ask the state for who and
-  // whether it's trashed, then the deleted-elsewhere path -- with what is
-  // known, if the state doesn't say.
-  let syncLeaseDeletedChecking = false;
-  async function syncLeaseSaysDeleted(lib){
-    if(syncLeaseDeletedChecking || lib !== syncLibrary || syncLibraryGone) return;
-    syncLeaseDeletedChecking = true;
-    try{
-      await pollSyncState({ noReload: true });
-      await new Promise(r => setTimeout(r, 0));   // a deferred handler from that poll runs first
-      if(lib === syncLibrary && !syncLibraryGone && !syncDeletedHandling){
-        if(syncSeenLive) await syncLibraryDeletedElsewhere(lib, {}, false);
-        else syncDetachDeleted(lib, null);
-      }
-    }finally{ syncLeaseDeletedChecking = false; }
-  }
-  const syncLeaseResult = (res) => res && res.ok && res.body && typeof res.body.result === 'string' ? res.body.result : null;
-  const syncLeaseHolder = (res) => (res && res.body && res.body.lease && typeof res.body.lease === 'object') ? res.body.lease : null;
-  function syncOtherLease(lease){
-    if(typeof lease.deviceName === 'string' && lease.deviceName) syncLastOtherDevice = lease.deviceName;
-    return { state: 'other', deviceName: typeof lease.deviceName === 'string' && lease.deviceName ? lease.deviceName : t('syncAnotherMac'), since: typeof lease.since === 'string' ? lease.since : '' };
-  }
-
-  // Before a real write without the lease. → true: write now; false: don't
-  // (the other Mac holds it and the person chose Cancel).
-  // A background write (no click asked for it) never shows the dialog: busy
-  // just answers false. A person's save that joined such an acquire asks
-  // with one of its own.
-  // Cancel in the dialog → false; the caller decides what that means (a
-  // save holds its change back, an editing flow doesn't start).
-  async function ensureLease(background = false){
-    while(syncLeasePending){
-      const joinedBackground = syncLeasePendingBackground;
-      const ok = await syncLeasePending;
-      if(ok || background || !joinedBackground) return ok;
-    }
-    syncLeasePendingBackground = background;
-    syncLeasePending = acquireLeaseForWrite(background).finally(() => { syncLeasePending = null; });
-    return syncLeasePending;
-  }
-
-  async function acquireLeaseForWrite(background){
-    const lib = syncLibrary;
-    if(!lib) return true;
-    // No admin token: no lease can be had. persistDb() writes the change
-    // anyway, with the base marker; from it the service decides whether to
-    // push the change or keep it aside.
-    if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }
-    const res = await syncLeaseCall('acquire', false);
-    if(lib !== syncLibrary) return false;   // the library was switched meanwhile
-    if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return true; }
-    const result = syncLeaseResult(res);
-    if(result === 'busy'){
-      // Another Mac holds it: no take-over any more -- the change is written
-      // anyway, with the base marker, which decides whether it's pushed.
-      setSyncLease(syncOtherLease(syncLeaseHolder(res) || {}));
-      return true;
-    }
-    applyAcquireAnswer(res);
-    return true;   // granted, offline, or the service not answering: the write goes through
-  }
-
-  // Granted → holding; offline → offline; anything else (no answer, a
-  // timeout, an error) → unsynced with the reason. A timeout is "try again
-  // later", never "offline" (it may be waiting behind a push or pull).
-  function applyAcquireAnswer(res){
-    const result = syncLeaseResult(res);
-    if(result === 'granted' || result === 'offline'){
-      syncLastHeartbeatAt = lastRealSaveAt = syncNow();   // the write follows at once; the idle clock starts here
-      // The service pulls a newer version before answering granted, so the
-      // version here can be newer than this tab's memory (syncBehind()).
-      if(result === 'granted') syncNoteNewer(res.body.version);
-      // Granted at memory's version: nothing was pulled over a lease-less write (it is this Mac's change on
-      // the hub's version, pushed by the service).
-      // The service brought the folder up to that version before answering, pushing or keeping aside
-      // whatever was on disk, so memory is now provably based on it.
-      if(result === 'granted' && syncLibrary && res.body.version === syncLibrary.version && !syncBehind()){
-        syncWroteWithoutLease = false;
-        syncLibrary.base = syncLibrary.version;
-      }
-      const lease = syncLeaseHolder(res);
-      if(lease && lease.holder === 'this' && typeof lease.deviceName === 'string' && lease.deviceName) syncThisDeviceName = lease.deviceName;
-      setSyncLease({ state: result === 'granted' ? 'holding' : 'offline' });
-    }
-    else if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); }
-    else{
-      syncUnsyncedAt = syncNow();
-      // Never an answer from the service in this session: it may not be running, or not installed on this Mac.
-      const reason = !res && !syncAdminEverAnswered ? t('syncNotRunningReason') : (res && res.ok ? t('devicesUnexpectedAnswer') : syncErrorText(res));
-      setSyncLease({ state: 'unsynced', reason });
-    }
   }
 
   // A sync dialog with one action and Cancel, as a layer of its own
@@ -17212,71 +16995,37 @@
     if(syncTimer){ clearInterval(syncTimer); syncTimer = null; }
   }
 
-  // Every 5 s while a synced library is open: give the lease back after 10
-  // quiet minutes, heartbeat every minute while holding it, while offline
-  // try every minute to take it properly, and ask for the library's state
+  // Every 5 s while a synced library is open: ask for the library's state
   // (pollSyncState()).
   async function syncTick(){
     if(!syncLibrary || syncTickRunning) return;
     syncTickRunning = true;
     try{
-      const now = syncNow();
-      const dialogOpen = modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== '';
-      // Connected in another tab meanwhile: the next change takes the lease.
-      if(syncLease.state === 'unconnected' && readSyncAdminToken()) setSyncLease({ state: 'none' });
       // A person's flow that ended without writing (the form cancelled) is no
-      // longer pending; its dialog no longer counts as activity once closed.
-      if(!dialogOpen){
-        if(syncPersonFlowPending && syncPersonFlowHold === 0 && !syncDirty() && syncPersistsInFlight === 0) syncPersonFlowPending = false;
-      }
-      const state = syncLease.state;
-      const held = state === 'holding' || state === 'offline';
-      // A dialog a person's editing flow opened (through ensureEditLease():
-      // the Edit form, Field Settings, ... -- not Reminders, Storage stats,
-      // the shortcuts list) is editing in progress: it keeps the lease, so
-      // its save never meets a released one -- up to an hour without input.
-      const editDialogOpen = !!syncEditDialogEl && syncEditDialogEl.isConnected;
-      if(held && !syncLeaseForBackgroundOnly && editDialogOpen && now - syncLastInputAt < SYNC_EDIT_DIALOG_MAX_MS) lastRealSaveAt = now;
-      // A lease only a background job took goes back a minute after its last
-      // write, not ten: nobody is editing here.
-      const idleAfter = syncLeaseForBackgroundOnly ? SYNC_HEARTBEAT_MS : SYNC_IDLE_RELEASE_MS;
-      if(held && now - lastRealSaveAt >= idleAfter && !(syncLeaseForBackgroundOnly && syncBackgroundJobRunning())){
-        await releaseLease('idle');
-      }else if(state === 'holding' && now - syncLastHeartbeatAt >= SYNC_HEARTBEAT_MS){
-        await syncHeartbeat();
-      }else if(state === 'offline' && now - syncLastHeartbeatAt >= SYNC_HEARTBEAT_MS){
-        await syncRetryFromOffline();
-      }
+      // longer pending.
+      const dialogOpen = modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== '';
+      if(!dialogOpen && syncPersonFlowPending && syncPersonFlowHold === 0 && !syncDirty() && syncPersistsInFlight === 0) syncPersonFlowPending = false;
       await pollSyncState();
     }finally{
       syncTickRunning = false;
     }
   }
 
-  // GET /admin/libraries/<id>/state: the version on disk, who holds the
-  // lease, versions kept aside, the last push error. A newer version reloads
-  // the library (reloadLibraryKeepingView()) unless this tab holds the lease
-  // (then it's this Mac's own push) or something is in the way -- an open
-  // dialog, a save in flight, a change not yet written; the next poll tries
-  // again.
-  async function pollSyncState(opts = {}){
+  // GET /admin/libraries/<id>/state (only with an admin token): the version
+  // on disk, versions Dossiary Sync kept aside, and whether the library was
+  // deleted. A newer version reloads the library (maybeReload()) unless it is
+  // this tab's own bytes or something is in the way -- an open dialog, a save
+  // in flight, a change not yet written; the next poll tries again.
+  // → true when the service answered.
+  async function pollSyncState(){
     const lib = syncLibrary;
     if(!lib || syncLibraryGone || !readSyncAdminToken()) return false;
-    const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/state`, { timeoutMs: opts.timeoutMs });
+    const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(lib.libraryId)}/state`);
     if(lib !== syncLibrary) return false;
-    if(res) syncAnswerSeq++;   // the service answered (syncConfirmLease() asks only that)
-    if(res && res.status === 401){
-      setSyncAdminToken(null);
-      // Disconnected too: without a token no poll would ever see a Reconnect, so it becomes "not connected".
-      if(syncLease.state !== 'holding' && syncLease.state !== 'offline') setSyncLease({ state: 'unconnected' });
-      return true;
-    }
+    if(res && res.status === 401){ setSyncAdminToken(null); return true; }
     const st = res && res.ok && res.body && typeof res.body === 'object' ? res.body : null;
     // Deleted (here, from another Mac, or by the hub): keep aside what memory
-    // holds, then close. Inside a save's confirm (noReload) it is deferred until
-    // the confirm has returned -- by then that save has taken its bytes, though
-    // its write may still be in flight; it lands in the folder going to the
-    // Trash anyway, and anything not yet written is kept aside first.
+    // holds, then close.
     if(st && st.deleted && typeof st.deleted === 'object' && !syncSeenLive && st.trashed === true){
       // The first answer since this tab opened it says deleted and already
       // trashed: a copy opened afterwards (taken back out of the Trash). It
@@ -17286,87 +17035,20 @@
       return true;
     }
     if(st && st.deleted && typeof st.deleted === 'object'){
-      const trashed = st.trashed === true;   // the folder is already in the Trash: other fields may be missing
-      if(opts.noReload) setTimeout(() => syncLibraryDeletedElsewhere(lib, st.deleted, trashed), 0);
-      else await syncLibraryDeletedElsewhere(lib, st.deleted, trashed);
+      await syncLibraryDeletedElsewhere(lib, st.deleted, st.trashed === true);   // trashed: other fields may be missing
       return true;
     }
     if(st) syncSeenLive = true;
     if(!st || !Number.isInteger(st.version)) return !!res;   // no answer, or not in the expected shape: ask again next time
-    syncLastAnswerAt = syncNow();
-    let leftOffline = false;
+    // Dossiary Sync holds the hub's lease itself for a moment while it pushes; another device may hold it too.
     const lease = st.lease && typeof st.lease === 'object' ? st.lease : null;
-    const otherHolds = !!lease && lease.holder === 'other';
-    const thisHolds = !!lease && lease.holder === 'this';
-    if(syncLease.state === 'holding' && otherHolds){
-      const other = syncOtherLease(lease);
-      setSyncLease(other);
-      setStatusLive(() => t('syncTookOverStatus', { device: other.deviceName }), 'err');
-    }else if(syncLease.state === 'holding' && !thisHolds){
-      // The lease went while this tab thought it held it (the Mac slept past
-      // the 3-minute expiry): it isn't ours any more, and whatever version is
-      // there now may be another Mac's.
-      setSyncLease({ state: 'none' });
-    }else if(syncLease.state === 'none' && otherHolds){
-      setSyncLease(syncOtherLease(lease));
-    }else if(syncLease.state === 'other' && otherHolds){
-      const other = syncOtherLease(lease);
-      if(other.deviceName !== syncLease.deviceName || other.since !== syncLease.since) setSyncLease(other);
-    }else if(syncLease.state === 'other' && !otherHolds){
-      setSyncLease({ state: 'none' });   // free again: the next change asks for it
-    }else if(syncLease.state === 'offline' && (otherHolds || (st.offline === false && st.hubReachable !== false))){
-      // The offline period is over on the service's side. Leave "offline";
-      // the next change takes the lease. Whatever version is there now may
-      // have been pulled while it ended (another Mac's): it's never taken as
-      // this Mac's own push, even when this Mac holds the lease now.
-      leftOffline = true;
-      if(otherHolds) setSyncLease(syncOtherLease(lease));
-      else if(thisHolds){ syncLastHeartbeatAt = syncNow(); setSyncLease({ state: 'holding' }); }
-      else setSyncLease({ state: 'none' });
+    if(lease && typeof lease.deviceName === 'string' && lease.deviceName){
+      if(lease.holder === 'this') syncThisDeviceName = lease.deviceName;
+      else if(lease.holder === 'other') syncLastOtherDevice = lease.deviceName;
     }
     noteKeptAside(lib, st.keptAside);
-    // A higher version while the service confirms this tab holds the lease is
-    // this Mac's own push; anything else is another Mac's (and so is one seen
-    // as an offline period ends -- syncDiskIsOurs() still recognises this
-    // tab's own bytes).
-    if(syncLease.state === 'holding' && thisHolds && !leftOffline){
-      if(st.version > lib.version && !syncBehind()) lib.version = lib.base = st.version;
-    }else if(syncLease.state !== 'offline'){
-      syncNoteNewer(st.version);
-    }
-    if(!opts.noReload) await maybeReload();
-    return true;
-  }
-
-  // Before a real write while "holding" or "offline": is that still so? A
-  // state poll shows a take-over, an expired lease or the end of an offline
-  // period (pollSyncState() switches the state); a heartbeat over 2 minutes
-  // old (the Mac slept) is renewed first -- a lost one re-acquires or turns
-  // into "editing on …". A poll or heartbeat that answered within the last
-  // 3 s stands for the poll; each call waits at most 3 s.
-  // → true: answered (the state may have changed; persistDb() follows it);
-  // false: no answer -- the state turns "not answering" and the write goes
-  // ahead with the base marker, never on "holding/offline as far as anyone
-  // knows".
-  const SYNC_STALE_HOLD_MS = 120 * 1000;
-  const SYNC_CONFIRM_TIMEOUT_MS = 3 * 1000;
-  const SYNC_CONFIRM_FRESH_MS = 3 * 1000;
-  async function syncConfirmLease(){
-    const lib = syncLibrary;
-    if(!lib) return true;
-    if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }
-    if(syncNow() - syncLastAnswerAt >= SYNC_CONFIRM_FRESH_MS){
-      const seq = syncAnswerSeq;
-      await pollSyncState({ noReload: true, timeoutMs: SYNC_CONFIRM_TIMEOUT_MS });
-      if(lib !== syncLibrary) return true;
-      if(!readSyncAdminToken()){ setSyncLease({ state: 'unconnected' }); return true; }
-      if(syncAnswerSeq === seq) return false;
-    }
-    if(syncLease.state === 'holding' && syncNow() - syncLastHeartbeatAt > SYNC_STALE_HOLD_MS){
-      const answered = await syncHeartbeat({ timeoutMs: SYNC_CONFIRM_TIMEOUT_MS });
-      if(lib !== syncLibrary) return true;
-      if(!answered && syncLease.state === 'holding') return false;
-    }
+    syncNoteNewer(st.version);
+    await maybeReload();
     return true;
   }
 
@@ -17409,42 +17091,34 @@
   function syncReloadBlocked(force = false){
     return syncReloading || !!syncOpening || !db || !rootDirHandle || !dbFileHandle
       || (!force && (modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== ''))
-      || syncPersistsInFlight > 0 || (!force && !!syncLeasePending) || syncDirty() || syncBackgroundJobRunning();
+      || syncPersistsInFlight > 0 || syncDirty() || syncBackgroundJobRunning();
   }
 
-  // Reload when a newer version is on disk and nothing is in the way. Never
-  // while this tab holds the lease (a newer version is then its own push),
-  // except when asked for explicitly (syncReloadWanted: a granted acquire that
-  // was based on an older version, a kept-aside version, a view preference
-  // that met a newer file).
+  // Reload when a newer version is on disk and nothing is in the way -- not
+  // when library.sqlite is still this tab's own bytes (the newer number is
+  // then taken over, see syncDiskIsOurs()), except when asked for explicitly
+  // (syncReloadWanted: a kept-aside version, a file that changed while the
+  // library was opened).
   async function maybeReload(force = false){
     const lib = syncLibrary;
     if(!lib || syncReloadBlocked(force)) return false;
     if(!syncReloadWanted && !syncBehind()) return false;
-    let oursWithoutLease = false;   // reloading this tab's own lease-less bytes: they stay on their old base
-    if(syncWroteWithoutLease){
-      // The last write had no lease: a foreign library.sqlite may have been pulled over it. Not a plain
-      // reload then -- memory, which holds that write, is kept aside first, with the notice.
-      if(!(await syncDiskIsOurs())){
-        if(lib !== syncLibrary || syncReloadBlocked(force)) return false;
-        await syncKeepAsideAndReload(true);
-        return lib === syncLibrary && !syncBehind() && !syncReloadWanted;
-      }
-      if(lib !== syncLibrary || syncReloadBlocked(force)) return false;
-      if(!syncReloadWanted && !syncBehind()) return false;
-      oursWithoutLease = syncLease.state !== 'holding' && syncLease.state !== 'offline';
+    const ours = await syncDiskIsOurs();
+    if(lib !== syncLibrary || syncReloadBlocked(force)) return false;
+    if(!ours && syncWriteUnreported()){
+      // A write nothing would report as kept aside: a foreign library.sqlite may have been pulled over it.
+      // Not a plain reload then -- memory, which holds that write, is kept aside first, with the notice.
+      await syncKeepAsideAndReload(true);
+      return lib === syncLibrary && !syncBehind() && !syncReloadWanted;
     }
+    if(!syncReloadWanted && !syncBehind()) return false;
     const target = Math.max(lib.version, syncKnownNewer);
     const ok = await reloadLibraryKeepingView(force);
     if(!ok || lib !== syncLibrary) return false;
     lib.version = target;
-    if(!oursWithoutLease) lib.base = target;
+    if(!ours) lib.base = target;   // this tab's own bytes reloaded keep their base (syncDiskIsOurs())
     syncReloadWanted = false;
     syncWroteWithoutLease = false;
-    if(syncViewWriteDropped){
-      syncViewWriteDropped = false;
-      try{ await persistDb({ viewOnly: true }); }catch(e){ /* a view preference: written with the next save */ }
-    }
     return true;
   }
 
@@ -17538,73 +17212,12 @@
     }
   }
 
-  // → false when nothing answered (a timeout), true otherwise.
-  async function syncHeartbeat(opts = {}){
-    const lib = syncLibrary;
-    const res = await syncLeaseCall('heartbeat', false, { timeoutMs: opts.timeoutMs });
-    if(lib !== syncLibrary || syncLease.state !== 'holding') return true;
-    if(res && res.status === 401){ setSyncAdminToken(null); setSyncLease({ state: 'unconnected' }); return true; }
-    const result = syncLeaseResult(res);
-    if(!result) return false;   // no answer or a timeout: the tick tries again on the next one, still holding
-    syncLastHeartbeatAt = syncNow();
-    const holder = syncLeaseHolder(res);
-    if(result === 'granted'){ syncLastAnswerAt = syncNow(); syncAnswerSeq++; return true; }
-    if(result === 'offline'){ setSyncLease({ state: 'offline' }); return true; }
-    if((result === 'lost' || result === 'busy') && holder && holder.holder !== 'this'){ setSyncLease(syncOtherLease(holder)); return true; }
-    if(result === 'lost'){
-      // Merely expired (no holder): take it again without asking.
-      const again = await syncLeaseCall('acquire', false, { timeoutMs: opts.timeoutMs });
-      if(lib !== syncLibrary || syncLease.state !== 'holding') return true;
-      const r = syncLeaseResult(again);
-      if(r === 'granted'){
-        syncLastHeartbeatAt = syncNow();
-        // Free again, but another Mac may have changed the library meanwhile:
-        // the same newer-version handling as any acquire (reload, or the
-        // safety net in persistDb() if this tab has unwritten changes).
-        syncNoteNewer(again.body.version);
-        maybeReload();
-      }
-      else if(r === 'offline') setSyncLease({ state: 'offline' });
-      else if(r === 'busy') setSyncLease(syncOtherLease(syncLeaseHolder(again) || {}));
-      return !!r;   // lost and not taken again: not "holding" as far as anyone knows
-    }
-    return true;
-  }
-
-  async function syncRetryFromOffline(){
-    const lib = syncLibrary;
-    const res = await syncLeaseCall('acquire', false);
-    if(lib !== syncLibrary || syncLease.state !== 'offline') return;
-    const r = syncLeaseResult(res);
-    if(!r) return;
-    syncLastHeartbeatAt = syncNow();
-    if(r === 'granted'){ syncNoteNewer(res.body.version); setSyncLease({ state: 'holding' }); }
-    else if(r === 'busy') setSyncLease(syncOtherLease(syncLeaseHolder(res) || {}));
-  }
-
-  // 'idle' (10 quiet minutes), 'switch' (resetAll) or 'pagehide'. The last two
-  // send a keepalive request without waiting: the page may be going away.
-  async function releaseLease(reason){
-    if(!syncLibrary || syncLibraryGone) return;
-    const held = syncLease.state === 'holding' || syncLease.state === 'offline';
-    if(reason === 'switch' || reason === 'pagehide'){
-      if(held && readSyncAdminToken()) syncLeaseCall('release', false, { keepalive: true });
-      return;
-    }
-    const lib = syncLibrary;
-    if(held && readSyncAdminToken()) await syncLeaseCall('release', false);
-    if(lib === syncLibrary && (syncLease.state === 'holding' || syncLease.state === 'offline')) setSyncLease({ state: 'none' });
-  }
-  window.addEventListener('pagehide', () => { releaseLease('pagehide'); });
-  ['keydown', 'pointerdown', 'input'].forEach(type => document.addEventListener(type, () => { syncLastInputAt = syncNow(); }, true));
-
-  window.__DEBUG_syncLease = () => syncLease;
-  window.__DEBUG_syncNow = async (ms) => { syncClockOffset += ms || 0; await syncTick(); };
-  window.__DEBUG_syncState = () => ({ state: syncLease.state, version: syncLibrary ? syncLibrary.version : null,
-    pending: !!syncLeasePending, reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteWithoutLease: syncWroteWithoutLease });
+  // Tests: run the tick now (the argument, once a clock offset, is ignored).
+  window.__DEBUG_syncNow = async () => { await syncTick(); };
+  window.__DEBUG_syncState = () => ({ version: syncLibrary ? syncLibrary.version : null, base: syncLibrary ? syncLibrary.base : null,
+    reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteWithoutLease: syncWroteWithoutLease });
   window.__DEBUG_persistDb = (opts) => persistDb(opts);
-  window.__DEBUG_ensureEditLease = () => ensureEditLease();
-  window.__DEBUG_syncClockSkip = (ms) => { syncClockOffset += ms || 0; };   // time passes with no tick (a sleeping Mac)
+  window.__DEBUG_ensureCurrentVersion = () => ensureCurrentVersion();
   window.__DEBUG_reserveDocId = () => reserveDocId();
   window.__DEBUG_checkReservedDocId = (res) => { try{ checkReservedDocId(res); return { ok: true }; }catch(e){ return { ok: false, idTaken: !!e.idTaken, message: e.message }; } };
   window.__DEBUG_releaseDocId = (res) => releaseDocId(res);
@@ -17748,7 +17361,7 @@
     errorEl.style.display = 'none';
     btn.textContent = t('deleteLibraryDeleting');
     // Close it first, so this tab writes nothing while the folder goes to the
-    // Trash -- and without releasing the lease: the hub is about to forget the id.
+    // Trash.
     const restore = () => {
       input.disabled = false; cancel.disabled = false; el('modal-close-btn').disabled = false;
       btn.textContent = ctx.takeOver ? t('deleteLibraryTakeOverButton') : t('deleteLibraryButton');
@@ -17768,9 +17381,8 @@
         return;
       }
       if(kept.folder) ctx.kept = kept;
-      ctx.heldLease = syncLease.state === 'holding' || syncLease.state === 'offline';
       ctx.closedForDelete = true;
-      resetAll({ skipLeaseRelease: true });
+      resetAll();
     }
     ctx.open = false;
     const res = await syncAdminFetch(`/admin/libraries/${encodeURIComponent(ctx.libraryId)}/delete`, { method: 'POST', body: { takeOver: ctx.takeOver } });
@@ -17785,20 +17397,12 @@
         ctx.kept ? keptAsideSentence(ctx.kept) : ''].filter(Boolean).join(' '));
       return;
     }
-    // Not deleted: the hub still knows the id, so a lease this Mac held for it
-    // goes back now rather than in ~3 minutes (best effort; a 409 means
-    // another device holds it, a 401 leaves no token to send).
-    if(ctx.heldLease && res && res.status !== 409 && res.status !== 401 && readSyncAdminToken()){
-      ctx.heldLease = false;
-      syncAdminFetch(`/admin/libraries/${encodeURIComponent(ctx.libraryId)}/lease`, { method: 'POST', body: { action: 'release', takeOver: false } });
-    }
     if(res && res.status === 401){ setSyncAdminToken(null); renderDeleteNoToken(ctx); return; }
     // Still there: the dialog stays open with the reason.
     restore();
     const closedNote = ctx.closedForDelete ? t('deleteLibraryClosedNotDeleted', { name: ctx.name }) : '';
     if(res && res.status === 409){
       // Someone took the lease meanwhile: offer to take over.
-      ctx.heldLease = false;
       setDeleteBusy(ctx, res.body && typeof res.body.lease === 'object' ? res.body.lease : null);
       if(closedNote){ errorEl.textContent = closedNote; errorEl.style.display = ''; }
       return;
@@ -17836,8 +17440,7 @@
     el('delete-library-ok-btn').focus();
   }
 
-  // pollSyncState() saw `deleted` (or a lease call answered 404
-  // library-deleted): the library was deleted on another Mac, and Dossiary
+  // pollSyncState() saw `deleted`: the library was deleted on another Mac, and Dossiary
   // Sync moves this folder to the Trash after a grace period -- or already
   // has (`trashed`). With nothing unsaved the tab closes with a notice. With
   // something in memory that isn't on disk, it is kept aside inside the
@@ -17848,8 +17451,8 @@
   // dropped without the person choosing to.
   // A library whose first answer this session says it was deleted: this copy
   // was opened afterwards (typically taken back out of the Trash). It goes on
-  // as a local, unsynced library for the session -- no admin calls, no lease,
-  // no marker, saves straight to disk -- and stays in Recent libraries.
+  // as a local, unsynced library for the session -- no admin calls, saves
+  // straight to disk without a base marker -- and stays in Recent libraries.
   // .dossiary-sync.json is left alone: the person may share it again.
   function syncDetachDeleted(lib, info){
     if(lib !== syncLibrary || !lib) return;
@@ -17859,8 +17462,6 @@
     const date = at ? formatDate(at) : '—';
     stopSyncTimer();
     syncLibrary = null;
-    syncLibraryDeletedSeen = null;
-    syncLease = { state: 'none' };
     setStatusLive(() => t('syncLibraryDetachedLocal', { name, date }), '');
   }
   async function syncLibraryDeletedElsewhere(lib, info, trashed = false){
@@ -17885,7 +17486,7 @@
         showSyncDeletedOffer(build);
         return;
       }
-      resetAll({ skipLeaseRelease: true });
+      resetAll();
       await forgetRecentLibrary(root);
       renderRecentLibraries();
       const build = () => [t('syncLibraryDeletedElsewhere', { name, device: device() }), keptAsideSentence(kept)].filter(Boolean).join(' ');
@@ -17941,7 +17542,7 @@
     el('sync-deleted-close-btn').addEventListener('click', async () => {
       const root = rootDirHandle;
       closeModal();
-      resetAll({ skipLeaseRelease: true });
+      resetAll();
       await forgetRecentLibrary(root);
       renderRecentLibraries();
     });
@@ -19316,7 +18917,7 @@
   el('bulk-clear-selection-btn').addEventListener('click', () => { selectedDocIds = new Set(); render(); });
 
   async function saveSmartCollection(){
-    if(!await ensureEditLease()) return; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     const name = el('smart-collection-name-input').value.trim();
     if(!name) return;
     // Not `nextCollectionId++` -- the very next loadCollections() call below
@@ -19337,7 +18938,7 @@
   // modal's single-document "Add to collection..." action (Task 4) -- the one place
   // that writes collection_documents rows, so both call sites stay identical.
   async function addDocumentsToCollection(collectionId, docIds){
-    if(!await ensureEditLease()) return false; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return false; // synced library: reload first if a newer version is on disk
     for(const docId of docIds){
       db.run('INSERT OR IGNORE INTO collection_documents (collection_id, document_id) VALUES (?, ?)', [collectionId, docId]);
     }
@@ -19351,7 +18952,7 @@
   // Collections modal "+ New collection" button -- the one place that creates an
   // empty manual collection.
   async function createManualCollection(name){
-    if(!await ensureEditLease()) return null; // two-Mac editing: the lease first (reloading if newer)
+    if(!await ensureCurrentVersion()) return null; // synced library: reload first if a newer version is on disk
     const id = nextCollectionId; // see saveSmartCollection()'s own comment on why not `++`
     db.run('INSERT INTO collections (id, name, kind, criteria, uid) VALUES (?, ?, ?, ?, ?)', [id, name, 'manual', null, newUid()]);
     await persistDb();

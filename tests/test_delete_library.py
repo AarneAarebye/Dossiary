@@ -44,7 +44,6 @@ FAKE_SYNC = """
         const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(path);
         if(m && opts.method === 'POST'){
             const body = JSON.parse(opts.body);
-            if(S.leaseDeleted) return json(404, { error: 'library-deleted' });
             if(body.action === 'acquire' && S.acquire === 'busy' && !body.takeOver) return json(200, { result: 'busy', lease: S.busyLease, version: 3 });
             if(body.action === 'acquire') return json(200, { result: 'granted', lease: { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() }, version: 3 });
             return json(200, { result: body.action === 'release' ? 'released' : 'granted', lease: null, version: 3 });
@@ -512,7 +511,7 @@ async def main():
         print("17 'Downloaded' note:", (await text_of(page, '#sync-deleted-downloaded')) == f'Downloaded “{dl.suggested_filename}”.')
         n = len(await admin_calls(page))
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
-        editing = await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        editing = await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")
         await page.evaluate("window.__DEBUG_syncNow(70000)")
         await page.wait_for_timeout(300)
         disk_after = await page.evaluate("async () => await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()")
@@ -540,57 +539,44 @@ async def main():
         print("18 JS errors:", errors == [], errors)
         await browser.close()
 
-        # === 19. A lease call answering 404 library-deleted is handled the same way ===
+        # === 19. (Was: a lease call answering 404 library-deleted. No lease call is made any more; the state poll is
+        # the only way a tab learns of a deletion.) A deleted answer that names no device; a save before the poll. ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
-        await page.evaluate("() => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = null; }")   # the state says nothing (404)
-        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.evaluate("() => { window.__SYNC.state = { version: 3, lease: null, deleted: {} }; }")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
         await page.wait_for_timeout(500)
-        print("19 lease 404 library-deleted closes a clean tab:", await library_closed(page))
+        print("19 deleted with no device named closes a clean tab:", await library_closed(page))
         print("19 notice with the unknown device:", "“Household” was deleted on another Mac." in await text_of(page, '#sync-deleted-dialog'))
         print("19 JS errors:", errors == [], errors)
         await browser.close()
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Unsaved', 1])")
-        await page.evaluate("(s) => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = s; }", gone)
-        await page.evaluate("() => { window.__DEBUG_ensureEditLease(); }")   # starting to edit asks for the lease
+        await page.evaluate("(s) => { window.__SYNC.state = s; }", gone)
+        await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")   # starting to edit asks the hub nothing
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
         await page.wait_for_timeout(500)
-        print("19 lease 404 then a trashed state, dirty: open read-only with the offer:", not await library_closed(page)
+        print("19 dirty, then a trashed state: open read-only with the offer:", not await library_closed(page)
               and "was deleted on iMac" in await text_of(page, '#sync-deleted-text'))
         print("19 JS errors (dirty):", errors == [], errors)
         await browser.close()
 
-        # A save that meets the 404: held back, nothing written, then the deleted path (not trashed → kept aside, closed).
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
-        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Saved late', 1])")
-        await page.evaluate("""() => { window.__WRITES = 0; const h = window.__TEST_ROOT._children.get('library.sqlite');
-            const orig = h.createWritable.bind(h); h.createWritable = async (...a) => { window.__WRITES++; return orig(...a); }; }""")
-        await page.evaluate("() => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = { version: 3, lease: null, deleted: { deletedBy: 'iMac', deletedAt: '2026-10-25T10:00:00Z' } }; }")
-        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
-        print("19 a save meeting the 404 is held back:", saved is False and await page.evaluate("window.__WRITES") == 0)
-        await page.wait_for_timeout(500)
-        folders = await kept_aside_folders(page)
-        copy_title = await page.evaluate("""async (name) => {
-            const f = window.__TEST_ROOT._children.get('.kept-aside')._children.get(name)._children.get('library.sqlite');
-            return JSON.parse(await (await f.getFile()).text()).documents[0].title; }""", folders[0]) if folders else None
-        print("19 ...nothing written to library.sqlite after it:", await page.evaluate("window.__WRITES") == 0)
-        print("19 ...the change kept aside, then closed:", copy_title == 'Saved late' and await library_closed(page), folders, copy_title)
-        print("19 JS errors (save):", errors == [], errors)
-        await browser.close()
-
-        # The same with a trashed folder: held back, then open read-only with the download offer.
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
-        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Saved late', 1])")
-        await page.evaluate("""() => { window.__WRITES = 0; const h = window.__TEST_ROOT._children.get('library.sqlite');
-            const orig = h.createWritable.bind(h); h.createWritable = async (...a) => { window.__WRITES++; return orig(...a); }; }""")
-        await page.evaluate("(s) => { window.__SYNC.leaseDeleted = true; window.__SYNC.state = s; }", gone)
-        saved = await page.evaluate("() => window.__DEBUG_persistDb()")
-        await page.wait_for_timeout(500)
-        print("19 trashed: save held back, nothing written:", saved is False and await page.evaluate("window.__WRITES") == 0)
-        print("19 trashed: open read-only with the offer, memory dirty:", not await library_closed(page)
-              and await page.locator('#sync-deleted-download-btn').count() == 1
-              and (await page.evaluate("window.__DEBUG_syncState()"))['dirty'])
-        print("19 JS errors (save, trashed):", errors == [], errors)
-        await browser.close()
+        # A save before the poll learns of the deletion goes to disk (into the folder on its way to the Trash);
+        # the poll then finds nothing unsaved and closes the tab -- trashed or not.
+        for trashed in (False, True):
+            browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}})
+            await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Saved late', 1])")
+            state = dict(gone) if trashed else {"version": 3, "lease": None, "deleted": {"deletedBy": "iMac", "deletedAt": "2026-10-25T10:00:00Z"}}
+            await page.evaluate("(s) => { window.__SYNC.state = s; }", state)
+            n = len(await admin_calls(page))
+            saved = await page.evaluate("() => window.__DEBUG_persistDb()")
+            disk = await page.evaluate("async () => JSON.parse(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).text()).documents[0].title")
+            print(f"19 trashed={trashed}: the save is written, with no admin call:", saved is True and disk == 'Saved late' and (await admin_calls(page))[n:] == [], saved, disk)
+            await page.evaluate("window.__DEBUG_syncNow(6000)")
+            await page.wait_for_timeout(500)
+            print(f"19 trashed={trashed}: ...then the poll closes it with the notice, nothing kept aside:", await library_closed(page)
+                  and await page.locator('#sync-deleted-dialog').count() == 1 and await kept_aside_folders(page) == [])
+            print(f"19 JS errors (save, trashed={trashed}):", errors == [], errors)
+            await browser.close()
 
         # === 20. Opened after deletion (a folder taken back out of the Trash): a local library ===
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone)}, live=False)
@@ -604,7 +590,7 @@ async def main():
         print("20 no sync marker:", not await page.locator('#sync-marker').is_visible())
         n = len(await admin_calls(page))
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local now', 1])")
-        editing = await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        editing = await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
         await page.evaluate("window.__DEBUG_syncNow(70000)")
         await page.wait_for_timeout(300)
@@ -624,10 +610,12 @@ async def main():
         print("20 JS errors:", errors == [], errors)
         await browser.close()
 
-        # === 21. Opened after deletion, the first answer a lease 404 library-deleted: local too ===
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": None, "leaseDeleted": True}, live=False)
+        # === 21. Opened after deletion with a change made before the first answer (deleted and trashed): local,
+        # and the change is saved. (Was: a lease 404 as the first answer. 21b, a lease 404 then a trashed state, is
+        # now scenario 20.) ===
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone)}, live=False)
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local edit', 1])")
-        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
+        await page.evaluate("window.__DEBUG_syncNow(6000)")
         await page.wait_for_timeout(300)   # the state is asked, then the decision: local
         saved = await page.evaluate("() => window.__DEBUG_persistDb()")
         await page.wait_for_timeout(300)
@@ -636,17 +624,8 @@ async def main():
               and await page.locator('#sync-deleted-dialog').count() == 0, disk)
         print("21 status line names it local:", "this copy is now a local library that isn't synced." in await text_of(page, '#status'))
         print("21 Recent entry kept:", 'Household.dossiary' in await recent_names(page))
+        print("21 no base marker written for a local library:", not await page.evaluate("window.__TEST_ROOT._children.has('.dossiary-base.json')"))
         print("21 JS errors:", errors == [], errors)
-        await browser.close()
-
-        # 21b. First answer a lease 404, then a state saying deleted and trashed: local too.
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(gone), "leaseDeleted": True}, live=False)
-        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
-        await page.wait_for_timeout(400)
-        print("21b lease 404 + trashed state: local, open, Recent kept:", not await library_closed(page)
-              and "this copy is now a local library that isn't synced." in await text_of(page, '#status')
-              and 'Household.dossiary' in await recent_names(page))
-        print("21b JS errors:", errors == [], errors)
         await browser.close()
 
         # === 22. First answer: deleted but not trashed yet (grace period) → the normal deleted path ===
@@ -670,13 +649,6 @@ async def main():
         print("22 dirty: kept aside, then closed:", copy_title == 'Grace change' and await library_closed(page), folders, copy_title)
         print("22 JS errors (dirty):", errors == [], errors)
         await browser.close()
-        # Lease 404 first, the state in its grace period: the deleted path too.
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "state": dict(grace), "leaseDeleted": True}, live=False)
-        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
-        await page.wait_for_timeout(400)
-        print("22 lease 404 + grace state: closed with the notice:", await library_closed(page)
-              and await page.locator('#sync-deleted-dialog').count() == 1)
-        print("22 JS errors (lease):", errors == [], errors)
-        await browser.close()
+        # (Was also: a lease 404 first, then the grace state. Without the lease that is the clean case above.)
 
 asyncio.run(main())
