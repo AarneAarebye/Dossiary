@@ -4828,7 +4828,7 @@
   // plus "Open library folder" -- and deliberately does NOT open the folder
   // picker itself: picking a recent library is usually what's wanted, and a
   // picker popping up on top of that list forces an extra cancel.
-  el('reload-btn').addEventListener('click', () => { resetAll(); });
+  el('reload-btn').addEventListener('click', () => { switchLibraryAsking(); });
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
   el('init-btn').addEventListener('click', useFolderAsLibrary);
   el('copy-setup-select').addEventListener('change', onCopySetupChange);
@@ -8584,7 +8584,7 @@
     el('export-library-open-btn').addEventListener('click', async () => {
       const handle = dest;
       closeModal();
-      resetAll();
+      if(!(await switchLibraryAsking())) return;   // a change only in memory: the person chose to stay
       await proceedWithRootDirHandle(handle);
     });
     el('export-library-start-btn').addEventListener('click', async () => {
@@ -16725,7 +16725,8 @@
       // Not even kept aside: the change stays in memory, unwritten (syncDirty():
       // no reload replaces it, closing the tab asks first); the next save or
       // flow start tries the copy again.
-      setStatusLive(() => t('syncKeptAsideFailed', { device, error: (error && error.message) || '' }), 'err');
+      syncKeptAsideFailedError = (error && error.message) || '';
+      setStatusLive(() => t('syncKeptAsideFailed', { device, error: syncKeptAsideFailedError }), 'err');
       return false;
     }
     if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // safe on disk, aside
@@ -17011,10 +17012,29 @@
     });
   }
 
+  // A change a keep-aside couldn't copy (syncKeepAsideAndReload()) is only in memory: memory is behind a
+  // newer version and holds unwritten changes. Closing the tab or switching library asks first.
+  let syncKeptAsideFailedError = '';
+  const syncOnlyInMemory = () => !!syncLibrary && syncBehind() && syncDirty();
   window.addEventListener('beforeunload', (e) => {
-    // A change a keep-aside couldn't copy (syncKeepAsideAndReload()) is only in memory.
-    if((syncLibrary && syncBehind() && syncDirty()) || syncLibraryGone){ e.preventDefault(); e.returnValue = ''; }
+    if(syncOnlyInMemory() || syncLibraryGone){ e.preventDefault(); e.returnValue = ''; }
   });
+  // Before leaving the open library (Switch library, Export's "Open it", Get it's "Open"):
+  // → true when it was closed (resetAll() ran), false when the person stayed.
+  async function switchLibraryAsking(){
+    if(syncOnlyInMemory()){
+      const device = syncLastOtherDevice || t('syncAnotherMac');
+      const discard = await showSyncChoiceModal({
+        ids: { layer: 'sync-discard-layer', dialog: 'sync-discard-dialog', ok: 'sync-discard-btn', cancel: 'sync-discard-cancel-btn' },
+        title: t('syncDiscardTitle'),
+        paragraphs: [escapeHtml(t('syncKeptAsideFailed', { device, error: syncKeptAsideFailedError }))],
+        okLabel: t('syncDiscardBtn'),
+      });
+      if(!discard) return false;
+    }
+    resetAll();
+    return true;
+  }
 
   function startSyncTimer(){
     if(syncTimer) return;
@@ -18180,7 +18200,7 @@
       return;
     }
     closeModal();
-    resetAll();
+    if(!(await switchLibraryAsking())) return;
     await proceedWithRootDirHandle(handle);
   }
 

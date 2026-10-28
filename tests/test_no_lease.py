@@ -1450,6 +1450,61 @@ async def scenario_base_pull_between_write_and_marker(p):
     await browser.close()
 
 
+async def scenario_switch_asks_when_unsaved(p):
+    # Review fix: a change only in memory (its keep-aside copy failed) is never dropped by Switch library, Export's
+    # "Open it" or Get it's "Open" without asking.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("""() => { const r = window.__TEST_ROOT, orig = r.getDirectoryHandle.bind(r);
+        r.getDirectoryHandle = async (name, o) => { if(name === '.kept-aside') throw new DOMException('The folder is read-only.', 'NoModificationAllowedError'); return orig(name, o); }; }""")
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Only in memory', 1])")
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__DEBUG_persistDb()")
+    await page.wait_for_timeout(400)
+    st = await sync_state(page)
+    print("keep-aside failed: the change is only in memory:", st['dirty'] and await disk_doc_title(page, 1) == 'Invoice' and await page.evaluate("window.__DEBUG_dbExportText().includes('Only in memory')"), st)
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(300)
+    text = await page.inner_text('#sync-discard-dialog') if await page.locator('#sync-discard-dialog').count() else ''
+    print("...Switch library asks first:", 'Discard the unsaved change?' in text and "couldn't be saved" in text, repr(text))
+    print("...the library is still open meanwhile:", await page.locator('tr[data-id="1"]').count() == 1)
+    await page.click('#sync-discard-cancel-btn')
+    await page.wait_for_timeout(200)
+    print("...Cancel keeps it open, with the change:", await page.locator('#sync-discard-dialog').count() == 0 and await page.evaluate("window.__DEBUG_dbExportText().includes('Only in memory')"))
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(200)
+    await page.click('#sync-discard-btn')
+    await page.wait_for_timeout(300)
+    print("...'Switch anyway' switches:", await page.locator('#empty-state').is_visible())
+    print("no page errors:", not errors, errors)
+    await browser.close()
+    # Export as library's "Open it" asks the same way.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)}, extra_files={'files/1_a.pdf': 'pdf 1'})
+    await page.evaluate("() => { window.__EXPORT_PARENT = window.__makeEmptyRoot(); window.__EXPORT_PARENT.name = 'Outside'; window.__NEXT_PICKED_DIR = window.__EXPORT_PARENT; }")
+    await page.check('tr[data-id="1"] .row-select-checkbox')
+    await page.click('#bulk-more-btn')
+    await page.click('#bulk-export-library-btn')
+    await page.wait_for_timeout(300)
+    await page.click('#export-library-start-btn')
+    await page.wait_for_timeout(1000)
+    await page.evaluate("""() => { const r = window.__TEST_ROOT, orig = r.getDirectoryHandle.bind(r);
+        r.getDirectoryHandle = async (name, o) => { if(name === '.kept-aside') throw new DOMException('The folder is read-only.', 'NoModificationAllowedError'); return orig(name, o); }; }""")
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Only in memory', 1])")
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__DEBUG_persistDb()")
+    await page.wait_for_timeout(400)
+    if not await page.locator('#export-library-open-btn').count():
+        print("...export dialog still open:", False)
+    else:
+        await page.click('#export-library-open-btn')
+        await page.wait_for_timeout(300)
+        print("Export 'Open it' asks first:", await page.locator('#sync-discard-dialog').count() == 1)
+        await page.click('#sync-discard-cancel-btn')
+        await page.wait_for_timeout(200)
+        print("...staying keeps this library and the change:", await page.inner_text('#sub-label') == 'Household' and (await sync_state(page))['dirty'])
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 async def main():
     import sys
     only = sys.argv[1:]
@@ -1465,7 +1520,7 @@ async def main():
                          scenario_export_leaves_sync_files, scenario_tokenless_write_pulled_over,
                          scenario_token_write_then_foreign_reloads_quietly, scenario_token_rejected, scenario_ocr_job_runs,
                          scenario_base_follows_own_push, scenario_many_own_pushes,
-                         scenario_base_pull_between_write_and_marker):
+                         scenario_base_pull_between_write_and_marker, scenario_switch_asks_when_unsaved):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")
