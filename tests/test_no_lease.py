@@ -11,11 +11,10 @@ from playwright.async_api import async_playwright
 # Saving without a lease (the hub option cut from dossiary.html): a library with a
 # .dossiary-sync.json at its root saves straight to disk and never asks Dossiary
 # Sync's admin API (127.0.0.1:8769) for an edit lease. A fake fetch plays the
-# service (copied from test_sync_lease.py; its lease answers stay so that any
+# service (copied from test_sync_lease.py; its lease answers are gone, so that any
 # lease request the page still makes is logged and can be asserted absent).
-# config: { token, down, acquire ('granted'|'busy'|'offline'), busyLease,
-#           takeOver ('granted'|...), heartbeat ('granted'|'lost'|'offline'),
-#           lostLease (lease object or None), hang (no answer until aborted) }
+# config: { token, down, state, states, libraries, hang (no answer until aborted), ... }
+# A lease request gets the 404 at the end: it is logged and asserted absent, never answered.
 # Every request is logged in window.__CALLS (url, method, body, keepalive).
 FAKE_SYNC = """
 (config) => {
@@ -58,28 +57,6 @@ FAKE_SYNC = """
             const s = (S.states || {})[decodeURIComponent(st[1])] || (decodeURIComponent(st[1]) === 'lib-7f3a' ? S.state : null);
             return s ? json(200, s) : json(404, { error: 'Not found' });
         }
-        const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(path);
-        if(m && opts.method === 'POST'){
-            if(headers['Content-Type'] !== 'application/json') return json(415, { error: 'JSON only' });
-            const body = JSON.parse(opts.body);
-            if(body.action === 'acquire'){
-                if(S.state && S.state.disconnectedSince) return json(200, { result: 'disconnected', lease: null, version: S.state.version });
-                const result = body.takeOver ? (S.takeOver || 'granted') : (S.acquire || 'granted');
-                if(result === 'busy') return json(200, { result, lease: S.busyLease, version: S.acquireVersion || 3 });
-                const granted = result === 'granted' ? { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() } : null;
-                // Like the real service: once granted, its state names this Mac as the holder.
-                if(granted && S.state) S.state = Object.assign({}, S.state, { lease: granted });
-                return json(200, { result, lease: granted, version: S.acquireVersion || 3 });
-            }
-            if(body.action === 'heartbeat'){
-                const result = S.heartbeat || 'granted';
-                return json(200, { result, lease: result === 'lost' ? (S.lostLease || null) : null, version: 3 });
-            }
-            if(body.action === 'release'){
-                if(S.state && S.state.lease && S.state.lease.holder === 'this') S.state = Object.assign({}, S.state, { lease: null });
-                return json(200, { result: 'released', lease: null, version: 3 });
-            }
-        }
         return json(404, { error: 'Not found' });
     };
 }
@@ -97,8 +74,6 @@ SEED = {
     }],
 }
 TODAY_1402 = datetime.now(timezone.utc).strftime('%Y-%m-%dT14:02:00Z')
-BUSY_LEASE = {"holder": "other", "deviceName": "MacBook Pro", "since": TODAY_1402}
-LEASE_URL = f'http://127.0.0.1:8769/admin/libraries/{LIB_ID}/lease'
 
 
 async def open_app(p, sync=None, token='admin-tok', sync_file=True, lang=None, width=1440, extra_files=None, seed=None, height=900):
@@ -155,10 +130,6 @@ async def seed_and_open(page, sync=None, sync_file=True, extra_files=None, seed=
 
 async def admin_calls(page):
     return await page.evaluate("window.__CALLS.filter(c => c.url.startsWith('http://127.0.0.1:8769'))")
-
-
-async def lease_calls(page, action=None):
-    return [c for c in await admin_calls(page) if c['url'] == LEASE_URL and (action is None or c['body']['action'] == action)]
 
 
 async def writes(page):
@@ -386,7 +357,7 @@ async def scenario_guard(p):
     # .dossiary-sync.json itself.)
     for label, token, mode in (("Edit form, no token", None, 'form'), ("persistDb, with a token", 'admin-tok', 'persist'),
                                ("persistDb, no token", None, 'persist')):
-        browser, page, errors = await open_app(p, seed=SEED2, token=token, sync={"token": "admin-tok", "state": state(3), "acquireVersion": 4})
+        browser, page, errors = await open_app(p, seed=SEED2, token=token, sync={"token": "admin-tok", "state": state(3)})
         if mode == 'form':
             await open_edit(page)
             await page.fill('#e-title', 'Mine (old base)')
@@ -1450,6 +1421,78 @@ async def scenario_base_pull_between_write_and_marker(p):
     await browser.close()
 
 
+async def scenario_base_each_check_needed(p):
+    # Review fix: persistDb()'s two post-write checks each catch a race the other can't (the test above trips both).
+    # A. The pull's db install and its base marker land under this write, but its sync file only after persistDb()
+    #    has returned: only the predecessor-marker check (markerBefore) can tell.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("""() => {
+        const root = window.__TEST_ROOT;
+        window.__PULL = 'armed';
+        const h = root._children.get('library.sqlite');
+        const origDb = h.createWritable.bind(h);
+        h.createWritable = async () => {
+            const w = await origDb();
+            const close = w.close.bind(w);
+            w.close = async () => { await close();
+                if(window.__PULL === 'armed'){ window.__PULL = 'marker';
+                    const mh = await root.getFileHandle('.dossiary-base.json', { create: true });
+                    const mw = await mh.createWritable();
+                    await mw.write(new TextEncoder().encode(JSON.stringify({ version: 4, sha256: 'hub-sha', writtenAt: '2026-10-28T10:00:00Z' })));
+                    await mw.close(); } };
+            return w;
+        };
+    }""")
+    await edit_title(page, 'Mine on 3')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("A: the pull's marker landed before this tab's marker:", await page.evaluate("window.__PULL") == 'marker')
+    await page.evaluate(SET_SYNC_VERSION, 4)   # the pull's sync file, after persistDb() returned
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("A: only the marker check sees it: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    await edit_title(page, 'Next save')
+    print("A: ...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("A: no page errors:", not errors, errors)
+    await browser.close()
+
+    # B. No marker of the pull's in the way, but the sync file changes right after this tab's marker write: only
+    #    the sync-file read after the marker can tell (the one right after the db write still sees the old version).
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("""() => {
+        const root = window.__TEST_ROOT;
+        const origGet = root.getFileHandle.bind(root);
+        window.__PULL = 'armed';
+        root.getFileHandle = async (name, opts) => {
+            const fh = await origGet(name, opts);
+            if(name === '.dossiary-base.json' && opts && opts.create && window.__PULL === 'armed'){
+                window.__PULL = 'hooked';
+                const orig = fh.createWritable.bind(fh);
+                fh.createWritable = async () => { const w = await orig(); const close = w.close.bind(w);
+                    w.close = async () => { await close(); window.__PULL = 'done';
+                        const f = root._children.get('.dossiary-sync.json');
+                        f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 })); };
+                    return w; };
+            }
+            return fh;
+        };
+    }""")
+    await edit_title(page, 'Mine on 3')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("B: the sync file changed right after this tab's marker:", await page.evaluate("window.__PULL") == 'done')
+    print("B: ...this tab's marker is the one on disk:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("B: only the post-marker read sees it: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    await edit_title(page, 'Next save')
+    print("B: ...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("B: no page errors:", not errors, errors)
+    await browser.close()
+
+
 async def scenario_switch_asks_when_unsaved(p):
     # Review fix: a change only in memory (its keep-aside copy failed) is never dropped by Switch library, Export's
     # "Open it" or Get it's "Open" without asking.
@@ -1520,7 +1563,8 @@ async def main():
                          scenario_export_leaves_sync_files, scenario_tokenless_write_pulled_over,
                          scenario_token_write_then_foreign_reloads_quietly, scenario_token_rejected, scenario_ocr_job_runs,
                          scenario_base_follows_own_push, scenario_many_own_pushes,
-                         scenario_base_pull_between_write_and_marker, scenario_switch_asks_when_unsaved):
+                         scenario_base_pull_between_write_and_marker, scenario_base_each_check_needed,
+                         scenario_switch_asks_when_unsaved):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

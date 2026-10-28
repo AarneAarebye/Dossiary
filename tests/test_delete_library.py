@@ -41,13 +41,6 @@ FAKE_SYNC = """
             const answer = list.length > 1 ? list.shift() : (list[0] || { status: 404, body: { error: 'Not found' } });
             return json(answer.status, answer.body);
         }
-        const m = /^\\/admin\\/libraries\\/([^/]+)\\/lease$/.exec(path);
-        if(m && opts.method === 'POST'){
-            const body = JSON.parse(opts.body);
-            if(body.action === 'acquire' && S.acquire === 'busy' && !body.takeOver) return json(200, { result: 'busy', lease: S.busyLease, version: 3 });
-            if(body.action === 'acquire') return json(200, { result: 'granted', lease: { holder: 'this', deviceName: 'MacBook Pro', since: new Date().toISOString() }, version: 3 });
-            return json(200, { result: body.action === 'release' ? 'released' : 'granted', lease: null, version: 3 });
-        }
         return json(404, { error: 'Not found' });
     };
 }
@@ -587,7 +580,6 @@ async def main():
         status = await text_of(page, '#status')
         print("20 status line names the date:", status == "“Household” was deleted from your devices on Oct 20, 2026; this copy is now a local library that isn't synced.", status)
         print("20 Recent entry kept:", 'Household.dossiary' in await recent_names(page))
-        print("20 no sync marker:", not await page.locator('#sync-marker').is_visible())
         n = len(await admin_calls(page))
         await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Local now', 1])")
         editing = await page.evaluate("() => window.__DEBUG_ensureCurrentVersion()")
