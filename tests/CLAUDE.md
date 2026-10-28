@@ -1206,10 +1206,9 @@ Delete library (`test_delete_library.py` -- a fake `fetch` playing the
 admin API's state and delete routes: a synced delete from Tools (the typed
 name enabling the button, one JSON POST with `takeOver: false`, the library
 closed, the Recent entry gone, the success text in the dialog and on the
-status line, no lease release and no admin call afterwards, the header
-the same height as a one-word, marker-less baseline); another device
-holding the lease → "Take over and delete" posting `takeOver: true` and the
-`trashed: false` text; while holding the lease, a 501 releasing it once and
+status line, no lease call and no admin call afterwards); another device
+holding the lease (the state's `lease.holder: 'other'`) → "Take over and delete" posting `takeOver: true` and the
+`trashed: false` text; a 501
 saying the library was closed but not deleted (Recent entry kept), a 409
 offering take over, 503/502/an old service's 404 each keeping the dialog
 open with its reason, then 404 `unknown-library` counted as gone; a
@@ -1221,8 +1220,8 @@ folder named and left on disk; the Recent row's 🗑 asking for read
 permission first and deleting a library that isn't open, and a denied
 permission noted on the row; deleted on another Mac via the state poll,
 with nothing unsaved (no `.kept-aside`) and with an unwritten change (a
-`.kept-aside` copy holding it, named in the notice) and with a change held
-back by a take-over Cancel (kept aside, then closed); ordinary, `deleted:
+`.kept-aside` copy holding it, named in the notice) and with a change
+only in memory when the poll answers (kept aside, then closed); ordinary, `deleted:
 null` and 404 state answers never closing it; a late tab: a `{deleted,
 trashed: true}` answer closing a clean tab, and with an unwritten change
 making no kept-aside attempt, staying open read-only (saves and editing
@@ -1230,17 +1229,14 @@ refused, nothing written, no admin calls), Escape not dismissing the
 offer, "Download unsaved changes" producing exactly `db.export()` (via
 `expect_download()` and `__DEBUG_dbExportText()`) named `<name> unsaved
 <date time>.sqlite`, Close library closing without a release; a failed
-kept-aside copy (not trashed) giving the same offer; a lease call answering
-404 `library-deleted` closing a clean tab ("another Mac" when the state
-says nothing) and giving the offer for a dirty one, and a save meeting it
-held back with no write to `library.sqlite` (kept aside then closed, or the
-offer when trashed); a tab opened after the deletion (no live answer
+kept-aside copy (not trashed) giving the same offer; a `deleted` answer naming
+no device closing a clean tab ("another Mac") and a save made before the poll
+knows being written with no admin call, the poll then closing the clean tab; a tab opened after the deletion (no live answer
 first, `open_app(live=False)`) staying open as a local library -- no notice,
-Recent kept, no marker, editing and a save writing to disk, no admin calls
+Recent kept, no base marker for a local library, editing and a save writing to disk, no admin calls
 after the first answer, the sync file left, Delete taking the unsynced
-path, a reopen this session still local -- also when its first answer is a
-lease 404 (then the state decides: trashed → local, grace period → the
-deleted path), while a first answer in the grace period (deleted, not
+path, a reopen this session still local -- also when its first answer is the
+trashed state with a change made before it, while a first answer in the grace period (deleted, not
 trashed) closes with the notice, keeping an unwritten change aside first
 (every other scenario first gets one ordinary answer); German labels; a hostile
 folder name, busy device and `deletedBy` shown as text).
@@ -1252,8 +1248,8 @@ root from a check with a probe that doesn't exist; a wrong folder refused
 (probe written there, then removed, nothing stored); the right one stored
 with its path; in place: one JSON share `{folder, phones: []}` after
 `library.sqlite` was saved, no copy, reopened synced, the status line, the
-marker "uploading…" until the state stops saying so, the header height
-unchanged, no Share item afterwards; from elsewhere with the stored folder
+status line "Shared … uploading to the Pi.", the shared library polled like any
+synced one, the header height unchanged, no Share item afterwards; from elsewhere with the stored folder
 (no picker): the numbered " 2" copy with the ticked phone, every file but
 the sync bookkeeping and clutter, `library.sqlite` from memory, the original
 unchanged, Recent replaced, the hub's name and the note; Stop (Escape
@@ -1268,182 +1264,39 @@ IndexedDB spy (`IDB_SPY`) confirming the folder lives in its own
 `dossiary-libraries-root` database at version 1 while `dossiary-app-db` stays
 at version 1 with only `recentLibraries`, and `window.__IDB_FAIL = 'blocked' |
 'error'` showing the chooser instead of a hang, the share going ahead).
-The sync lease (`test_sync_lease.py` -- a fake `fetch` playing Dossiary
-Sync's lease endpoint per scenario, a stored admin token, a library seeded
-with `.dossiary-sync.json`, and `library.sqlite` writes counted by wrapping
-its `createWritable()`: no sync file → zero admin calls after a sort click and
-an edit; a synced library: a sort click and panel toggles writing the setting
-without a lease, the first Edit save sending one JSON acquire and the marker
-reading "✎ editing", a second save asking nothing; busy → the take-over
-dialog with device and time (UTC context, "02:02 PM"), nothing written while
-it's open, Cancel writing nothing with "unsaved changes" and a sort click then
-not writing the held-back change, the next save asking again, Escape
-cancelling, Take over acquiring with `takeOver: true` and writing; offline,
-no token ("not connected" with its tooltip, no calls) and service down ("not
-synced yet" with the reason) all writing; heartbeats through
-`__DEBUG_syncNow()` (none at 30 s, one at 60 s, a failed one still holding,
-`lost` without a holder re-acquiring silently, `lost` to the iMac → "editing
-on iMac" and no more heartbeats); release after 10 quiet minutes, on Switch
-library and on `pagehide` (with keepalive), none without the lease; a backup
-without `.dossiary-sync.json` or `.kept-aside/`; German labels and the marker
-following a language switch; the header's height unchanged with the marker
-shown, also with a long library name, at 320 and 1440px. Part 2's second
-task added the `GET …/state` poll to the fake (`window.__SYNC.state`, and
-`acquireVersion` for a granted acquire's version), a `disk_change()` helper
-that rewrites `library.sqlite` and the sync file the way a pull does, without
-counting a write, and these scenarios: a newer version reloads once, with the
-new title in the table and panel, the Inbox view, search text, category
-filter, filtered list and selection kept, nothing written and no second
-reload; the scroll position kept (60 documents); no reload while the Edit form
-is open, then one once it closes; holding → no reload, the version taken as
-this Mac's push; a granted acquire with a newer version → the change written
-anyway, then a reload, still shown, nothing left unsaved; lease lost via the
-state → "editing on iMac", the status line, retranslated to German, then the
-iMac's newer version loaded; kept aside → one status line, a reload, the stamp
-in `localStorage`, not repeated on the next poll or after reopening the page,
-and the line under the library in the devices dialog; `lastError` while
-holding → "not synced yet" with the error as tooltip, back to "✎ editing";
-German kept-aside text. And Task 1's review follow-ups: a sort click with a
-newer version on disk leaving the pulled file alone, reloading, then saving
-the sort; after Cancel the "Not saved" status line, `beforeunload` asking,
-Switch library asking (Cancel keeps it, Switch anyway switches) and neither
-asking without a held-back change; background writes (a real "Create missing
-previews" run, and `__DEBUG_persistDb({background: true})`) never opening the
-dialog or acquiring while `other`, a view-only click then not writing their
-change, no reload over it, a busy acquire for a background write turning
-`other` silently while a person's save still asks; removing the take-over
-layer settling the dialog; a write right after opening waiting for a slow
-sync-file read and taking the lease; and no new acquire within a minute of an
-unanswered one. Fix round 1 moved the lease to the start of editing: the busy
-scenario now gets the dialog when Edit opens (Cancel → no form, "Not
-started"; Archive asks too; Take over → form, save writes), and a held-back
-change comes from `hold_back_change()` -- the lease lost to the other Mac
-while the form is open; `acquire_newer_version` checks that opening Edit on a
-newer hub version reloads first and the newer content survives the save;
-`safety_net` writes a change into memory with `__DEBUG_dbRun()` and a granted
-acquire reports a newer version: nothing written, `.kept-aside/<Mac>-<time>/`
-holding this tab's bytes, a reload, the notice, and a second one in its own
-folder; `sleep_lost_lease` (the state shows no lease while holding → `none`,
-the bump not taken as this Mac's, the save kept aside; the heartbeat's
-re-acquire with a newer version reloading); `background_files` (a queued OCR
-fallback job stays queued while the iMac edits and while the lease is busy, no
-dialog, then runs once the lease is taken silently, and that lease goes back
-a minute later). Fix round 2: no token and service down first held the change
-back until connecting in the devices dialog (the fake serves
-`/admin/connect/start` and `/admin/connect`) or the service answering again;
-since the offline-first round (below) the change is written at once instead; `idle_and_forms` (no idle release
-under an open Edit form, release 10 minutes after it closes);
-`dialog_open_refuses` (Set up fields from a stale Edit form after a foreign
-bump: no reload under it, "close this dialog and start again", the Save kept
-aside, the iMac's change intact); `library_check_stale` (an "orphaned" tag the
-iMac's newer version uses again isn't deleted from a stale Library check);
-`reload_refused` (`__DEBUG_syncBackgroundBusy(true)` makes the needed reload
-fail: Archive doesn't start, "The library is updating…"; once free it archives
-on the newer version); and in `safety_net`, a background save behind a newer
-version keeping nothing aside and showing no notice). Fix round 3:
-`held_back_copy` (no copy at 20 s, a `.kept-aside` copy with this tab's bytes
-at 30 s, the live file untouched, folder in tooltip and status line, a
-further change updating the same copy, the copy kept once written for real);
-`person_change_not_dropped` (`__DEBUG_ensureEditLease()` + a person's
-`__DEBUG_dbRun()`, then a job's save meeting a newer version keeps it aside
-with the notice); `connected_elsewhere` (a token stored by another tab picked
-up by the next tick); `idle_non_edit_dialogs` (Storage stats doesn't keep the
-lease; an Edit form an hour without input doesn't either); and in
-`service_down`, a job's change held silently, the "may not be running"
-tooltip, and no new acquire from a tick within the minute. Fix round 4: `multi_drop_job_save` and
-`tick_before_insert` (a real two-file / one-file drop whose files folder is
-hooked: the lease lapses and the iMac's v4 appears while the drop is mid-way,
-a job's save lands between a file's INSERT and its own save -- after a tick
-in the second -- and the sidecar write is slow, so the reload wins: the
-dropped document survives in the library or a `.kept-aside` copy); in
-`safety_net`, a background save behind a newer version now keeping a quiet
-copy with a plain status line and no notice; `held_back_copy_race` (two
-copies at once make one folder, a copy finishing after the real save claims
-nothing, a later episode gets its own folder); `job_data_retried` (a job's
-data held while the service was down written by a tick once it answers, and
-a person's Edit meeting a newer version with only job data unwritten opening
-on the fresh library, the job data kept aside quietly); `quiet_copy_reused`
-(two quiet saves while a job blocks the reload sharing one folder with the
-latest memory); fix round 5: `multi_drop_job_save` also checks
-the notice and that the drop's final status names the kept-aside folder;
-`reload_race` (a person's `__DEBUG_dbRun` fired from inside
-`crypto.subtle.digest` during a reload -- once on the file's SHA-256, once on
-the stable-uid migration's SHA-1 for a row the iMac's version lacks a uid for:
-the reload gives up, the change stays counted, the next save keeps it);
-`held_back_saved_status` (the "Not saved" line replaced once the tick writes
-the change); round 6: `reload_giveup_field_maps` (the other
-Mac's copy renames field 12; a reload that gives up during the uid
-migration leaves `fieldNameToId` describing this tab's database) and
-`drop_skips_foreign_ids` (files/5_Scan.pdf, thumbnails/5.jpg and
-files/6_Other.pdf on disk without their rows: a three-file drop writes over
-none of them and takes ids 7-9); final review: `open_race` (the pull lands
-between reading `library.sqlite` and the sync file: nothing written on open,
-version 3 kept, the next poll reloads the iMac's version, an edit lands on
-top), `takeover_window` (a take-over before the next poll: Save asks instead
-of writing), `sleep_window` (`__DEBUG_syncClockSkip(200 s)` with the form
-open: Save heartbeats first and keeps the change aside), `offline_window`
-(the offline period over: Save keeps aside or asks; a poll leaves
-"offline" and reloads), `view_prefs_not_holding` (a sort click without the
-lease stays in memory and goes out with the next real save) and
-`reserved_ids` (one folder walk per reservation, ids in flight not handed
-out twice after a reload, `releaseDocId()`/`checkReservedDocId()`
-refusals). The fake's granted acquire now names this Mac as holder in its
-state and a release clears it, like the real service; `first_change` and
-`view_write_newer_on_disk` check that a view preference without the lease
-waits for the next real save; base marker round: `base_marker` (no marker on
-open; `.dossiary-base.json` after a real save and a view preference with the
-memory's version and the SHA-256 of the bytes on disk, version 4 after a
-reload, written by the held-back retry, never inside a `.kept-aside` copy, the
-live one untouched by a keep-aside), `offline_exit_pulled` (N2: the offline
-period ends with this Mac holding after the service pulled the iMac's v4 --
-reloaded, not taken as this Mac's own, the edit on top, marker 4),
-`confirm_unanswered` (no answer to the confirm → `unsynced`, the change written at once; the fake's `hang` makes a hung service give up
-after ~3 s; a save right after an answered poll sends no second state
-request), `no_reload_while_opening` (N3: a tick while `loadDb()` is paused in
-the stable-uid migration doesn't reload; the next one after opening does) and
-`export_open_asks` (Export as library's "Open it" asks first with a change
-held back; the exported library has no sync file or marker); `no_sync_file`
-writes no marker, and `backup` leaves it out)).
-Offline-first round (spec `2026-10-23-offline-first-sync-design.md` in
-dossiary-ios): the lease state `disconnected` (a library switched to "Work
-disconnected" on this Mac; entered from the state poll's `disconnectedSince`
-or an acquire answering `disconnected`) writes straight to disk with the base
-marker, no lease call, no hold-back, marker "disconnected" (default dim colour).
-New scenarios: `disconnected`, `disconnected_first_write` and
-`devices_disconnect` (the dialog's "Work disconnected" / "Reconnect" buttons
-and "Disconnected {when}" note, `POST /admin/libraries/<id>/connection`).
-Rewritten because `unconnected` (no admin token) and `unsynced` (the service
-not answering) no longer hold a change back -- it is written at once and the
-base marker decides later whether the service pushes it or keeps it aside; only
-another Mac editing (`other`, take-over Cancel) still holds back, and
-file-writing jobs (`syncMayWriteFiles()`) still wait in the two states:
-`no_token`, `service_down`, `held_back_copy`, `held_back_copy_race`,
-`held_back_saved_status`, `job_data_retried`, `unanswered_backoff`,
-`connected_elsewhere`, `confirm_unanswered`, `base_marker` and `offline` (the
-marker reads "connected · offline"). Strings removed with the hold-back:
-`syncNotSavedUnconnectedStatus`, `syncNotSavedUnsyncedStatus`,
-`syncMarkerNotConnectedUnsaved`, `syncMarkerNotAnsweringUnsaved`,
-`syncDiscardTextNoService`.
-Fix wave (final review): `leaseless_write_pulled_over` (C1/I1: no token, an
-edit written, then a pull of another Mac's version lands over it; opening
-Edit and, for a second edit, a sort click keep memory aside with the notice
-instead of reloading the edit away); `devices_disconnect` also checks that a
-library whose `GET …/state` answers 404 gets no "Work disconnected" button;
-`no_token`, `service_down` and `offline` check the marker's computed colour is
-the neutral `--text-dim` (`marker_colour()`), and `last_error` that a
-`lastError` while holding is red only while the hub answered
-(`hubReachable === false` reads "connected · offline", dim).
-Merge review: `leaseless_disk_ours_keeps_base` (no token, the sync file bumped
-to 4 while library.sqlite is still the tab's own bytes: the tab knows 4 and
-keeps writing, but the base marker keeps naming 3, so a write that landed on
-another Mac's freshly installed version can't be pushed over it). Minor
-fixes after it: `disconnected_token_rejected` (a 401 while disconnected →
-"not connected"), `leased_write_clears_leaseless_flag` (a write while offline
-clears the lease-less flag, so a later pull isn't kept aside),
-`devices_connection_busy_and_error` (Disconnect/Reconnect disabled while
-sending, one request per double click, its error inside the dialog), and
-`held_back_written_when_disconnected` (a take-over-Cancel change is written
-once the library is disconnected).
+Saving in a synced library (`test_no_lease.py`, 37 scenarios -- replaced
+`test_sync_lease.py`, removed with the editing lease; a fake folder
+(`__LIB_ROOT`-style stub with `.dossiary-sync.json` and `.dossiary-base.json`
+files), a fake `fetch` playing the state route, a stored admin token or none).
+Checks that no lease call is ever made (only `GET …/state`, and
+`POST …/delete` from the Delete dialog); `synced_save` (a save writes
+`library.sqlite` at once plus a base marker naming the loaded version);
+`base_follows_loaded_version`, `newer_reloads` and `guard` (a newer version in
+the sync file reloads quietly when nothing is in the way; a save with memory
+behind a newer, foreign disk keeps it aside in `.kept-aside/this Mac-<time>` with
+the notice, a job's save quietly); `poll_reads_state` (the reduced poll: `deleted`,
+`keptAside` once per entry through `KEPT_ASIDE_SEEN_KEY`, `version`),
+`poll_deleted`, `no_sync_file` / `no_token` / `service_down` (nothing breaks, no
+admin call without a token or a sync file), `backup`, `reload_keeps_view` and
+`reload_waits_for_dialog`, `edit_on_newer_version`, `guard_more`,
+`form_open_newer_arrives`, `library_check_stale`, `reload_refused`,
+`person_change_not_dropped`, `drops_meet_newer`, `quiet_copy_reused`,
+`reload_race`, `doc_ids` (reserved ids), `open_race`, `no_reload_while_opening`,
+`sync_read_before_writes`, `view_prefs` (a view preference alone stays in memory
+and goes out with the next real save), `kept_aside`, `export_leaves_sync_files`,
+`tokenless_write_pulled_over` (no token: a write a pull raced with is kept aside
+with the notice) against `token_write_then_foreign_reloads_quietly` (with a token
+it is an ordinary reload), `token_rejected`, `ocr_job_runs` (jobs write in a
+synced library without a token); the base rule: `base_follows_own_push` (own
+push via the poll and via the sync file alone; a write the sync file changed
+under, and a foreign base marker, leave base at 3), `many_own_pushes` (25 pushes,
+each marker names the version before it, nothing kept aside),
+`base_pull_between_write_and_marker` (a pull's marker written between the tab's
+write and its marker leaves the write unproven); `switch_asks_when_unsaved` (the
+keep-aside copy fails: Switch library and Export's "Open it" ask, Cancel keeps
+the change, "Switch anyway" switches). Ticks use `__DEBUG_syncNow()` (no
+argument). `test_devices_dialog.py`, `test_delete_library.py` and
+`test_share_library.py` carry the admin dialogs.
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

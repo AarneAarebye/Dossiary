@@ -191,6 +191,15 @@ with once (see its own instructions).
 The same dialog lists your devices: tick or untick a library to change what
 a phone may see, or remove a device you no longer use.
 
+Saving on the Mac writes straight to the library on disk. Changes made on the
+phone are applied at once, even while Dossiary is open on the Mac. If a save
+on the Mac collides with a change from the phone, the phone's change wins and
+the Mac's version is kept aside in the library's `.kept-aside` folder. If you
+have connected Dossiary to Dossiary Sync (step 2 above), Dossiary Sync sorts
+this out and Dossiary only shows a message in its status line saying that the
+Mac's changes from that day couldn't be combined and are kept safe. If you
+haven't, Dossiary shows a notice that names the folder.
+
 ## A quick tour of everything else
 
 Once you're comfortable with the basics above, there's more worth

@@ -200,6 +200,16 @@ El mismo diálogo muestra tus dispositivos: marca o desmarca una biblioteca
 para cambiar lo que puede ver un teléfono, o quita un dispositivo que ya no
 uses.
 
+Al guardar en el Mac, los cambios se escriben directamente en la biblioteca
+del disco. Los cambios hechos en el teléfono se aplican al instante, incluso
+con Dossiary abierto en el Mac. Si un guardado en el Mac coincide con un
+cambio del teléfono, prevalece el del teléfono y la versión del Mac se
+conserva aparte en la carpeta `.kept-aside` de la biblioteca. Si has conectado
+Dossiary con Dossiary Sync (paso 2 de arriba), Dossiary Sync lo resuelve y
+Dossiary solo muestra un mensaje en la línea de estado: los cambios del Mac de
+ese día no se pudieron combinar y están guardados a salvo. Si no lo has
+conectado, Dossiary muestra un aviso que indica la carpeta.
+
 ## Un breve recorrido por todo lo demás
 
 Una vez que te sientas cómodo con lo básico de arriba, hay más cosas que
