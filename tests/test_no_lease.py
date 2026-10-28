@@ -193,9 +193,23 @@ SEED2 = {"documents": [doc(1, "Invoice", category="Bills"), doc(2, "Receipt", ca
                        doc(3, "Letter", category="Mail", needs_review=1), doc(4, "Leaflet", category="Mail", needs_review=1)]}
 
 
-def state(version=3, lease=None, kept=None, last_error=None, offline=False):
-    return {"libraryId": LIB_ID, "version": version, "hubReachable": True, "lease": lease, "offline": offline,
-            "keptAside": kept or [], "lastError": last_error}
+def state(version=3, lease=None, kept=None, last_error=None, offline=False, pushed=None):
+    """A GET …/state answer. `pushed`: lastPushedHash (Dossiary Sync >= 0.12.2), the SHA-256 of the database the
+    service last pushed or installed; left out (an older service) when None."""
+    s = {"libraryId": LIB_ID, "version": version, "hubReachable": True, "lease": lease, "offline": offline,
+         "keptAside": kept or [], "lastError": last_error}
+    if pushed is not None:
+        s["lastPushedHash"] = pushed
+    return s
+
+
+async def disk_sha(page):
+    """SHA-256 (hex) of library.sqlite on disk: what Dossiary Sync's lastPushedHash names after pushing it."""
+    return await page.evaluate("""async () => {
+        const bytes = new Uint8Array(await (await window.__TEST_ROOT._children.get('library.sqlite').getFile()).arrayBuffer());
+        const d = await crypto.subtle.digest('SHA-256', bytes);
+        return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }""")
 
 
 IMAC_LEASE = {"holder": "other", "deviceName": "iMac", "since": TODAY_1402}
@@ -1275,25 +1289,46 @@ SET_SYNC_VERSION = """(v) => {
 }"""
 
 
+HUB_SHA = 'b0' * 32   # lastPushedHash after a pull: the SHA-256 of the hub's bytes, never this tab's
+
+
 async def scenario_base_follows_own_push(p):
     # The base the marker names follows this Mac's own pushes (Dossiary Sync accepts only its last 20 own pushes as
-    # a chain from an older base), but only when nothing can have been pulled under this tab's last write.
+    # a chain from an older base), but only once a state answer confirms it: version W with lastPushedHash equal
+    # to the SHA-256 of bytes this tab wrote (or loaded). Anything else leaves the base where it is.
+    # (a) A push of exactly this tab's bytes.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await edit_title(page, 'First')
     await page.keyboard.press('Escape')
     await page.wait_for_timeout(100)
     print("own push: the first save names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
     await page.evaluate(SET_SYNC_VERSION, 4)   # Dossiary Sync pushed it as version 4; library.sqlite untouched
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=await disk_sha(page)))
     await tick(page)
     st = await sync_state(page)
-    print("...the poll takes version 4 over, base too, with no reload:", st['version'] == 4 and st['base'] == 4 and st['reloads'] == 0, st)
+    print("...the state confirms the push of these bytes: version 4, base 4, no reload:", st['version'] == 4 and st['base'] == 4 and st['reloads'] == 0, st)
     await edit_title(page, 'Second')
     print("...the next save names version 4:", marker_ok(await base_marker(page), 4), await base_marker(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
-    # No token (no poll): the sync file alone, read by the next save.
+    # (c) An older Dossiary Sync (no lastPushedHash in the answer): the number is taken over, the base is not.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'First')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    await page.evaluate(SET_SYNC_VERSION, 4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("no lastPushedHash in the answer: version 4 known, base stays 3, no reload:", st['version'] == 4 and st['base'] == 3 and st['reloads'] == 0, st)
+    await edit_title(page, 'Second')
+    print("...the next save is written, not kept aside:", await disk_doc_title(page, 1) == 'Second' and not await kept_aside_names(page))
+    print("...and still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # No token (no state answer at all): the same fallback. The sync file alone is read by the next save.
     browser, page, errors = await open_app(p, seed=SEED2, token=None)
     await edit_title(page, 'First')
     await page.keyboard.press('Escape')
@@ -1302,58 +1337,80 @@ async def scenario_base_follows_own_push(p):
     await edit_title(page, 'Second')
     st = await sync_state(page)
     print("no token, own push: the next save is written, not kept aside:", await disk_doc_title(page, 1) == 'Second' and not await kept_aside_names(page))
-    print("...and names version 4:", st['version'] == 4 and marker_ok(await base_marker(page), 4), st, await base_marker(page))
+    print("...version 4 is taken over, the marker still names version 3:", st['version'] == 4 and st['base'] == 3 and marker_ok(await base_marker(page), 3), st, await base_marker(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
-    # The sync file changed while the write was under way (a pull may have landed under it): the number is taken
-    # over, the base is not.
-    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
-    await page.evaluate("""() => {
-        const h = window.__TEST_ROOT._children.get('library.sqlite');
-        const orig = h.createWritable.bind(h);
-        h.createWritable = async () => {
-            const w = await orig();
-            const close = w.close.bind(w);
-            w.close = async () => { await close(); if(window.__RACE_ONCE){ window.__RACE_ONCE = false;
-                const f = window.__TEST_ROOT._children.get('.dossiary-sync.json');
-                f._bytes = new TextEncoder().encode(JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 })); } };
-            return w;
-        };
-        window.__RACE_ONCE = true;
-    }""")
-    await edit_title(page, 'Raced')
-    await page.keyboard.press('Escape')
-    await page.wait_for_timeout(100)
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
-    await tick(page)
-    st = await sync_state(page)
-    print("a write the sync file changed under: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3 and st['reloads'] == 0, st)
-    await edit_title(page, 'After the race')
-    print("...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
-    print("no page errors:", not errors, errors)
-    await browser.close()
-
-    # Dossiary Sync's own base marker replaced this tab's (it installs one with every pull): base stays.
+    # A state answer whose hash isn't this tab's (a pull of another device's version): the base stays.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await edit_title(page, 'Mine')
     await page.keyboard.press('Escape')
     await page.wait_for_timeout(100)
-    await page.evaluate("""() => {
-        const f = window.__TEST_ROOT._children.get('.dossiary-base.json');
-        f._bytes = new TextEncoder().encode(JSON.stringify({ version: 4, sha256: 'feed', writtenAt: '2026-10-28T10:00:00Z' }));
-    }""")
     await page.evaluate(SET_SYNC_VERSION, 4)
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=HUB_SHA))
     await tick(page)
     st = await sync_state(page)
-    print("a base marker that isn't this tab's: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    print("a hash that isn't this tab's: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    await edit_title(page, 'Next')
+    print("...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+    # The loaded bytes: a state answer naming a newer version with exactly the bytes this tab opened.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=await disk_sha(page)))
+    await tick(page)
+    st = await sync_state(page)
+    print("the loaded bytes confirmed as version 4: version 4, base 4, no reload:", st['version'] == 4 and st['base'] == 4 and st['reloads'] == 0, st)
+    await edit_title(page, 'On 4')
+    print("...the next save names version 4:", marker_ok(await base_marker(page), 4), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_base_second_save_before_confirmation(p):
+    # A second save before any poll confirmed the first push: its marker still names the confirmed base (3), which
+    # Dossiary Sync accepts along its own-push chain; a later answer confirming that second write moves base on.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'First')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    await page.evaluate(SET_SYNC_VERSION, 4)   # pushed as 4, no poll yet
+    await edit_title(page, 'Second')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    st = await sync_state(page)
+    print("second save before confirmation: written, not kept aside:", await disk_doc_title(page, 1) == 'Second' and not await kept_aside_names(page), await kept_aside_names(page))
+    print("...its marker names the confirmed base, 3:", st['base'] == 3 and marker_ok(await base_marker(page), 3), st, await base_marker(page))
+    await page.evaluate(SET_SYNC_VERSION, 5)   # the second write pushed as 5 (chain 3 -> 4 -> 5)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(5, pushed=await disk_sha(page)))
+    await tick(page)
+    st = await sync_state(page)
+    print("...an answer confirming the second write: version 5, base 5, no reload:", st['version'] == 5 and st['base'] == 5 and st['reloads'] == 0, st)
+    await edit_title(page, 'Third')
+    print("...the next save names version 5:", marker_ok(await base_marker(page), 5), await base_marker(page))
+    # An earlier write of this tab confirmed after a later one (Dossiary Sync pushed the third write as 6 while
+    # this tab already wrote a fourth): memory continues from those bytes, so base follows to 6.
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    third = await disk_sha(page)
+    await edit_title(page, 'Fourth')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    await page.evaluate(SET_SYNC_VERSION, 6)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(6, pushed=third))
+    await tick(page)
+    st = await sync_state(page)
+    print("...an earlier write of this tab confirmed as 6: base 6, no reload:", st['base'] == 6 and st['reloads'] == 0, st)
+    await edit_title(page, 'Fifth')
+    print("...the next save names version 6:", marker_ok(await base_marker(page), 6), await base_marker(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
 
 async def scenario_many_own_pushes(p):
-    # 25 saves, each pushed by Dossiary Sync as the next version: the marker keeps up (never more than one behind).
+    # 25 saves, each pushed by Dossiary Sync as the next version and confirmed by the poll: the marker keeps up
+    # (never more than one behind), past the service's 20 remembered own pushes.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     ok = True
     for i in range(25):
@@ -1362,59 +1419,113 @@ async def scenario_many_own_pushes(p):
         m = await base_marker(page)
         ok = ok and marker_ok(m, 3 + i)
         await page.evaluate(SET_SYNC_VERSION, 4 + i)
-        await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4 + i))
+        await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4 + i, pushed=m['diskSha'] if m else None))
         await page.evaluate("window.__DEBUG_syncNow()")
     print("25 own pushes: each save's marker names the version before it:", ok, await base_marker(page))
     print("...nothing kept aside, never reloaded:", not await kept_aside_names(page) and (await sync_state(page))['reloads'] == 0, await sync_state(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
+    # The fallback (an older service, no lastPushedHash): every marker keeps naming the loaded version, 3.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    ok = True
+    for i in range(3):
+        await page.evaluate("(t) => window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', [t, 1])", f'Save {i}')
+        await page.evaluate("window.__DEBUG_persistDb()")
+        ok = ok and marker_ok(await base_marker(page), 3)
+        await page.evaluate(SET_SYNC_VERSION, 4 + i)
+        await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4 + i))
+        await page.evaluate("window.__DEBUG_syncNow()")
+    print("older service: each save's marker names version 3:", ok, await base_marker(page))
+    print("...nothing kept aside, never reloaded:", not await kept_aside_names(page) and (await sync_state(page))['reloads'] == 0, await sync_state(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+# A pull of a phone version installed just before this tab's write closes (the write lands on top of it): what
+# the pull leaves in the state answer is the hub bytes' hash, never this tab's, so base never follows it.
+PULL_UNDER_WRITE = """() => {
+    const root = window.__TEST_ROOT;
+    const origGet = root.getFileHandle.bind(root);
+    const put = async (name, text) => { const w = await (await origGet(name, { create: true })).createWritable();
+        await w.write(new TextEncoder().encode(text)); await w.close(); };
+    window.__PULL = 'armed';
+    const h = root._children.get('library.sqlite');
+    const origDb = h.createWritable.bind(h);
+    h.createWritable = async () => {
+        const w = await origDb();
+        const close = w.close.bind(w);
+        w.close = async () => { await close();
+            // The pull's base marker, after this tab's write landed.
+            if(window.__PULL === 'armed'){ window.__PULL = 'marker'; await put('.dossiary-base.json', JSON.stringify({ version: 4, sha256: '%s', writtenAt: '2026-10-28T10:00:00Z' })); } };
+        return w;
+    };
+    root.getFileHandle = async (name, opts) => {
+        const fh = await origGet(name, opts);
+        if(name === '.dossiary-base.json' && opts && opts.create && window.__PULL === 'marker'){
+            window.__PULL = 'sync';
+            const orig = fh.createWritable.bind(fh);
+            fh.createWritable = async () => { const w = await orig(); const close = w.close.bind(w);
+                // The pull's sync file, after this tab's marker.
+                w.close = async () => { await close(); if(window.__PULL === 'sync'){ window.__PULL = 'done';
+                    await put('.dossiary-sync.json', JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 })); } };
+                return w; };
+        }
+        return fh;
+    };
+}""" % HUB_SHA
+
 
 async def scenario_base_pull_between_write_and_marker(p):
-    # Review fix: a pull of a phone version is installed just before this tab's write closes (the write lands on
-    # top of it). Its base marker is written after the write but before this tab's marker, and its sync file only
-    # after this tab's marker. The write must not count as proven: base stays 3, so the next save never names 4
-    # (which would push this Mac's version over the phone edit).
+    # (b) A pull's database lands under this tab's write, its marker between the write and this tab's marker, its
+    # sync file after this tab's marker. The state answer names version 4 with the hub bytes' hash: base stays 3,
+    # so the next save never names 4 (which would push this Mac's version over the phone edit).
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
-    await page.evaluate("""() => {
-        const root = window.__TEST_ROOT;
-        const origGet = root.getFileHandle.bind(root);
-        const put = async (name, text) => { const w = await (await origGet(name, { create: true })).createWritable();
-            await w.write(new TextEncoder().encode(text)); await w.close(); };
-        window.__PULL = 'armed';
-        const h = root._children.get('library.sqlite');
-        const origDb = h.createWritable.bind(h);
-        h.createWritable = async () => {
-            const w = await origDb();
-            const close = w.close.bind(w);
-            w.close = async () => { await close();
-                // The pull's base marker, after this tab's write landed.
-                if(window.__PULL === 'armed'){ window.__PULL = 'marker'; await put('.dossiary-base.json', JSON.stringify({ version: 4, sha256: 'hub-sha', writtenAt: '2026-10-28T10:00:00Z' })); } };
-            return w;
-        };
-        root.getFileHandle = async (name, opts) => {
-            const fh = await origGet(name, opts);
-            if(name === '.dossiary-base.json' && opts && opts.create && window.__PULL === 'marker'){
-                window.__PULL = 'sync';
-                const orig = fh.createWritable.bind(fh);
-                fh.createWritable = async () => { const w = await orig(); const close = w.close.bind(w);
-                    // The pull's sync file, after this tab's marker.
-                    w.close = async () => { await close(); if(window.__PULL === 'sync'){ window.__PULL = 'done';
-                        await put('.dossiary-sync.json', JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 })); } };
-                    return w; };
-            }
-            return fh;
-        };
-    }""")
+    await page.evaluate(PULL_UNDER_WRITE)
     await edit_title(page, 'Mine on 3')
     await page.keyboard.press('Escape')
     await page.wait_for_timeout(100)
     print("pull between write and marker: the hook ran in that order:", await page.evaluate("window.__PULL") == 'done')
     print("...this tab's marker is the one on disk:", marker_ok(await base_marker(page), 3), await base_marker(page))
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=HUB_SHA))
     await tick(page)
     st = await sync_state(page)
-    print("...the write is not proven: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    print("...the pulled hash isn't this tab's: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    await edit_title(page, 'Next save')
+    print("...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_base_race_every_check_passes(p):
+    # (b) The race the old evidence rule let through: the pull's marker lands between this tab's read of the marker
+    # and its own marker write (which overwrites it), and the pull's sync file only after persistDb() returned. No
+    # file read can tell; the state answer can: version 4, the hub bytes' hash. Base stays 3.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("""(hub) => {
+        const root = window.__TEST_ROOT;
+        const origGet = root.getFileHandle.bind(root);
+        window.__PULL = 'armed';
+        root.getFileHandle = async (name, opts) => {
+            if(name === '.dossiary-base.json' && opts && opts.create && window.__PULL === 'armed'){
+                window.__PULL = 'marker';
+                // The pull's marker, right before this tab's marker write replaces it.
+                const w = await (await origGet(name, { create: true })).createWritable();
+                await w.write(new TextEncoder().encode(JSON.stringify({ version: 4, sha256: hub, writtenAt: '2026-10-28T10:00:00Z' })));
+                await w.close();
+            }
+            return origGet(name, opts);
+        };
+    }""", HUB_SHA)
+    await edit_title(page, 'Mine on 3')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("every-check race: the pull's marker landed and was overwritten:", await page.evaluate("window.__PULL") == 'marker' and marker_ok(await base_marker(page), 3), await base_marker(page))
+    await page.evaluate(SET_SYNC_VERSION, 4)   # the pull's sync file, after persistDb() returned
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=HUB_SHA))
+    await tick(page)
+    st = await sync_state(page)
+    print("...version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
     await edit_title(page, 'Next save')
     print("...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
     print("no page errors:", not errors, errors)
@@ -1422,11 +1533,12 @@ async def scenario_base_pull_between_write_and_marker(p):
 
 
 async def scenario_base_each_check_needed(p):
-    # Review fix: persistDb()'s two post-write checks each catch a race the other can't (the test above trips both).
+    # (d) The two pull orderings the evidence rule's two checks were written for, kept under the confirmation rule:
+    # in each the state answer carries the hub bytes' hash, and base stays 3.
     # A. The pull's db install and its base marker land under this write, but its sync file only after persistDb()
-    #    has returned: only the predecessor-marker check (markerBefore) can tell.
+    #    has returned.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
-    await page.evaluate("""() => {
+    await page.evaluate("""(hub) => {
         const root = window.__TEST_ROOT;
         window.__PULL = 'armed';
         const h = root._children.get('library.sqlite');
@@ -1438,27 +1550,26 @@ async def scenario_base_each_check_needed(p):
                 if(window.__PULL === 'armed'){ window.__PULL = 'marker';
                     const mh = await root.getFileHandle('.dossiary-base.json', { create: true });
                     const mw = await mh.createWritable();
-                    await mw.write(new TextEncoder().encode(JSON.stringify({ version: 4, sha256: 'hub-sha', writtenAt: '2026-10-28T10:00:00Z' })));
+                    await mw.write(new TextEncoder().encode(JSON.stringify({ version: 4, sha256: hub, writtenAt: '2026-10-28T10:00:00Z' })));
                     await mw.close(); } };
             return w;
         };
-    }""")
+    }""", HUB_SHA)
     await edit_title(page, 'Mine on 3')
     await page.keyboard.press('Escape')
     await page.wait_for_timeout(100)
     print("A: the pull's marker landed before this tab's marker:", await page.evaluate("window.__PULL") == 'marker')
     await page.evaluate(SET_SYNC_VERSION, 4)   # the pull's sync file, after persistDb() returned
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=HUB_SHA))
     await tick(page)
     st = await sync_state(page)
-    print("A: only the marker check sees it: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    print("A: the pulled hash isn't this tab's: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
     await edit_title(page, 'Next save')
     print("A: ...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
     print("A: no page errors:", not errors, errors)
     await browser.close()
 
-    # B. No marker of the pull's in the way, but the sync file changes right after this tab's marker write: only
-    #    the sync-file read after the marker can tell (the one right after the db write still sees the old version).
+    # B. No marker of the pull's in the way, but the sync file changes right after this tab's marker write.
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
     await page.evaluate("""() => {
         const root = window.__TEST_ROOT;
@@ -1483,13 +1594,35 @@ async def scenario_base_each_check_needed(p):
     await page.wait_for_timeout(100)
     print("B: the sync file changed right after this tab's marker:", await page.evaluate("window.__PULL") == 'done')
     print("B: ...this tab's marker is the one on disk:", marker_ok(await base_marker(page), 3), await base_marker(page))
-    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=HUB_SHA))
     await tick(page)
     st = await sync_state(page)
-    print("B: only the post-marker read sees it: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    print("B: the pulled hash isn't this tab's: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
     await edit_title(page, 'Next save')
     print("B: ...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
     print("B: no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_base_reload_resets(p):
+    # After a reload to another device's version, a hash this tab wrote before it no longer confirms anything:
+    # memory now comes from the reloaded bytes.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'Mine')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    mine = await disk_sha(page)
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=await disk_sha(page)))
+    await tick(page)
+    st = await sync_state(page)
+    print("reload to another device's version: version 4, base 4, reloaded once:", st['version'] == 4 and st['base'] == 4 and st['reloads'] == 1, st)
+    await page.evaluate(SET_SYNC_VERSION, 5)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(5, pushed=mine))
+    await tick(page)
+    st = await sync_state(page)
+    print("...a write from before the reload confirms nothing: base stays 4:", st['base'] == 4, st)
+    print("no page errors:", not errors, errors)
     await browser.close()
 
 
@@ -1562,9 +1695,10 @@ async def main():
                          scenario_sync_read_before_writes, scenario_view_prefs, scenario_kept_aside,
                          scenario_export_leaves_sync_files, scenario_tokenless_write_pulled_over,
                          scenario_token_write_then_foreign_reloads_quietly, scenario_token_rejected, scenario_ocr_job_runs,
-                         scenario_base_follows_own_push, scenario_many_own_pushes,
-                         scenario_base_pull_between_write_and_marker, scenario_base_each_check_needed,
-                         scenario_switch_asks_when_unsaved):
+                         scenario_base_follows_own_push, scenario_base_second_save_before_confirmation,
+                         scenario_many_own_pushes, scenario_base_pull_between_write_and_marker,
+                         scenario_base_race_every_check_passes, scenario_base_each_check_needed,
+                         scenario_base_reload_resets, scenario_switch_asks_when_unsaved):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

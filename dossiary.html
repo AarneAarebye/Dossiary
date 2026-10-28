@@ -5197,13 +5197,13 @@
     // a newer database is then simply reloaded by the next poll, while the
     // other order could take an old database for the newer version.
     syncLoadedHash = null;
+    syncWrittenHashes = [];
     syncReadPromise = readSyncFile().finally(() => { syncReadPromise = null; });
     await syncReadPromise;
     const synced = !!syncLibrary;
     const file = await dbFileHandle.getFile();
     const buf = await file.arrayBuffer();
     if(synced) syncLoadedHash = await syncHashBytes(new Uint8Array(buf));
-    if(synced) syncMarkerOnDisk = await syncReadBaseMarker(rootDirHandle);   // see persistDb()
     db = trackDbChanges(new SQL.Database(new Uint8Array(buf)));
     // A synced library's migrations stay in memory (as on a reload): the
     // open-time write could go to disk over a newer version the service just
@@ -5443,6 +5443,10 @@
   //     every write: the version memory is based on (syncLibrary.base) and the
   //     SHA-256 of the bytes written. From it Dossiary Sync decides whether to
   //     push the change or keep it aside (never pushed on a stale base).
+  //     `base` moves past the loaded version only when Dossiary Sync's state
+  //     answer confirms it pushed exactly bytes this tab wrote
+  //     (syncConfirmPush()); a pull landing under or just after a write can
+  //     therefore never make a later marker name the pulled version.
   // A pull may still land just after the write (the tab can't know): Dossiary
   // Sync never installs over a folder file that isn't the one it last synced
   // (the write survives as this Mac's change and is kept aside, reported in
@@ -5466,14 +5470,13 @@
     syncPersistsInFlight++;
     try{
       if(syncReadPromise) await syncReadPromise;
-      let versionBefore = null;   // the sync file's version right before the write (see syncLastWriteUnproven)
       if(syncLibrary){
         if(opts.viewOnly){
           if(syncBehind() || syncReloadWanted || await syncNewerOnDisk()) setTimeout(() => { maybeReload(); }, 0);
           return false;
         }
         const lib = syncLibrary, root = rootDirHandle;
-        versionBefore = await syncFileVersion(lib, root);
+        const versionBefore = await syncFileVersion(lib, root);   // the sync file's version right before the write
         if(lib !== syncLibrary || root !== rootDirHandle || !db) return false;
         syncNoteNewer(versionBefore);
         // The guard (above). Nothing in memory is ever dropped: even a job's
@@ -5498,40 +5501,20 @@
       if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // everything changed up to the export is on disk now
       if(markerLib){
         const hash = await syncHashBytes(bytes);
-        // Was a pull installed under this write? Dossiary Sync's pull writes
-        // the database, then its own base marker, then the sync file. So the
-        // write is unproven (syncBaseMayFollow()) when the sync file's version
-        // changed between just before the write and just after this tab's
-        // marker, or when the marker on disk right before this tab's is not
-        // the one this tab expects there (a pull wrote its own). What stays
-        // possible (milliseconds): a pull installs its database just before
-        // this write's close(); its marker write lands between the marker
-        // read below (markerBefore) and this tab's own marker write; and its
-        // sync-file write lands after the last read below. This tab's marker
-        // then overwrites the pull's and every check passes. If this tab
-        // saves again before Dossiary Sync's next pass (<= 3 s), base moves
-        // to V+1 and Dossiary Sync pushes the Mac version over the phone
-        // edit, with no notice. (If its pass comes first, it sees a stale
-        // base and keeps the Mac version aside: safe.) Known; the person has
-        // not yet accepted it. The real fix is for Dossiary Sync to report
-        // the hash it last pushed in GET …/state, so base follows only a push
-        // of exactly these bytes.
-        const versionAfter = await syncFileVersion(markerLib, markerRoot);
-        const markerBefore = await syncReadBaseMarker(markerRoot);
-        const expected = markerLib === syncLibrary ? syncMarkerOnDisk : undefined;
+        // A pull may have been installed under this write (this tab can't
+        // tell from the files). That never moves `base`: base follows only
+        // a state answer confirming that Dossiary Sync pushed exactly bytes
+        // this tab wrote (syncConfirmPush(), lastPushedHash == this hash);
+        // a pull installs the hub's bytes, whose hash is never this tab's.
+        // Until then the marker keeps naming the last confirmed base, which
+        // Dossiary Sync accepts along its own-push chain (its last 20).
         if(markerLib === syncLibrary){
           syncLastWrittenHash = hash;
           syncWroteSinceLoad = true;
-          syncLastWriteUnproven = true;   // until the checks below have run
-          syncLastMarker = { version: baseVersion, sha256: hash };
+          syncWrittenHashes.push(hash);
+          if(syncWrittenHashes.length > SYNC_WRITTEN_HASHES_KEPT) syncWrittenHashes.shift();
         }
         await writeSyncBaseMarker(markerRoot, baseVersion, hash);
-        const versionAfterMarker = await syncFileVersion(markerLib, markerRoot);
-        if(markerLib === syncLibrary && syncLastMarker && syncLastMarker.sha256 === hash){
-          syncMarkerOnDisk = { version: baseVersion, sha256: hash };
-          syncLastWriteUnproven = versionAfter !== versionBefore || versionAfterMarker !== versionBefore
-            || !sameBaseMarker(markerBefore, expected);
-        }
       }
       if(!opts.viewOnly && !opts.background) syncPersonFlowPending = false;
       return true;
@@ -16493,8 +16476,8 @@
   // {libraryId, version, base} from .dossiary-sync.json, or null. `version`: the newest version this tab
   // knows memory is not behind; `base`: the version the base marker names (what memory is provably based
   // on). Both are the loaded version after an open or a reload; `version` moves past `base` when a newer
-  // number turns out to be this tab's own bytes, and `base` follows it only when that is proven (see
-  // syncDiskIsOurs()).
+  // number turns out to be this tab's own bytes (syncDiskIsOurs()), and `base` follows only when a state
+  // answer confirms it (syncConfirmPush()).
   let syncLibrary = null;
   let syncSeenLive = false;            // this tab had an answer for this library without `deleted` since it opened
   // Library ids whose first answer this session already said `deleted` (a
@@ -16522,13 +16505,13 @@
   // memory (which has the write) is then kept aside with the notice rather than reloaded away
   // (syncWriteUnreported()). Cleared by a reload or a keep-aside.
   let syncWroteSinceLoad = false;
-  // The sync file's version changed while the last write was under way (a pull may have landed under it):
-  // the bytes it wrote never count as proof that a newer version is this tab's own (syncBaseMayFollow()).
-  let syncLastWriteUnproven = false;
-  let syncLastMarker = null;            // {version, sha256} of the base marker this tab last wrote
-  // {version, sha256} of the base marker expected on disk (null: none): the one read at open or after a
-  // reload, then the one this tab last wrote. Another one found there means a pull wrote its own.
-  let syncMarkerOnDisk = null;
+  // SHA-256 of every write of library.sqlite since the last open, reload or keep-aside (newest last; the
+  // last SYNC_WRITTEN_HASHES_KEPT): memory continues from each of them, so a state answer naming one of
+  // them as lastPushedHash confirms that version as memory's base (syncConfirmPush()). Not only the last
+  // one: while saves follow each other faster than Dossiary Sync pushes, the hash it last pushed is
+  // usually an earlier write's.
+  let syncWrittenHashes = [];
+  const SYNC_WRITTEN_HASHES_KEPT = 64;
   let syncOpening = null;               // loadDb() is opening the library: no reload meanwhile
   // Ids this tab has handed out whose INSERT hasn't run yet: a reload resets
   // nextDocId from the fresh database, which doesn't know them, so a second
@@ -16594,7 +16577,7 @@
     syncLibraryGone = null; syncSeenLive = false;
     syncLibrary = null;
     syncLoadedHash = null; syncLastWrittenHash = null; syncWroteSinceLoad = false;
-    syncLastWriteUnproven = false; syncLastMarker = null; syncMarkerOnDisk = null;
+    syncWrittenHashes = [];
     syncReservedDocIds = new Set();
     syncReloadWanted = false; syncKnownNewer = 0;
     syncLastOtherDevice = '';
@@ -16617,16 +16600,6 @@
     }catch(e){ /* see above */ }
   }
 
-  // The base marker on disk as {version, sha256}, or null (absent, unreadable).
-  async function syncReadBaseMarker(root){
-    if(!root) return null;
-    try{
-      const m = JSON.parse(await (await (await root.getFileHandle(SYNC_BASE_FILE_NAME)).getFile()).text());
-      return m && typeof m === 'object' ? { version: m.version, sha256: m.sha256 } : null;
-    }catch(e){ return null; }
-  }
-  const sameBaseMarker = (a, b) => (!a && !b) || (!!a && !!b && a.version === b.version && a.sha256 === b.sha256);
-
   async function syncHashBytes(bytes){
     try{
       const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -16638,39 +16611,37 @@
   // number is taken over (memory isn't behind). Usually the newer version is
   // this Mac's own push of those bytes -- but Dossiary Sync may also have
   // installed another device's version just before this tab's write landed on
-  // top of it. So `base` (what the next base marker names) follows only when
-  // that is ruled out (syncBaseMayFollow()); otherwise it keeps naming the old
-  // version, which Dossiary Sync accepts along this Mac's own-push chain.
+  // top of it, and the files can't tell the two apart. So `base` (what the
+  // next base marker names) stays; only syncConfirmPush() moves it.
   async function syncDiskIsOurs(){
-    const lib = syncLibrary, root = rootDirHandle;
+    const lib = syncLibrary;
     if(!lib || !dbFileHandle) return false;
     let hash = null;
     try{ hash = await syncHashBytes(new Uint8Array(await (await dbFileHandle.getFile()).arrayBuffer())); }catch(e){ hash = null; }
     if(lib !== syncLibrary || !hash || (hash !== syncLoadedHash && hash !== syncLastWrittenHash)) return false;
     lib.version = Math.max(lib.version, syncKnownNewer);
-    if(lib.base < lib.version && await syncBaseMayFollow(hash, root) && lib === syncLibrary) lib.base = lib.version;
     return true;
   }
-  // `base` may move up to `version` (the bytes on disk are this tab's, see
-  // syncDiskIsOurs()) when those bytes are:
-  //   - the ones this tab loaded and hasn't written over since: memory is
-  //     based on whatever version holds exactly them;
-  //   - the ones this tab last wrote, and nothing was pulled under them: the
-  //     sync file's version didn't change while they were being written
-  //     (syncLastWriteUnproven), and the base marker on disk is still the one
-  //     written for them -- a pull since would have replaced it with Dossiary
-  //     Sync's own. Then the newer version is this Mac's own push of them.
-  //     (persistDb() also checks the marker right before writing its own and
-  //     the sync file after it. A pull whose marker write lands between this
-  //     tab's marker read and its own marker write, with its database install
-  //     just before close() and its sync-file write after the last read, still
-  //     gets through; see persistDb(). Known, not yet accepted by the person.)
-  // Dossiary Sync remembers only the last 20 own pushes, so a `base` that
-  // never moved would turn the 21st push of a session into a kept-aside one.
-  async function syncBaseMayFollow(hash, root){
-    if(hash !== syncLastWrittenHash) return hash === syncLoadedHash;
-    if(syncLastWriteUnproven || !syncLastMarker || syncLastMarker.sha256 !== hash || !root) return false;
-    return sameBaseMarker(await syncReadBaseMarker(root), syncLastMarker);
+  // `base` follows this Mac's own pushes only on Dossiary Sync's word: a
+  // state answer (GET …/state, Dossiary Sync >= 0.12.2) whose lastPushedHash
+  // -- the SHA-256 of the database it last pushed or installed, the same hex
+  // this tab computes over the bytes it writes -- is the hash of bytes this
+  // tab loaded or wrote since (syncLoadedHash, syncWrittenHashes). `version`
+  // then holds exactly those bytes, memory continues from them, so memory is
+  // based on `version`. A pull installs the hub's bytes, whose hash is never
+  // this tab's: a pulled phone edit is never taken for this Mac's push. Until
+  // confirmed, `base` and each marker keep naming the last confirmed version,
+  // which Dossiary Sync accepts along its own-push chain. Without the field
+  // (an older Dossiary Sync) or without a token (no poll), `base` stays at
+  // the loaded version: Dossiary Sync remembers only its last 20 own pushes,
+  // so the 21st push of a session is then kept aside (and announced) instead
+  // of pushed -- nothing is lost.
+  function syncConfirmPush(lib, st){
+    const hash = st.lastPushedHash;
+    if(lib !== syncLibrary || typeof hash !== 'string' || !hash || !Number.isInteger(st.version) || st.version <= lib.base) return;
+    if(hash !== syncLoadedHash && !syncWrittenHashes.includes(hash)) return;
+    lib.base = st.version;
+    lib.version = Math.max(lib.version, st.version);
   }
 
   // The safety net (see persistDb()): this tab's database, based on an older
@@ -16742,6 +16713,7 @@
     }
     if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // safe on disk, aside
     syncWroteSinceLoad = false;                   // memory (with that write) is aside too
+    syncWrittenHashes = [];                       // ...so its writes confirm nothing (syncConfirmPush())
     if(quiet){
       syncQuietEpisode = { lib, folder, reloads: syncReloadCount };
       setStatusLive(() => t('syncKeptAsideQuiet', { device, folder }), '');
@@ -17075,7 +17047,9 @@
   // on disk, versions Dossiary Sync kept aside, and whether the library was
   // deleted. A newer version reloads the library (maybeReload()) unless it is
   // this tab's own bytes or something is in the way -- an open dialog, a save
-  // in flight, a change not yet written; the next poll tries again.
+  // in flight, a change not yet written; the next poll tries again. Its
+  // lastPushedHash, when it names bytes this tab wrote, moves `base` on
+  // (syncConfirmPush()).
   // → true when the service answered.
   async function pollSyncState(){
     const lib = syncLibrary;
@@ -17109,6 +17083,7 @@
       else if(lease.holder === 'other') syncLastOtherDevice = lease.deviceName;
     }
     noteKeptAside(lib, st.keptAside);
+    syncConfirmPush(lib, st);   // a push of this tab's bytes: base (and version) move up, no reload
     syncNoteNewer(st.version);
     await maybeReload();
     return true;
@@ -17179,8 +17154,6 @@
     if(!ok || lib !== syncLibrary) return false;
     lib.version = target;
     if(!ours) lib.base = target;   // this tab's own bytes reloaded keep their base (syncDiskIsOurs())
-    const marker = await syncReadBaseMarker(rootDirHandle);   // the pull's (see persistDb())
-    if(lib === syncLibrary) syncMarkerOnDisk = marker;
     syncReloadWanted = false;
     syncWroteSinceLoad = false;
     return true;
@@ -17256,6 +17229,7 @@
       for(const [key, value] of prefs) db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
       fresh.__untracked = false;
       syncLoadedHash = freshHash;
+      syncWrittenHashes = [];   // memory now comes from the reloaded bytes (syncConfirmPush())
       try{ if(old && old.close) old.close(); }catch(e){}
       loadDocumentsFromDb();
       for(const [id, value] of filterValues){

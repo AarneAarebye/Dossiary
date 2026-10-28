@@ -2686,27 +2686,29 @@ this repo's git tags.
     keeps only the last 20 own pushes (`ownPushesKept = 20`), so a base that
     never moved would make the 21st push of a session a kept-aside version.
     Keep-aside copies never get a marker.
-  - **The base follows this Mac's own pushes, under an evidence rule.** This
-    **reverses the old invariant** ("without a lease `syncDiskIsOurs()` takes the
-    newer `version` but leaves `base`"). When a newer version turns out to be this
-    tab's own bytes (`syncDiskIsOurs()`: library.sqlite hashes to the loaded or the
-    last-written hash), `version` is taken over and `base` follows it only if
-    `syncBaseMayFollow()` says no pull can have landed under those bytes: they are
-    the loaded ones, or the last write whose sync-file version did not change
-    during it (read before the write, right after it and after the marker;
-    `syncLastWriteUnproven`) and whose predecessor marker on disk was the expected
-    one (`syncMarkerOnDisk`) and is still this tab's. **Residual race
-    (milliseconds):** a pull installs its database just before the page's
-    `close()`; its marker write lands between the page's marker read
-    (`markerBefore`) and the page's own marker write; its sync-file write lands
-    after the page's last sync-file read. The page's marker then overwrites the
-    pull's and every check passes. If the page saves again before Dossiary
-    Sync's next pass (<= 3 s), `base` moves to V+1 and the Mac version is pushed
-    over the phone edit, with no notice. (If the service's pass comes first it
-    sees a stale base and keeps the Mac version aside: safe.) Known; the person
-    has not yet accepted it. **The real fix is in dossiary-sync:**
-    expose `lastPushedHash` in `GET /admin/libraries/<id>/state`, and let `base`
-    follow only when it equals `syncLastWrittenHash`. Not done.
+  - **The base follows this Mac's own pushes only when Dossiary Sync confirms
+    them** (dossiary-native `docs/superpowers/specs/2026-10-28-confirmed-push-base-design.md`).
+    When a newer version turns out to be this tab's own bytes (`syncDiskIsOurs()`:
+    library.sqlite hashes to the loaded or the last-written hash), `version` is
+    taken over but `base` is not: the files cannot tell this Mac's push from a
+    phone edit pulled just before the page's write landed on top of it. `base`
+    moves only in `syncConfirmPush()`, from a state poll: when the answer's
+    `lastPushedHash` (SHA-256 hex of the database the service last pushed or
+    installed; dossiary-sync **>= 0.12.2**) is the hash of bytes this tab loaded
+    (`syncLoadedHash`) or wrote since its last open, reload or keep-aside
+    (`syncWrittenHashes`, the last 64; not only the last write, since saves can
+    come faster than pushes), `base` (and `version`) become the answer's
+    `version`. A pull installs the hub's bytes, whose hash is never the page's,
+    so a pulled phone edit is never taken for this Mac's push: **the old
+    millisecond race of the evidence rule (`markerBefore`, sync-file reads around
+    the write, `syncBaseMayFollow()`, all removed) is closed.** Until confirmed,
+    `base` and every marker keep naming the last confirmed version, which the
+    service accepts along its own-push chain (a second save before the poll is
+    fine). **Fallback:** an answer without `lastPushedHash` (an older Dossiary
+    Sync) or no token (no poll at all) leaves `base` at the loaded version (or
+    the version a reload of foreign bytes set): safe, but the 21st own push of a
+    session is then kept aside and announced instead of pushed (nothing lost).
+    **The person must run Dossiary Sync 0.12.2 or newer** for the base to follow.
   **The guard stays**: `syncBehind()` (memory is based on an older version than
   the sync file's) with disk not this tab's (`!syncDiskIsOurs()`) means a save
   never overwrites the newer version: memory is kept aside in
@@ -2734,8 +2736,9 @@ this repo's git tags.
   /admin/libraries/<id>/state`): 401 forgets the token; `deleted` (+ `trashed`)
   starts the deleted-elsewhere path (Delete library below); new `keptAside` entries
   (`noteKeptAside()`, remembered in localStorage under `KEPT_ASIDE_SEEN_KEY` so a
-  reload doesn't repeat them) give one status line each and a reload; a higher
-  `version` goes to `syncNoteNewer()` and `maybeReload()`. Nothing else is read.
+  reload doesn't repeat them) give one status line each and a reload;
+  `lastPushedHash` goes to `syncConfirmPush()` (above); a higher `version` goes to
+  `syncNoteNewer()` and `maybeReload()`. Nothing else is read.
   **Reload** (`maybeReload()` → `reloadLibraryKeepingView()`) when behind and
   nothing is in the way (no dialog, no save in flight, nothing dirty, no job);
   keeps view, search, filters, selection, scroll and view preferences. Flows call
