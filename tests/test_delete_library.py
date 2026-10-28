@@ -163,7 +163,7 @@ async def main():
         # Baseline: the same header with the library-name line reduced to one short word and no marker or link.
         header_base = await page.evaluate("""() => {
             const sub = document.getElementById('sub-label'), saved = sub.textContent;
-            const hide = ['sync-marker', 'reload-btn'].map(id => document.getElementById(id)).filter(Boolean);
+            const hide = ['reload-btn'].map(id => document.getElementById(id)).filter(Boolean);
             const prev = hide.map(e => e.style.display);
             sub.textContent = 'X'; hide.forEach(e => e.style.display = 'none');
             const h = document.querySelector('header').getBoundingClientRect().height;
@@ -224,7 +224,7 @@ async def main():
         print("2 JS errors:", errors == [], errors)
         await browser.close()
 
-        # === 3. Errors keep the dialog open; the lease this Mac held goes back; 409 offers take over; 404 unknown-library ===
+        # === 3. Errors keep the dialog open; the page makes no lease call of its own; 409 offers take over; 404 unknown-library ===
         CLOSED = 'Household was closed but not deleted. Open it again from Recent libraries.'.replace('Household', '“Household”')
         answers = [
             {"status": 501, "body": {"error": "hub-too-old"}},
@@ -235,9 +235,6 @@ async def main():
             {"status": 404, "body": {"error": "unknown-library"}},
         ]
         browser, page, errors = await open_app(p, {"token": "admin-tok", "state": {"version": 3, "lease": None}, "deletes": answers})
-        await page.evaluate("() => window.__DEBUG_ensureEditLease()")
-        await page.wait_for_timeout(200)
-        print("3 this Mac holds the lease before deleting:", (await page.evaluate("window.__DEBUG_syncLease()"))['state'] == 'holding')
         await open_delete_from_tools(page)
         await page.fill('#delete-library-name-input', 'Household')
         await page.click('#delete-library-confirm-btn')
@@ -246,8 +243,8 @@ async def main():
         print("3 501: the reason plus 'closed but not deleted':", err == 'Update Dossiary Sync on the Raspberry Pi first. ' + CLOSED, err)
         print("3 the library was closed before the request:", await library_closed(page))
         print("3 its Recent entry stays:", 'Household.dossiary' in await recent_names(page))
-        releases = [c for c in await admin_calls(page) if c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release']
-        print("3 the lease this Mac held released once, as JSON:", len(releases) == 1 and releases[0]['contentType'] == 'application/json')
+        lease_posts = [c for c in await admin_calls(page) if c['url'].endswith('/lease')]
+        print("3 no lease POST made by the page (the hub takes the lease on /delete):", lease_posts == [], lease_posts)
         await page.click('#delete-library-confirm-btn')
         await page.wait_for_timeout(400)
         print("3 409: dialog stays open:", await page.locator('#delete-library-body').count() == 1)
@@ -265,8 +262,8 @@ async def main():
             err = await text_of(page, '#delete-library-error')
             open_still = await page.locator('#delete-library-body').count() == 1
             print(f"3 {label} keeps the dialog open with the reason:", open_still and err == text + ' ' + CLOSED and await page.locator('#delete-library-error').is_visible(), err)
-        releases = [c for c in await admin_calls(page) if c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release']
-        print("3 no further release once given back:", len(releases) == 1)
+        lease_posts = [c for c in await admin_calls(page) if c['url'].endswith('/lease')]
+        print("3 still no lease POST after the failures:", lease_posts == [], lease_posts)
         print("3 Recent entry still there after the failures:", 'Household.dossiary' in await recent_names(page))
         calls = await delete_calls(page)
         print("3 retries after the 409 take over:", all(c['body'] == {"takeOver": True} for c in calls[2:]) and all(c['body'] == {"takeOver": False} for c in calls[:2]))
@@ -544,7 +541,7 @@ async def main():
         await page.wait_for_timeout(300)
         print("17 Close closes the library:", await library_closed(page) and await page.locator('#sync-deleted-dialog').count() == 0)
         print("17 Recent entry gone:", 'Household.dossiary' not in await recent_names(page))
-        print("17 no release sent:", not any(c['url'].endswith('/lease') and c['body'] and c['body'].get('action') == 'release' for c in await admin_calls(page)))
+        print("17 no lease POST sent:", not any(c['url'].endswith('/lease') for c in await admin_calls(page)))
         print("17 JS errors:", errors == [], errors)
         await browser.close()
 
