@@ -2762,7 +2762,7 @@ this repo's git tags.
   in the database and in flight (`reserveDocId()`, `checkReservedDocId()`,
   `releaseDocId()`, `settleDocId()` in a `finally`).
   Test hooks: `__DEBUG_syncState()` (`version, base, reloads, dirty, flowPending,
-  wroteSinceLoad`), `__DEBUG_syncNow()` (runs the tick), `__DEBUG_persistDb(opts)`,
+  wroteSinceLoad, writtenHashes` -- the length of `syncWrittenHashes`), `__DEBUG_syncNow()` (runs the tick), `__DEBUG_persistDb(opts)`,
   `__DEBUG_ensureCurrentVersion()`, `__DEBUG_reserveDocId()` & co. Tested by
   `tests/test_no_lease.py`.
 - **Searchable PDF generation** (JPEG/PNG images, and — as of the

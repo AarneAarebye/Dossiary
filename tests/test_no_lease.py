@@ -1559,6 +1559,55 @@ async def scenario_base_reload_resets(p):
     await browser.close()
 
 
+async def scenario_base_keep_aside_resets(p):
+    # After a keep-aside, memory (with this tab's writes) is aside: a hash this tab wrote before it confirms nothing,
+    # even while the reload that follows is still held up (here by a running background job).
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'Mine')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    mine = await disk_sha(page)
+    print("keep-aside reset: the write is listed:", (await sync_state(page))['writtenHashes'] == 1, await sync_state(page))
+    await page.evaluate("window.__DEBUG_syncBackgroundBusy(true)")
+    await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET title = ? WHERE id = ?', ['Mine (old base)', 1])")
+    await disk_change(page, {2: 'Receipt (iMac)'}, sync_version=4)
+    await page.evaluate("window.__DEBUG_persistDb()")
+    await page.wait_for_timeout(400)
+    st = await sync_state(page)
+    print("...memory kept aside, the reload still held up:", len(await kept_aside_names(page)) == 1 and st['reloads'] == 0, await kept_aside_names(page), st)
+    print("...the list is empty:", st['writtenHashes'] == 0, st)
+    await page.evaluate(SET_SYNC_VERSION, 5)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(5, pushed=mine))
+    await tick(page)
+    st = await sync_state(page)
+    print("...a write from before the keep-aside confirms nothing: base stays 3:", st['base'] == 3, st)
+    await page.evaluate("window.__DEBUG_syncBackgroundBusy(false)")
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_base_switch_library_resets(p):
+    # Switching library forgets this tab's written hashes: the next library's state answers can't confirm them.
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await edit_title(page, 'Mine')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    mine = await disk_sha(page)
+    print("switch reset: the write is listed:", (await sync_state(page))['writtenHashes'] == 1, await sync_state(page))
+    await page.click('#reload-btn')
+    await page.wait_for_timeout(300)
+    st = await sync_state(page)
+    print("...after Switch library the list is empty:", await page.locator('#empty-state').is_visible() and st['writtenHashes'] == 0, st)
+    await seed_and_open(page, {"token": "admin-tok", "state": state(3)}, seed=SEED)
+    await page.evaluate(SET_SYNC_VERSION, 4)
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4, pushed=mine))
+    await tick(page)
+    st = await sync_state(page)
+    print("...in the next library a hash from the last one confirms nothing: base stays 3:", st['base'] == 3, st)
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 async def scenario_switch_asks_when_unsaved(p):
     # Review fix: a change only in memory (its keep-aside copy failed) is never dropped by Switch library, Export's
     # "Open it" or Get it's "Open" without asking.
@@ -1631,7 +1680,8 @@ async def main():
                          scenario_base_follows_own_push, scenario_base_second_save_before_confirmation,
                          scenario_many_own_pushes, scenario_base_pull_between_write_and_marker,
                          scenario_base_pull_marker_overwritten,
-                         scenario_base_reload_resets, scenario_switch_asks_when_unsaved):
+                         scenario_base_reload_resets, scenario_base_keep_aside_resets,
+                         scenario_base_switch_library_resets, scenario_switch_asks_when_unsaved):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

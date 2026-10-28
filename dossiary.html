@@ -17266,7 +17266,8 @@
   // Tests: run the tick now (no argument).
   window.__DEBUG_syncNow = async () => { await syncTick(); };
   window.__DEBUG_syncState = () => ({ version: syncLibrary ? syncLibrary.version : null, base: syncLibrary ? syncLibrary.base : null,
-    reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteSinceLoad: syncWroteSinceLoad });
+    reloads: syncReloadCount, dirty: syncDirty(), flowPending: syncPersonFlowPending, wroteSinceLoad: syncWroteSinceLoad,
+    writtenHashes: syncWrittenHashes.length });
   window.__DEBUG_persistDb = (opts) => persistDb(opts);
   window.__DEBUG_ensureCurrentVersion = () => ensureCurrentVersion();
   window.__DEBUG_reserveDocId = () => reserveDocId();
