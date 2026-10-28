@@ -211,6 +211,13 @@ La même fenêtre liste vos appareils : cochez ou décochez une bibliothèque
 pour changer ce qu'un téléphone peut voir, ou retirez un appareil que vous
 n'utilisez plus.
 
+Un enregistrement sur le Mac écrit directement dans la bibliothèque sur le
+disque. Les modifications faites sur le téléphone sont appliquées aussitôt,
+même quand Dossiary est ouvert sur le Mac. Si un enregistrement sur le Mac
+entre en conflit avec une modification du téléphone, celle du téléphone
+l'emporte et la version du Mac est mise de côté dans un dossier à part ; une
+notification vous indique lequel.
+
 ## Un rapide tour de tout le reste
 
 Une fois à l'aise avec les bases ci-dessus, il y a d'autres éléments qui

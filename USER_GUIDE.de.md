@@ -205,6 +205,12 @@ Derselbe Dialog listet deine Geräte: Hake eine Bibliothek an oder ab, um zu
 ändern, was ein iPhone sehen darf, oder entferne ein Gerät, das du nicht
 mehr benutzt.
 
+Speichern auf dem Mac schreibt direkt in die Bibliothek auf der Festplatte.
+Änderungen vom iPhone werden sofort übernommen, auch wenn Dossiary auf dem Mac
+geöffnet ist. Kollidiert ein Speichern auf dem Mac mit einer Änderung vom
+iPhone, gilt die Änderung vom iPhone, und die Version des Macs wird in einem
+eigenen Ordner beiseitegelegt; eine Mitteilung nennt dir den Ordner.
+
 ## Ein kurzer Rundgang durch alles Weitere
 
 Sobald du mit den Grundlagen oben vertraut bist, gibt es noch mehr, das

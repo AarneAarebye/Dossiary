@@ -191,6 +191,12 @@ with once (see its own instructions).
 The same dialog lists your devices: tick or untick a library to change what
 a phone may see, or remove a device you no longer use.
 
+Saving on the Mac writes straight to the library on disk. Changes made on the
+phone are applied at once, even while Dossiary is open on the Mac. If a save
+on the Mac collides with a change from the phone, the phone's change wins and
+the Mac's version is kept aside in a separate folder; a notice tells you which
+folder.
+
 ## A quick tour of everything else
 
 Once you're comfortable with the basics above, there's more worth
