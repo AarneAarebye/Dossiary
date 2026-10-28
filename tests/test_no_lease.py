@@ -389,6 +389,7 @@ async def scenario_guard(p):
         print("...library.sqlite is not written over the newer one:", await writes(page) == w and await disk_doc_title(page, 2) == 'Receipt (iMac)' and await disk_doc_title(page, 1) == 'Invoice')
         notice = await page.inner_text('#sync-notice-dialog') if await page.locator('#sync-notice-dialog').count() else ''
         print("...#sync-notice-dialog is shown and names the folder:", bool(names) and f'.kept-aside/{names[0]}' in notice, repr(notice))
+        print("...with no known other device, the dialog says another device (not another Mac):", 'another device changed this library meanwhile' in notice and 'another Mac' not in notice, repr(notice))
         print("...the newer version is loaded:", 'Receipt (iMac)' in await row_text(page, 2) and 'Mine' not in await row_text(page, 1))
         print("...and no lease request was made:", lease_posts(await admin_calls(page)) == [])
         print("no page errors:", not errors, errors)
