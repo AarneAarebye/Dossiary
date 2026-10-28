@@ -1399,6 +1399,57 @@ async def scenario_many_own_pushes(p):
     await browser.close()
 
 
+async def scenario_base_pull_between_write_and_marker(p):
+    # Review fix: a pull of a phone version is installed just before this tab's write closes (the write lands on
+    # top of it). Its base marker is written after the write but before this tab's marker, and its sync file only
+    # after this tab's marker. The write must not count as proven: base stays 3, so the next save never names 4
+    # (which would push this Mac's version over the phone edit).
+    browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3)})
+    await page.evaluate("""() => {
+        const root = window.__TEST_ROOT;
+        const origGet = root.getFileHandle.bind(root);
+        const put = async (name, text) => { const w = await (await origGet(name, { create: true })).createWritable();
+            await w.write(new TextEncoder().encode(text)); await w.close(); };
+        window.__PULL = 'armed';
+        const h = root._children.get('library.sqlite');
+        const origDb = h.createWritable.bind(h);
+        h.createWritable = async () => {
+            const w = await origDb();
+            const close = w.close.bind(w);
+            w.close = async () => { await close();
+                // The pull's base marker, after this tab's write landed.
+                if(window.__PULL === 'armed'){ window.__PULL = 'marker'; await put('.dossiary-base.json', JSON.stringify({ version: 4, sha256: 'hub-sha', writtenAt: '2026-10-28T10:00:00Z' })); } };
+            return w;
+        };
+        root.getFileHandle = async (name, opts) => {
+            const fh = await origGet(name, opts);
+            if(name === '.dossiary-base.json' && opts && opts.create && window.__PULL === 'marker'){
+                window.__PULL = 'sync';
+                const orig = fh.createWritable.bind(fh);
+                fh.createWritable = async () => { const w = await orig(); const close = w.close.bind(w);
+                    // The pull's sync file, after this tab's marker.
+                    w.close = async () => { await close(); if(window.__PULL === 'sync'){ window.__PULL = 'done';
+                        await put('.dossiary-sync.json', JSON.stringify({ libraryId: 'lib-7f3a', hub: 'x', version: 4 })); } };
+                    return w; };
+            }
+            return fh;
+        };
+    }""")
+    await edit_title(page, 'Mine on 3')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("pull between write and marker: the hook ran in that order:", await page.evaluate("window.__PULL") == 'done')
+    print("...this tab's marker is the one on disk:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    await page.evaluate("(s) => { window.__SYNC.state = s; }", state(4))
+    await tick(page)
+    st = await sync_state(page)
+    print("...the write is not proven: version 4 known, base stays 3:", st['version'] == 4 and st['base'] == 3, st)
+    await edit_title(page, 'Next save')
+    print("...the next save still names version 3:", marker_ok(await base_marker(page), 3), await base_marker(page))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
 async def main():
     import sys
     only = sys.argv[1:]
@@ -1413,7 +1464,8 @@ async def main():
                          scenario_sync_read_before_writes, scenario_view_prefs, scenario_kept_aside,
                          scenario_export_leaves_sync_files, scenario_tokenless_write_pulled_over,
                          scenario_token_write_then_foreign_reloads_quietly, scenario_token_rejected, scenario_ocr_job_runs,
-                         scenario_base_follows_own_push, scenario_many_own_pushes):
+                         scenario_base_follows_own_push, scenario_many_own_pushes,
+                         scenario_base_pull_between_write_and_marker):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

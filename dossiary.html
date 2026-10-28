@@ -5203,6 +5203,7 @@
     const file = await dbFileHandle.getFile();
     const buf = await file.arrayBuffer();
     if(synced) syncLoadedHash = await syncHashBytes(new Uint8Array(buf));
+    if(synced) syncMarkerOnDisk = await syncReadBaseMarker(rootDirHandle);   // see persistDb()
     db = trackDbChanges(new SQL.Database(new Uint8Array(buf)));
     // A synced library's migrations stay in memory (as on a reload): the
     // open-time write could go to disk over a newer version the service just
@@ -5497,16 +5498,32 @@
       if(seq > syncWrittenSeq) syncWrittenSeq = seq;   // everything changed up to the export is on disk now
       if(markerLib){
         const hash = await syncHashBytes(bytes);
-        // Read again before the marker goes out: a version that changed while
-        // this write was under way may be a pull this write landed on top of.
+        // Was a pull installed under this write? Dossiary Sync's pull writes
+        // the database, then its own base marker, then the sync file. So the
+        // write is unproven (syncBaseMayFollow()) when the sync file's version
+        // changed between just before the write and just after this tab's
+        // marker, or when the marker on disk right before this tab's is not
+        // the one this tab expects there (a pull wrote its own). What stays
+        // possible: a pull's marker and sync-file writes both falling between
+        // this tab's marker check and its last read (milliseconds). The real
+        // fix is for Dossiary Sync to report the hash it last pushed in GET
+        // …/state, so base follows only a push of exactly these bytes.
         const versionAfter = await syncFileVersion(markerLib, markerRoot);
+        const markerBefore = await syncReadBaseMarker(markerRoot);
+        const expected = markerLib === syncLibrary ? syncMarkerOnDisk : undefined;
         if(markerLib === syncLibrary){
           syncLastWrittenHash = hash;
           syncWroteWithoutLease = true;
-          syncLastWriteUnproven = versionAfter !== versionBefore;
+          syncLastWriteUnproven = true;   // until the checks below have run
           syncLastMarker = { version: baseVersion, sha256: hash };
         }
         await writeSyncBaseMarker(markerRoot, baseVersion, hash);
+        const versionAfterMarker = await syncFileVersion(markerLib, markerRoot);
+        if(markerLib === syncLibrary && syncLastMarker && syncLastMarker.sha256 === hash){
+          syncMarkerOnDisk = { version: baseVersion, sha256: hash };
+          syncLastWriteUnproven = versionAfter !== versionBefore || versionAfterMarker !== versionBefore
+            || !sameBaseMarker(markerBefore, expected);
+        }
       }
       if(!opts.viewOnly && !opts.background) syncPersonFlowPending = false;
       return true;
@@ -16501,6 +16518,9 @@
   // the bytes it wrote never count as proof that a newer version is this tab's own (syncBaseMayFollow()).
   let syncLastWriteUnproven = false;
   let syncLastMarker = null;            // {version, sha256} of the base marker this tab last wrote
+  // {version, sha256} of the base marker expected on disk (null: none): the one read at open or after a
+  // reload, then the one this tab last wrote. Another one found there means a pull wrote its own.
+  let syncMarkerOnDisk = null;
   let syncOpening = null;               // loadDb() is opening the library: no reload meanwhile
   // Ids this tab has handed out whose INSERT hasn't run yet: a reload resets
   // nextDocId from the fresh database, which doesn't know them, so a second
@@ -16566,7 +16586,7 @@
     syncLibraryGone = null; syncSeenLive = false;
     syncLibrary = null;
     syncLoadedHash = null; syncLastWrittenHash = null; syncWroteWithoutLease = false;
-    syncLastWriteUnproven = false; syncLastMarker = null;
+    syncLastWriteUnproven = false; syncLastMarker = null; syncMarkerOnDisk = null;
     syncReservedDocIds = new Set();
     syncReloadWanted = false; syncKnownNewer = 0;
     syncLastOtherDevice = '';
@@ -16588,6 +16608,16 @@
       await writable.close();
     }catch(e){ /* see above */ }
   }
+
+  // The base marker on disk as {version, sha256}, or null (absent, unreadable).
+  async function syncReadBaseMarker(root){
+    if(!root) return null;
+    try{
+      const m = JSON.parse(await (await (await root.getFileHandle(SYNC_BASE_FILE_NAME)).getFile()).text());
+      return m && typeof m === 'object' ? { version: m.version, sha256: m.sha256 } : null;
+    }catch(e){ return null; }
+  }
+  const sameBaseMarker = (a, b) => (!a && !b) || (!!a && !!b && a.version === b.version && a.sha256 === b.sha256);
 
   async function syncHashBytes(bytes){
     try{
@@ -16622,15 +16652,14 @@
   //     (syncLastWriteUnproven), and the base marker on disk is still the one
   //     written for them -- a pull since would have replaced it with Dossiary
   //     Sync's own. Then the newer version is this Mac's own push of them.
+  //     (persistDb() also checks the marker right before writing its own and
+  //     the sync file after it; the narrow race left is described there.)
   // Dossiary Sync remembers only the last 20 own pushes, so a `base` that
   // never moved would turn the 21st push of a session into a kept-aside one.
   async function syncBaseMayFollow(hash, root){
     if(hash !== syncLastWrittenHash) return hash === syncLoadedHash;
     if(syncLastWriteUnproven || !syncLastMarker || syncLastMarker.sha256 !== hash || !root) return false;
-    try{
-      const m = JSON.parse(await (await (await root.getFileHandle(SYNC_BASE_FILE_NAME)).getFile()).text());
-      return !!m && m.sha256 === hash && m.version === syncLastMarker.version;
-    }catch(e){ return false; }
+    return sameBaseMarker(await syncReadBaseMarker(root), syncLastMarker);
   }
 
   // The safety net (see persistDb()): this tab's database, based on an older
@@ -17040,7 +17069,9 @@
     }
     if(st) syncSeenLive = true;
     if(!st || !Number.isInteger(st.version)) return !!res;   // no answer, or not in the expected shape: ask again next time
-    // Dossiary Sync holds the hub's lease itself for a moment while it pushes; another device may hold it too.
+    // Another device holding the hub's lease (a phone, another Mac) is named in messages. Dossiary Sync names
+    // this Mac (holder 'this') only for a lease this page took, which it no longer does, so `.kept-aside`
+    // folders this tab writes are named "this Mac-<time>".
     const lease = st.lease && typeof st.lease === 'object' ? st.lease : null;
     if(lease && typeof lease.deviceName === 'string' && lease.deviceName){
       if(lease.holder === 'this') syncThisDeviceName = lease.deviceName;
@@ -17117,6 +17148,8 @@
     if(!ok || lib !== syncLibrary) return false;
     lib.version = target;
     if(!ours) lib.base = target;   // this tab's own bytes reloaded keep their base (syncDiskIsOurs())
+    const marker = await syncReadBaseMarker(rootDirHandle);   // the pull's (see persistDb())
+    if(lib === syncLibrary) syncMarkerOnDisk = marker;
     syncReloadWanted = false;
     syncWroteWithoutLease = false;
     return true;
