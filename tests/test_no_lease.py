@@ -215,7 +215,7 @@ async def disk_sha(page):
 IMAC_LEASE = {"holder": "other", "deviceName": "iMac", "since": TODAY_1402}
 THIS_LEASE = {"holder": "this", "deviceName": "MacBook Pro", "since": TODAY_1402}
 KEPT = [{"stamp": "MacBook Pro-2026-05-03-1402", "otherDevice": "iMac"}]
-KEPT_TEXT = "Changes made on this Mac on May 03, 2026 couldn't be combined with iMac's. They're kept safe and will be merged by a later update."
+KEPT_TEXT = "Changes made on this Mac on May 03, 2026 couldn't be combined with iMac's. They're kept safe and were not applied."
 
 
 async def disk_change(page, titles=None, sync_version=None):
@@ -1167,7 +1167,7 @@ async def scenario_kept_aside(p):
     await browser.close()
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, None, KEPT)}, lang='de')
     await tick(page)
-    print("German kept-aside line:", await status(page) == "Änderungen, die am 03. Mai 2026 auf diesem Mac gemacht wurden, ließen sich nicht mit denen von iMac zusammenführen. Sie sind sicher aufbewahrt und werden durch ein späteres Update zusammengeführt.", await status(page))
+    print("German kept-aside line:", await status(page) == "Änderungen, die am 03. Mai 2026 auf diesem Mac gemacht wurden, ließen sich nicht mit denen von iMac zusammenführen. Sie sind sicher aufbewahrt und wurden nicht übernommen.", await status(page))
     print("no page errors:", not errors, errors)
     await browser.close()
 
