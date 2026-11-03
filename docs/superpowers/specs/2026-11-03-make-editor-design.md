@@ -37,7 +37,7 @@ Per device row, by `role` and `promoted`:
 | Row | Role label | Under the head | Button |
 |---|---|---|---|
 | `phone` | "iPhone or iPad" (unchanged) | library checkboxes (unchanged) | "Make editor" |
-| `editor`, `promoted: true` | "iPhone or iPad (editor)" | "Can change every library on this hub." and "As a phone it keeps only the libraries ticked for it." | "Make phone again" |
+| `editor`, `promoted: true` | "iPhone or iPad (editor)" | "Can change every library on this hub." and "As a phone, it keeps only the libraries ticked for it." | "Make phone again" |
 | `editor`, not promoted | "Mac" | its libraries, as today | none |
 | `mirror`, `restore` | unchanged | unchanged | none |
 
