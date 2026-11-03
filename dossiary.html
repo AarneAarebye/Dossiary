@@ -18765,6 +18765,9 @@
     const code = res && res.body && typeof res.body.error === 'string' ? res.body.error : '';
     if(res && res.status === 404 && code === 'needs-hub') return t('devicesNeedsHub');
     if(res && res.status === 409 && code === 'not-promoted') return t('devicesNotPromoted');
+    if(res && res.status === 404 && !code) return t('deleteLibrarySyncTooOld');   // a dossiary-sync without the role route
+    if(res && res.status === 503 && code === 'hub-unreachable') return t('deleteLibraryHubUnreachable');
+    if(res && res.status === 502 && code === 'hub-unauthorized') return t('deleteLibraryHubUnauthorized');
     return syncErrorText(res);
   }
   function showRoleError(row, text){
@@ -18783,6 +18786,7 @@
     modalRoot.querySelectorAll('.devices-role-panel, .devices-role-error').forEach(n => n.remove());
     const panel = document.createElement('div');
     panel.className = 'devices-role-panel';
+    panel.tabIndex = -1;   // clicking its text keeps focus inside, so Escape still reaches it
     panel.innerHTML = `<p class="devices-role-text">${escapeHtml(t('devicesMakeEditorConfirm', { name: device.name }))}</p>
       <button class="devices-role-confirm">${escapeHtml(t('devicesMakeEditor'))}</button><button class="devices-role-cancel">${escapeHtml(t('devicesPairCancel'))}</button>`;
     row.querySelector('.devices-row-head').after(panel);
@@ -18802,6 +18806,8 @@
     const stale = row.querySelector('.devices-role-error');
     if(stale) stale.remove();
     buttons.forEach(b => { b.disabled = true; });
+    const openPanel = row.querySelector('.devices-role-panel');
+    if(openPanel) openPanel.focus();   // disabled buttons drop focus; keep Escape working
     const res = await syncAdminFetch(`/admin/devices/${encodeURIComponent(deviceId)}/role`, { method: 'POST', body: { role } });
     if(!devicesDialogOpen(seq) || devicesState !== state) return;
     if(res && res.status === 401){ devicesTokenRejected(seq); return; }

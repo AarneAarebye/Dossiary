@@ -68,7 +68,7 @@ FAKE_SYNC = """
             if(!device) return json(404, { error: 'Unknown device' });
             if(m[2] === 'role'){
                 // roleFail: { status, error } makes the hub answer that instead.
-                if(S.roleFail) return json(S.roleFail.status, { error: S.roleFail.error });
+                if(S.roleFail) return json(S.roleFail.status, S.roleFail.error ? { error: S.roleFail.error } : {});
                 const role = JSON.parse(opts.body || '{}').role;
                 if(role === 'editor'){ device.role = 'editor'; device.promoted = true; }
                 else if(role === 'phone'){ device.role = 'phone'; device.promoted = false; }
@@ -821,18 +821,30 @@ async def scenario_make_editor(p):
     # Failures.
     cases = (({"status": 404, "error": "needs-hub"}, "Only a Raspberry Pi hub can make a phone an editor. This Mac isn't joined to one."),
              ({"status": 409, "error": "not-promoted"}, "This device was paired as an editor, so it can't become a phone. Remove it and pair it again."),
-             ({"status": 503, "error": "hub-unreachable"}, "hub-unreachable"))
+             ({"status": 404}, "Update Dossiary Sync on this Mac first."),
+             ({"status": 503, "error": "hub-unreachable"}, "The Raspberry Pi can't be reached. Try again when it's on and connected."),
+             ({"status": 502, "error": "hub-unauthorized"}, "The Raspberry Pi didn't accept this Mac. Pair this Mac with the Pi again in Dossiary Sync."))
     for fail, text in cases:
         await page.evaluate("(f) => { window.__SYNC.roleFail = f; }", fail)
         await page.click(row('dev-1') + ' .devices-role-btn')
         await page.click(panel + ' .devices-role-confirm')
         await page.wait_for_timeout(300)
         err = await page.inner_text(row('dev-1') + ' .devices-role-error') if await page.locator(row('dev-1') + ' .devices-role-error').count() else ''
-        print(f"{fail['status']} {fail['error']}: text under the row, row unchanged:", text in err
+        print(f"{fail['status']} {fail.get('error')}: text under the row, row unchanged:", text in err
               and await role('dev-1') == 'iPhone or iPad' and await btn_text('dev-1') == ['Make editor']
               and await page.locator(panel + ' button:disabled').count() == 0, err)
         await page.keyboard.press('Escape')
         await page.wait_for_timeout(100)
+    # Escape after clicking the panel's own text cancels only the panel.
+    await page.evaluate("() => { window.__SYNC.roleFail = null; }")
+    n1 = len(await calls(page))
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.click(panel + ' .devices-role-text')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("Escape after clicking the panel text closes only the panel, sends nothing:", await page.locator(panel).count() == 0
+          and len(await calls(page)) == n1 and await page.locator('#devices-dialog-body').count() == 1
+          and await page.locator('#modal-close-btn').count() == 1)
     # Same for Make phone again: error line under the head.
     await page.evaluate("() => { window.__SYNC.roleFail = null; }")
     await page.click(row('dev-1') + ' .devices-role-btn')
@@ -850,7 +862,7 @@ async def scenario_make_editor(p):
     await page.click(row('dev-1') + ' .devices-role-btn')
     await page.wait_for_timeout(300)
     print("401 sends back to Connect:", await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
-    print("no page errors:", not [e for e in errors if '404' not in e and '409' not in e and '503' not in e and '401' not in e], errors)
+    print("no page errors:", not [e for e in errors if '404' not in e and '409' not in e and '503' not in e and '502' not in e and '401' not in e], errors)
     await browser.close()
 
     browser, page, errors = await open_app(p, sync=sync, token='admin-tok', lang='de')
