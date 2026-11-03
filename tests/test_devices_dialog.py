@@ -61,11 +61,20 @@ FAKE_SYNC = """
                                addresses: ['https://mac.local:8443'],
                                link: `dossiary-sync://pair?v=1&f=${encodeURIComponent(f)}&c=${code}&a=${encodeURIComponent('https://mac.local:8443')}&n=${S.pairCount}` });
         }
-        const m = /^\\/admin\\/devices\\/([^/]+)(?:\\/(allow|deny|name))?$/.exec(path);
+        const m = /^\\/admin\\/devices\\/([^/]+)(?:\\/(allow|deny|name|role))?$/.exec(path);
         if(m){
             const id = decodeURIComponent(m[1]);
             const device = (S.devices || []).find(d => d.id === id);
             if(!device) return json(404, { error: 'Unknown device' });
+            if(m[2] === 'role'){
+                // roleFail: { status, error } makes the hub answer that instead.
+                if(S.roleFail) return json(S.roleFail.status, S.roleFail.error ? { error: S.roleFail.error } : {});
+                const role = JSON.parse(opts.body || '{}').role;
+                if(role === 'editor'){ device.role = 'editor'; device.promoted = true; }
+                else if(role === 'phone'){ device.role = 'phone'; device.promoted = false; }
+                else return json(400, { error: 'bad-role' });
+                return json(200, device);
+            }
             if(m[2] === 'name'){
                 if(S.renameFail) return json(S.renameFail, { error: S.renameFail === 400 ? 'empty-name' : 'hub-unreachable' });
                 const name = JSON.parse(opts.body || '{}').name;
@@ -729,8 +738,142 @@ async def scenario_rename(p):
     await browser.close()
 
 
+async def scenario_make_editor(p):
+    sync = sample_sync()
+    sync["devices"] = [
+        {"id": "dev-1", "name": "Arne's iPhone", "role": "phone", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=5), "promoted": False},
+        {"id": "dev-4", "name": "Promoted iPad", "role": "editor", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=9), "promoted": True},
+        {"id": "dev-5", "name": "Studio iMac", "role": "editor", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=1), "promoted": False},
+        {"id": "dev-2", "name": "pi-copy", "role": "mirror", "libraries": [], "lastSeen": iso_ago(days=2), "promoted": False},
+    ]
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    row = lambda i: f'.devices-row[data-id="{i}"]'
+    role = lambda i: page.inner_text(row(i) + ' .devices-role')
+    btn_text = lambda i: page.locator(row(i) + ' .devices-role-btn').all_inner_texts()
+    print("role labels:", await role('dev-1') == 'iPhone or iPad' and await role('dev-4') == 'iPhone or iPad (editor)'
+          and await role('dev-5') == 'Mac' and await role('dev-2') == 'Raspberry Pi copy', await role('dev-2'))
+    print("Make editor only on the phone:", await btn_text('dev-1') == ['Make editor'])
+    print("Make phone again only on the promoted editor:", await btn_text('dev-4') == ['Make phone again'])
+    print("no role button on the Mac or the mirror:", await btn_text('dev-5') == [] and await btn_text('dev-2') == [])
+    notes = await page.inner_text(row('dev-4'))
+    print("promoted row: both notes, no checkboxes:", 'Can change every library on this hub.' in notes
+          and 'As a phone, it keeps only the libraries ticked for it.' in notes
+          and await page.locator(row('dev-4') + ' .devices-lib-checkbox').count() == 0)
+    print("Mac row keeps its libraries, no notes:", 'Household' in await page.inner_text(row('dev-5'))
+          and 'Can change every library' not in await page.inner_text(row('dev-5')))
+    print("phone row keeps its checkboxes:", await page.locator(row('dev-1') + ' .devices-lib-checkbox').count() == 2)
+
+    # Panel opens, one at a time.
+    n0 = len(await calls(page))
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    panel = '.devices-role-panel'
+    print("Make editor opens one panel with the confirm text:", await page.locator(panel).count() == 1
+          and await page.inner_text(panel + ' .devices-role-text') == "Arne's iPhone will be able to change every library on this hub. It can also delete libraries for everyone, remove devices and make pairing codes."
+          and await page.locator(row('dev-1') + ' ' + panel).count() == 1
+          and await page.locator(panel + ' button').all_inner_texts() == ['Make editor', 'Cancel'])
+    await page.click(panel + ' .devices-role-cancel')
+    print("Cancel closes it, sends nothing:", await page.locator(panel).count() == 0 and len(await calls(page)) == n0
+          and await page.locator('#devices-dialog-body').count() == 1)
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("Escape closes it, sends nothing, dialog stays open:", await page.locator(panel).count() == 0
+          and len(await calls(page)) == n0 and await page.locator('#devices-dialog-body').count() == 1
+          and await page.locator('#modal-close-btn').count() == 1)
+
+    # A second Make editor closes the first; names are escaped.
+    await page.evaluate("""(h) => { window.__SYNC.devices.push({ id: 'dev-6', name: h, role: 'phone', libraries: [], lastSeen: null, promoted: false }); }""", HOSTILE)
+    await page.click('#modal-close-btn')
+    await open_dialog(page)
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.click(row('dev-6') + ' .devices-role-btn')
+    print("opening another closes the first:", await page.locator(panel).count() == 1
+          and await page.locator(row('dev-6') + ' ' + panel).count() == 1)
+    print("hostile name in the confirm text is text:", HOSTILE in await page.inner_text(panel + ' .devices-role-text')
+          and await page.locator(panel + ' img').count() == 0 and not await page.evaluate("window.__xss"))
+    await page.click(panel + ' .devices-role-cancel')
+
+    # Confirm.
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.click(panel + ' .devices-role-confirm')
+    await page.wait_for_timeout(300)
+    posts = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/role')]
+    print("confirm posts exactly the role as JSON:", len(posts) == 1 and posts[0]['method'] == 'POST'
+          and posts[0]['url'] == 'http://127.0.0.1:8769/admin/devices/dev-1/role'
+          and posts[0]['contentType'] == 'application/json' and json.loads(posts[0]['body']) == {"role": "editor"}
+          and posts[0]['auth'] == 'Bearer admin-tok')
+    print("row is now the promoted editor:", await role('dev-1') == 'iPhone or iPad (editor)'
+          and await btn_text('dev-1') == ['Make phone again'] and await page.locator(panel).count() == 0
+          and await page.locator(row('dev-1') + ' .devices-lib-checkbox').count() == 0)
+    print("status line says it:", await page.inner_text('#status') == "Arne's iPhone is now an editor.")
+
+    # Make phone again at once.
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.wait_for_timeout(300)
+    posts = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/role')]
+    print("Make phone again posts phone, no panel:", len(posts) == 2 and json.loads(posts[1]['body']) == {"role": "phone"}
+          and posts[1]['contentType'] == 'application/json')
+    print("row is a phone row with checkboxes again:", await role('dev-1') == 'iPhone or iPad'
+          and await btn_text('dev-1') == ['Make editor'] and await page.locator(row('dev-1') + ' .devices-lib-checkbox').count() == 2
+          and await page.inner_text('#status') == "Arne's iPhone is a phone again.")
+
+    # Failures.
+    cases = (({"status": 404, "error": "needs-hub"}, "Only a Raspberry Pi hub can make a phone an editor. This Mac isn't joined to one."),
+             ({"status": 409, "error": "not-promoted"}, "This device was paired as an editor, so it can't become a phone. Remove it and pair it again."),
+             ({"status": 404}, "Update Dossiary Sync on this Mac first."),
+             ({"status": 503, "error": "hub-unreachable"}, "The Raspberry Pi can't be reached. Try again when it's on and connected."),
+             ({"status": 502, "error": "hub-unauthorized"}, "The Raspberry Pi didn't accept this Mac. Pair this Mac with the Pi again in Dossiary Sync."))
+    for fail, text in cases:
+        await page.evaluate("(f) => { window.__SYNC.roleFail = f; }", fail)
+        await page.click(row('dev-1') + ' .devices-role-btn')
+        await page.click(panel + ' .devices-role-confirm')
+        await page.wait_for_timeout(300)
+        err = await page.inner_text(row('dev-1') + ' .devices-role-error') if await page.locator(row('dev-1') + ' .devices-role-error').count() else ''
+        print(f"{fail['status']} {fail.get('error')}: text under the row, row unchanged:", text in err
+              and await role('dev-1') == 'iPhone or iPad' and await btn_text('dev-1') == ['Make editor']
+              and await page.locator(panel + ' button:disabled').count() == 0, err)
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+    # Escape after clicking the panel's own text cancels only the panel.
+    await page.evaluate("() => { window.__SYNC.roleFail = null; }")
+    n1 = len(await calls(page))
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.click(panel + ' .devices-role-text')
+    await page.keyboard.press('Escape')
+    await page.wait_for_timeout(100)
+    print("Escape after clicking the panel text closes only the panel, sends nothing:", await page.locator(panel).count() == 0
+          and len(await calls(page)) == n1 and await page.locator('#devices-dialog-body').count() == 1
+          and await page.locator('#modal-close-btn').count() == 1)
+    # Same for Make phone again: error line under the head.
+    await page.evaluate("() => { window.__SYNC.roleFail = null; }")
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.click(panel + ' .devices-role-confirm')
+    await page.wait_for_timeout(300)
+    await page.evaluate("() => { window.__SYNC.roleFail = { status: 409, error: 'not-promoted' }; }")
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.wait_for_timeout(300)
+    err = await page.inner_text(row('dev-1') + ' .devices-role-error') if await page.locator(row('dev-1') + ' .devices-role-error').count() else ''
+    print("Make phone again 409: text under the row, row unchanged, button usable:", "can't become a phone" in err
+          and await role('dev-1') == 'iPhone or iPad (editor)' and not await page.is_disabled(row('dev-1') + ' .devices-role-btn'), err)
+
+    # 401 drops the token.
+    await page.evaluate("() => { window.__SYNC.roleFail = null; window.__SYNC.forgotten = true; }")
+    await page.click(row('dev-1') + ' .devices-role-btn')
+    await page.wait_for_timeout(300)
+    print("401 sends back to Connect:", await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
+    print("no page errors:", not [e for e in errors if '404' not in e and '409' not in e and '503' not in e and '502' not in e and '401' not in e], errors)
+    await browser.close()
+
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok', lang='de')
+    await open_dialog(page)
+    de = await page.locator('.devices-role-btn').first.inner_text()
+    print("German: Make editor is the German string:", de == 'Zum Editor machen', de)
+    await browser.close()
+
+
 SCENARIOS = [scenario_start_screen, scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german,
-             scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write, scenario_rename]
+             scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write, scenario_rename, scenario_make_editor]
 
 
 async def main():
