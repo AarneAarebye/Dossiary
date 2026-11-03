@@ -45,7 +45,7 @@ App tatsächlich benutzt.
 
    ![Der Startbildschirm "Keine Bibliothek geöffnet"](docs/user-guide/de/01-no-library.png)
 
-3. Klicke auf **Bibliotheksordner öffnen** und wähle, wo deine
+3. Klicke auf **Bibliothek öffnen oder anlegen…** und wähle, wo deine
    Bibliothek liegen soll — zum Beispiel deinen Dokumente-Ordner. Dein
    Browser fragt nach der Erlaubnis, diesen Ordner lesen und beschreiben
    zu dürfen; erlaube das, denn genau so speichert Dossiary deine

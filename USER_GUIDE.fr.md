@@ -44,7 +44,7 @@ l'application concrètement.
 
    ![L'écran de démarrage "Aucune bibliothèque ouverte"](docs/user-guide/fr/01-no-library.png)
 
-3. Cliquez sur **Ouvrir un dossier de bibliothèque** et choisissez où
+3. Cliquez sur **Ouvrir ou créer une bibliothèque…** et choisissez où
    votre bibliothèque doit se trouver — votre dossier Documents, par
    exemple. Votre navigateur vous demandera la permission de lire et
    d'écrire dans ce dossier ; autorisez-la, c'est ainsi que Dossiary

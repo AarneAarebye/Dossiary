@@ -1997,7 +1997,7 @@ this repo's git tags.
   empty-state prompt otherwise), and its "⇄" comes from CSS `::before` so
   it reuses the existing `toolbarSwitchLibrary` string. **Clicking it only
   calls `resetAll()`** -- back to the start screen's recent-libraries list
-  and "Open library folder" button -- and deliberately does not also call
+  and "Open or create a library…" button -- and deliberately does not also call
   `openLibrary()` the way it used to: the folder picker popping up on top
   of the recent-libraries list forced an extra cancel whenever the person
   just wanted a recent library (reported directly). Tests that used Switch
@@ -3164,7 +3164,7 @@ this repo's git tags.
   per-library `settings` table every other per-library preference in this
   app uses** (`nav_style`, `default_currency`, sort order, column
   visibility, ...) — a deliberate exception, not an oversight: the
-  empty-state "Open library folder" screen (`#empty-state`) has to render
+  empty-state "Open or create a library…" screen (`#empty-state`) has to render
   in the right language *before* any library folder has been picked, so
   there's no `library.sqlite` open yet for a `settings` row to live in.
   `localStorage` is the one piece of persisted app state that predates

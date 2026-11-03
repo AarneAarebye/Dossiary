@@ -119,7 +119,7 @@ async def main():
             return [await read('dossiary.html'), await read('How to open.txt')];
         }""", folders[0])
         print("dossiary.html is the downloaded copy, replacing the library's older one:", app_files[0] == OWN_COPY)
-        print("How to open names the backup folder itself:", folders[0] in app_files[1] and 'Open library folder' in app_files[1], repr(app_files[1][:200]))
+        print("How to open names the backup folder itself:", folders[0] in app_files[1] and 'Open or create a library…' in app_files[1], repr(app_files[1][:200]))
         same = await page.evaluate("""async (name) => {
             const root = await window.__BACKUP_PARENT.getDirectoryHandle(name);
             const files = await root.getDirectoryHandle('files');

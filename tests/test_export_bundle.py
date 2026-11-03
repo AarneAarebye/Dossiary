@@ -120,14 +120,14 @@ async def main():
         # === Scenario 4: How to open.txt ===
         readme = await page.evaluate("() => window.__DEBUG_bundleReadmeText('Tax 2025.dossiary')")
         print("English instructions name the button, the folder and Recent libraries:",
-              'Open library folder' in readme and 'Tax 2025.dossiary' in readme and 'Recent libraries' in readme and 'Chrome' in readme, repr(readme))
+              'Open or create a library…' in readme and 'Tax 2025.dossiary' in readme and 'Recent libraries' in readme and 'Chrome' in readme, repr(readme))
         print("...the version, and no second language:", VERSION in readme and '----' not in readme)
         await page.select_option('#lang-select', 'de')
         await page.wait_for_timeout(200)
         readme = await page.evaluate("() => window.__DEBUG_bundleReadmeText('Steuer.dossiary')")
         de_part, _, en_part = readme.partition('\n\n----\n\n')
-        print("German first, then English:", 'Bibliotheksordner öffnen' in de_part and 'Zuletzt geöffnete Bibliotheken' in de_part
-              and 'Open library folder' in en_part and 'Steuer.dossiary' in en_part, repr(readme))
+        print("German first, then English:", 'Bibliothek öffnen oder anlegen…' in de_part and 'Zuletzt geöffnete Bibliotheken' in de_part
+              and 'Open or create a library…' in en_part and 'Steuer.dossiary' in en_part, repr(readme))
         await page.select_option('#lang-select', 'en')
         await page.wait_for_timeout(200)
 
@@ -219,7 +219,7 @@ async def main():
               'Tax 2025.dossiary/library.sqlite', 'dossiary.html'], files)
         print("dossiary.html is the downloaded copy:", await page.evaluate(READ_IN, ['Tax 2025', 'dossiary.html']) == OWN_COPY)
         readme = await page.evaluate(READ_IN, ['Tax 2025', 'How to open.txt'])
-        print("How to open names the library folder:", 'Tax 2025.dossiary' in readme and 'Open library folder' in readme)
+        print("How to open names the library folder:", 'Tax 2025.dossiary' in readme and 'Open or create a library…' in readme)
         status = await page.inner_text('#export-library-status')
         print("Summary names the bundle folder:", 'Outside/Tax 2025' in status and 'Documents exported: 2' in status, repr(status))
         print("Open it is offered:", await page.is_visible('#export-library-open-btn'))
