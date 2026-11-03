@@ -591,7 +591,7 @@ working" problem that motivated this project in the first place.
 1. Open `dossiary.html` directly in **Chrome or Edge** (double-click
    it, or drag it into a browser window — don't use an embedded preview
    pane; folder write access requires a real top-level page).
-2. Click **"Open library folder"** and choose a folder. If it already has a
+2. Click **"Open or create a library…"** and choose a folder. If it already has a
    `library.sqlite` (e.g. from a migration — see below), it opens straight
    into your existing documents. Otherwise you're offered to create a new
    library there: give it a name and Dossiary creates a `<name>.dossiary`

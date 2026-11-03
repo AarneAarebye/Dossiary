@@ -694,7 +694,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
    oder in ein Browserfenster ziehen — nicht in einer eingebetteten
    Vorschau öffnen; Schreibzugriff auf Ordner erfordert eine echte
    Top-Level-Seite).
-2. Klicken Sie auf **„Open library folder“** und wählen Sie einen Ordner.
+2. Klicken Sie auf **„Bibliothek öffnen oder anlegen…“** und wählen Sie einen Ordner.
    Enthält er bereits ein `library.sqlite` (z. B. aus einer Migration —
    siehe unten), öffnet er sich direkt mit Ihren vorhandenen Dokumenten.
    Andernfalls wird angeboten, dort eine neue Bibliothek anzulegen: Geben

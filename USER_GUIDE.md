@@ -39,7 +39,7 @@ using it.
 
    ![The "No library open" starting screen](docs/user-guide/en/01-no-library.png)
 
-3. Click **Open library folder** and choose where your library should
+3. Click **Open or create a library…** and choose where your library should
    live — your Documents folder, for example. Your browser will ask for
    permission to read and write to that folder; allow it, since that's how
    Dossiary saves your documents.

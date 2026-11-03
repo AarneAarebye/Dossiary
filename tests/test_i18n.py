@@ -111,7 +111,7 @@ async def main():
         await page4.goto(f"file://{APP_PATH}")
         await page4.wait_for_timeout(200)
         open_btn_text = await page4.locator('#open-btn').inner_text()
-        print("Scenario 6 -- empty-state open button translated:", open_btn_text == "Bibliotheksordner öffnen")
+        print("Scenario 6 -- empty-state open button translated:", open_btn_text == "Bibliothek öffnen oder anlegen…")
         # The static "Important:"/"Wichtig:" <b> label and the translated
         # emptyHintImportant span sit side by side in the markup -- an earlier
         # version of emptyHintImportant's own STRINGS value redundantly

@@ -613,6 +613,7 @@
   .review-queue-row:first-child{ border-top:none; padding-top:0; }
   .review-queue-row .file-preview{ flex:1; margin-bottom:0; cursor:pointer; }
   .review-queue-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .empty-actions{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:20px; }
   #recent-libraries{
     text-align:left; margin-bottom:20px; padding:14px 16px;
     border:1px solid var(--line); border-radius:var(--radius);
@@ -982,9 +983,11 @@
         <h2 data-i18n="emptyTitle">No library open</h2>
         <p data-i18n="emptyBody">Open a Dossiary library folder, or start a brand new one here.
            Everything happens locally in your browser — nothing is uploaded.</p>
+        <div class="empty-actions">
+          <button class="primary" id="open-btn" data-i18n="emptyOpenButton">Open or create a library…</button>
+          <button type="button" id="empty-devices-btn" data-i18n="toolbarDevices">📱 iPhone &amp; other devices…</button>
+        </div>
         <div id="recent-libraries" style="display:none;"></div>
-        <button class="primary" id="open-btn" data-i18n="emptyOpenButton">Open library folder</button>
-        <button type="button" id="empty-devices-btn" data-i18n="toolbarDevices" style="margin-left:8px;">📱 iPhone &amp; other devices…</button>
         <div class="hint">
           <span data-i18n="emptyHintBrowser">Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).</span><br/>
           <span data-i18n="emptyHintWriteAccess">This app needs write access to save new documents, so pick "Edit"/allow when your browser asks.</span><br/><br/>
@@ -1235,7 +1238,7 @@
       bulkNewCollectionMenuItem: '+ New collection…',
       statsDocuments: 'documents', statsCategories: 'categories', statsCapturedHere: 'captured here',
       emptyBody: 'Open a Dossiary library folder, or start a brand new one here. Everything happens locally in your browser — nothing is uploaded.',
-      emptyOpenButton: 'Open library folder',
+      emptyOpenButton: 'Open or create a library…',
       emptyHintBrowser: "Needs Chrome or Edge (the File System Access API isn't supported in Safari/Firefox).",
       emptyHintWriteAccess: "This app needs write access to save new documents, so choose “Edit” or “Allow” when your browser asks.",
       emptyHintImportantLabel: 'Important:',
@@ -1469,7 +1472,7 @@
       bulkNewCollectionMenuItem: '+ Nueva colección…',
       statsDocuments: 'documentos', statsCategories: 'categorías', statsCapturedHere: 'capturados aquí',
       emptyBody: 'Abre una carpeta de biblioteca de Dossiary, o crea una completamente nueva aquí. Todo ocurre localmente en tu navegador — no se sube nada.',
-      emptyOpenButton: 'Abrir carpeta de biblioteca',
+      emptyOpenButton: 'Abrir o crear una biblioteca…',
       emptyHintBrowser: 'Necesita Chrome o Edge (la File System Access API no está disponible en Safari/Firefox).',
       emptyHintWriteAccess: 'Esta app necesita acceso de escritura para guardar nuevos documentos, así que elige "Editar"/permitir cuando tu navegador lo pregunte.',
       emptyHintImportantLabel: 'Importante:',
@@ -1703,7 +1706,7 @@
       bulkNewCollectionMenuItem: '+ Nouvelle collection…',
       statsDocuments: 'documents', statsCategories: 'catégories', statsCapturedHere: 'capturés ici',
       emptyBody: "Ouvrez un dossier de bibliothèque Dossiary, ou créez-en un tout nouveau ici. Tout se passe localement dans votre navigateur — rien n'est envoyé en ligne.",
-      emptyOpenButton: 'Ouvrir un dossier de bibliothèque',
+      emptyOpenButton: 'Ouvrir ou créer une bibliothèque…',
       emptyHintBrowser: "Nécessite Chrome ou Edge (la File System Access API n'est pas prise en charge par Safari/Firefox).",
       emptyHintWriteAccess: "Cette application a besoin d'un accès en écriture pour enregistrer de nouveaux documents, donc choisissez « Modifier »/autorisez lorsque votre navigateur le demande.",
       emptyHintImportantLabel: 'Important :',
@@ -1937,7 +1940,7 @@
       bulkNewCollectionMenuItem: '+ Neue Sammlung…',
       statsDocuments: 'Dokumente', statsCategories: 'Kategorien', statsCapturedHere: 'hier erfasst',
       emptyBody: 'Öffne einen Dossiary-Bibliotheksordner oder starte hier eine ganz neue Bibliothek. Alles geschieht lokal in deinem Browser — nichts wird hochgeladen.',
-      emptyOpenButton: 'Bibliotheksordner öffnen',
+      emptyOpenButton: 'Bibliothek öffnen oder anlegen…',
       emptyHintBrowser: 'Erfordert Chrome oder Edge (die File System Access API wird in Safari/Firefox nicht unterstützt).',
       emptyHintWriteAccess: 'Diese App benötigt Schreibzugriff, um neue Dokumente zu speichern — wähle "Bearbeiten"/Erlauben, wenn dein Browser danach fragt.',
       emptyHintImportantLabel: 'Wichtig:',
@@ -2171,7 +2174,7 @@
       bulkNewCollectionMenuItem: '+ 新建收藏集…',
       statsDocuments: '文档', statsCategories: '分类', statsCapturedHere: '在此录入',
       emptyBody: '打开一个 Dossiary 资料库文件夹，或在此创建一个全新的资料库。一切都在你的浏览器本地完成——不会上传任何内容。',
-      emptyOpenButton: '打开资料库文件夹',
+      emptyOpenButton: '打开或新建资料库…',
       emptyHintBrowser: '需要 Chrome 或 Edge 浏览器（Safari/Firefox 不支持 File System Access API）。',
       emptyHintWriteAccess: '此应用需要写入权限才能保存新文档，浏览器询问时请选择"编辑"/允许。',
       emptyHintImportantLabel: '重要提示：',
@@ -2438,7 +2441,7 @@
       statsCategories: '分類',
       statsCapturedHere: '在此錄入',
       emptyBody: '打開一個 Dossiary 資料庫文件夾，或在此創建一個全新的資料庫。一切都在你的瀏覽器本地完成——不會上傳任何內容。',
-      emptyOpenButton: '打開資料庫文件夾',
+      emptyOpenButton: '打開或新建資料庫…',
       emptyHintBrowser: '需要 Chrome 或 Edge 瀏覽器（Safari/Firefox 不支持 File System Access API）。',
       emptyHintWriteAccess: '此應用需要寫入權限才能保存新文檔，瀏覽器詢問時請選擇"編輯"/允許。',
       emptyHintImportantLabel: '重要提示：',
@@ -3039,7 +3042,7 @@
       statsCategories: "կատեգորիա",
       statsCapturedHere: "ավելացված այստեղ",
       emptyBody: "Բացեք Dossiary գրադարանի թղթապանակ կամ ստեղծեք բոլորովին նորը այստեղ։ Ամեն ինչ կատարվում է տեղում՝ ձեր դիտարկիչում. ոչինչ չի վերբեռնվում։",
-      emptyOpenButton: "Բացել գրադարանի թղթապանակը",
+      emptyOpenButton: "Բացել կամ ստեղծել գրադարան…",
       emptyHintBrowser: "Անհրաժեշտ է Chrome կամ Edge (File System Access API-ն Safari-ում և Firefox-ում չի աջակցվում)։",
       emptyHintWriteAccess: "Նոր փաստաթղթեր պահպանելու համար այս հավելվածին անհրաժեշտ է գրելու թույլտվություն, ուստի ընտրեք «Edit»/թույլատրեք, երբ դիտարկիչը հարցնի։",
       emptyHintImportantLabel: "Կարևոր է՝",

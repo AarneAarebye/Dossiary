@@ -43,7 +43,7 @@ usar la aplicación en la práctica.
 
    ![La pantalla inicial "Ninguna biblioteca abierta"](docs/user-guide/es/01-no-library.png)
 
-3. Haz clic en **Abrir carpeta de biblioteca** y elige dónde debe estar tu
+3. Haz clic en **Abrir o crear una biblioteca…** y elige dónde debe estar tu
    biblioteca — por ejemplo, tu carpeta Documentos. Tu navegador te pedirá
    permiso para leer y escribir en esa carpeta; concédelo, ya que así es
    como Dossiary guarda tus documentos.
