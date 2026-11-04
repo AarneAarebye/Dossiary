@@ -3092,7 +3092,7 @@ this repo's git tags.
   seven languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional, Armenian)** is a flat per-language dictionary (`STRINGS.en` /
   `STRINGS.de` / `STRINGS.es` / `STRINGS.fr` / `STRINGS['zh-Hans']` /
-  `STRINGS['zh-Hant']` / `STRINGS.hy`, 720 keys each), a lookup helper (`t(key,
+  `STRINGS['zh-Hant']` / `STRINGS.hy`, ~930 keys each), a lookup helper (`t(key,
   params)`), and one whole-page re-translate pass (`applyI18n()`) — not a
   full i18n library, ICU message format, or per-string `.po`/`.json` files;
   the app's single-file constraint (see "What this project is") rules out
@@ -3298,7 +3298,7 @@ this repo's git tags.
   key present" — a static safety net against the one mistake
   `test_i18n.py`'s scenario-by-scenario clicking can't exhaustively rule
   out (a key added to English but never given a translation in some other
-  language, or vice versa, anywhere in this ~720-key, hand-maintained
+  language, or vice versa, anywhere in this ~930-key, hand-maintained
   dictionary that no single Playwright run touches every corner of).
   Its own key-extraction regex needed to be **more careful than a naive
   "key starts a line" pattern**: `STRINGS.en`/`STRINGS.de` pack several
@@ -3330,7 +3330,7 @@ this repo's git tags.
   both Chinese scripts were added on top of the original English/German
   implementation described above. None of the dictionary/lookup-helper/
   `applyI18n()` shape above had to change to support this: `STRINGS` simply
-  grew from two top-level keys to six, then seven (720 keys apiece now,
+  grew from two top-level keys to six, then seven (~930 keys apiece now,
   not ~260), and
   `t()`'s own `STRINGS[currentLang][key] ?? STRINGS.en[key] ?? key`
   fallback chain already generalizes for free, since it was never
@@ -3509,7 +3509,7 @@ this repo's git tags.
   **Description text is never run through `t()`** — like a field's own
   name, it's free-form content someone typed for their own library, not
   app chrome; running it through the translation lookup would be wrong
-  twice over — it isn't one of this app's ~720 known UI strings in the
+  twice over — it isn't one of this app's ~930 known UI strings in the
   first place, so `t()`'s fallback would just echo it back unchanged, and
   passing it through `t(key, params)` at all would risk a literal `{...}`
   substring in someone's own description being misread as a substitution
