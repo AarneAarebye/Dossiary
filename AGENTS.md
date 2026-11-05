@@ -312,7 +312,7 @@ about to change. Add a new note to the matching file, not here. The list under e
 
 ## How this was tested
 
-See `tests/CLAUDE.md` for the full per-feature test-coverage narrative and
+See `tests/CLAUDE.md` for the testing conventions and the index of the per-feature test-coverage narrative (kept in `tests/coverage/`) and
 testing conventions (the shared stub harness, `stub_studio2.js` discipline,
 how to run the suite) — it loads automatically whenever Claude works with
 files under `tests/`.

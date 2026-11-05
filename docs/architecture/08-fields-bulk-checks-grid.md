@@ -49,7 +49,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   **The save-on-blur handler has no revert-on-empty guard**, unlike the
   Collections rename input it's modeled on (the Manage Collections modal's
   own rename input resets back to the collection's real name on an empty
-  blur, rather than saving a blank one — see `tests/CLAUDE.md`'s Collections
+  blur, rather than saving a blank one — see the Collections entry in `tests/coverage/01-capture-ocr-fields-inbox-nav.md`
   entry) — because an empty description is a
   valid, meaningful value here (it just means "show no hint for this
   field"), not an error state to reject the way an empty collection name
