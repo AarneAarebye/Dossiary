@@ -117,8 +117,8 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
 - **Share this library and Get it** (`openShareLibraryDialog()`,
   `ensureLibrariesRootHandle()`, `copyLibraryInto()`, `loadDevicesAvailable()`,
   `getLibraryHere()`; Tools → `#share-library-btn`, shown only for an open
-  library without `.dossiary-sync.json` (`updateShareLibraryItem()`, run from
-  `renderSyncMarker()` and when Tools opens); spec in dossiary-ios
+  library without `.dossiary-sync.json` (`updateShareLibraryItem()`, run when Tools
+  opens); spec in dossiary-ios
   `docs/superpowers/specs/2026-10-25-share-library-design.md`). Every synced
   library lives in this Mac's **libraries folder**; a page never learns real
   paths, so Dossiary keeps a handle to that folder in a database of its own,
@@ -170,9 +170,9 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   sync file is read), a copy replaces the original in Recent libraries
   (`forgetRecentLibrary()` first, the open records the copy), the status line
   "Shared “<hub's name>” — uploading to the Pi.", and for a copy a notice
-  naming `<root>/<Name>.dossiary` and the original (never touched). The marker
-  reads "uploading…" while `GET …/state` says `uploading: true`
-  (`renderSyncMarker()`, states none/holding/offline/unsynced). Error codes
+  naming `<root>/<Name>.dossiary` and the original (never touched). The sync marker
+  that used to read "uploading…" while `GET …/state` said `uploading: true` (`renderSyncMarker()`) was removed on
+  2026-10-28; the status line stays and the shared library is polled like any synced one. Error codes
   are mapped (already-shared, not-a-library, unknown-device, hub-*; a 404
   without a known code = an older Dossiary Sync); any other is shown with its
   code and status. `shareLibraryRunning` blocks closing while saving, copying
