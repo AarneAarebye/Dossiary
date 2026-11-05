@@ -51,6 +51,8 @@ CLAUDE.md                Imports AGENTS.md
 CONTRIBUTING.md          Human-contributor guide (tests, conventions, PR expectations)
 LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
+.gitattributes            Git attributes for the repo
+docs/architecture/       Architecture notes split out of this file, one per area (index below)
 tests/                   Playwright regression suite (109 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```

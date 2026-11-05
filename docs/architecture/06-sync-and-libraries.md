@@ -196,7 +196,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   dossiary-ios `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md` and
   `2026-10-23-offline-first-sync-design.md` describe the editing lease and the
   "Work disconnected" switch the page used to have; both are **superseded** by
-  dossiary-native `docs/superpowers/specs/2026-10-28-dossiary-html-hub-cut-design.md`.
+  dossiary-osx `docs/superpowers/specs/2026-10-28-dossiary-html-hub-cut-design.md`.
   The page no longer takes, heartbeats or releases a lease, has no sync marker
   in the header, no take-over dialog and no held-back changes.)
   **Saves go straight to disk** (`persistDb()`), in a synced library or not.
@@ -222,7 +222,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
     a session (the 21st with an older service) a kept-aside version.
     Keep-aside copies never get a marker.
   - **The base follows this Mac's own pushes only when Dossiary Sync confirms
-    them** (dossiary-native `docs/superpowers/specs/2026-10-28-confirmed-push-base-design.md`).
+    them** (dossiary-osx `docs/superpowers/specs/2026-10-28-confirmed-push-base-design.md`).
     When a newer version turns out to be this tab's own bytes (`syncDiskIsOurs()`:
     library.sqlite hashes to the loaded or the last-written hash), `version` is
     taken over but `base` is not: the files cannot tell this Mac's push from a
