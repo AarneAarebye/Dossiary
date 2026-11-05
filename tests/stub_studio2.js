@@ -450,7 +450,8 @@ class FakePdfLibPage {
 class FakePdfLibDoc {
   constructor(pages){ this.pages = pages.map(p => new FakePdfLibPage(p)); }
   static async create(){ return new FakePdfLibDoc([]); }
-  static async load(bytes){
+  static async load(bytes, options){
+    window.__pdfLibLoadOptions = options;
     const own = window.__fakePdfLibPages(bytes);
     if(own) return new FakePdfLibDoc(own);
     const text = new TextDecoder().decode(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes);
@@ -472,9 +473,9 @@ class FakePdfLibDoc {
   setTitle(v){ (this.props = this.props || {}).title = v; }
   setSubject(v){ (this.props = this.props || {}).subject = v; }
   setKeywords(v){ (this.props = this.props || {}).keywords = v; }
-  async save(){ return new TextEncoder().encode(FAKE_PDFLIB_MAGIC + JSON.stringify({ pages: this.pages.map(p => p.info), ...(this.props ? { props: this.props } : {}) })); }
+  async save(options){ window.__pdfLibSaveOptions = options; return new TextEncoder().encode(FAKE_PDFLIB_MAGIC + JSON.stringify({ pages: this.pages.map(p => p.info), ...(this.props ? { props: this.props } : {}) })); }
 }
-window.PDFLib = { PDFDocument: FakePdfLibDoc, degrees: (angle) => ({ type: 'degrees', angle }) };
+window.PDFLib = { PDFDocument: FakePdfLibDoc, ParseSpeeds: { Fastest: 'fastest' }, degrees: (angle) => ({ type: 'degrees', angle }) };
 
 // ---- Fake pdf.js: renders a solid-color rectangle so canvas operations are real ----
 window.pdfjsLib = {

@@ -9095,14 +9095,17 @@
   async function pdfWithDetails(bytes, d){
     try{
       await ensurePdfLib();
-      const doc = await window.PDFLib.PDFDocument.load(bytes, { updateMetadata: false });
+      // No pauses between chunks of work: by default pdf-lib hands control back with a setTimeout every few dozen
+      // objects, and in a background tab (opening a document's file opens a new tab and puts this page in the
+      // background) Chrome stretches each of those to a second -- a 21-page PDF of 570 KB took 10 to 30 seconds.
+      const doc = await window.PDFLib.PDFDocument.load(bytes, { updateMetadata: false, parseSpeed: window.PDFLib.ParseSpeeds.Fastest });
       doc.setTitle(displayName(d));
       const subject = [d.category, d.subcategory, d.document_type].filter(Boolean).join(' · ');
       if(subject) doc.setSubject(subject);
       // One comma-separated string: pdf-lib joins a list with spaces, which
       // would split a tag like "weekly shop".
       if((d.tags || []).length) doc.setKeywords([d.tags.join(', ')]);
-      return await doc.save();
+      return await doc.save({ objectsPerTick: Infinity });
     }catch(e){ return null; }
   }
 

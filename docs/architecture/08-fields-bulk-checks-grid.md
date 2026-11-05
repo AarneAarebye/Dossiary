@@ -1118,6 +1118,12 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   Checked against the real pdf-lib 1.17.1 once (properties read back,
   pages and Creator/Producer kept); the suite uses the stub's fake, whose
   `save()` records the properties as `props`.
+  **No pauses while it works:** `pdfWithDetails()` loads with `parseSpeed: PDFLib.ParseSpeeds.Fastest` and saves with
+  `objectsPerTick: Infinity`. By default pdf-lib gives control back through a `setTimeout` every few dozen objects, and
+  opening a document's file (`openDocumentFile()`) opens a new tab first, which puts this page in the background, where
+  Chrome stretches every one of those pauses to a second: a 21-page, 570 KB PDF needed 33 of them, 10 to 30 seconds before
+  the tab showed anything (measured 2026-11-06; with the options it needs none and takes about 25 ms). The stub's fake records
+  the options it was given (`window.__pdfLibLoadOptions`, `__pdfLibSaveOptions`) and `test_export.py` checks them.
 - **Export as library** (`openExportLibraryModal()`, `buildExportLibraryDb()`,
   `#bulk-export-library-btn` in the bulk More menu; spec
   `docs/superpowers/specs/2026-10-15-export-as-library-design.md`) turns the

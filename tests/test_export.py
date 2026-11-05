@@ -113,6 +113,9 @@ async def main():
         props = json.loads(copied.split('\n', 1)[1]).get('props') if copied.startswith('%PDF-FAKELIB') else None
         print("By default the exported PDF carries its details:", props == {'title': 'Stadtwerke', 'subject': 'Home · Invoice', 'keywords': ['tax']})
         print("...and only the details changed, not the pages:", json.loads(copied.split('\n', 1)[1])['pages'][0]['src'] == '%PDF-1.4 doc 1')
+        opts = await page.evaluate("() => ({ load: window.__pdfLibLoadOptions, save: window.__pdfLibSaveOptions && { objectsPerTick: String(window.__pdfLibSaveOptions.objectsPerTick) } })")
+        print("Writing the details never pauses between chunks (a background tab would stretch each pause to a second):",
+              opts['load'].get('parseSpeed') == 'fastest' and opts['save'] == {'objectsPerTick': 'Infinity'})
         print("The details option is on by default:", await page.is_checked('#export-details-toggle'))
         csv = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('index.csv')).getFile()).text()")
         lines = csv.lstrip('﻿').strip().split('\r\n')
