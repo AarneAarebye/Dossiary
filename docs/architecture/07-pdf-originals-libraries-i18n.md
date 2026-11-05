@@ -413,7 +413,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   overrides it**: `loadLang()` only consults `navigator.language`/
   `navigator.languages` (checking whether any reported locale starts with
   `de`) when `localStorage.getItem('dossiary_lang')` has never been set;
-  the moment someone clicks `#lang-toggle` once, `saveLang()` writes an
+  the moment someone clicks `#lang-toggle` (now `#lang-select`) once, `saveLang()` writes an
   explicit `'en'`/`'de'` value that short-circuits the browser-locale
   check on every future load, even if the browser's own locale disagrees.
   This mirrors the general "an explicit person action beats a computed
@@ -449,7 +449,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   `rootDirHandle` alone rendered an empty document table and stats under
   that prompt on a language change and left `#sub-label` untranslated
   (found while recapturing the User Guide screenshots).
-  **A mouse click on `#lang-toggle` is already blocked by a modal's own
+  **A mouse click on `#lang-toggle` (now `#lang-select`) is already blocked by a modal's own
   backdrop while a modal is open, but keyboard Tab-through can still reach
   and activate it** (Enter/Space fires a real `click` event without any of
   the backdrop's spatial hit-testing) — and no modal's content re-renders
@@ -460,7 +460,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   `applyDynamicFieldsForType()`'s own note above documents for switching
   document types mid-edit, and there's no reliable way to tell which
   modal is open or safely rebuild it in place from `setLang()` alone. The
-  resolution is a **toggle guard, not a re-render**: `#lang-toggle`'s
+  resolution is a **toggle guard, not a re-render**: `#lang-toggle` (now `#lang-select`)'s
   click handler returns early — no language change, `saveLang()` never
   called — whenever `modalRoot.innerHTML !== ''` (the same "is a modal
   open" signal `closeModal()`'s own `modalRoot.innerHTML = ''` implies),
@@ -517,7 +517,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   wiring (Columns menu, Reports breakdown dropdown, tolerant of the
   migration-added "Payment method" dynamic column riding along
   untranslated) and the `#ocr-lang`/`#e-ocr-lang` `<option>` lists in both
-  forms; 21 confirms `#lang-toggle` is a genuine no-op while a modal is
+  forms; 21 confirms `#lang-toggle` (now `#lang-select`) is a genuine no-op while a modal is
   open (dispatched via `force=True`, since a real un-forced click already
   correctly times out against the backdrop — the same protection this fix
   doesn't touch) and works again once the modal closes; 22 sweeps the
