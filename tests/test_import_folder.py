@@ -170,7 +170,6 @@ async def main():
         await page.evaluate("() => { window.__NEXT_PICKED_DIR = window.__FOLDER; }")
         await page.click('#import-start-btn')
         await page.wait_for_timeout(300)
-        await page.check('#import-coll-none')  # the pre-filled name would clash with the first import's collection in the same minute
         await page.click('#import-run-btn')
         await page.wait_for_timeout(1000)
         summary2 = await page.inner_text('#import-summary')

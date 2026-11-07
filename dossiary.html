@@ -9680,6 +9680,13 @@
       const manual = collections.filter(c => c.kind === 'manual').sort((a, b) => a.name.localeCompare(b.name));
       const box = el('import-options');
       box.style.display = '';
+      // The pre-filled name gets " (2)", " (3)", ... when a manual collection
+      // already has it (the same folder imported twice in one minute). A name
+      // the person types is only checked, never changed.
+      const nameTaken = (n) => manual.some(c => c.name.trim().toLowerCase() === n.trim().toLowerCase());
+      const baseName = importCollectionDefaultName(about, folderName);
+      let defaultName = baseName;
+      for(let i = 2; nameTaken(defaultName); i++) defaultName = `${baseName} (${i})`;
       // Laid out like the dialogs' other forms (.field, .checkbox-label
       // radios); "Import" joins Cancel in the dialog's own button row.
       box.innerHTML = `
@@ -9695,7 +9702,7 @@
           <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-existing"${manual.length ? '' : ' disabled'}> ${escapeHtml(t('importAddExisting'))}</label>
           <select id="import-coll-select" aria-label="${escapeHtml(t('importAddExisting'))}">${manual.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
           <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-new" checked> ${escapeHtml(t('importAddNew'))}</label>
-          <input type="text" id="import-coll-name" value="${escapeHtml(importCollectionDefaultName(about, folderName))}" placeholder="${escapeHtml(t('importNewNamePlaceholder'))}" aria-label="${escapeHtml(t('importNewNamePlaceholder'))}" />
+          <input type="text" id="import-coll-name" value="${escapeHtml(defaultName)}" placeholder="${escapeHtml(t('importNewNamePlaceholder'))}" aria-label="${escapeHtml(t('importNewNamePlaceholder'))}" />
           <div class="delete-library-error" id="import-coll-warn" style="display:none;">${escapeHtml(t('importNameTaken'))}</div>
         </div>`;
       const runBtn = document.createElement('button');
@@ -9707,7 +9714,7 @@
         el('import-coll-select').disabled = m !== 'existing';
         el('import-coll-name').disabled = m !== 'new';
         const name = el('import-coll-name').value.trim();
-        const taken = m === 'new' && manual.some(c => c.name.trim().toLowerCase() === name.toLowerCase());
+        const taken = m === 'new' && nameTaken(name);
         el('import-coll-warn').style.display = taken ? '' : 'none';
         el('import-run-btn').disabled = (m === 'new' && (!name || taken)) || (m === 'existing' && !el('import-coll-select').value);
       };

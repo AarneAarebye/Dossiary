@@ -194,6 +194,37 @@ async def main():
         print("9. The dialog can be closed:", await page.is_enabled('#import-cancel-btn') and await page.is_enabled('#modal-close-btn'))
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
+        # === 10. The same folder twice at once: the pre-filled name gets " (2)" ===
+        # A fixed clock, so the minute can't change between the imports.
+        await page.clock.set_fixed_time("2026-11-08T10:15:00")
+        await make_folder(page, 'Again', {'r.pdf': '%PDF-1.4 r'}, [('r.pdf', 'Arr')])
+        await open_import(page); await pick(page)
+        first = await page.input_value('#import-coll-name')
+        await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
+        await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
+        await make_folder(page, 'Again', {'r.pdf': '%PDF-1.4 r', 'r2.pdf': '%PDF-1.4 r2'}, [('r.pdf', 'Arr'), ('r2.pdf', 'Arr two')])
+        await open_import(page); await pick(page)
+        second = await page.input_value('#import-coll-name')
+        print("10. The second panel pre-fills the name with \" (2)\":", second == first + ' (2)', repr(first), repr(second))
+        print("10. ...with no warning, Import enabled:", not await page.locator('#import-coll-warn').is_visible() and await page.is_enabled('#import-run-btn'))
+        await page.fill('#import-coll-name', first.upper())
+        print("10. A typed taken name is still refused, not renamed:", await page.is_disabled('#import-run-btn') and await page.input_value('#import-coll-name') == first.upper())
+        await page.fill('#import-coll-name', second)
+        await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
+        rows = await library(page)
+        names = [c['name'] for c in rows['collections']]
+        print("10. A second collection is created:", first in names and second in names, names)
+        c2 = [c for c in rows['collections'] if c['name'] == second]
+        print("10. ...holding both listed files (the duplicate's original too):", len(c2) == 1 and len(members(rows, c2[0]['id'])) == 2)
+        await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
+
+        # A third collection name gets " (3)".
+        await make_folder(page, 'Again', {'r3.pdf': '%PDF-1.4 r3'}, [('r3.pdf', 'Arr three')])
+        await open_import(page); await pick(page)
+        third = await page.input_value('#import-coll-name')
+        print("10. A third import in that minute pre-fills \" (3)\":", third == first + ' (3)', repr(third))
+        await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
+
         print("No page errors:", not errors, errors)
 
 asyncio.run(main())
