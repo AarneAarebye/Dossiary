@@ -9461,6 +9461,53 @@
     }
   }
 
+  // Asks where the documents of an index.csv folder should go. Resolves when
+  // "Import" is clicked; if the dialog is closed instead, it never resolves.
+  function askImportCollection(folderName, matchedCount){
+    return new Promise(resolve => {
+      const manual = collections.filter(c => c.kind === 'manual').sort((a, b) => a.name.localeCompare(b.name));
+      const box = el('import-options');
+      box.style.display = '';
+      // Laid out like the dialogs' other forms (.field, .checkbox-label
+      // radios); "Import" joins Cancel in the dialog's own button row.
+      box.innerHTML = `
+        <p>${escapeHtml(t('importIndexFound', {count: matchedCount}))}</p>
+        <div class="field" role="radiogroup" aria-labelledby="import-coll-label">
+          <label id="import-coll-label">${escapeHtml(t('importAddLabel'))}</label>
+          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-none" checked> ${escapeHtml(t('importAddNone'))}</label>
+          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-existing"${manual.length ? '' : ' disabled'}> ${escapeHtml(t('importAddExisting'))}</label>
+          <select id="import-coll-select" aria-label="${escapeHtml(t('importAddExisting'))}">${manual.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
+          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-new"> ${escapeHtml(t('importAddNew'))}</label>
+          <input type="text" id="import-coll-name" value="${escapeHtml(folderName)}" placeholder="${escapeHtml(t('importNewNamePlaceholder'))}" aria-label="${escapeHtml(t('importNewNamePlaceholder'))}" />
+          <div class="delete-library-error" id="import-coll-warn" style="display:none;">${escapeHtml(t('importNameTaken'))}</div>
+        </div>`;
+      const runBtn = document.createElement('button');
+      runBtn.className = 'primary'; runBtn.id = 'import-run-btn'; runBtn.textContent = t('importRunBtn');
+      el('import-cancel-btn').before(runBtn);
+      const mode = () => el('import-coll-new').checked ? 'new' : el('import-coll-existing').checked ? 'existing' : 'none';
+      const update = () => {
+        const m = mode();
+        el('import-coll-select').disabled = m !== 'existing';
+        el('import-coll-name').disabled = m !== 'new';
+        const name = el('import-coll-name').value.trim();
+        const taken = m === 'new' && manual.some(c => c.name.trim().toLowerCase() === name.toLowerCase());
+        el('import-coll-warn').style.display = taken ? '' : 'none';
+        el('import-run-btn').disabled = (m === 'new' && (!name || taken)) || (m === 'existing' && !el('import-coll-select').value);
+      };
+      box.addEventListener('input', update);
+      box.addEventListener('change', update);
+      update();
+      runBtn.addEventListener('click', () => {
+        const m = mode();
+        box.style.display = 'none';
+        runBtn.remove();
+        if(m === 'existing') resolve({ mode: 'existing', id: Number(el('import-coll-select').value) });
+        else if(m === 'new') resolve({ mode: 'new', name: el('import-coll-name').value.trim() });
+        else resolve({ mode: 'none' });
+      });
+    });
+  }
+
   async function openImportModal(){
     if(!await ensureCurrentVersion()) return; // synced library: reload first if a newer version is on disk
     modalRoot.innerHTML = `
@@ -9471,6 +9518,7 @@
           <p>${t('importIntro')}</p>
           <p class="doc-sub folder-picker-hint">${t('folderPickerHint')}</p>
           <div class="status" id="import-status"></div>
+          <div id="import-options" style="display:none;"></div>
           <ul id="import-summary" style="display:none;"></ul>
           <ul id="import-failed-list" style="display:none;"></ul>
           <div class="modal-actions">
@@ -9514,6 +9562,11 @@
         try{ index = readImportIndex(await (await indexHandle.getFile()).text()); if(!index) indexError = t('importIndexNoFileColumn'); }
         catch(e){ indexError = e.message; }
       }
+      let choice = null;
+      if(index){
+        el('import-start-btn').style.display = 'none';
+        choice = await askImportCollection(src.name, files.filter(f => index.has(f.name.toLowerCase())).length);
+      }
 
       const startBtn = el('import-start-btn'), cancelBtn = el('import-cancel-btn');
       startBtn.disabled = cancelBtn.disabled = el('modal-close-btn').disabled = true;
@@ -9526,6 +9579,7 @@
       const matched = new Set();
       let added = 0, withDetails = 0, skipped = 0;
       const failed = [];
+      const memberIds = [];
       // Saves once per file: one person's flow for its whole length.
       const holdMark = beginPersonFlowHold();
       let keptFolders = [];
@@ -9538,9 +9592,13 @@
           try{
             const file = await handle.getFile();
             const result = await createReviewDocumentFromFile(file, 'folder-import', rec ? (d) => applyImportedDetails(d, rec, newTypes) : null);
-            if(result.skippedDuplicate){ skipped++; continue; }
+            if(result.skippedDuplicate){
+              skipped++;
+              if(rec && result.duplicateOfId != null) memberIds.push(result.duplicateOfId);
+              continue;
+            }
             added++;
-            if(rec) withDetails++;
+            if(rec){ withDetails++; memberIds.push(result.id); }
           }catch(e){ failed.push({ name, error: e.message }); }
         }
       }finally{
@@ -9558,9 +9616,17 @@
       if(skipped) lines.push(t('importCountDuplicates', {count: skipped}));
       if(failed.length) lines.push(t('importCountFailed', {count: failed.length}));
       if(unmatched) lines.push(t('importCountUnmatched', {count: unmatched}));
+      let collectionFailed = false;
+      if(choice && choice.mode !== 'none' && memberIds.length){
+        const cid = choice.mode === 'existing' ? choice.id : await createManualCollection(choice.name);
+        const ok = cid != null && await addDocumentsToCollection(cid, memberIds);
+        const c = ok ? collections.find(x => x.id === cid) : null;
+        if(c) lines.push(t('importCountCollection', {name: c.name, count: memberIds.length}));
+        else{ collectionFailed = true; lines.push(t('importCollectionFailed')); }
+      }
       if(keptFolders.length) lines.push(t('syncFlowKeptAside', { device: syncLastOtherDevice || t('syncAnotherDevice'), folder: keptFolders.join(', ') }));
       announceFlowKeptAside(keptFolders);
-      statusEl.className = 'status ' + (failed.length || indexError || keptFolders.length ? 'err' : 'ok');
+      statusEl.className = 'status ' + (failed.length || indexError || keptFolders.length || collectionFailed ? 'err' : 'ok');
       statusEl.textContent = t('importDone', {folder: src.name}) + (indexError ? ' ' + t('importIndexUnreadable', {error: indexError}) : '');
       const summary = el('import-summary');
       summary.style.display = '';
@@ -15271,7 +15337,7 @@
       const duplicateMatch = allDocs.find(d => !d.deleted && d.file_hash === fileHashForDb);
       if(duplicateMatch){
         // No id is reserved yet, and no file was ever written.
-        return { id: null, title: null, skippedDuplicate: true };
+        return { id: null, title: null, skippedDuplicate: true, duplicateOfId: duplicateMatch.id };
       }
       // Reserved only now, right before the first file named by it.
       res = await reserveDocId();

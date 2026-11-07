@@ -124,6 +124,10 @@ async def main():
         # === Scenario 2: importing the exported folder ===
         await page.evaluate("() => { window.__NEXT_PICKED_DIR = window.__FOLDER; }")
         await page.click('#import-start-btn')
+        await page.wait_for_timeout(300)
+        # The folder has an index.csv, so the collection options wait for "Import".
+        print("The folder's index.csv brings up the collection options:", await page.locator('#import-options').is_visible())
+        await page.click('#import-run-btn')
         await page.wait_for_timeout(1200)
         summary = await page.inner_text('#import-summary')
         print("Summary: 3 added, 2 with details, 1 for review:", 'Added: 3' in summary and 'With details from index.csv: 2' in summary and 'In the Inbox for review: 1' in summary, repr(summary))
@@ -162,6 +166,8 @@ async def main():
         await page.wait_for_timeout(200)
         await page.evaluate("() => { window.__NEXT_PICKED_DIR = window.__FOLDER; }")
         await page.click('#import-start-btn')
+        await page.wait_for_timeout(300)
+        await page.click('#import-run-btn')
         await page.wait_for_timeout(1000)
         summary2 = await page.inner_text('#import-summary')
         print("A second import skips files already in the library:", 'Added: 0' in summary2 and 'Already in the library, skipped: 3' in summary2, repr(summary2))
