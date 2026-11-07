@@ -51,6 +51,16 @@ async def main():
         await page.add_init_script(open('stub_studio2.js').read())
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
+        # Scenario 9 makes saving collection links fail. The app binds db.run
+        # when a library opens (trackDbChanges), so the switch goes in first.
+        await page.evaluate("""async () => {
+            const proto = (await window.initSqlJs()).Database.prototype;
+            const run = proto.run;
+            proto.run = function(sql, params){
+                if(window.__FAIL_COLLECTION_LINKS && /INTO collection_documents/.test(sql)) throw new Error('disk full');
+                return run.call(this, sql, params);
+            };
+        }""")
         await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot({documents: [], fields: []});")
         await page.click("#open-btn"); await page.wait_for_timeout(500)
         await page.click('#tools-btn')
@@ -119,6 +129,7 @@ async def main():
         # === 5. A taken name (ignoring case) disables Import ===
         await make_folder(page, 'Other', {'h.pdf': '%PDF-1.4 h'}, [('h.pdf', 'Aitch')])
         await open_import(page); await pick(page)
+        print("5. One listed file is worded in the singular:", '1 file in this folder is listed in index.csv.' in await page.inner_text('#import-options'))
         await page.check('#import-coll-new')
         await page.fill('#import-coll-name', 'taxes 2025')
         print("5. A taken name disables Import:", await page.is_disabled('#import-run-btn'))
@@ -145,6 +156,34 @@ async def main():
         print("6. The file is imported:", 'Added: 1' in summary, repr(summary))
         print("6. No collection Ghost:", 'Ghost' not in [c['name'] for c in rows['collections']])
         print("6. ...and no collection line:", 'Added to the collection' not in summary)
+        await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
+
+        # === 8. Two identical files with rows: one document, counted once ===
+        await make_folder(page, 'Twins', {'x1.pdf': '%PDF-1.4 twin', 'x2.pdf': '%PDF-1.4 twin'}, [('x1.pdf', 'Twin one'), ('x2.pdf', 'Twin two')])
+        await open_import(page); await pick(page)
+        await page.check('#import-coll-new')
+        await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
+        rows = await library(page)
+        summary = await page.inner_text('#import-summary')
+        twins = [c for c in rows['collections'] if c['name'] == 'Twins']
+        print("8. The second twin is skipped as a duplicate of the first:", 'Added: 1' in summary and 'Already in the library, skipped: 1' in summary, repr(summary))
+        print("8. The collection holds the one document:", len(twins) == 1 and len(members(rows, twins[0]['id'])) == 1)
+        print("8. ...and the summary counts it once:", 'Added to the collection “Twins”: 1' in summary, repr(summary))
+        await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
+
+        # === 9. Saving the collection throws: the import still ends, in red ===
+        await page.evaluate("() => { window.__FAIL_COLLECTION_LINKS = true; }")
+        await make_folder(page, 'Broken', {'k.pdf': '%PDF-1.4 k'}, [('k.pdf', 'Kay')])
+        await open_import(page); await pick(page)
+        await page.check('#import-coll-new')
+        await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
+        await page.evaluate("() => { window.__FAIL_COLLECTION_LINKS = false; }")
+        summary = await page.inner_text('#import-summary')
+        status_class = await page.get_attribute('#import-status', 'class')
+        print("9. The document is still imported:", 'Added: 1' in summary, repr(summary))
+        print("9. The summary says the collection could not be saved:", 'the collection could not be saved' in summary)
+        print("9. ...with the status in the error colour, not left busy:", 'err' in status_class and 'busy' not in status_class, status_class)
+        print("9. The dialog can be closed:", await page.is_enabled('#import-cancel-btn') and await page.is_enabled('#modal-close-btn'))
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
         print("No page errors:", not errors, errors)
