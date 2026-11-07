@@ -325,6 +325,17 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   reference, not a real structured-clone round-trip) since a real
   browser's IndexedDB would silently strip our fake `FileSystemDirectoryHandle`
   class down to a plain data object, unlike what happens to a *real* handle.
+- **Library details in Recent libraries.** Each `recentLibraries` entry also
+  caches the library's `title` and `description`, so the list can show them
+  without opening the library; `updateRecentLibraryDetails()` refreshes the
+  cache when `saveLibraryDetails()` succeeds or a library opens. The ✎
+  pencil on an entry reconnects that library (permission click) and, only if
+  `proceedWithRootDirHandle()` returns `true` (it now returns `true`/`false`
+  for opened/not opened), runs `opts.afterOpen`, which opens the Library
+  details dialog. `saveLibraryDetails()` changes in-memory state, the header
+  (`libraryHeaderName()`) and the cache only after the settings were
+  persisted; on a failed write it shows "Save failed" and leaves everything
+  as it was. Tested via `tests/test_library_details.py`.
 - **UI language support (started as English/German, later generalized to
   seven languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional, Armenian)** is a flat per-language dictionary (`STRINGS.en` /

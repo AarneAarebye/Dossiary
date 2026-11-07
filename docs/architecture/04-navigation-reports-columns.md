@@ -544,8 +544,8 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   keep it that way so the preference travels with the library folder.
 - **The "🛠 Tools" toolbar dropdown** (`#tools-btn`, `#tools-menu`,
   `.tools-menu-item`, `toggleToolbarMenu()`) holds the occasional-use
-  actions -- Manage fields, Manage collections, Library check, and Storage
-  stats -- so the toolbar itself
+  actions -- Manage fields, Manage collections, Library details, Library check, and
+  Storage stats -- so the toolbar itself
   keeps only daily ones (Check inbox, Check reminders, Scan,
   Add document, Details, Columns). Moved there on request, and it also
   eases the recurring toolbar-wrap/`.table-wrap` calibration problem (see
