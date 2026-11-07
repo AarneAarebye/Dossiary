@@ -13,7 +13,7 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-**Test coverage narrative.** The per-feature account of what the 112 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
+**Test coverage narrative.** The per-feature account of what the 113 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
 
 - [`coverage/01-capture-ocr-fields-inbox-nav.md`](coverage/01-capture-ocr-fields-inbox-nav.md): Capture, OCR, previews, custom fields, inbox, navigation and libraries (lines 16-446 of the old file).
 - [`coverage/02-detail-reminders-bulk-duplicates.md`](coverage/02-detail-reminders-bulk-duplicates.md): Detail panel, reminders, bulk edit, duplicate detection and broken links (lines 447-765 of the old file).
@@ -129,9 +129,23 @@ never by file name. This list maps each of them to what it checks:
     Settings; Amount gets no Column checkbox, Currency does.
   - `test_import_collection.py` -- "Import a folder or earlier export": the
     new titles, and the collection step for a folder with an `index.csv`
-    (none, new or existing manual collection; only listed files; a skipped
-    duplicate with a row added; no empty collection; failure kept in the
-    summary).
+    (the choice starting on "A new collection" named after the folder with
+    date and time, made unique if taken; none, new or existing manual
+    collection; only listed files; a skipped duplicate with a row added; no
+    empty collection; failure kept in the summary).
+  - `test_export_details.py` -- the export dialog's Title and Description:
+    prefilled from the library's own, the 60/300 limits and hint, both
+    disabled with the index off (no details file), empty texts writing no
+    `export-details.json`, edited texts cleaned and written as
+    `{"format": 1, ...}` with the library's settings unchanged, an existing
+    `index.csv` (numbered) writing none, a 100-character title cut to 60, a
+    document named `export-details` numbered while the details file keeps
+    its name; and the import side: a real export round-tripped showing
+    "About this export" (title as text, not HTML), the new collection
+    named after the title and holding exactly the exported files, a bad,
+    non-string or empty details file ignored, a folder without `index.csv`
+    importing at once with the json never a document, a description alone,
+    the folder name as fallback, and over-long texts cut; no page errors.
   - `test_library_details.py` -- Library details: the Tools entry and
     dialog (empty fields, folder-name hint, maxlength, Cancel/Escape); title
     and description saved in `settings` and shown in the header (description

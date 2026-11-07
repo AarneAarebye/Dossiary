@@ -1103,7 +1103,17 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   `isInsideLibrary()` (`isSameEntry()` / `resolve()`) refuses the library
   folder or anything in it, so an export can't turn into untracked files
   under `files/`. A document whose file can't be read is listed, not fatal.
-  Emailing (Mariner's other export) isn't possible from a browser: a
+  **Title and description** (`#export-title`, `#export-description`,
+  prefilled from `libraryTitle`/`libraryDescription`, limits
+  `LIBRARY_TITLE_MAX`/`LIBRARY_DESCRIPTION_MAX` = 60/300, cleaned with
+  `cleanLibraryText()`; both disabled while `#export-index-toggle` is off):
+  after `index.csv` is written, and only if it got exactly the name
+  `index.csv` (not numbered because one already existed) and at least one
+  text is non-empty, `export-details.json` (`EXPORT_DETAILS_FILE`) is
+  written beside it as `{"format": 1, "title", "description"}`, overwriting
+  an existing one. `taken` reserves that name up front, so an exported
+  document that would be called `export-details.json` is numbered. The
+  library's own settings are never changed. Emailing (Mariner's other export) isn't possible from a browser: a
   `mailto:` link can't carry attachments. **Details in exported PDFs**
   (`pdfWithDetails()`, `#export-details-toggle`, on by default): each
   exported PDF copy gets Title (`displayName()`), Subject (category,
@@ -1177,7 +1187,10 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   not walked) goes through `createReviewDocumentFromFile(file,
   'folder-import', beforeSave)` -- the Inbox/drag-and-drop path, so exact
   duplicates are skipped and counted, and the folder is only ever read.
-  `isInsideLibrary()` refuses the library or anything in it. **With an
+  `isInsideLibrary()` refuses the library or anything in it. A file named
+  `export-details.json` (any case) is never a document: the scan skips it
+  like `index.csv`, whether or not the index is usable, so a folder holding
+  only those two reports "no files". **With an
   `index.csv`** (Export's, in any UI language: the separator is whichever of
   `;`/`,` the header uses more, and headers are matched against every
   language's `STRINGS` value for the column's key, `IMPORT_CSV_COLUMNS`),
@@ -1197,7 +1210,21 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   details, for review, duplicates, failed, index rows without a file).
   **Collection step** (only with an `index.csv`): `askImportCollection()`
   asks, before the run starts, for no collection, a new manual collection
-  or an existing manual one (smart collections are not offered). During
+  or an existing manual one (smart collections are not offered); **the
+  choice starts on "A new collection"** (it was "No collection" in 1.59.0).
+  Its name is `importCollectionDefaultName(about, folderName)`: `{export
+  title, else folder name} · YYYY-MM-DD HH:MM` in local time, made unique
+  against the manual collections with " (2)", " (3)" if taken (the same
+  folder imported twice in one minute); a name the person types is only
+  checked, never changed. **Export details**: `readExportDetails()` reads
+  `export-details.json` only when a usable `index.csv` is present; it never
+  throws and returns `{title, description}` (cleaned and cut to 60/300) or
+  `null` for bad JSON, a non-object, or no non-empty text. Values that are
+  not strings are ignored (`format` is not checked). When it returns
+  something, `askImportCollection()` shows an "About this export" block
+  (title, description, escaped text) above the choice. **Known cost:**
+  Dossiary versions before 1.61.0 don't know the file and import it into
+  the Inbox as a document. During
   the run every file with a row pushes its document id onto `memberIds`;
   a skipped duplicate that has a row pushes `duplicateOfId` (returned by
   `createReviewDocumentFromFile()` on the duplicate result) instead. After

@@ -284,7 +284,12 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Stichwörter), sichtbar in Finders „Informationen“ oder einem PDF-Reader;
   das lässt sich abschalten, und ein PDF, das sich nicht öffnen lässt,
   wird unverändert kopiert. In der Bibliothek ändert sich nichts — nur die
-  Kopien bekommen die Angaben.
+  Kopien bekommen die Angaben. Der Dialog hat außerdem einen optionalen
+  **Titel** und eine **Beschreibung** für den Export (vorbelegt mit denen der
+  Bibliothek, nur für diesen Export änderbar, höchstens 60 bzw. 300 Zeichen).
+  Mit der `index.csv` werden sie als `export-details.json` daneben
+  gespeichert und beim Import des Ordners angezeigt; sind beide leer, wird
+  keine solche Datei geschrieben.
 - **Als Bibliothek exportieren** — Dokumente auswählen und **Mehr ▾ → Als
   Bibliothek exportieren…** wählen: Daraus entsteht eine neue
   `<Name>.dossiary`-Bibliothek, die sich sofort öffnen lässt — zum
@@ -316,7 +321,14 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Dokumente außerdem zu einer neuen oder bestehenden Sammlung hinzufügen;
   es werden nur die in der `index.csv` aufgeführten Dateien hinzugefügt (ein
   übersprungenes Duplikat mit Zeile ebenfalls). Intelligente Sammlungen
-  werden nicht angeboten.
+  werden nicht angeboten. Die Auswahl beginnt bei **Eine neue Sammlung**,
+  benannt nach dem Titel des Exports (oder dem Ordnernamen) mit Datum und
+  Uhrzeit, z. B. `Birgits Papiere · 2026-11-07 14:32` — änderbar, oder wählen
+  Sie **Keine Sammlung**. Liegt im Ordner auch die `export-details.json`, die
+  ein Export schreibt, zeigt der Dialog deren Titel und Beschreibung unter
+  „Über diesen Export“; die Datei selbst wird nie als Dokument importiert.
+  Dossiary-Versionen vor 1.61.0 kennen diese Datei nicht und würden sie als
+  Dokument in den Posteingang legen.
 - **Teilen** — **Teilen…** (im Detailbereich eines Dokuments oder unter
   Mehr ▾ für eine Auswahl) übergibt die Dateien an das Teilen-Menü des
   Systems — Mail, Nachrichten, AirDrop oder jede andere App, die es

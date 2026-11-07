@@ -243,7 +243,11 @@ working" problem that motivated this project in the first place.
   and type, tags as keywords), so they show in Finder's Get Info or a PDF
   reader; this can be switched off, and a PDF that can't be opened is
   copied unchanged. Nothing in the library changes — only the copies get
-  the details.
+  the details. The dialog also has an optional **Title** and **Description**
+  for the export (prefilled from the library's own, changeable for this
+  export only, up to 60 and 300 characters). With the `index.csv` they are
+  saved as an `export-details.json` beside it, and shown when the folder is
+  imported; leave both empty and no such file is written.
 - **Export as library** — select documents and choose **More ▾ → Export as
   library…** to make a new, ready-to-open `<Name>.dossiary` library from
   them: to hand documents to someone, or to split a library. **Copy** leaves
@@ -271,7 +275,13 @@ working" problem that motivated this project in the first place.
   `index.csv`, you can also add the imported documents to a new or an
   existing collection; only the files listed in `index.csv` are added (a
   skipped duplicate that has a row is added too). Smart collections are not
-  offered.
+  offered. The choice starts on **A new collection**, named after the
+  export's title (or the folder's name) plus the date and time, e.g.
+  `Birgit's papers · 2026-11-07 14:32` — change it, or pick **No collection**.
+  If the folder also has the `export-details.json` an export writes, the
+  dialog shows its title and description under "About this export"; the
+  file itself is never imported as a document. Dossiary versions before 1.61.0
+  don't know this file and would add it to the Inbox as a document.
 - **Share** — **Share…** (in a document's panel, or More ▾ for a selection)
   hands the files to your system's share sheet — Mail, Messages, AirDrop or
   any other app that offers it — named like exported copies and, for PDFs,
