@@ -108,7 +108,7 @@ async def main():
         print("unused type with fields: button shown:", await remove_btn_count(page) == 1)
         print("button text:", (await page.locator('#fs-remove-setup-btn').inner_text()).strip() == 'Remove field setup')
         hint = (await page.locator('#fs-type-actions .field-hint').inner_text()).strip()
-        print("hint text:", hint == 'Only for a type no document uses. Fields and values are kept.')
+        print("hint text:", hint == 'Only available for a document type with no documents. Fields and values are kept.')
 
         # === Scenario 2: pressing it removes the setup, nothing else ===
         await page.click('#fs-remove-setup-btn')
