@@ -131,7 +131,16 @@ Strings (translate the same meaning in the other six languages, matching each bl
         ${about.description ? `<p>${escapeHtml(about.description)}</p>` : ''}
       </div>` : ''}
 ```
-    and use `(about && about.title) || folderName` as the new collection's pre-filled name.
+    and make "A new collection" the default choice (`#import-coll-new` checked, `#import-coll-name` enabled, the dropdown disabled, the run button's enabled state computed by the existing `update()`), with the name from a new helper:
+```js
+  // "{export title or folder name} · 2026-11-07 14:32", local time.
+  function importCollectionDefaultName(about, folderName, now = new Date()){
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`;
+    return `${(about && about.title) || folderName} · ${stamp}`;
+  }
+```
+    Only files listed in `index.csv` join the collection (the existing `memberIds` rule): do not change it. Update `tests/test_import_collection.py`: its scenario 2 asserted `#import-coll-none` as the default; it must now expect `#import-coll-new` checked with the date-stamped name, and the run in that scenario must click "No collection" first where it expects no collection to be created. Check every other scenario there for the same assumption.
 - [ ] **Step 4:** Run `/usr/local/bin/python3 test_export_details.py`, `test_import_folder.py`, `test_import_collection.py`, `test_i18n_coverage.py`. Expected: pass, no page errors. Screenshot the import panel with and without the block at 1440 and 390 px.
 - [ ] **Step 5: Commit.** `git add dossiary.html tests && git commit -m "feat: show an export's title and description when importing it"`
 

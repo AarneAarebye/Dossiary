@@ -35,9 +35,11 @@ An export is a folder of files plus `index.csv`. Nothing in it says what the exp
 - `export-details.json` is read in the same folder scan as `index.csv` and never imported as a document (it is skipped from the file list, like `index.csv`), also when there is no `index.csv`.
 - With a readable `index.csv` and a details file with at least one non-empty text, the options panel starts with an "About this export" block: the title in bold, the description under it, both as plain text (escaped).
 - No `index.csv`, an unreadable `index.csv`, a missing, empty or malformed details file: no block, no error, nothing else changes.
-- "A new collection" pre-fills its name with the export's title when there is one, otherwise with the folder name as today. (Small and natural; say if it should be dropped.)
+- **A collection for the batch is now the default.** The collection choice starts on "A new collection" (it started on "No collection" in 1.59.0), with the name pre-filled as `{export title, or the folder name} · {YYYY-MM-DD HH:MM}` in local time, e.g. `Birgit’s papers · 2026-11-07 14:32`. The name stays editable, and "No collection" and "An existing collection" are one click away. Only the files listed in `index.csv` join (added documents and the existing documents behind skipped duplicates); files without a row go to the Inbox and are not added. No collection is created when nothing qualifies. The existing name-taken rule applies to the pre-filled name (the minute in the name makes a clash unlikely; if it happens the note shows and the person edits the name).
 
 ## Code changes
+
+- `askImportCollection()`: default choice `new`, name via a small helper `importCollectionDefaultName(about, folderName, now)`; the existing radio/validation logic is unchanged.
 
 - `openExportModal()`: the fields, the disabled logic, reading them at start, writing the file after `index.csv`.
 - New `readExportDetails(dirHandle)`-style helper used by the import (returns `{title, description}` or `null`), `cleanLibraryText()` reused.
