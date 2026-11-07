@@ -132,10 +132,16 @@ never by file name. This list maps each of them to what it checks:
     (none, new or existing manual collection; only listed files; a skipped
     duplicate with a row added; no empty collection; failure kept in the
     summary).
-  - `test_library_details.py` -- Library details: title and description
-    saved in the library from Tools, shown in the header (description as
-    tooltip) and in the Recent libraries rows (a pencil per entry), an
-    empty title falling back to the folder name, length limits.
+  - `test_library_details.py` -- Library details: the Tools entry and
+    dialog (empty fields, folder-name hint, maxlength, Cancel/Escape); title
+    and description saved in `settings` and shown in the header (description
+    as tooltip); whitespace collapse, the 60/300 limits, a blank title
+    falling back to the folder name; seeded details at open; no stale title
+    after switching library; Recent libraries rows (title, description line,
+    "{folder} · Last opened"); the pencil reconnecting once and then opening
+    the dialog; a failed save changing nothing; a save updating the entry
+    without touching `lastOpenedAt`; a denied reconnect or a non-library
+    folder opening no dialog; the German Tools entry.
   - `test_import_date_column.py` -- the Imported column: visible by
     default, in the Columns menu, toggled off and on, showing a real date.
   - `test_sticky_header.py` -- with many rows, the table header stays at
