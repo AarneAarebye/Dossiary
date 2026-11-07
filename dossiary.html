@@ -274,6 +274,8 @@
   .fs-list-item:hover{ background:rgba(79,224,166,0.06); }
   .fs-list-item.active{ background:rgba(79,224,166,0.12); color:var(--phosphor); }
   .fs-list-empty{ padding:14px 10px; font-size:11.5px; color:var(--text-dim); font-family:var(--font-mono); }
+  .fs-type-actions{ margin-top:8px; }
+  .fs-type-actions .field-hint{ margin-top:4px; }
   .reminder-row{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
     padding:10px 12px; border-bottom:1px solid rgba(217,210,189,0.06); cursor:pointer;
@@ -1365,6 +1367,7 @@
       fieldSettingsAllFieldsShown: 'All fields are already shown for this type.',
       fieldSettingsMoveUpTitle: 'Move up', fieldSettingsMoveDownTitle: 'Move down', fieldSettingsRemoveTitle: 'Remove',
       fieldSettingsNoFieldsShown: 'No fields shown for this type yet — add some from the left.',
+      fieldSettingsRemoveSetupBtn: 'Remove field setup', fieldSettingsRemoveSetupHint: 'Only for a type no document uses. Fields and values are kept.',
       collectionsTitle: 'Manage collections', collectionsNewNamePlaceholder: 'New collection name',
       collectionsNewButton: '+ New collection',
       reportsNone: '(none)', reportsNoCurrencySet: 'No currency set',
@@ -1599,6 +1602,7 @@
       fieldSettingsAllFieldsShown: 'Ya se muestran todos los campos para este tipo.',
       fieldSettingsMoveUpTitle: 'Mover arriba', fieldSettingsMoveDownTitle: 'Mover abajo', fieldSettingsRemoveTitle: 'Quitar',
       fieldSettingsNoFieldsShown: 'Aún no se muestra ningún campo para este tipo — añade alguno desde la izquierda.',
+      fieldSettingsRemoveSetupBtn: 'Quitar configuración de campos', fieldSettingsRemoveSetupHint: 'Solo para un tipo que ningún documento usa. Los campos y sus valores se conservan.',
       collectionsTitle: 'Administrar colecciones', collectionsNewNamePlaceholder: 'Nombre de la nueva colección',
       collectionsNewButton: '+ Nueva colección',
       reportsNone: '(ninguno)', reportsNoCurrencySet: 'Sin moneda establecida',
@@ -1833,6 +1837,7 @@
       fieldSettingsAllFieldsShown: 'Tous les champs sont déjà affichés pour ce type.',
       fieldSettingsMoveUpTitle: 'Monter', fieldSettingsMoveDownTitle: 'Descendre', fieldSettingsRemoveTitle: 'Retirer',
       fieldSettingsNoFieldsShown: "Aucun champ n'est encore affiché pour ce type — ajoutez-en un depuis la gauche.",
+      fieldSettingsRemoveSetupBtn: 'Retirer la configuration des champs', fieldSettingsRemoveSetupHint: "Uniquement pour un type qu'aucun document n'utilise. Les champs et leurs valeurs sont conservés.",
       collectionsTitle: 'Gérer les collections', collectionsNewNamePlaceholder: 'Nom de la nouvelle collection',
       collectionsNewButton: '+ Nouvelle collection',
       reportsNone: '(aucun)', reportsNoCurrencySet: 'Aucune devise définie',
@@ -2067,6 +2072,7 @@
       fieldSettingsAllFieldsShown: 'Für diesen Typ werden bereits alle Felder angezeigt.',
       fieldSettingsMoveUpTitle: 'Nach oben', fieldSettingsMoveDownTitle: 'Nach unten', fieldSettingsRemoveTitle: 'Entfernen',
       fieldSettingsNoFieldsShown: 'Für diesen Typ werden noch keine Felder angezeigt — füge links welche hinzu.',
+      fieldSettingsRemoveSetupBtn: 'Feldeinrichtung entfernen', fieldSettingsRemoveSetupHint: 'Nur für einen Typ, den kein Dokument verwendet. Felder und Werte bleiben erhalten.',
       collectionsTitle: 'Sammlungen verwalten', collectionsNewNamePlaceholder: 'Neuer Sammlungsname',
       collectionsNewButton: '+ Neue Sammlung',
       reportsNone: '(keine)', reportsNoCurrencySet: 'Keine Währung angegeben',
@@ -2301,6 +2307,7 @@
       fieldSettingsAllFieldsShown: '此类型的所有字段均已显示。',
       fieldSettingsMoveUpTitle: '上移', fieldSettingsMoveDownTitle: '下移', fieldSettingsRemoveTitle: '移除',
       fieldSettingsNoFieldsShown: '此类型尚未显示任何字段——请从左侧添加。',
+      fieldSettingsRemoveSetupBtn: '移除字段设置', fieldSettingsRemoveSetupHint: '仅适用于没有文档使用的类型。字段及其值会保留。',
       collectionsTitle: '管理收藏集', collectionsNewNamePlaceholder: '新收藏集名称',
       collectionsNewButton: '+ 新建收藏集',
       reportsNone: '（无）', reportsNoCurrencySet: '未设置货币',
@@ -2651,6 +2658,7 @@
       fieldSettingsMoveDownTitle: '下移',
       fieldSettingsRemoveTitle: '移除',
       fieldSettingsNoFieldsShown: '此類型尚未顯示任何字段——請從左側添加。',
+      fieldSettingsRemoveSetupBtn: '移除字段設置', fieldSettingsRemoveSetupHint: '僅適用於沒有文檔使用的類型。字段及其值會保留。',
       collectionsTitle: '管理收藏集',
       collectionsNewNamePlaceholder: '新收藏集名稱',
       collectionsNewButton: '+ 新建收藏集',
@@ -3340,6 +3348,7 @@
       fieldSettingsMoveDownTitle: "Տեղափոխել վար",
       fieldSettingsRemoveTitle: "Հեռացնել",
       fieldSettingsNoFieldsShown: "Այս տեսակի համար դեռ դաշտեր չեն ցուցադրվում — ավելացրեք ձախից։",
+      fieldSettingsRemoveSetupBtn: "Հեռացնել դաշտերի կարգավորումը", fieldSettingsRemoveSetupHint: "Միայն այն տեսակի համար, որը ոչ մի փաստաթուղթ չի օգտագործում։ Դաշտերն ու արժեքները պահպանվում են։",
       collectionsTitle: "Կառավարել հավաքածուները",
       collectionsNewNamePlaceholder: "Նոր հավաքածուի անունը",
       collectionsNewButton: "+ Նոր հավաքածու",
@@ -12540,6 +12549,7 @@
             <div class="fs-col">
               <h3>${t('fieldSettingsColDocTypes')}</h3>
               <div class="fs-list" id="fs-type-list"></div>
+              <div class="fs-type-actions" id="fs-type-actions"></div>
             </div>
             <div class="fs-col">
               <h3>${t('fieldSettingsColFields')}</h3>
@@ -12689,7 +12699,34 @@
     });
   }
 
+  // True when a document (Waste bin ones included, so a restore still finds
+  // its type's setup) has this type, compared trimmed like the Library check.
+  function documentTypeInUse(typeName){
+    const name = (typeName || '').trim();
+    return allDocs.some(d => (d.document_type || '').trim() === name);
+  }
+
+  // "Remove field setup" under the type list: only for the selected type when
+  // no document uses it and it has at least one configured field. Removing a
+  // type's last field no longer leaves an empty key behind (see
+  // removeFieldFromType()), so this is the only way such a type's setup goes.
+  function renderFieldSettingsTypeActions(){
+    const actionsEl = el('fs-type-actions');
+    if(!actionsEl) return;
+    const type = fsSelectedType;
+    if(!type || !(typeFieldOrder[type] || []).length || documentTypeInUse(type)){
+      actionsEl.innerHTML = '';
+      return;
+    }
+    actionsEl.innerHTML = `
+      <button type="button" id="fs-remove-setup-btn">${t('fieldSettingsRemoveSetupBtn')}</button>
+      <div class="field-hint">${t('fieldSettingsRemoveSetupHint')}</div>
+    `;
+    el('fs-remove-setup-btn').addEventListener('click', () => removeTypeFieldSetup(type));
+  }
+
   function renderFieldSettingsFieldColumns(){
+    renderFieldSettingsTypeActions();
     const availableEl = el('fs-available-list');
     const displayEl = el('fs-display-list');
     if(!fsSelectedType){
@@ -12803,10 +12840,35 @@
   }
 
   async function removeFieldFromType(fieldName){
-    const entries = (typeFieldOrder[fsSelectedType] || []).filter(e => e.field !== fieldName);
+    const type = fsSelectedType;
+    const entries = (typeFieldOrder[type] || []).filter(e => e.field !== fieldName);
     entries.forEach((e, i) => e.position = i);
-    typeFieldOrder[fsSelectedType] = entries;
-    await persistTypeFieldOrder(fsSelectedType);
+    // The last field of a type no document uses: drop the empty key too, so the
+    // type leaves the list now rather than at the next reload. A type typed into
+    // the form that opened this dialog (fsExtraType) stays listed and selected,
+    // since fieldSettingsTypes() adds it regardless of typeFieldOrder.
+    const dropType = !entries.length && !documentTypeInUse(type);
+    if(dropType) delete typeFieldOrder[type];
+    else typeFieldOrder[type] = entries;
+    await persistTypeFieldOrder(type);
+    if(dropType){
+      if(type !== fsExtraType) fsSelectedType = null;
+      renderFieldSettingsTypeList();
+    }
+    renderFieldSettingsFieldColumns();
+  }
+
+  // "Remove field setup": forgets which fields an unused type shows. Only its
+  // document_type_fields rows go -- no field and no value is touched, so there
+  // is nothing to confirm. persistTypeFieldOrder() deletes the rows, since the
+  // key is gone by then.
+  async function removeTypeFieldSetup(type){
+    if(!type || documentTypeInUse(type)) return;
+    delete typeFieldOrder[type];
+    if(fsSelectedType === type) fsSelectedType = null;
+    if(fsExtraType === type) fsExtraType = null;
+    await persistTypeFieldOrder(type);
+    renderFieldSettingsTypeList();
     renderFieldSettingsFieldColumns();
   }
 

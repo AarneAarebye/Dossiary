@@ -351,7 +351,16 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   that could theoretically exist), add/remove/reorder its fields
   (`addFieldToType()`/`removeFieldFromType()`/`moveFieldInType()`, each
   saving immediately via `persistTypeFieldOrder()` — delete-then-reinsert
-  for that type, not a diff). **Still deliberately doesn't create new
+  for that type, not a diff). A type no document uses (`documentTypeInUse()`:
+  every document in `allDocs`, Waste bin included, type names trimmed) that
+  still has fields gets **Remove field setup** under the type list
+  (`renderFieldSettingsTypeActions()`, `removeTypeFieldSetup()`): it deletes
+  the type's `typeFieldOrder` key and rows, deselects it, and touches no field
+  or value, so there is no confirmation. Removing such a type's last field
+  with ✕ deletes the key too, so the type leaves the list at once instead of
+  lingering as `typeFieldOrder[type] = []` until the next reload; a type typed
+  into the form underneath (`fsExtraType`) stays listed and selected anyway,
+  since `fieldSettingsTypes()` adds it regardless of `typeFieldOrder`. **Still deliberately doesn't create new
   custom fields itself** — only toggles/reorders existing `fields` rows.
   Field *creation* lives in the capture/edit forms instead (see
   `addInlineCustomField()` below) — a version that created fields here

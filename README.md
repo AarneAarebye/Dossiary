@@ -468,7 +468,10 @@ working" problem that motivated this project in the first place.
   left, add fields to it from the middle column, reorder or remove them on
   the right — changes save immediately. The type list holds the document
   types already in use (a brand new type comes into existence by typing it
-  into the Add/Edit form, not from this dialog). To set up a type you've
+  into the Add/Edit form, not from this dialog). A type no document uses
+  but that still has fields set up gets a **Remove field setup** button
+  under the list, which takes it off the list (its fields and values stay);
+  removing such a type's last field does the same. To set up a type you've
   just typed, use **Set up fields for this type…** under Document Type in
   the Add/Edit form: it opens this dialog on top of the form with that type
   selected, and closing it brings you back to the form with the new fields

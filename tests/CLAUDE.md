@@ -13,7 +13,7 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-**Test coverage narrative.** The per-feature account of what the 109 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
+**Test coverage narrative.** The per-feature account of what the 110 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
 
 - [`coverage/01-capture-ocr-fields-inbox-nav.md`](coverage/01-capture-ocr-fields-inbox-nav.md): Capture, OCR, previews, custom fields, inbox, navigation and libraries (lines 16-446 of the old file).
 - [`coverage/02-detail-reminders-bulk-duplicates.md`](coverage/02-detail-reminders-bulk-duplicates.md): Detail panel, reminders, bulk edit, duplicate detection and broken links (lines 447-765 of the old file).
@@ -86,6 +86,15 @@ never by file name. This list maps each of them to what it checks:
     while a typed currency stays; Escape in a rename cancelling only the
     rename; the Tools entry unchanged; the German label. Confirmed
     non-vacuous by disabling the restore step.
+  - `test_remove_type_setup.py` -- Field Settings' "Remove field setup":
+    shown only for a selected type no document uses that has fields, its
+    texts; pressing it drops the type from the list at once, deselects it
+    and deletes only its `document_type_fields` rows (other types, fields
+    and values untouched); removing the last field of an unused type drops
+    it the same way while a used type stays listed; a brand-new type typed
+    into the capture form stays listed and selected with no fields, and its
+    setup can be removed too. Confirmed non-vacuous by keeping the empty
+    key on the last field's removal.
   - `test_field_autocomplete_default.py` -- the one-time migration
     switching autocomplete on for existing text fields (and its marker),
     new text fields defaulting to it, number fields not, and switching it

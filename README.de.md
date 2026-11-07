@@ -547,7 +547,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   umsortieren oder entfernen — Änderungen werden sofort gespeichert. Die
   Typenliste enthält die bereits genutzten Dokumenttypen (ein brandneuer
   Typ entsteht durch Eintippen im Erfassungs-/Bearbeitungsformular, nicht
-  in diesem Dialog). Für einen gerade eingetippten Typ gibt es unter dem
+  in diesem Dialog). Ein Typ, den kein Dokument verwendet, für den aber
+  noch Felder eingerichtet sind, bekommt unter der Liste die Schaltfläche
+  **Feldeinrichtung entfernen**, die ihn von der Liste nimmt (Felder und
+  Werte bleiben); das Entfernen seines letzten Felds wirkt genauso. Für
+  einen gerade eingetippten Typ gibt es unter dem
   Dokumenttyp im Formular **Felder für diesen Typ einrichten…**: Der Link
   öffnet diesen Dialog über dem Formular, mit diesem Typ ausgewählt; nach
   dem Schließen ist man zurück im Formular, mit den neuen Feldern und
