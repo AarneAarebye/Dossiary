@@ -1170,8 +1170,8 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   The stored copy lives in the shared `file://` IndexedDB origin, like Recent
   libraries (another local page could plant a copy whose version text
   matches); it is only used when the download fails.
-- **Import a folder** (`openImportModal()`, `readImportIndex()`,
-  `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder…") is
+- **Import a folder or earlier export** (`openImportModal()`, `readImportIndex()`,
+  `parseCsv()`, `applyImportedDetails()`, Tools → "📂 Import a folder or earlier export…") is
   Export's counterpart: every file at the top of a folder picked with
   `showDirectoryPicker({mode: 'read'})` (hidden files skipped, subfolders
   not walked) goes through `createReviewDocumentFromFile(file,
@@ -1195,6 +1195,19 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   `index.csv` without a File column, or unreadable, is reported and the
   files are still added. The summary is "Label: N" lines (added, with
   details, for review, duplicates, failed, index rows without a file).
+  **Collection step** (only with an `index.csv`): `askImportCollection()`
+  asks, before the run starts, for no collection, a new manual collection
+  or an existing manual one (smart collections are not offered). During
+  the run every file with a row pushes its document id onto `memberIds`;
+  a skipped duplicate that has a row pushes `duplicateOfId` (returned by
+  `createReviewDocumentFromFile()` on the duplicate result) instead. After
+  the loop, still inside the `try` and so inside the person-flow hold and
+  before `finally`, the ids are de-duplicated into `ids`, the collection
+  is created (`createManualCollection()`) or picked, and
+  `addDocumentsToCollection()` adds them. No ids, no collection: an empty
+  collection is never created. If saving the collection throws or fails,
+  the imported documents are kept and the summary ends with
+  `importCollectionFailed`; otherwise it shows `importCountCollection`.
 - **Share** (`openShareModal()`, `shareEmailHref()`, `#bulk-share-btn` in
   the bulk More menu, the panel-only `'share'` action) is the closest a
   browser gets to Mariner's Email: the Web Share API hands `File`s to the

@@ -53,7 +53,7 @@ LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
 .gitattributes            Git attributes for the repo
 docs/architecture/       Architecture notes split out of this file, one per area (index below)
-tests/                   Playwright regression suite (110 scripts) + shared
+tests/                   Playwright regression suite (111 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -306,7 +306,7 @@ about to change. Add a new note to the matching file, not here. The list under e
   - Back up library
   - Export selected documents
   - Export as library
-  - Import a folder
+  - Import a folder or earlier export
   - Share
   - Storage stats
 

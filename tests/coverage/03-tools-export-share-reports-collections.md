@@ -240,7 +240,7 @@ by name; `index.csv` with a row per exported file, quoting, amount/
 currency/tags/custom-field columns, `,` in English and `;` in German, and
 omitted when unticked; `files/` unchanged -- the stub's folder picker takes
 a one-shot `window.__NEXT_PICKED_DIR`, and its directory handles gained
-`resolve()`), folder import (`test_import_folder.py` -- a round trip:
+`resolve()`), folder import (`test_import_collection.py` -- the "Import a folder or earlier export" titles and the add-to-a-collection step for a folder with an `index.csv`: new or existing manual collection, only listed files, a skipped duplicate with a row added, no empty collection, a failed save kept in the summary; `test_import_folder.py` -- a round trip:
 export two documents in German (`;`, German headers) plus a loose file,
 import into an empty library; a folder inside the library refused; title,
 date, kept import date, category, subcategory, type, notes, Amount/

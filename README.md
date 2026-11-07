@@ -256,12 +256,17 @@ working" problem that motivated this project in the first place.
   `dossiary.html` and remembers it. The zip isn't compressed (scans barely
   shrink), so large bundles are better sent by AirDrop, a shared folder or a
   USB stick than by email.
-- **Import a folder** — **Tools → Import a folder…** adds every file in a
+- **Import a folder or earlier export** — **Tools → Import a folder or
+  earlier export…** adds every file in a
   folder you pick as a new document. If the folder has an `index.csv` (as
   Export writes it), each file listed there gets its title, date, category,
   tags, amount and other details back and is filed; any other file — or
   every file, when there's no `index.csv` — goes to the Inbox for review.
-  The folder isn't changed, and files already in the library are skipped.
+  The folder isn't changed, and files already in the library are skipped. If the folder has an
+  `index.csv`, you can also add the imported documents to a new or an
+  existing collection; only the files listed in `index.csv` are added (a
+  skipped duplicate that has a row is added too). Smart collections are not
+  offered.
 - **Share** — **Share…** (in a document's panel, or More ▾ for a selection)
   hands the files to your system's share sheet — Mail, Messages, AirDrop or
   any other app that offers it — named like exported copies and, for PDFs,

@@ -13,7 +13,7 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-**Test coverage narrative.** The per-feature account of what the 110 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
+**Test coverage narrative.** The per-feature account of what the 111 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
 
 - [`coverage/01-capture-ocr-fields-inbox-nav.md`](coverage/01-capture-ocr-fields-inbox-nav.md): Capture, OCR, previews, custom fields, inbox, navigation and libraries (lines 16-446 of the old file).
 - [`coverage/02-detail-reminders-bulk-duplicates.md`](coverage/02-detail-reminders-bulk-duplicates.md): Detail panel, reminders, bulk edit, duplicate detection and broken links (lines 447-765 of the old file).
@@ -127,6 +127,11 @@ never by file name. This list maps each of them to what it checks:
   - `test_generic_column_system.py` -- any custom field (not just the
     seeded ones) opting into a column and autocomplete from Field
     Settings; Amount gets no Column checkbox, Currency does.
+  - `test_import_collection.py` -- "Import a folder or earlier export": the
+    new titles, and the collection step for a folder with an `index.csv`
+    (none, new or existing manual collection; only listed files; a skipped
+    duplicate with a row added; no empty collection; failure kept in the
+    summary).
   - `test_import_date_column.py` -- the Imported column: visible by
     default, in the Columns menu, toggled off and on, showing a real date.
   - `test_sticky_header.py` -- with many rows, the table header stays at
