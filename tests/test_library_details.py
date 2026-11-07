@@ -150,6 +150,126 @@ async def main():
         await page.select_option('#lang-select', 'de')
         await page.wait_for_timeout(150)
         print("German Tools entry:", (await page.inner_text('#library-details-btn')).strip() == '🏷 Bibliotheksdetails…')
+        await page.select_option('#lang-select', 'en')
+        await page.wait_for_timeout(150)
+
+        # === Scenario 5: Recent libraries shows the title, the description and the folder ===
+        # Library A gets details, library B never does. Both handles are kept on
+        # window so the test can reach them after switching away.
+        await page.evaluate("window.__TEST_ROOT = null;")
+        await page.click("#reload-btn")
+        await page.wait_for_timeout(200)
+        await page.evaluate("window.__A = window.__makeSeededRoot(%s); window.__A.name = 'Documents.dossiary'; window.__TEST_ROOT = window.__A;" % json.dumps(SEED))
+        await page.click("#open-btn")
+        await page.wait_for_timeout(400)
+        await save('Home papers', 'Bills and the house')
+        await page.evaluate("window.__TEST_ROOT = null;")
+        await page.click("#reload-btn")
+        await page.wait_for_timeout(200)
+        await page.evaluate("window.__B = window.__makeSeededRoot(%s); window.__B.name = 'Other.dossiary'; window.__TEST_ROOT = window.__B;" % json.dumps(SEED))
+        await page.click("#open-btn")
+        await page.wait_for_timeout(400)
+
+        async def switch_away():
+            await page.evaluate("window.__TEST_ROOT = null;")
+            await page.click("#reload-btn")
+            await page.wait_for_timeout(250)
+
+        def row_of(folder):
+            return page.locator('#recent-libraries-list .review-queue-row').filter(has_text=folder)
+
+        async def settings_of(var):
+            return await page.evaluate("(v) => Object.fromEntries(JSON.parse(new TextDecoder().decode(window[v]._children.get('library.sqlite')._bytes)).settings.map(r => [r.key, r.value]))", var)
+
+        async def entry_of(var):
+            return await page.evaluate("""(v) => new Promise(resolve => {
+                const req = indexedDB.open('dossiary-app-db', 1);
+                req.onsuccess = () => {
+                    const r = req.result.transaction('recentLibraries', 'readonly').objectStore('recentLibraries').getAll();
+                    r.onsuccess = () => { const e = r.result.find(x => x.handle === window[v]); resolve(e ? { title: e.title, description: e.description, lastOpenedAt: e.lastOpenedAt } : null); };
+                };
+            })""", var)
+
+        await switch_away()
+        a_row, b_row = row_of('Documents.dossiary'), row_of('Other.dossiary')
+        print("A's entry shows its title as the name:", await a_row.locator('.doc-title').inner_text() == 'Home papers')
+        print("...the description line:", await a_row.locator('.recent-lib-description').inner_text() == 'Bills and the house')
+        a_status = await a_row.locator('[id^=recent-lib-status-]').inner_text()
+        print("...and the folder name with the last-opened date:", a_status.startswith('Documents.dossiary · Last opened ') and len(a_status) > len('Documents.dossiary · Last opened '))
+        print("B's entry shows its folder name:", await b_row.locator('.doc-title').inner_text() == 'Other.dossiary')
+        print("...with no description line:", await b_row.locator('.recent-lib-description').count() == 0)
+        print("...and the plain last-opened text:", (await b_row.locator('[id^=recent-lib-status-]').inner_text()).startswith('Last opened '))
+        print("A library with seeded details shows them in the list too:", await row_of('Family archive').locator('.recent-lib-description').inner_text() == 'Shared with the kids')
+        print("Every entry has a pencil:", await page.locator('#recent-libraries-list .recent-details-btn').count() == await page.locator('#recent-libraries-list .review-queue-row').count())
+        print("The pencil sits before the trash button:",
+              await a_row.evaluate("r => { const p = r.querySelector('.recent-details-btn'), t = r.querySelector('.recent-delete-btn'); return !!p && p.nextElementSibling === t; }"))
+        print("The pencil's label names the title:", await a_row.locator('.recent-details-btn').get_attribute('aria-label') == 'Edit title and description of Home papers')
+
+        # === Scenario 6/7: the pencil opens the library once, then the dialog ===
+        await page.evaluate("""() => {
+            window.__A_OPENS = 0;
+            const orig = window.__A.getFileHandle.bind(window.__A);
+            window.__A.getFileHandle = (name, opts) => { if(name === 'library.sqlite' && !(opts && opts.create)) window.__A_OPENS++; return orig(name, opts); };
+        }""")
+        await a_row.locator('.recent-details-btn').click()
+        await page.wait_for_timeout(500)
+        print("The pencil opened the library:", not await page.locator('#empty-state').is_visible())
+        print("...once (no second open through the row):", await page.evaluate("window.__A_OPENS") == 1)
+        print("...and shows the dialog with A's title:", await page.locator('#library-details-title').count() == 1 and await page.input_value('#library-details-title') == 'Home papers')
+        print("...as the only modal:", await page.locator('.modal').count() == 1)
+        print("The header shows A's title:", await page.inner_text('#sub-label') == 'Home papers')
+        await page.click('#library-details-cancel-btn')
+        await page.wait_for_timeout(100)
+
+        # A failed save changes nothing: header, dialog values, list entry.
+        await page.evaluate("(async () => { (await window.__A.getFileHandle('library.sqlite')).readOnly = true; })()")
+        await open_dialog()
+        await page.fill('#library-details-title', 'Broken title')
+        await page.fill('#library-details-description', 'Broken note')
+        await page.click('#library-details-save-btn')
+        await page.wait_for_timeout(300)
+        print("A failed save keeps the dialog open:", await page.locator('#library-details-title').count() == 1)
+        print("...with Save enabled again:", await page.is_enabled('#library-details-save-btn'))
+        print("...says so in the status line:", 'Save failed' in await page.inner_text('#status'))
+        print("...leaves the header alone:", await page.inner_text('#sub-label') == 'Home papers' and await page.get_attribute('#sub-label', 'title') == 'Bills and the house')
+        print("...writes nothing to disk:", (await settings_of('__A')).get('library_title') == 'Home papers')
+        print("...and leaves the list entry alone:", (await entry_of('__A'))['title'] == 'Home papers')
+        await page.click('#library-details-cancel-btn')
+        await page.wait_for_timeout(100)
+        await open_dialog()
+        print("...so reopening still shows the saved values:",
+              await page.input_value('#library-details-title') == 'Home papers' and await page.input_value('#library-details-description') == 'Bills and the house')
+        await page.click('#library-details-cancel-btn')
+        await page.evaluate("(async () => { (await window.__A.getFileHandle('library.sqlite')).readOnly = false; })()")
+
+        opened_at = (await entry_of('__A'))['lastOpenedAt']
+        await save('House papers', 'Bills and the house')
+        print("Saving updates the library:", (await settings_of('__A')).get('library_title') == 'House papers')
+        entry = await entry_of('__A')
+        print("...and the Recent libraries entry at once:", entry['title'] == 'House papers' and entry['description'] == 'Bills and the house')
+        print("...without changing its last-opened date:", entry['lastOpenedAt'] == opened_at)
+        await switch_away()
+        print("The list shows the new title:", await row_of('Documents.dossiary').locator('.doc-title').inner_text() == 'House papers')
+
+        # === Scenario 6b: a denied reconnect opens no dialog and writes nothing ===
+        before = await page.evaluate("Array.from(window.__A._children.get('library.sqlite')._bytes).join(',')")
+        await page.evaluate("window.__A._forceDenied = true;")
+        # Found by its title: the denial replaces the status line holding the folder name.
+        await row_of('House papers').locator('.recent-details-btn').click()
+        await page.wait_for_timeout(300)
+        print("A denied pencil shows the denial message:",
+              await row_of('House papers').locator('[id^=recent-lib-status-]').inner_text() == "Couldn't reopen — access was denied.")
+        print("...opens no dialog:", await page.locator('#library-details-title').count() == 0)
+        print("...stays on the start screen:", await page.locator('#empty-state').is_visible())
+        print("...and leaves library.sqlite unchanged:",
+              await page.evaluate("Array.from(window.__A._children.get('library.sqlite')._bytes).join(',')") == before)
+        await page.evaluate("window.__A._forceDenied = false;")
+
+        # A library that fails to open (no library.sqlite) gets no dialog either.
+        await page.evaluate("window.__B._children.delete('library.sqlite');")
+        await row_of('Other.dossiary').locator('.recent-details-btn').click()
+        await page.wait_for_timeout(400)
+        print("A folder that is not a library gets no dialog:", await page.locator('#library-details-title').count() == 0)
 
         print("No page errors:", not errors, errors)
         await browser.close()
