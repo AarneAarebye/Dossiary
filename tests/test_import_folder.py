@@ -155,6 +155,9 @@ async def main():
         loose = docs.get('scan 7', {})
         print("A file without an index row is added for review:", str(loose.get('needs_review')) == '1' and loose.get('category') is None)
         print("Hidden files are ignored:", len(rows['documents']) == 3)
+        # "A new collection" is the default: the two listed files join it, the loose one not.
+        print("The default new collection holds the two listed documents:", len(rows['collections']) == 1 and
+              sorted(cd['document_id'] for cd in rows['collection_documents']) == sorted([s['id'], docs.get('Insurance', {}).get('id')]), rows['collections'])
         sidecar = await page.evaluate(f"async () => {{ const d = await window.__TEST_ROOT.getDirectoryHandle('files'); for await (const [k, h] of d.entries()) if(k.startsWith('{s['id']}_') && k.endsWith('.txt')) return await (await h.getFile()).text(); return ''; }}")
         print("The sidecar carries the imported details:", 'Home' in sidecar and 'tax' in sidecar, repr(sidecar[:120]))
         await page.click('#import-cancel-btn')
@@ -167,6 +170,7 @@ async def main():
         await page.evaluate("() => { window.__NEXT_PICKED_DIR = window.__FOLDER; }")
         await page.click('#import-start-btn')
         await page.wait_for_timeout(300)
+        await page.check('#import-coll-none')  # the pre-filled name would clash with the first import's collection in the same minute
         await page.click('#import-run-btn')
         await page.wait_for_timeout(1000)
         summary2 = await page.inner_text('#import-summary')

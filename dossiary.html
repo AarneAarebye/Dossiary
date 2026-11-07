@@ -9513,6 +9513,26 @@
   // review); files without a row land in the Inbox like a dropped file.
   // Unknown columns become text fields; a type that had no field setup
   // before the import gets the fields its rows used, so they aren't orphaned.
+  // The title and description an export wrote next to its index.csv, or null
+  // when there is no usable file. Never throws: a bad file is just ignored.
+  async function readExportDetails(handle){
+    try{
+      const data = JSON.parse(await (await handle.getFile()).text());
+      if(!data || typeof data !== 'object') return null;
+      const text = (v, max) => typeof v === 'string' ? cleanLibraryText(v, max) : '';
+      const title = text(data.title, LIBRARY_TITLE_MAX);
+      const description = text(data.description, LIBRARY_DESCRIPTION_MAX);
+      return (title || description) ? { title, description } : null;
+    }catch(e){ return null; }
+  }
+
+  // "{export title or folder name} · 2026-11-07 14:32", local time.
+  function importCollectionDefaultName(about, folderName, now = new Date()){
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`;
+    return `${(about && about.title) || folderName} · ${stamp}`;
+  }
+
   function parseCsv(text){
     text = text.replace(/^﻿/, '');
     // The separator is whichever of ';' and ',' the header line uses more
@@ -9653,7 +9673,9 @@
 
   // Asks where the documents of an index.csv folder should go. Resolves when
   // "Import" is clicked; if the dialog is closed instead, it never resolves.
-  function askImportCollection(folderName, matchedCount){
+  // `about` is the export's {title, description} (export-details.json) or
+  // null. The choice starts on "A new collection", named after the export.
+  function askImportCollection(folderName, matchedCount, about){
     return new Promise(resolve => {
       const manual = collections.filter(c => c.kind === 'manual').sort((a, b) => a.name.localeCompare(b.name));
       const box = el('import-options');
@@ -9661,14 +9683,19 @@
       // Laid out like the dialogs' other forms (.field, .checkbox-label
       // radios); "Import" joins Cancel in the dialog's own button row.
       box.innerHTML = `
+        ${about ? `<div class="import-about">
+          <div class="doc-sub">${escapeHtml(t('importAboutExport'))}</div>
+          ${about.title ? `<div class="doc-title">${escapeHtml(about.title)}</div>` : ''}
+          ${about.description ? `<p>${escapeHtml(about.description)}</p>` : ''}
+        </div>` : ''}
         <p>${escapeHtml(matchedCount === 1 ? t('importIndexFoundOne') : t('importIndexFound', {count: matchedCount}))}</p>
         <div class="field" role="radiogroup" aria-labelledby="import-coll-label">
           <label id="import-coll-label">${escapeHtml(t('importAddLabel'))}</label>
-          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-none" checked> ${escapeHtml(t('importAddNone'))}</label>
+          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-none"> ${escapeHtml(t('importAddNone'))}</label>
           <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-existing"${manual.length ? '' : ' disabled'}> ${escapeHtml(t('importAddExisting'))}</label>
           <select id="import-coll-select" aria-label="${escapeHtml(t('importAddExisting'))}">${manual.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
-          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-new"> ${escapeHtml(t('importAddNew'))}</label>
-          <input type="text" id="import-coll-name" value="${escapeHtml(folderName)}" placeholder="${escapeHtml(t('importNewNamePlaceholder'))}" aria-label="${escapeHtml(t('importNewNamePlaceholder'))}" />
+          <label class="checkbox-label"><input type="radio" name="import-coll" id="import-coll-new" checked> ${escapeHtml(t('importAddNew'))}</label>
+          <input type="text" id="import-coll-name" value="${escapeHtml(importCollectionDefaultName(about, folderName))}" placeholder="${escapeHtml(t('importNewNamePlaceholder'))}" aria-label="${escapeHtml(t('importNewNamePlaceholder'))}" />
           <div class="delete-library-error" id="import-coll-warn" style="display:none;">${escapeHtml(t('importNameTaken'))}</div>
         </div>`;
       const runBtn = document.createElement('button');
@@ -9735,10 +9762,11 @@
         return;
       }
       const files = [];
-      let indexHandle = null;
+      let indexHandle = null, detailsHandle = null;
       for await (const [name, handle] of src.entries()){
         if(handle.kind !== 'file' || name.startsWith('.')) continue; // .DS_Store, ._ files
         if(name.toLowerCase() === 'index.csv'){ indexHandle = handle; continue; }
+        if(name.toLowerCase() === EXPORT_DETAILS_FILE){ detailsHandle = handle; continue; } // never a document
         files.push({ name, handle });
       }
       files.sort((a, b) => a.name.localeCompare(b.name));
@@ -9752,10 +9780,11 @@
         try{ index = readImportIndex(await (await indexHandle.getFile()).text()); if(!index) indexError = t('importIndexNoFileColumn'); }
         catch(e){ indexError = e.message; }
       }
+      const about = (index && detailsHandle) ? await readExportDetails(detailsHandle) : null;
       let choice = null;
       if(index){
         el('import-start-btn').style.display = 'none';
-        choice = await askImportCollection(src.name, files.filter(f => index.has(f.name.toLowerCase())).length);
+        choice = await askImportCollection(src.name, files.filter(f => index.has(f.name.toLowerCase())).length, about);
       }
 
       const startBtn = el('import-start-btn'), cancelBtn = el('import-cancel-btn');

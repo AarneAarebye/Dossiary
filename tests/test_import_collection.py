@@ -31,6 +31,10 @@ async def pick(page):
     await page.evaluate("() => { window.__NEXT_PICKED_DIR = window.__FOLDER; }")
     await page.click('#import-start-btn'); await page.wait_for_timeout(400)
 
+# The pre-filled new-collection name: "{folder or export title} · YYYY-MM-DD HH:MM".
+def STAMPED(base):
+    return re.escape(base) + r' · \d{4}-\d{2}-\d{2} \d{2}:\d{2}$'
+
 def members(rows, cid):
     return sorted(cd['document_id'] for cd in rows['collection_documents'] if cd['collection_id'] == cid)
 
@@ -76,13 +80,18 @@ async def main():
         print("1. ...and imports at once:", 'Added: 1' in await page.inner_text('#import-summary'))
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
-        # === 2. With index.csv: the panel, "No collection" by default ===
+        # === 2. With index.csv: the panel, "A new collection" by default ===
         await make_folder(page, 'Indexed', {'b.pdf': '%PDF-1.4 b', 'c.pdf': '%PDF-1.4 c', 'loose.pdf': '%PDF-1.4 loose'}, [('b.pdf', 'Bee'), ('c.pdf', 'Sea')])
         await open_import(page); await pick(page)
         print("2. The options panel shows:", await page.locator('#import-options').is_visible())
         print("2. ...with the matched count:", '2 files in this folder are listed in index.csv.' in await page.inner_text('#import-options'))
         print("2. Nothing is imported before Import is clicked:", len((await library(page))['documents']) == 1)
-        print("2. \"No collection\" is the default:", await page.is_checked('#import-coll-none'))
+        print("2. \"A new collection\" is the default:", await page.is_checked('#import-coll-new') and not await page.is_checked('#import-coll-none'))
+        print("2. ...its name enabled, Import enabled:", await page.is_enabled('#import-coll-name') and await page.is_enabled('#import-run-btn'))
+        print("2. ...named \"{folder} · date time\":", bool(re.match(STAMPED('Indexed'), await page.input_value('#import-coll-name'))), await page.input_value('#import-coll-name'))
+        print("2. Without an export-details.json there is no \"About this export\":", 'About this export' not in await page.inner_text('#import-options'))
+        await page.check('#import-coll-none')
+        print("2. Choosing \"No collection\" disables the name:", await page.is_disabled('#import-coll-name') and await page.is_enabled('#import-run-btn'))
         print("2. \"An existing collection\" is disabled with no manual collection:", await page.is_disabled('#import-coll-existing') and await page.is_disabled('#import-coll-select'))
         await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
         summary = await page.inner_text('#import-summary')
@@ -91,22 +100,22 @@ async def main():
         print("2. ...and no collection:", rows['collections'] == [] and 'Added to the collection' not in summary)
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
-        # === 3. A new collection, named after the folder ===
+        # === 3. A new collection, named after the folder (the default) ===
         await make_folder(page, 'Taxes 2025', {'d.pdf': '%PDF-1.4 d', 'e.pdf': '%PDF-1.4 e', 'loose2.pdf': '%PDF-1.4 loose2'}, [('d.pdf', 'Dee'), ('e.pdf', 'Eee')])
         await open_import(page); await pick(page)
-        print("3. The new name is pre-filled with the folder name:", await page.input_value('#import-coll-name') == 'Taxes 2025')
-        await page.check('#import-coll-new')
+        taxes = await page.input_value('#import-coll-name')
+        print("3. The new name is pre-filled with the folder name and the time:", bool(re.match(STAMPED('Taxes 2025'), taxes)), taxes)
         print("3. Import is enabled for the new name:", await page.is_enabled('#import-run-btn'))
         await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
         rows = await library(page)
-        colls = [c for c in rows['collections'] if c['name'] == 'Taxes 2025']
-        print("3. One manual collection named after the folder:", len(colls) == 1 and colls[0]['kind'] == 'manual', rows['collections'])
+        colls = [c for c in rows['collections'] if c['name'] == taxes]
+        print("3. One manual collection with that name:", len(colls) == 1 and colls[0]['kind'] == 'manual', rows['collections'])
         by_title = {d['title']: d['id'] for d in rows['documents']}
         cid = colls[0]['id'] if colls else None
         print("3. It holds exactly the two files with a row:", members(rows, cid) == sorted([by_title.get('Dee'), by_title.get('Eee')]), members(rows, cid))
         print("3. ...not the loose file:", 'loose2' in by_title and by_title['loose2'] not in members(rows, cid))
         summary = await page.inner_text('#import-summary')
-        print("3. The summary names the collection:", 'Added to the collection “Taxes 2025”: 2' in summary, repr(summary))
+        print("3. The summary names the collection:", f'Added to the collection “{taxes}”: 2' in summary, repr(summary))
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
         # === 4. An existing collection; a duplicate with a row joins too ===
@@ -114,24 +123,24 @@ async def main():
         await open_import(page); await pick(page)
         print("4. \"An existing collection\" is offered now:", await page.is_enabled('#import-coll-existing'))
         await page.check('#import-coll-existing')
-        await page.select_option('#import-coll-select', label='Taxes 2025')
+        await page.select_option('#import-coll-select', label=taxes)
         await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
         rows = await library(page)
         summary = await page.inner_text('#import-summary')
         by_title = {d['title']: d['id'] for d in rows['documents']}
         print("4. d.pdf is skipped as a duplicate, f.pdf added:", 'Added: 1' in summary and 'Already in the library, skipped: 1' in summary, repr(summary))
-        print("4. No second collection:", len([c for c in rows['collections'] if c['name'] == 'Taxes 2025']) == 1)
+        print("4. No second collection:", len(rows['collections']) == 1 and rows['collections'][0]['name'] == taxes, rows['collections'])
         print("4. The collection holds three documents, the duplicate's original and f.pdf among them:",
               members(rows, cid) == sorted([by_title.get('Dee'), by_title.get('Eee'), by_title.get('Eff')]), members(rows, cid))
-        print("4. The summary counts both:", 'Added to the collection “Taxes 2025”: 2' in summary, repr(summary))
+        print("4. The summary counts both:", f'Added to the collection “{taxes}”: 2' in summary, repr(summary))
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
         # === 5. A taken name (ignoring case) disables Import ===
         await make_folder(page, 'Other', {'h.pdf': '%PDF-1.4 h'}, [('h.pdf', 'Aitch')])
         await open_import(page); await pick(page)
         print("5. One listed file is worded in the singular:", '1 file in this folder is listed in index.csv.' in await page.inner_text('#import-options'))
-        await page.check('#import-coll-new')
-        await page.fill('#import-coll-name', 'taxes 2025')
+        print("5. \"A new collection\" is already chosen:", await page.is_checked('#import-coll-new'))
+        await page.fill('#import-coll-name', taxes.lower())
         print("5. A taken name disables Import:", await page.is_disabled('#import-run-btn'))
         print("5. ...and says so:", await page.locator('#import-coll-warn').is_visible() and 'already exists' in await page.inner_text('#import-coll-warn'))
         await page.fill('#import-coll-name', '   ')
@@ -148,7 +157,7 @@ async def main():
         # === 6. Nothing qualifies: no empty collection is left behind ===
         await make_folder(page, 'Empty rows', {'g.pdf': '%PDF-1.4 g'}, [('other.pdf', 'Other')])
         await open_import(page); await pick(page)
-        await page.check('#import-coll-new')
+        print("6. The default is a new collection here too:", await page.is_checked('#import-coll-new'))
         await page.fill('#import-coll-name', 'Ghost')
         await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
         rows = await library(page)
@@ -161,21 +170,20 @@ async def main():
         # === 8. Two identical files with rows: one document, counted once ===
         await make_folder(page, 'Twins', {'x1.pdf': '%PDF-1.4 twin', 'x2.pdf': '%PDF-1.4 twin'}, [('x1.pdf', 'Twin one'), ('x2.pdf', 'Twin two')])
         await open_import(page); await pick(page)
-        await page.check('#import-coll-new')
+        twins_name = await page.input_value('#import-coll-name')
         await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
         rows = await library(page)
         summary = await page.inner_text('#import-summary')
-        twins = [c for c in rows['collections'] if c['name'] == 'Twins']
+        twins = [c for c in rows['collections'] if c['name'] == twins_name]
         print("8. The second twin is skipped as a duplicate of the first:", 'Added: 1' in summary and 'Already in the library, skipped: 1' in summary, repr(summary))
         print("8. The collection holds the one document:", len(twins) == 1 and len(members(rows, twins[0]['id'])) == 1)
-        print("8. ...and the summary counts it once:", 'Added to the collection “Twins”: 1' in summary, repr(summary))
+        print("8. ...and the summary counts it once:", f'Added to the collection “{twins_name}”: 1' in summary, repr(summary))
         await page.click('#import-cancel-btn'); await page.wait_for_timeout(150)
 
         # === 9. Saving the collection throws: the import still ends, in red ===
         await page.evaluate("() => { window.__FAIL_COLLECTION_LINKS = true; }")
         await make_folder(page, 'Broken', {'k.pdf': '%PDF-1.4 k'}, [('k.pdf', 'Kay')])
         await open_import(page); await pick(page)
-        await page.check('#import-coll-new')
         await page.click('#import-run-btn'); await page.wait_for_timeout(1200)
         await page.evaluate("() => { window.__FAIL_COLLECTION_LINKS = false; }")
         summary = await page.inner_text('#import-summary')
