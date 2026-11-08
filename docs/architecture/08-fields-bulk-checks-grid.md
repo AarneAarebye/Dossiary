@@ -1126,11 +1126,11 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   creates the subfolder and it is the write target for documents,
   `index.csv` and `export-details.json`, so inside it those two keep their
   plain names (`taken` still reserves both, so a document named like them is
-  numbered). The name is `{title} · YYYY-MM-DD HH-MM` (local time), or
-  `Export YYYY-MM-DD HH-MM` without a title, with the index off (the disabled Title is ignored), or when it is empty after
+  numbered). The name is `{title} · YYYY-MM-DD HH-MM-SS · xxxx` (local time; `xxxx` = 4 lowercase hex characters from `crypto.getRandomValues`, chosen per call and passable as the optional third parameter of `exportSubfolderName`; 1.63.3), or
+  `Export YYYY-MM-DD HH-MM-SS · xxxx` without a title, with the index off (the disabled Title is ignored), or when it is empty after
   `sanitizeFolderName()` (`/ \ : * ? " < > |` and control characters become
   `-`, whitespace collapsed, trimmed, cut at 100 characters before the date);
-  a clash gets " (2)", " (3)". Index off still makes the subfolder (files
+  a clash (rare now) still gets " (2)", " (3)". Index off still makes the subfolder (files
   only). If nothing was exported the empty subfolder is removed
   (best effort) and the done message names the picked folder instead; a
   failing subfolder creation shows the error and gives the dialog back; a failing `index.csv` write (tracked by `indexWriteFailed`) rolls the export back: the subfolder this run created is removed with `dest.removeEntry(out.name, {recursive:true})` (Export only copies, so originals are untouched) and the error is followed by `exportRolledBack`; if that removal throws, the copied files stay and the error is followed by `exportDone` naming the subfolder. Per-file failures are never rolled back. If the `export-details.json` write fails after the file was created, an empty file can remain; import treats unreadable or malformed details as absent, so nothing breaks.

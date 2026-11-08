@@ -154,10 +154,10 @@ never by file name. This list maps each of them to what it checks:
     importing at once with the json never a document, a description alone,
     the folder name as fallback, and over-long texts cut; no page errors.
   - `test_export_subfolders.py` -- one subfolder per export and importing
-    several exports: an export creating `{title} · YYYY-MM-DD HH-MM` (or
+    several exports: an export creating `{title} · YYYY-MM-DD HH-MM-SS · xxxx` (or
     `Export …`) holding the files, `index.csv` and `export-details.json` while
     the picked folder holds only that subfolder, with its name in the done
-    message; a same-minute clash numbered " (2)"; a failing subfolder
+    message; a clash (suffix fixed by a stubbed crypto) numbered " (2)", suffixes matching `[0-9a-f]{4}` and 50 same-second names mostly distinct; a failing subfolder
     creation showing the error and handing the dialog back; forbidden
     characters becoming `-`; index off giving files only; every file failing
     leaving no subfolder (message naming the picked folder); index off

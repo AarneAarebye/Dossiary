@@ -103,7 +103,7 @@ async def main():
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
         status = await page.inner_text('#export-status')
-        print("Reports 3 exported and 1 that couldn't be:", re.search(r'Exported 3 files to “Export \d{4}-\d\d-\d\d \d\d-\d\d”', status) and 'Could not export: 1.' in status, repr(status[:120]))
+        print("Reports 3 exported and 1 that couldn't be:", re.search(r'Exported 3 files to “Export \d{4}-\d\d-\d\d \d\d-\d\d-\d\d · [0-9a-f]{4}”', status) and 'Could not export: 1.' in status, repr(status[:120]))
         print("...naming the one that failed:", 'Missing file' in await page.inner_text('#export-failed-list'))
         names = await page.evaluate("async () => { const n = []; for await (const [k] of (await window.__sub(window.__EXPORT_DEST)).entries()) n.push(k); return n.sort(); }")
         print("Files named by date and title, clashes numbered, unsafe characters replaced:",

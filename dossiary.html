@@ -1158,7 +1158,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.63.2'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.63.3'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -9266,9 +9266,15 @@
   function sanitizeFolderName(name){
     return String(name == null ? '' : name).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100).trim();
   }
-  function exportSubfolderName(title, now = new Date()){
+  // Four random lowercase hex characters, chosen per call, so two exports in the same second rarely clash.
+  function exportNameSuffix(){
+    const b = new Uint8Array(2);
+    crypto.getRandomValues(b);
+    return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  }
+  function exportSubfolderName(title, now = new Date(), suffix = exportNameSuffix()){
     const p = (n) => String(n).padStart(2, '0');
-    const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}-${p(now.getMinutes())}`;
+    const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}-${p(now.getMinutes())}-${p(now.getSeconds())} · ${suffix}`;
     const clean = sanitizeFolderName(title);
     return (clean ? clean + ' · ' : 'Export ') + stamp;
   }
@@ -9286,7 +9292,7 @@
     }
   }
 
-  window.__DEBUG_exportFolderNames = { sanitizeFolderName, exportSubfolderName, uniqueSubfolderIn }; // test-only hook (tests/test_export_subfolders.py)
+  window.__DEBUG_exportFolderNames = { sanitizeFolderName, exportSubfolderName, exportNameSuffix, uniqueSubfolderIn }; // test-only hook (tests/test_export_subfolders.py)
 
   async function uniqueFileNameIn(dirHandle, name, taken){
     const dot = name.lastIndexOf('.');

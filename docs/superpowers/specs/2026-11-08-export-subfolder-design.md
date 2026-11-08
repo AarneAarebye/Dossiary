@@ -13,7 +13,7 @@ Exporting into a folder that already held an export produced `index (2).csv` and
 
 ## Export
 
-- Subfolder name: `{title} · YYYY-MM-DD HH-MM` when the export has a title (the cleaned Title field), otherwise `Export YYYY-MM-DD HH-MM`; with "Include index.csv" off the Title field is disabled and ignored, so the name is always the generic one. Local time. Characters not allowed in folder names (`/ \ : * ? " < > |` and control characters) become `-`; the result is trimmed and cut at 100 characters before the date part is added. A name that already exists gets ` (2)`, ` (3)`. Created with `getDirectoryHandle(name, {create:true})` after checking it does not exist.
+- Subfolder name: `{title} · YYYY-MM-DD HH-MM-SS · xxxx` when the export has a title (the cleaned Title field), otherwise `Export YYYY-MM-DD HH-MM-SS · xxxx`; with "Include index.csv" off the Title field is disabled and ignored, so the name is always the generic one. Local time; `xxxx` is 4 lowercase hex characters from `crypto.getRandomValues` (never `Math.random`), chosen per call (1.63.3: seconds and the suffix make a clash very unlikely). Characters not allowed in folder names (`/ \ : * ? " < > |` and control characters) become `-`; the result is trimmed and cut at 100 characters before the date part is added. A name that still already exists gets ` (2)`, ` (3)`. Created with `getDirectoryHandle(name, {create:true})` after checking it does not exist.
 - Documents, `index.csv` and `export-details.json` go into the subfolder. The names inside are the plain ones: `index.csv` and `export-details.json` are never numbered away. A document named like either gets the existing numbering (the reserved names stay in `taken`).
 - "Include index.csv" off: the subfolder is still made and holds the files; no index, no details file.
 - Nothing exported (all failed): the empty subfolder is removed (best effort, errors ignored).
@@ -40,7 +40,7 @@ Nothing changes for exports made by earlier versions beyond item 1 above.
 
 ## Code changes
 
-- `exportSubfolderName(title, now)`, `sanitizeFolderName(name)`: small pure helpers (testable).
+- `exportSubfolderName(title, now, suffix)` (suffix optional, default generated), `sanitizeFolderName(name)`: small pure helpers (testable).
 - `openExportModal()`: create the subfolder before the loop, use it as the write target (`dest`) for files, index and details; remove the empty subfolder on total failure; the done message uses the subfolder name. The 1.61.1 details-write error handling stays.
 - `openImportModal()`: scan classification (own index / export subfolders / plain); the per-folder import body moves into a function `importOneFolder(src, files, index, about, choice, hooks)` that the single-folder path calls once and the multi-export path calls per ticked export; summary aggregation.
 - `askImportExports(exports, existingCollections)`: the list panel (promise-based like `askImportCollection`), ids `#import-exports-list`, `.import-export-row`, `#import-export-check-<n>`, reusing the collection radios (`#import-coll-none/-existing/-new`).
@@ -55,7 +55,7 @@ An older Dossiary importing a parent folder made by this version sees only subfo
 ## Tests
 
 New `tests/test_export_subfolders.py` (Playwright, stubs as in `test_export_details.py` / `test_import_collection.py`):
-1. Export creates `{title} · date` / `Export date` subfolder with files, `index.csv`, `export-details.json` inside; the parent holds only the subfolder; forbidden characters are replaced; a second export in the same minute gets ` (2)`.
+1. Export creates `{title} · date` / `Export date` subfolder with files, `index.csv`, `export-details.json` inside; the parent holds only the subfolder; forbidden characters are replaced; a pre-existing name (suffix fixed by a stubbed crypto) gets ` (2)`; generated suffixes match `/^[0-9a-f]{4}$/` and 50 names from one second have at least 45 distinct.
 2. Index off: subfolder with files only. All files failing: no subfolder left.
 3. Two exports in one parent, then import of the parent: list shows both with title, description and file counts; both ticked; result is two collections, each holding only its export's documents; counts add up.
 4. Untick one: only the other is imported. Nothing ticked: Import disabled.
