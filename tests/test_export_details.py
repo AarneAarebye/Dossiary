@@ -147,6 +147,59 @@ async def main():
               'export-details (2).json' in files and files['export-details (2).json'].startswith('%PDF') and d.get('format') == 1, list(files))
         await page.close()
 
+        # === Scenario 6: HTML special characters stay text, in the dialog and in the file ===
+        SPECIAL = '<b>x</b> & "q"'
+        page = await start({"documents": DOCS, "tags": [], "document_tags": [],
+                            "settings": [{"key": "library_title", "value": SPECIAL}, {"key": "library_description", "value": SPECIAL}]})
+        await open_export(page)
+        print("Special characters: the prefill is the raw text:",
+              await page.input_value('#export-title') == SPECIAL and await page.input_value('#export-description') == SPECIAL)
+        print("Special characters: no markup injected into the dialog:", await page.locator('.modal b').count() == 0)
+        await run_export(page)
+        d = json.loads((await dest_files(page)).get('export-details.json', '{}'))
+        print("Special characters: written unchanged:", d.get('title') == SPECIAL and d.get('description') == SPECIAL, d)
+        await page.close()
+
+        # === Scenario 7: a details file already in the destination ===
+        OLD = "const w = await (await window.__EXPORT_DEST.getFileHandle('export-details.json', { create: true })).createWritable(); await w.write('old'); await w.close();"
+        page = await start(SEED_WITH)
+        await open_export(page)
+        await run_export(page, OLD)
+        d = json.loads((await dest_files(page)).get('export-details.json', '{}'))
+        print("Existing export-details.json is overwritten by an export with texts:",
+              d.get('title') == 'Birgit’s papers' and d.get('description') == 'House and car', d)
+        await page.close()
+        page = await start(SEED_WITHOUT)
+        await open_export(page)
+        await run_export(page, OLD)
+        files = await dest_files(page)
+        print("Existing export-details.json is left untouched when both texts are empty:",
+              files.get('export-details.json') == 'old' and 'index.csv' in files, list(files))
+        await page.close()
+
+        # === Scenario 8: the name stays reserved when no details file is written ===
+        page = await start(SEED_WITHOUT)
+        await open_export(page, ids=(1, 3))
+        await run_export(page)
+        files = await dest_files(page)
+        print("Both texts empty: the document named export-details.json is numbered, no details file:",
+              'export-details (2).json' in files and files['export-details (2).json'].startswith('%PDF') and 'export-details.json' not in files, list(files))
+        await page.close()
+
+        # === Scenario 9: a failing details write does not block the summary ===
+        page = await start(SEED_WITH)
+        await open_export(page)
+        await run_export(page, "const h = await window.__EXPORT_DEST.getFileHandle('export-details.json', { create: true }); h.readOnly = true;")
+        files = await dest_files(page)
+        status = await page.inner_text('#export-status')
+        print("Failing details write: documents and index.csv are exported:",
+              '1_a.pdf' in ''.join(files) or any(k.endswith('.pdf') for k in files), list(files))
+        print("Failing details write: index.csv written:", 'index.csv' in files)
+        print("Failing details write: done text plus the failure sentence:",
+              'Exported 2' in status and 'The title and description file could not be written.' in status, repr(status))
+        print("Failing details write: shown as an error:", 'err' in (await page.get_attribute('#export-status', 'class')))
+        await page.close()
+
         # ================= The import side (spec scenarios 4-8) =================
         STAMP = r' · \d{4}-\d{2}-\d{2} \d{2}:\d{2}$'
 
