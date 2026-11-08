@@ -9262,7 +9262,7 @@
 
   // Folder-name helpers for the export subfolder.
   function sanitizeFolderName(name){
-    return String(name == null ? '' : name).replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100).trim();
+    return String(name == null ? '' : name).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100).trim();
   }
   function exportSubfolderName(title, now = new Date()){
     const p = (n) => String(n).padStart(2, '0');
@@ -9534,7 +9534,7 @@
       taken.add(EXPORT_DETAILS_FILE);
       taken.add('index.csv');
       try{
-        out = await uniqueSubfolderIn(dest, exportSubfolderName(detailsTitle, new Date()));
+        out = await uniqueSubfolderIn(dest, exportSubfolderName(withIndex ? detailsTitle : '', new Date()));
         for(let i = 0; i < docs.length; i++){
           const d = docs[i];
           statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportProgress', {done: i, total: docs.length}));
@@ -9579,6 +9579,8 @@
       if(fatalError){
         statusEl.className = 'status err';
         statusEl.textContent = (fatalError && fatalError.message) || String(fatalError);
+        // Files already copied stay where they are: say which subfolder holds them.
+        if(out && exported.length) statusEl.textContent += ' ' + t('exportDone', {count: exported.length, folder: out.name});
         startBtn.disabled = cancelBtn.disabled = el('export-index-toggle').disabled = el('export-details-toggle').disabled = false;
         syncExportDetailsFields();
         return;
@@ -17579,6 +17581,7 @@
   function beginPersonFlowHold(){
     if(syncPersonFlowHold === 0){ syncFlowKeptAside = []; syncHoldNoticeShown = false; syncHoldEpisode = null; }
     syncPersonFlowHold++;
+    window.__DEBUG_holdBegins = (window.__DEBUG_holdBegins || 0) + 1; // test-only counter (tests/test_export_subfolders.py)
     return { lib: syncLibrary, root: rootDirHandle, mark: syncFlowKeptAside.length };
   }
   // → the folders kept aside since beginPersonFlowHold() returned `token`.

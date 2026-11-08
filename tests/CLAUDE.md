@@ -160,7 +160,14 @@ never by file name. This list maps each of them to what it checks:
     message; a same-minute clash numbered " (2)"; a failing subfolder
     creation showing the error and handing the dialog back; forbidden
     characters becoming `-`; index off giving files only; every file failing
-    leaving no subfolder (message naming the picked folder);
+    leaving no subfolder (message naming the picked folder); index off
+    ignoring the disabled Title (generic `Export …` name); a stubbed failing
+    `index.csv` write keeping the copied files and showing the error plus the
+    subfolder holding them with Start usable again; DEL and C1 controls
+    replaced; a multi-export import showing 'Export n of total: name' (a
+    MutationObserver on `#import-status`) and calling `beginPersonFlowHold`
+    once (`__DEBUG_holdBegins` counter); the exports panel at 390px without
+    horizontal overflow and with the descriptions ellipsized;
     `sanitizeFolderName` / `exportSubfolderName` cases (long titles cut,
     empty after cleaning falls back to "Export"); a folder with `index.csv`
     plus `index (2).csv` and `export-details (2).json` importing as before,

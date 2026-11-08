@@ -138,6 +138,39 @@ async def main():
         print("No title: 'Export YYYY-MM-DD HH-MM':", bool(re.match(r'^Export \d{4}-\d{2}-\d{2} \d{2}-\d{2}$', names[0])), names)
         await page.close()
 
+        # === Index off: the Title field is disabled and ignored, the name is generic ===
+        page = await start()
+        await run_export(page, title='Hidden title', index=False)
+        names = list(await listing(page))
+        print("Index off: the disabled title does not name the subfolder:",
+              len(names) == 1 and bool(re.match(r'^Export \d{4}-\d{2}-\d{2} \d{2}-\d{2}$', names[0])), names)
+        await page.close()
+
+        # === A failing index.csv write after the files were copied ===
+        page = await start()
+        await page.evaluate("""() => {
+            const d = window.__DEST = window.__makeEmptyRoot();
+            const orig = d.getDirectoryHandle.bind(d);
+            d.getDirectoryHandle = async (n, o) => {
+                const h = await orig(n, o);
+                if(o && o.create){
+                    const gf = h.getFileHandle.bind(h);
+                    h.getFileHandle = async (fn, fo) => { if(fn === 'index.csv' && fo && fo.create) throw new Error('Disk full'); return gf(fn, fo); };
+                }
+                return h;
+            };
+        }""")
+        await run_export(page, title='Partial')
+        top = await listing(page); names = list(top)
+        status = await page.inner_text('#export-status')
+        print("A failing index.csv write keeps the copied files in the subfolder:",
+              len(names) == 1 and top[names[0]] == ['2026-01-10 Water.pdf', '2026-02-15 Stadtwerke.pdf'], top)
+        print("...and the error names the error and the subfolder holding them:",
+              'Disk full' in status and f'Exported 2 files to “{names[0]}”.' in status and 'err' in await page.get_attribute('#export-status', 'class'), repr(status))
+        print("...and Start is usable again:", await page.is_enabled('#export-start-btn') and await page.is_enabled('#export-cancel-btn')
+              and await page.is_enabled('#modal-close-btn') and await page.is_enabled('#export-title'))
+        await page.close()
+
         # === Scenario 2: index off -> files only; all failing -> no subfolder ===
         page = await start()
         await run_export(page, title='Plain', index=False)
@@ -162,6 +195,7 @@ async def main():
             return {
               long: sanitizeFolderName('x'.repeat(150)).length,
               forb: sanitizeFolderName('a/b\\\\c:d*e?f"g<h>i|j\\u0001k'),
+              ctl: sanitizeFolderName('a\\u007fb\\u0085c\\u009fd'),
               ws: sanitizeFolderName('  a    b  '),
               empty: sanitizeFolderName('   '),
               cut: exportSubfolderName('y'.repeat(150), d),
@@ -172,6 +206,7 @@ async def main():
         }""")
         print("sanitizeFolderName cuts at 100:", r['long'] == 100)
         print("sanitizeFolderName replaces forbidden and control characters:", r['forb'] == 'a-b-c-d-e-f-g-h-i-j-k', r['forb'])
+        print("sanitizeFolderName replaces DEL and C1 controls:", r['ctl'] == 'a-b-c-d', r['ctl'])
         print("sanitizeFolderName collapses whitespace and trims:", r['ws'] == 'a b' and r['empty'] == '', r)
         print("exportSubfolderName: long title cut before the date part:", r['cut'] == 'y' * 100 + ' · 2026-01-05 07-03', r['cut'])
         print("exportSubfolderName: no title falls back to 'Export':", r['none'] == 'Export 2026-01-05 07-03', r['none'])
@@ -286,6 +321,12 @@ async def main():
         page = await start()
         await build_parent(page, TWO_EXPORTS, top={'loose.pdf': '%PDF-1.4 loose'})
         await open_import(page)
+        await page.evaluate("""() => {
+            window.__PROGRESS = [];
+            window.__DEBUG_holdBegins = 0;
+            const st = document.getElementById('import-status');
+            new MutationObserver(() => window.__PROGRESS.push(st.textContent)).observe(st, { childList: true, characterData: true, subtree: true });
+        }""")
         rows = page.locator('.import-export-row')
         print("3. The panel says how many exports the folder holds:", await page.inner_text('#import-exports-found') == 'This folder holds 2 exports.')
         print("3. One row per export, both ticked:", await rows.count() == 2
@@ -306,6 +347,13 @@ async def main():
         print("3. ...there is no single name field:", await page.locator('#import-coll-name').count() == 0)
         await run_import(page)
         lib = await library(page)
+        progress = await page.evaluate("() => window.__PROGRESS")
+        print("3. The progress text 'Export n of total: name' shows for each export, in order:",
+              any('Export 1 of 2: Export 2026-11-02 09-00' in x for x in progress)
+              and any('Export 2 of 2: Tax <b>2025</b>' in x for x in progress)
+              and next(i for i, x in enumerate(progress) if 'Export 1 of 2:' in x) < next(i for i, x in enumerate(progress) if 'Export 2 of 2:' in x), progress[:6])
+        print("3. The whole run holds the person's flow once:", await page.evaluate("() => window.__DEBUG_holdBegins") == 1,
+              await page.evaluate("() => window.__DEBUG_holdBegins"))
         colls = {c['name']: c for c in lib['collections']}
         print("3. Two collections with the listed names:", sorted(colls) == sorted(names) and all(c['kind'] == 'manual' for c in colls.values()), list(colls))
         print("3. Each holds only its own export's documents:", titles_in(lib, colls[names[1]]['id']) == ['Tax A', 'Tax B']
@@ -343,6 +391,26 @@ async def main():
         summary = await page.inner_text('#import-summary')
         print("3b. ...and the totals add up:", summary.startswith('Added: 2\nWith details from index.csv: 2\n')
               and await page.locator('#import-summary .import-export-result').count() == 2, repr(summary))
+        await page.close()
+
+        # --- 3c. The exports panel at phone width ---
+        page = await start()
+        await page.set_viewport_size({'width': 390, 'height': 800})
+        await build_parent(page, TWO_EXPORTS)
+        await open_import(page)
+        box = await page.evaluate("""() => {
+            const m = document.querySelector('.modal');
+            const rows = [...document.querySelectorAll('.import-export-row')];
+            const within = (e, r) => e.getBoundingClientRect().right <= r.getBoundingClientRect().right + 0.5;
+            const descs = [...document.querySelectorAll('.import-export-desc')];
+            return { modal: [m.scrollWidth, m.clientWidth], page: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+                     rowsFit: rows.every(r => r.scrollWidth <= r.clientWidth + 1 && [...r.querySelectorAll('.import-export-title, .import-export-desc')].every(e => within(e, r))),
+                     descClipped: descs.length > 0 && descs.every(d => getComputedStyle(d).textOverflow === 'ellipsis' && getComputedStyle(d).whiteSpace === 'nowrap'),
+                     descOverflowing: descs.some(d => d.scrollWidth > d.clientWidth), rows: rows.length };
+        }""")
+        print("3c. At 390px the dialog has no horizontal overflow:", box['modal'][0] <= box['modal'][1] and box['page'][0] <= box['page'][1], box)
+        print("3c. ...the rows' text stays inside the rows, long descriptions clipped with an ellipsis:",
+              box['rows'] == 2 and box['rowsFit'] and box['descClipped'] and box['descOverflowing'], box)
         await page.close()
 
         # --- 4. Untick one: only the other is imported; nothing ticked: Import disabled ---

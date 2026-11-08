@@ -1127,13 +1127,13 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   `index.csv` and `export-details.json`, so inside it those two keep their
   plain names (`taken` still reserves both, so a document named like them is
   numbered). The name is `{title} · YYYY-MM-DD HH-MM` (local time), or
-  `Export YYYY-MM-DD HH-MM` without a title or when it is empty after
+  `Export YYYY-MM-DD HH-MM` without a title, with the index off (the disabled Title is ignored), or when it is empty after
   `sanitizeFolderName()` (`/ \ : * ? " < > |` and control characters become
   `-`, whitespace collapsed, trimmed, cut at 100 characters before the date);
   a clash gets " (2)", " (3)". Index off still makes the subfolder (files
   only). If nothing was exported the empty subfolder is removed
   (best effort) and the done message names the picked folder instead; a
-  failing subfolder creation shows the error and gives the dialog back.
+  failing subfolder creation shows the error and gives the dialog back; a failure after files were copied (e.g. `index.csv`) shows the error plus `exportDone` naming the subfolder that keeps them.
   Otherwise the done message names the subfolder (`exportDone` with
   `folder` = its name). Emailing (Mariner's other export) isn't possible from a browser: a
   `mailto:` link can't carry attachments. **Details in exported PDFs**

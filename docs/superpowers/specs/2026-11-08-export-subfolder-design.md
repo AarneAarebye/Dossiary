@@ -13,7 +13,7 @@ Exporting into a folder that already held an export produced `index (2).csv` and
 
 ## Export
 
-- Subfolder name: `{title} · YYYY-MM-DD HH-MM` when the export has a title (the cleaned Title field), otherwise `Export YYYY-MM-DD HH-MM`. Local time. Characters not allowed in folder names (`/ \ : * ? " < > |` and control characters) become `-`; the result is trimmed and cut at 100 characters before the date part is added. A name that already exists gets ` (2)`, ` (3)`. Created with `getDirectoryHandle(name, {create:true})` after checking it does not exist.
+- Subfolder name: `{title} · YYYY-MM-DD HH-MM` when the export has a title (the cleaned Title field), otherwise `Export YYYY-MM-DD HH-MM`; with "Include index.csv" off the Title field is disabled and ignored, so the name is always the generic one. Local time. Characters not allowed in folder names (`/ \ : * ? " < > |` and control characters) become `-`; the result is trimmed and cut at 100 characters before the date part is added. A name that already exists gets ` (2)`, ` (3)`. Created with `getDirectoryHandle(name, {create:true})` after checking it does not exist.
 - Documents, `index.csv` and `export-details.json` go into the subfolder. The names inside are the plain ones: `index.csv` and `export-details.json` are never numbered away. A document named like either gets the existing numbering (the reserved names stay in `taken`).
 - "Include index.csv" off: the subfolder is still made and holds the files; no index, no details file.
 - Nothing exported (all failed): the empty subfolder is removed (best effort, errors ignored).
