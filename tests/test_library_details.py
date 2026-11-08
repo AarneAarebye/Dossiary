@@ -123,12 +123,90 @@ async def main():
         await page.select_option('#lang-select', 'en')
         await page.wait_for_timeout(150)
 
+        # === Scenario 9: the header name opens Library details too ===
+        print("With a library open the header name is a button:",
+              await page.get_attribute('#sub-label', 'role') == 'button'
+              and await page.get_attribute('#sub-label', 'tabindex') == '0'
+              and await page.get_attribute('#sub-label', 'aria-haspopup') == 'dialog')
+        print("...with a pointer cursor:", await page.eval_on_selector('#sub-label', "e => getComputedStyle(e).cursor") == 'pointer')
+        print("...keeping the description as its tooltip:", await page.get_attribute('#sub-label', 'title') == 'Kept note')
+        await page.click('#sub-label')
+        await page.wait_for_timeout(150)
+        print("Clicking the header opens the dialog:", await page.locator('.modal #library-details-title').count() == 1)
+        print("...with the current values:",
+              await page.input_value('#library-details-title') == 'Kept title'
+              and await page.input_value('#library-details-description') == 'Kept note')
+        print("...as the only modal:", await page.locator('.modal').count() == 1)
+        await page.click('#library-details-cancel-btn')
+        await page.wait_for_timeout(100)
+        await page.focus('#sub-label')
+        await page.keyboard.press('Enter')
+        await page.wait_for_timeout(150)
+        print("Enter on the focused header opens it:", await page.locator('#library-details-title').count() == 1
+              and await page.input_value('#library-details-title') == 'Kept title')
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+        await page.focus('#sub-label')
+        await page.keyboard.press(' ')
+        await page.wait_for_timeout(150)
+        print("Space opens it as well:", await page.locator('#library-details-title').count() == 1)
+        # Save from the header's dialog: the header stays a working button.
+        await page.fill('#library-details-title', 'Header title')
+        await page.fill('#library-details-description', 'Header note')
+        await page.click('#library-details-save-btn')
+        await page.wait_for_timeout(300)
+        print("Saving from it updates the header:", await page.inner_text('#sub-label') == 'Header title'
+              and await page.get_attribute('#sub-label', 'title') == 'Header note')
+        print("...which is still a button:", await page.get_attribute('#sub-label', 'role') == 'button' and await page.get_attribute('#sub-label', 'tabindex') == '0')
+        await page.click('#sub-label')
+        await page.wait_for_timeout(150)
+        print("...and still opens the dialog with the saved values:",
+              await page.input_value('#library-details-title') == 'Header title'
+              and await page.input_value('#library-details-description') == 'Header note')
+        # While a dialog is open the header does nothing, by mouse or by key
+        # (dispatched directly: the backdrop would catch a real click).
+        await page.fill('#library-details-title', 'Typed, unsaved')
+        await page.evaluate("() => { const s = document.getElementById('sub-label'); s.click(); s.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); }")
+        await page.wait_for_timeout(150)
+        print("Over an open dialog the header does not reopen it:", await page.input_value('#library-details-title') == 'Typed, unsaved')
+        await page.click('#library-details-cancel-btn')
+        await page.wait_for_timeout(100)
+        await page.click('#tools-btn')
+        await page.click('#storage-stats-btn')
+        await page.wait_for_timeout(200)
+        await page.evaluate("() => document.getElementById('sub-label').click()")
+        await page.wait_for_timeout(150)
+        print("...nor opens over another dialog:", await page.locator('#library-details-title').count() == 0 and await page.locator('.modal').count() == 1)
+        await page.keyboard.press('Escape')
+        await page.wait_for_timeout(100)
+        print("...nor while a long operation runs:", await page.evaluate("""() => {
+            window.__DEBUG_setExportRunning(true);
+            document.getElementById('sub-label').click();
+            const opened = document.getElementById('modal-root').innerHTML !== '';
+            window.__DEBUG_setExportRunning(false);
+            return !opened;
+        }"""))
+        await save('Kept title', 'Kept note')
+
         # === Scenario 8: a library with details written by another device ===
         await page.evaluate("window.__TEST_ROOT = null;")
         await page.click("#reload-btn")
         await page.wait_for_timeout(200)
         print("Switching away shows the empty-state title:", await page.inner_text('#sub-label') == 'No library open')
         print("...with no tooltip:", await page.get_attribute('#sub-label', 'title') is None)
+        print("...and no button semantics:", await page.evaluate("() => { const s = document.getElementById('sub-label'); return !s.hasAttribute('role') && !s.hasAttribute('tabindex') && !s.hasAttribute('aria-haspopup'); }"))
+        print("...nor a pointer cursor:", await page.eval_on_selector('#sub-label', "e => getComputedStyle(e).cursor") != 'pointer')
+        await page.click('#sub-label')
+        await page.wait_for_timeout(150)
+        print("Clicking the empty-state text opens nothing:", await page.locator('.modal').count() == 0)
+        await page.evaluate("() => document.getElementById('sub-label').dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}))")
+        await page.wait_for_timeout(100)
+        print("...nor does Enter on it:", await page.locator('.modal').count() == 0)
+        await page.select_option('#lang-select', 'de')
+        await page.wait_for_timeout(100)
+        print("A language change on the start screen keeps it plain text:", await page.get_attribute('#sub-label', 'role') is None)
+        await page.select_option('#lang-select', 'en')
+        await page.wait_for_timeout(100)
         seeded = dict(SEED, settings=[{"key": "library_title", "value": "  Family\narchive "}, {"key": "library_description", "value": "Shared with   the kids"}])
         await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot(%s); window.__TEST_ROOT.name = 'Family.dossiary';" % json.dumps(seeded))
         await page.click("#open-btn")

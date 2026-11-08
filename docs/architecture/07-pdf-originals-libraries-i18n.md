@@ -342,6 +342,23 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   refuses) and the header, the in-memory values and the list entry stay as
   they were (the settings rows are restored unless a synced reload swapped
   the database meanwhile). Tested via `tests/test_library_details.py`.
+- **The header name opens Library details (1.62.0).** While a library is
+  open, `updateLibraryHeader()` calls `setLibraryHeaderInteractive(true)`,
+  which gives `#sub-label` `role="button"`, `tabindex="0"` and
+  `aria-haspopup="dialog"` (its accessible name stays the visible name, the
+  description stays its `title` tooltip, so no new string); the two places
+  that write the empty-state text (`setLang()`'s no-library branch and the
+  library reset) call it with `false`, removing all three, so "No library
+  open" is plain text. The CSS keys on `#sub-label[role="button"]` (pointer
+  cursor, a `--phosphor-dim` underline on hover, the page's usual
+  `--phosphor` focus outline), so the empty state gets none of it.
+  `openLibraryDetailsFromHeader()` (click, Enter, Space) does nothing unless
+  the role is set and `db`/`rootDirHandle` exist, while either modal layer
+  is non-empty, or while one of the long-operation flags `onModalKeydown()`
+  checks is set -- the Tools entry needs no guard of its own because the
+  modal backdrop covers it, but the header is reachable by keyboard, so it
+  checks explicitly. `#sub-label` keeps its ellipsis truncation and its
+  place next to "Switch library".
 - **UI language support (started as English/German, later generalized to
   seven languages — English, German, Spanish, French, Chinese Simplified,
   Chinese Traditional, Armenian)** is a flat per-language dictionary (`STRINGS.en` /

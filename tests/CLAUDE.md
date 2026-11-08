@@ -159,7 +159,13 @@ never by file name. This list maps each of them to what it checks:
     "{folder} · Last opened"); the pencil reconnecting once and then opening
     the dialog; a failed save changing nothing; a save updating the entry
     without touching `lastOpenedAt`; a denied reconnect or a non-library
-    folder opening no dialog; the German Tools entry.
+    folder opening no dialog; the German Tools entry; the header name as a
+    button (role, tabindex, `aria-haspopup`, pointer cursor) opening the
+    dialog with the current values by click, Enter and Space, still a button
+    after saving from it, and not reopening over an open dialog, over
+    another dialog or during a long operation; the empty-state text with no
+    button semantics, opening nothing by click or Enter, also after a
+    language change. Confirmed non-vacuous by dropping each guard.
   - `test_import_date_column.py` -- the Imported column: visible by
     default, in the Columns menu, toggled off and on, showing a real date.
   - `test_sticky_header.py` -- with many rows, the table header stays at

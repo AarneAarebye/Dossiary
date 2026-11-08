@@ -34,8 +34,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
 - **Bibliotheksdetails** — geben Sie einer Bibliothek einen Titel und eine
   kurze Beschreibung. Beides wird in der Bibliothek selbst gespeichert,
   sodass jedes Gerät, das sie öffnet, sie anzeigt. Bearbeiten Sie sie über
-  Werkzeuge → Bibliotheksdetails… oder mit dem ✎-Stift bei einem Eintrag
-  in „Zuletzt geöffnete Bibliotheken". Der Titel erscheint in der
+  Werkzeuge → Bibliotheksdetails…, per Klick auf den Bibliotheksnamen in
+  der Kopfzeile oder mit dem ✎-Stift bei einem Eintrag in „Zuletzt
+  geöffnete Bibliotheken". Der Titel erscheint in der
   Kopfzeile und in der Liste (solange er leer ist, der Ordnername).
 - **Zuletzt geöffnete Bibliotheken** — die letzten 5 von Ihnen geöffneten
   Bibliotheken erscheinen auf dem Startbildschirm; klicken Sie auf eine,

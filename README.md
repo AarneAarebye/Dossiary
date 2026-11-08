@@ -29,8 +29,8 @@ working" problem that motivated this project in the first place.
 
 - **Library details** — give a library a title and a short description.
   Both are saved in the library itself, so every device that opens it shows
-  them. Edit them from Tools → Library details… or with the ✎ pencil on an
-  entry in Recent libraries. The title appears in the header and in the
+  them. Edit them from Tools → Library details…, by clicking the library's
+  name in the header, or with the ✎ pencil on an entry in Recent libraries. The title appears in the header and in the
   Recent libraries list (the folder name is shown while it is empty).
 - **Recent libraries** — the last 5 libraries you've opened show up on the
   startup screen; click one to reopen it with a single permission-confirm

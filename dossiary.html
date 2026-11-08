@@ -38,6 +38,11 @@
   header > div:first-child{ min-width:0; max-width:100%; }
   header .sub:has(#reload-btn){ display:flex; align-items:baseline; min-width:0; white-space:nowrap; }
   header .sub #sub-label{ overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  /* With a library open the name opens Library details (role="button", set by
+     setLibraryHeaderInteractive()); the empty-state text gets none of this. */
+  header .sub #sub-label[role="button"]{ cursor:pointer; border-radius:var(--radius); text-decoration:underline; text-decoration-color:transparent; text-underline-offset:2px; }
+  header .sub #sub-label[role="button"]:hover{ color:var(--text); text-decoration-color:var(--phosphor-dim); }
+  header .sub #sub-label[role="button"]:focus-visible{ color:var(--text); outline:2px solid var(--phosphor); outline-offset:1px; }
   .sub-switch-btn{ flex-shrink:0; background:transparent; border:none; padding:0 0 0 10px; font-family:var(--font-mono); font-size:11.5px; line-height:inherit; color:var(--text-dim); text-decoration:underline; text-underline-offset:2px; text-decoration-color:var(--line); cursor:pointer; }
   .sub-switch-btn::before{ content:'⇄'; text-decoration:none; display:inline-block; margin-right:6px; }
   .devices-kept-aside{ font-size:12px; color:var(--amber); margin-top:2px; }
@@ -1139,7 +1144,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.61.1'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.62.0'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -3620,7 +3625,7 @@
     // open (the library's title or folder name, set via updateLibraryHeader()
     // at each of its other call sites), so the empty-state text is set explicitly here
     // instead, only in the branch where there's genuinely no library open.
-    if(!libraryOpen){ subLabel.textContent = t('emptyTitle'); subLabel.removeAttribute('title'); renderRecentLibraries(); }
+    if(!libraryOpen){ subLabel.textContent = t('emptyTitle'); subLabel.removeAttribute('title'); setLibraryHeaderInteractive(false); renderRecentLibraries(); }
     // The new-library form: an untouched default name follows the language,
     // a typed one stays; the folder-name preview is rebuilt either way.
     if(!libraryOpen && rootDirHandle && initState.style.display === 'block'){
@@ -5383,7 +5388,7 @@
     el('inbox-banner').style.display = 'none';
     el('report-drilldown-banner').style.display = 'none';
     libraryTitle = ''; libraryDescription = '';
-    subLabel.textContent = t('emptyTitle'); subLabel.removeAttribute('title'); statsEl.innerHTML = ''; setStatus('');
+    subLabel.textContent = t('emptyTitle'); subLabel.removeAttribute('title'); setLibraryHeaderInteractive(false); statsEl.innerHTML = ''; setStatus('');
     renderRecentLibraries();
   }
 
@@ -5694,7 +5699,32 @@
   function updateLibraryHeader(){
     subLabel.textContent = libraryHeaderName();
     if(libraryDescription) subLabel.title = libraryDescription; else subLabel.removeAttribute('title');
+    setLibraryHeaderInteractive(true);
   }
+  // The header's library name doubles as a shortcut to Library details, but
+  // only while it shows a library's name: the empty-state text ("No library
+  // open") is plain text with no button semantics. The accessible name stays
+  // the visible name; aria-haspopup says it opens a dialog, so no new string.
+  function setLibraryHeaderInteractive(on){
+    if(on){
+      subLabel.setAttribute('role', 'button');
+      subLabel.setAttribute('tabindex', '0');
+      subLabel.setAttribute('aria-haspopup', 'dialog');
+    }else{
+      subLabel.removeAttribute('role');
+      subLabel.removeAttribute('tabindex');
+      subLabel.removeAttribute('aria-haspopup');
+    }
+  }
+  // Same guard as the Tools entry's own reach: never over an open dialog
+  // (either modal layer) or while a long operation inside one is running.
+  function openLibraryDetailsFromHeader(){
+    if(subLabel.getAttribute('role') !== 'button' || !db || !rootDirHandle) return;
+    if(modalRoot.innerHTML !== '' || modalOverRoot.innerHTML !== '') return;
+    if(findDuplicatesBackfillRunning || makeSearchableRunning || exportRunning || importRunning || backupRunning || exportLibraryRunning || pageToolsRunning || scanDialogRunning || deleteLibraryRunning || shareLibraryRunning) return;
+    openLibraryDetailsModal();
+  }
+  window.__DEBUG_setExportRunning = (v) => { exportRunning = !!v; }; // test-only hook (tests/test_library_details.py): the header's long-operation guard without a real export
   // false when the library could not take the change (a newer synced version
   // is on disk, or the write failed; the status line says why). The header,
   // the globals and the Recent libraries entry change only after the write
@@ -16777,6 +16807,11 @@
   el('library-check-btn').addEventListener('click', openLibraryCheckModal);
   el('storage-stats-btn').addEventListener('click', openStorageStatsModal);
   el('library-details-btn').addEventListener('click', openLibraryDetailsModal);
+  subLabel.addEventListener('click', openLibraryDetailsFromHeader);
+  subLabel.addEventListener('keydown', (e) => {
+    if(subLabel.getAttribute('role') !== 'button') return;
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openLibraryDetailsFromHeader(); }
+  });
   el('backup-btn').addEventListener('click', openBackupModal);
   el('import-folder-btn').addEventListener('click', openImportModal);
   el('toolbar-buttons-btn').addEventListener('click', openToolbarButtonsModal);
