@@ -1092,7 +1092,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
 - **Export selected documents** (`openExportModal()`, `exportFileName()`,
   `uniqueFileNameIn()`, `buildExportCsv()`, `#bulk-export-btn` in the
   bulk-action bar's More menu) copies each selected document's active file into a
-  folder picked with `showDirectoryPicker()`, named `<yyyy-mm-dd> <title>`
+  new subfolder of the folder picked with `showDirectoryPicker()` (since 1.63.0, see **One subfolder per export**), named `<yyyy-mm-dd> <title>`
   (characters not allowed in file names replaced, clashes -- including
   files already in that folder, which are never overwritten -- numbered
   " (2)"), plus an optional `index.csv` of the details: the fixed columns,
@@ -1117,7 +1117,23 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   skips the name. A failed write of the details file is reported in the
   summary (`exportDetailsWriteFailed`, status `err`) but does not fail the
   export: the documents and `index.csv` stay counted as exported. The
-  library's own settings are never changed. Emailing (Mariner's other export) isn't possible from a browser: a
+  library's own settings are never changed. **One subfolder per export**
+  (1.63.0; spec `docs/superpowers/specs/2026-11-08-export-subfolder-design.md`):
+  the picked folder is only the parent. After the inside-library check and
+  before the loop, `uniqueSubfolderIn(dest, exportSubfolderName(title, now))`
+  creates the subfolder and it is the write target for documents,
+  `index.csv` and `export-details.json`, so inside it those two keep their
+  plain names (`taken` still reserves both, so a document named like them is
+  numbered). The name is `{title} · YYYY-MM-DD HH-MM` (local time), or
+  `Export YYYY-MM-DD HH-MM` without a title or when it is empty after
+  `sanitizeFolderName()` (`/ \ : * ? " < > |` and control characters become
+  `-`, whitespace collapsed, trimmed, cut at 100 characters before the date);
+  a clash gets " (2)", " (3)". Index off still makes the subfolder (files
+  only). If nothing was exported the empty subfolder is removed
+  (best effort) and the done message names the picked folder instead; a
+  failing subfolder creation shows the error and gives the dialog back.
+  Otherwise the done message names the subfolder (`exportDone` with
+  `folder` = its name). Emailing (Mariner's other export) isn't possible from a browser: a
   `mailto:` link can't carry attachments. **Details in exported PDFs**
   (`pdfWithDetails()`, `#export-details-toggle`, on by default): each
   exported PDF copy gets Title (`displayName()`), Subject (category,
@@ -1220,13 +1236,40 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   title, else folder name} · YYYY-MM-DD HH:MM` in local time, made unique
   against the manual collections with " (2)", " (3)" if taken (the same
   folder imported twice in one minute); a name the person types is only
-  checked, never changed. **Export details**: `readExportDetails()` reads
+  checked, never changed. **Classification** (`classifyImportFolder()`,
+  1.63.0): `'single'` when the folder has its own `index.csv` at the top
+  (hidden names ignored) -- imported as one folder as above, and any
+  `index (N).csv` / `export-details (N).json` (`EXTRA_INDEX_FILE_RES`, N =
+  digits) in it, left by older exports into the same folder, are neither
+  documents nor read, counted in `importExtraIndexSkipped`; `'exports'` when
+  there is no such `index.csv` but at least one direct, non-hidden subfolder
+  has an `index.csv` that `readImportIndex()` can use (a subfolder without
+  one, with an unusable one, or unreadable is not listed; only one level is
+  looked at and top-level files of the parent are ignored), listed sorted by
+  name with title (`export-details.json`) or folder name, description and
+  the count of index rows whose file is present; `'plain'` otherwise
+  (plain folder import as before). In `'exports'` mode `askImportExports()`
+  (`#import-exports-list`, `.import-export-row`, `#import-export-check-<n>`)
+  shows one row per export, all ticked, with one collection choice for the
+  run: a new collection per export (default; names from
+  `importCollectionDefaultName()`, unique against existing collections and
+  each other, shown read-only in `#import-coll-names`, no name field), none,
+  or one existing collection; Import is disabled with nothing ticked or
+  "existing" unselected. The ticked exports run one after the other through
+  `importOneFolder(src, files, index, about, choice, ctx)` (the per-folder
+  body that the single path calls once), under one Person-flow hold and one
+  busy/close lock; progress reads `importExportProgress`, a failure in one
+  export is recorded (`importExportFailed`) and the next still runs, and the
+  summary adds up the counts with one block per export
+  (`.import-export-result`, `.failed`) and its collection. Strings
+  `importExportsFound(One)`, `importExportFiles(One)`, `importExportsNewPerExport`,
+  `importExportProgress`, `importExportsSummaryHeading`, `importExportFailed`. **Export details**: `readExportDetails()` reads
   `export-details.json` only when a usable `index.csv` is present; it never
   throws and returns `{title, description}` (cleaned and cut to 60/300) or
   `null` for bad JSON, a non-object, or no non-empty text. Values that are
   not strings are ignored (`format` is not checked). When it returns
   something, `askImportCollection()` shows an "About this export" block
-  (title, description, escaped text) above the choice. **Known cost:**
+  (title, description, escaped text) above the choice. **Known cost (1.63.0):** a Dossiary before 1.63.0 importing a parent folder made by this version sees only subfolders and reports that there are no files; the person picks the export subfolder instead. **Known cost (1.61.0):**
   Dossiary versions before 1.61.0 don't know the file and import it into
   the Inbox as a document. During
   the run every file with a row pushes its document id onto `memberIds`;

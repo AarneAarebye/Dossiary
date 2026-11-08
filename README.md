@@ -236,7 +236,10 @@ working" problem that motivated this project in the first place.
   keep gets the combined file and the others move to the Waste bin with
   their files untouched. The original file is always kept.
 - **Export** — select documents and choose **More ▾ → Export…** in the
-  bulk-action bar to copy their files into a folder you pick, named by date and title,
+  bulk-action bar to copy their files into a folder you pick. Each export
+  creates its own new subfolder there (named by its title and the date and
+  time, e.g. `Tax 2025 · 2026-11-08 14-32`, or `Export …` without a title), so
+  exports never mix; the files are named by date and title,
   with an optional `index.csv` of their details (amount, currency, tags,
   custom fields…) — handy for a tax advisor. Exported PDFs carry their
   details in the PDF's own properties too (title, subject from category
@@ -282,6 +285,14 @@ working" problem that motivated this project in the first place.
   dialog shows its title and description under "About this export"; the
   file itself is never imported as a document. Dossiary versions before 1.61.0
   don't know this file and would add it to the Inbox as a document.
+  If you pick a folder that holds several exports (a folder without its own
+  `index.csv` but with export subfolders), the dialog lists them with title,
+  description and the number of files listed, all ticked; you import the
+  ticked ones in one go, each into its own new collection (or all into no
+  collection or one existing one). If one export fails, the next still runs.
+  Extra `index (2).csv` files from older exports made into the same folder are
+  skipped, not imported as documents. Dossiary versions before 1.63.0 see only
+  the subfolders of such a parent folder; pick an export subfolder instead.
 - **Share** — **Share…** (in a document's panel, or More ▾ for a selection)
   hands the files to your system's share sheet — Mail, Messages, AirDrop or
   any other app that offers it — named like exported copies and, for PDFs,

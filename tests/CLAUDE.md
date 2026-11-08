@@ -13,7 +13,7 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-**Test coverage narrative.** The per-feature account of what the 113 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
+**Test coverage narrative.** The per-feature account of what the 114 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
 
 - [`coverage/01-capture-ocr-fields-inbox-nav.md`](coverage/01-capture-ocr-fields-inbox-nav.md): Capture, OCR, previews, custom fields, inbox, navigation and libraries (lines 16-446 of the old file).
 - [`coverage/02-detail-reminders-bulk-duplicates.md`](coverage/02-detail-reminders-bulk-duplicates.md): Detail panel, reminders, bulk edit, duplicate detection and broken links (lines 447-765 of the old file).
@@ -133,7 +133,7 @@ never by file name. This list maps each of them to what it checks:
     date and time, made unique if taken; none, new or existing manual
     collection; only listed files; a skipped duplicate with a row added; no
     empty collection; failure kept in the summary).
-  - `test_export_details.py` -- the export dialog's Title and Description:
+  - `test_export_details.py` (adapted in 1.63.0: it reads the export's subfolder; a document named `index` is numbered while the real `index.csv` keeps its name) -- the export dialog's Title and Description:
     prefilled from the library's own, the 60/300 limits and hint, both
     disabled with the index off (no details file), empty texts writing no
     `export-details.json`, edited texts cleaned and written as
@@ -150,6 +150,28 @@ never by file name. This list maps each of them to what it checks:
     non-string or empty details file ignored, a folder without `index.csv`
     importing at once with the json never a document, a description alone,
     the folder name as fallback, and over-long texts cut; no page errors.
+  - `test_export_subfolders.py` -- one subfolder per export and importing
+    several exports: an export creating `{title} · YYYY-MM-DD HH-MM` (or
+    `Export …`) holding the files, `index.csv` and `export-details.json` while
+    the picked folder holds only that subfolder, with its name in the done
+    message; a same-minute clash numbered " (2)"; a failing subfolder
+    creation showing the error and handing the dialog back; forbidden
+    characters becoming `-`; index off giving files only; every file failing
+    leaving no subfolder (message naming the picked folder);
+    `sanitizeFolderName` / `exportSubfolderName` cases (long titles cut,
+    empty after cleaning falls back to "Export"); a folder with `index.csv`
+    plus `index (2).csv` and `export-details (2).json` importing as before,
+    the extras not documents, the note shown; `classifyImportFolder` (single,
+    plain, exports; hidden, index-less and unusable-index subfolders left out;
+    file counts and details title); a parent with two exports (also two real
+    exports made one after the other) listing both with title, description
+    (as text) and file counts, ticked, a new collection per export with
+    read-only names, one summary block each; unticking one, nothing ticked
+    disabling Import; "No collection" and "One existing collection" applying
+    to all ticked; top-level files of the parent ignored and a parent with no
+    export subfolders imported as a plain folder; a document type new at the
+    start counted as new in every export; a failing file and a failing export
+    not stopping the next one (red status, dialog closable).
   - `test_library_details.py` -- Library details: the Tools entry and
     dialog (empty fields, folder-name hint, maxlength, Cancel/Escape); title
     and description saved in `settings` and shown in the header (description

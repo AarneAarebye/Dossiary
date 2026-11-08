@@ -278,7 +278,10 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   erhalten.
 - **Export** — Dokumente auswählen und in der Leiste für Mehrfachaktionen
   **Mehr ▾ → Exportieren…** wählen: Ihre Dateien werden in einen Ordner Ihrer Wahl
-  kopiert, benannt nach Datum und Titel, auf Wunsch mit einer `index.csv`
+  kopiert. Jeder Export legt dort einen eigenen neuen Unterordner an (benannt
+  nach Titel sowie Datum und Uhrzeit, z. B. `Steuer 2025 · 2026-11-08 14-32`,
+  ohne Titel `Export …`), sodass sich Exporte nie vermischen; die Dateien
+  heißen nach Datum und Titel, auf Wunsch mit einer `index.csv`
   ihrer Angaben (Betrag, Währung, Tags, eigene Felder …) — praktisch für
   die Steuerberatung. Exportierte PDFs tragen ihre Angaben auch in den
   eigenen PDF-Eigenschaften (Titel, Thema aus Kategorie und Typ, Tags als
@@ -330,6 +333,15 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   „Über diesen Export“; die Datei selbst wird nie als Dokument importiert.
   Dossiary-Versionen vor 1.61.0 kennen diese Datei nicht und würden sie als
   Dokument in den Posteingang legen.
+  Wählen Sie einen Ordner, der mehrere Exporte enthält (ohne eigene
+  `index.csv`, aber mit Export-Unterordnern), listet der Dialog sie mit Titel,
+  Beschreibung und Zahl der aufgeführten Dateien auf, alle angehakt; die
+  angehakten importieren Sie in einem Durchgang, jeden in eine eigene neue
+  Sammlung (oder alle in keine bzw. eine vorhandene Sammlung). Scheitert ein
+  Export, läuft der nächste trotzdem. Zusätzliche `index (2).csv` aus älteren
+  Exporten im selben Ordner werden übersprungen und nicht als Dokumente
+  importiert. Versionen vor 1.63.0 sehen in einem solchen Elternordner nur die
+  Unterordner; wählen Sie dann stattdessen einen Export-Unterordner.
 - **Teilen** — **Teilen…** (im Detailbereich eines Dokuments oder unter
   Mehr ▾ für eine Auswahl) übergibt die Dateien an das Teilen-Menü des
   Systems — Mail, Nachrichten, AirDrop oder jede andere App, die es
