@@ -238,7 +238,10 @@ the command, and the warning survives a re-render (a device removed); an older a
 404 add nothing; the German line and warning keep the command unchanged. Share refused with 409 `cloud-drive`
 (provider with HTML) shows the refusal as text, one share call, the dialog open with Share enabled, the
 libraries folder and the library unchanged and unsynced; a copy share refused removes the copy it made, says
-nothing about a kept copy and leaves Share a plain Share; Get it refused shows its refusal and adds no folder.
+nothing about a kept copy and leaves Share a plain Share; a copy kept after a 500 and then refused on Try again is removed
+while it is still the same folder, but a folder replaced under its name is left alone and still named as kept;
+a removal that throws keeps the copy with the copy-kept text, and Try again shares that copy with no second
+numbered one; Get it refused shows its refusal and adds no folder.
 The "Not shared yet" hint appears on the opened line for an unsynced library directly in the stored, granted,
 marked libraries folder without a picker or prompt, and not for a library elsewhere, a folder without the
 marker, a synced library, a folder whose permission isn't granted or no stored folder; German, and a switch

@@ -47,7 +47,8 @@ FAKE_SYNC = """
             return json(200, Object.assign({}, S.check, { ok: !!(h && h.kind === 'file') }));
         }
         if(path === '/admin/libraries/share' && method === 'POST'){
-            const a = S.share || { status: 200 };
+            const list = S.shares || [];
+            const a = (list.length > 1 ? list.shift() : list[0]) || S.share || { status: 200 };
             if(a.status !== 200) return json(a.status, a.body);
             return json(200, { id: 'lib-new', name: 'Tax 2026' });
         }
@@ -234,6 +235,53 @@ async def main():
         print("5b Share is a plain Share again:", (await page.inner_text('#share-library-share-btn')) == 'Share' and await page.locator('#share-library-share-btn').is_enabled())
         print("5b the original is still open:", (await text_of(page, '#sub-label')) == 'Tax 2026.dossiary' and await page.evaluate("window.__DEBUG_syncState().version") is None)
         print("5b no page errors:", errors == [], errors)
+        await browser.close()
+
+        # === 5c. A kept copy, then Try again refused: removed only while it is still that same folder ===
+        KEPT = "The copy “Tax 2026.dossiary” was kept but isn't shared yet. Try again to share it."
+        REFUSED = "Dropbox is a cloud drive. Dossiary Sync can't share libraries from there."
+        for label, tamper in [("the same folder", None), ("a folder replaced under the same name", "replace")]:
+            browser, page, errors = await open_app(p, {"token": "tok", "check": CHECK_LOCAL,
+                "shares": [{"status": 500, "body": {"error": "boom"}},
+                           {"status": 409, "body": {"error": "cloud-drive", "provider": "Dropbox"}}]}, in_place=False)
+            await page.click('#tools-btn'); await page.click('#share-library-btn'); await page.wait_for_timeout(300)
+            await page.click('#share-library-share-btn'); await page.wait_for_timeout(800)
+            st = await text_of(page, '#share-library-status')
+            print(f"5c [{label}] first answer 500: the copy is kept and named:", KEPT in st
+                  and await page.evaluate("window.__LIB_ROOT._children.has('Tax 2026.dossiary')"), repr(st))
+            if tamper == "replace":
+                await page.evaluate("""() => { const other = window.__makeEmptyRoot(); other.name = 'Tax 2026.dossiary';
+                    window.__LIB_ROOT._children.set('Tax 2026.dossiary', other); window.__REPLACED = other; }""")
+            await page.click('#share-library-share-btn'); await page.wait_for_timeout(800)
+            shares = await calls(page, '/admin/libraries/share')
+            print(f"5c [{label}] Try again shares the same copy:", len(shares) == 2 and shares[1]['body']['folder'] == 'Tax 2026.dossiary', shares)
+            st = await text_of(page, '#share-library-status')
+            if tamper is None:
+                print(f"5c [{label}] refused: the copy is removed, nothing said about a kept copy:", st == REFUSED
+                      and not await page.evaluate("window.__LIB_ROOT._children.has('Tax 2026.dossiary')"), repr(st))
+            else:
+                print(f"5c [{label}] refused: the replaced folder is left alone:",
+                      await page.evaluate("window.__LIB_ROOT._children.get('Tax 2026.dossiary') === window.__REPLACED"), repr(st))
+                print(f"5c [{label}] ...and still named as kept:", st.startswith(REFUSED) and KEPT in st, repr(st))
+            print(f"5c [{label}] no page errors:", errors == [], errors)
+            await browser.close()
+
+        # === 5d. Removing the refused copy fails: kept, named, and Try again makes no second copy ===
+        browser, page, errors = await open_app(p, {"token": "tok", "check": CHECK_LOCAL,
+            "share": {"status": 409, "body": {"error": "cloud-drive", "provider": "Dropbox"}}}, in_place=False)
+        await page.evaluate("""() => { const real = window.__LIB_ROOT.removeEntry.bind(window.__LIB_ROOT);
+            window.__LIB_ROOT.removeEntry = async (name, opts) => { if(name === 'Tax 2026.dossiary') throw Object.assign(new Error('busy'), { name: 'NoModificationAllowedError' }); return real(name, opts); }; }""")
+        await page.click('#tools-btn'); await page.click('#share-library-btn'); await page.wait_for_timeout(300)
+        await page.click('#share-library-share-btn'); await page.wait_for_timeout(800)
+        st = await text_of(page, '#share-library-status')
+        print("5d a failed removal isn't hidden: refusal plus the copy-kept text:", st.startswith(REFUSED) and KEPT in st, repr(st))
+        print("5d the copy is still there:", await page.evaluate("window.__LIB_ROOT._children.has('Tax 2026.dossiary')"))
+        print("5d the button offers Try again:", (await page.inner_text('#share-library-share-btn')) == 'Try again')
+        await page.click('#share-library-share-btn'); await page.wait_for_timeout(800)
+        shares = await calls(page, '/admin/libraries/share')
+        print("5d Try again shares that same copy, no second numbered copy:", len(shares) == 2 and shares[1]['body']['folder'] == 'Tax 2026.dossiary'
+              and await page.evaluate("() => [...window.__LIB_ROOT._children.keys()].sort()") == ['.dossiary-root.json', 'Tax 2026.dossiary'], shares)
+        print("5d no page errors:", errors == [], errors)
         await browser.close()
 
         # === 6. Get it refused for a cloud drive ===

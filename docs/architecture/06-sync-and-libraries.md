@@ -234,16 +234,22 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   "cloud-drive", "provider"}` from share or get maps to
   `shareLibraryCloudRefused` / `devicesGetCloudRefused`; a copy the share flow
   made for that share is removed again (it could never be shared) instead of
-  being kept for Try again. **"Not shared yet"**: after a library opens
+  being kept for Try again. `removeOwnShareCopy()` removes it (and a partial
+  copy after a failed or stopped copy) only when the folder of that name is
+  still the very handle the flow created (`isSameEntry`) and has no sync file;
+  a renamed, replaced or vanished folder is left alone. Only a removal that
+  worked forgets `ctx.copy`; otherwise the copy-kept text shows and Try again
+  shares that same copy, no second numbered copy. **"Not shared yet"**: after a library opens
   (`afterDbReady()`), when it has no sync file and is directly inside the
   stored libraries folder whose permission is still granted
   (`peekLibrariesRoot()`, no prompt; `isDirectlyIn()`) and that folder holds
   the marker, the status line gets "Not shared yet: Tools → Share this
   library…" appended (only while the opened line is still the status). The
   page never learns real paths, so this is the one reliable way to know a
-  library sits in the Dossiary Sync folder; "not registered" means no
-  `.dossiary-sync.json`, the same test that shows the Share item, with no
-  admin call. Tested by `tests/test_libraries_folder.py`.
+  library sits in the Dossiary Sync folder; "not registered" means
+  `!syncLibrary && !syncLibraryGone` after `readSyncFile()` (no usable
+  `.dossiary-sync.json`, or one naming a library detached in this session),
+  the same test that shows the Share item, with no admin call. Tested by `tests/test_libraries_folder.py`.
 - **Saving in a synced library (no editing lease)** (historical context:
   dossiary-ios `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md` and
   `2026-10-23-offline-first-sync-design.md` describe the editing lease and the
