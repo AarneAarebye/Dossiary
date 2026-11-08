@@ -216,13 +216,18 @@ argument). `test_devices_dialog.py`, `test_delete_library.py` and
 Upload progress (`test_upload_progress.py`, 1.64.0 -- a synced library with an admin token and a scripted
 `GET …/state`, real time): `uploading: true` shows the spinner line "Uploading to the Pi… m:ss" whose time
 advances while the spinner element stays the same node, the state polled at least twice in 4.6 s; then
-`uploading: false, version: 1` gives the done line (kind ok, no spinner, unchanged afterwards) and polling
-back at 5 s; `hubReachable: false` adds the waiting sentence while the time keeps running, recovery drops
+an answer at version 1 with the `uploading` key left out (how Dossiary Sync says false) gives the done line
+(kind ok, no spinner, unchanged afterwards) and polling back at 5 s, and the same with an explicit
+`uploading: false`; `hubReachable: false` adds the waiting sentence while the time keeps running, recovery drops
 it without restarting the time; a `lastError` with HTML shown as text (kind err, ticking), cleared back to
 busy; a save message taking the line is changed first by a poll, never the ticker (MutationObserver), the
 line returns, and a switch to German retranslates and keeps ticking; no token (no state request), a 404, a
-body that isn't JSON, no `uploading` field, a non-boolean one and a library not uploading show nothing and
-keep the 5 s poll; Switch library stops the ticker and the requests, and the next library's message stays.
+body that isn't JSON, no `uploading` field, a non-boolean one and a library not uploading (false, or the key
+left out at version 4 and 0, never seen uploading) show nothing and keep the 5 s poll; Switch library stops
+the ticker and the requests, and the next library's message stays; after a share
+(`__DEBUG_uploadShareFinished()`) answers without the key at version 0 keep the 2 s poll with no message, a
+late `uploading: true` continues the time from the share, the grace running out (started 29 s ago) falls
+back to 5 s silently, and a version 1 answer right after a share is the done line.
 Confirmed non-vacuous by dropping the ticker's ownership check and its span-only update.
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This

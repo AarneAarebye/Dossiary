@@ -62,8 +62,13 @@ WAITING_TEXT = 'Waiting for the Pi… it is not reachable. The upload continues 
 
 
 def state(version=0, uploading=True, hub=True, last_error=None):
-    return {"libraryId": LIB_ID, "version": version, "hubReachable": hub, "lease": None, "offline": False,
-            "keptAside": [], "lastError": last_error, "uploading": uploading}
+    """A GET …/state answer. uploading=None leaves the key out, as the real Dossiary Sync does when it is
+    false (EditorControl.swift encodes it only when true)."""
+    s = {"libraryId": LIB_ID, "version": version, "hubReachable": hub, "lease": None, "offline": False,
+         "keptAside": [], "lastError": last_error}
+    if uploading is not None:
+        s["uploading"] = uploading
+    return s
 
 
 async def open_app(p, st, token='admin-tok', lang=None):
@@ -134,7 +139,9 @@ async def state_calls_between(page, seconds):
     return await page.evaluate("window.__STATE_CALLS.length") - before
 
 
-async def scenario_uploading_then_done(p):
+async def scenario_uploading_then_done(p, done_uploading=None):
+    # done_uploading: the `uploading` of the answer that ends it (None: the key left out, as Dossiary Sync sends it).
+    print("the done answer is", 'without the uploading key' if done_uploading is None else 'an explicit uploading: false', "-- set up:", True)
     browser, page, errors = await open_app(p, state())
     await tick(page)
     text = await status(page)
@@ -151,7 +158,7 @@ async def scenario_uploading_then_done(p):
     n = await state_calls_between(page, 4.6)
     print("state polled every 2 s while uploading:", n >= 2, n)
 
-    await set_state(page, state(version=1, uploading=False))
+    await set_state(page, state(version=1, uploading=done_uploading))
     await tick(page)
     text = await status(page)
     print("done line:", text == DONE_TEXT, text)
@@ -163,6 +170,10 @@ async def scenario_uploading_then_done(p):
     print("back to polling every 5 s:", 1 <= n <= 2, n)
     print("no page errors:", not errors, errors)
     await browser.close()
+
+
+async def scenario_uploading_then_done_explicit_false(p):
+    await scenario_uploading_then_done(p, done_uploading=False)
 
 
 async def scenario_hub_unreachable(p):
@@ -257,7 +268,9 @@ async def scenario_nothing_new(p):
     print("...no page errors:", not errors, errors)
     await browser.close()
     for label, st in (('404', 'missing'), ('not JSON', 'garbage'), ('no uploading field', {"libraryId": LIB_ID, "version": 0, "lease": None}),
-                      ('uploading not a boolean', dict(state(), uploading='yes')), ('not uploading', state(version=4, uploading=False))):
+                      ('uploading not a boolean', dict(state(), uploading='yes')), ('not uploading (false)', state(version=4, uploading=False)),
+                      ('not uploading (key left out), version 4', state(version=4, uploading=None)),
+                      ('not uploading (key left out), version 0', state(version=0, uploading=None))):
         browser, page, errors = await open_app(p, st)
         before = await status(page)
         await tick(page)
@@ -293,12 +306,52 @@ async def scenario_switch_library_stops(p):
     await browser.close()
 
 
+async def scenario_share_grace(p):
+    # Right after a share the first answers may not say uploading yet (key left out, version 0): the 2 s poll
+    # and the share's start time are kept for 30 s, a late uploading: true continues the elapsed time.
+    browser, page, errors = await open_app(p, state(uploading=None))
+    before = await status(page)
+    print("share finished (hook):", await page.evaluate("window.__DEBUG_uploadShareFinished(0)"))
+    await tick(page)
+    print("no flag yet: no upload line, no message:", await status(page) == before, await status(page))
+    n = await state_calls_between(page, 4.6)
+    print("...the 2 s poll is kept:", n >= 2, n)
+    await set_state(page, state())
+    await tick(page)
+    text = await status(page)
+    e = elapsed_of(text)
+    print("a late uploading: true continues the time from the share (not 0:00):", e is not None and e >= 4, text)
+    await set_state(page, state(version=1, uploading=None))
+    await tick(page)
+    print("...and the key left out at version 1 is done:", await status(page) == DONE_TEXT, await status(page))
+    await browser.close()
+
+    # The grace runs out: back to the 5 s poll without a message.
+    browser, page, errors2 = await open_app(p, state(uploading=None))
+    before = await status(page)
+    await page.evaluate("window.__DEBUG_uploadShareFinished(29000)")
+    await page.wait_for_timeout(3500)   # the 2 s poll answers after the 30 s
+    n = await state_calls_between(page, 5.5)
+    print("grace over: back to polling every 5 s:", 1 <= n <= 2, n)
+    print("...without a message:", await status(page) == before and 'Pi' not in await status(page), await status(page))
+    await browser.close()
+
+    # A small library done before the first poll after the share: the done line.
+    browser, page, errors3 = await open_app(p, state(version=1, uploading=None))
+    await page.evaluate("window.__DEBUG_uploadShareFinished(0)")
+    await tick(page)
+    print("done before the first poll after a share: the done line:", await status(page) == DONE_TEXT, await status(page))
+    print("no page errors:", not (errors + errors2 + errors3), errors + errors2 + errors3)
+    await browser.close()
+
+
 async def main():
     import sys
     only = sys.argv[1:]
     async with async_playwright() as p:
-        for scenario in (scenario_uploading_then_done, scenario_hub_unreachable, scenario_last_error,
-                         scenario_replaced_line_returns, scenario_nothing_new, scenario_switch_library_stops):
+        for scenario in (scenario_uploading_then_done, scenario_uploading_then_done_explicit_false, scenario_hub_unreachable,
+                         scenario_last_error, scenario_replaced_line_returns, scenario_nothing_new, scenario_switch_library_stops,
+                         scenario_share_grace):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

@@ -17881,15 +17881,25 @@
   // While the state answer says `uploading: true` (the library's first version is going to the Pi), the
   // status line shows a spinner and "Uploading to the Pi… m:ss", the time since this page first saw it
   // uploading (or since the share finished); the state is then polled every 2 s. hubReachable false adds
-  // the waiting sentence, a non-empty lastError the problem sentence (kind err). `uploading` false after
-  // that with version >= 1: the done line. Only with an admin token (pollSyncState() runs only then); an
-  // answer without a boolean `uploading` (an older Dossiary Sync) changes nothing.
+  // the waiting sentence, a non-empty lastError the problem sentence (kind err). Dossiary Sync leaves the
+  // `uploading` key out when it is false (EditorControl.swift encodes it only when true), so a missing key
+  // means "not uploading": after this page saw `uploading: true` for this library, an answer without it
+  // (or with false) and version >= 1 is the done line. An older Dossiary Sync never sends the key, so
+  // without having seen it true nothing changes. Right after a share (uploadStatusBegin() from
+  // finishShare()) the first answers may not say uploading yet: for SYNC_UPLOAD_SHARE_GRACE_MS the 2 s
+  // poll and the share's start time are kept (a late `uploading: true` continues the elapsed time; a
+  // version >= 1 meanwhile is the done line), then it falls back to the 5 s poll without a message.
+  // Elapsed times use performance.now() (monotonic). Only with an admin token (pollSyncState() runs only
+  // then).
   // The line is set with setStatusLive(), so a language change retranslates it, and the 1 s ticker
   // changes only the elapsed time's own text node -- not the spinner, not the title. When another message
   // takes the status line (lastStatusBuild is no longer ours), the ticker leaves it alone and the next
   // poll puts the upload line back. Closing or switching the library stops it (stopSyncTimer()).
   const SYNC_UPLOAD_TICK_MS = 2 * 1000;
-  // {libraryId, root, since, hubDown, error, build, ticker} while the open library uploads, or null.
+  const SYNC_UPLOAD_SHARE_GRACE_MS = 30 * 1000;
+  // {libraryId, root, since, seen, graceUntil, hubDown, error, build, ticker} while the open library uploads
+  // (or a share just finished), or null. since/graceUntil: performance.now() times; seen: an answer said
+  // `uploading: true`.
   let syncUpload = null;
   function formatUploadElapsed(ms){
     const s = Math.max(0, Math.floor(ms / 1000));
@@ -17910,9 +17920,11 @@
     if(clearLine && ours) setStatus('');
   }
   const uploadIsCurrent = (u) => !!u && !!syncLibrary && u.libraryId === syncLibrary.libraryId && u.root === rootDirHandle;
-  function uploadStatusBegin(since){
+  // since: performance.now() of the upload's start; graceUntil: after a share, how long answers that don't
+  // say uploading yet are waited out (0: none).
+  function uploadStatusBegin(since, graceUntil = 0){
     uploadStatusStop();
-    syncUpload = { libraryId: syncLibrary.libraryId, root: rootDirHandle, since, hubDown: false, error: '', build: null, ticker: null };
+    syncUpload = { libraryId: syncLibrary.libraryId, root: rootDirHandle, since, seen: false, graceUntil, hubDown: false, error: '', build: null, ticker: null };
     setSyncTickMs(SYNC_UPLOAD_TICK_MS);
     return syncUpload;
   }
@@ -17920,7 +17932,7 @@
     const kind = u.error ? 'err' : 'busy';
     const line = (elapsed) => t('syncUploadingLine', { elapsed });
     const extra = () => u.error ? t('syncUploadProblem', { error: u.error }) : (u.hubDown ? t('syncUploadWaitingHub') : '');
-    const build = () => [line(formatUploadElapsed(Date.now() - u.since)), extra()].filter(Boolean).join(' ');
+    const build = () => [line(formatUploadElapsed(performance.now() - u.since)), extra()].filter(Boolean).join(' ');
     setStatusLive(build, kind);
     u.build = build;
     // The elapsed time in a span of its own, for the ticker. Everything is text (lastError is untrusted).
@@ -17929,14 +17941,14 @@
     const rest = extra();
     statusEl.innerHTML = (kind === 'busy' ? '<span class="spinner"></span> ' : '') + escapeHtml(before)
       + '<span class="sync-upload-elapsed"></span>' + escapeHtml(after) + (rest ? ' ' + escapeHtml(rest) : '');
-    statusEl.querySelector('.sync-upload-elapsed').textContent = formatUploadElapsed(Date.now() - u.since);
+    statusEl.querySelector('.sync-upload-elapsed').textContent = formatUploadElapsed(performance.now() - u.since);
   }
   function uploadTick(){
     const u = syncUpload;
     if(!uploadIsCurrent(u)){ uploadStatusEnd(false); return; }
     if(!u.build || lastStatusBuild !== u.build) return;   // another message has the line: the next poll puts it back
     const span = statusEl.querySelector('.sync-upload-elapsed');
-    if(span) span.textContent = formatUploadElapsed(Date.now() - u.since);
+    if(span) span.textContent = formatUploadElapsed(performance.now() - u.since);
     else renderUploadLine(u);   // re-rendered as plain text (a language change): the span comes back
   }
   // From pollSyncState(), for every answer it could read.
@@ -17944,7 +17956,8 @@
     if(lib !== syncLibrary) return;
     let u = uploadIsCurrent(syncUpload) ? syncUpload : null;
     if(st.uploading === true){
-      if(!u) u = uploadStatusBegin(Date.now());
+      if(!u) u = uploadStatusBegin(performance.now());
+      u.seen = true;
       setSyncTickMs(SYNC_UPLOAD_TICK_MS);
       if(!u.ticker) u.ticker = setInterval(uploadTick, 1000);
       const hubDown = st.hubReachable === false;
@@ -17954,18 +17967,28 @@
       if(changed || !u.build || lastStatusBuild !== u.build) renderUploadLine(u);
       return;
     }
-    if(!syncUpload) return;
+    // Not uploading: the key left out (how Dossiary Sync says false) or false.
+    if(!syncUpload) return;   // never seen uploading (an older Dossiary Sync never sends the key): nothing new
     if(!u){ uploadStatusEnd(false); return; }
-    if(st.uploading === false && Number.isInteger(st.version) && st.version >= 1){
+    const inGrace = !u.seen && performance.now() < u.graceUntil;
+    if((u.seen || inGrace) && Number.isInteger(st.version) && st.version >= 1){
       uploadStatusEnd(false);
       const name = rootDirHandle ? libraryDisplayName(rootDirHandle.name) : '';
       const version = st.version;
       setStatusLive(() => t('syncUploadDone', { name, version }), 'ok');
       return;
     }
-    // Ended without a version, or no boolean `uploading` (an older Dossiary Sync): nothing to announce.
+    if(inGrace) return;   // a share just finished: the upload may not have started yet (2 s poll kept)
+    // Ended without a version, or the grace after a share ran out: nothing to announce.
     uploadStatusEnd(true);
   }
+  // Tests: what finishShare() does, the share having finished agoMs ago.
+  window.__DEBUG_uploadShareFinished = (agoMs = 0) => {
+    if(!syncLibrary) return false;
+    const at = performance.now() - agoMs;
+    uploadStatusBegin(at, at + SYNC_UPLOAD_SHARE_GRACE_MS);
+    return true;
+  };
 
   // Kept-aside versions: Dossiary Sync couldn't combine this Mac's changes
   // with the other Mac's and put them aside (part 3 merges them). Each is
@@ -18923,7 +18946,7 @@
     const original = ctx.original;
     const isCopy = handle !== original;
     const rootPath = ctx.root ? ctx.root.root : '';
-    const sharedAt = Date.now();   // the upload's elapsed time counts from here (renderUploadLine())
+    const sharedAt = performance.now();   // the upload's elapsed time counts from here (renderUploadLine())
     shareLibraryRunning = false;
     closeModal();
     resetAll();
@@ -18931,7 +18954,7 @@
     await proceedWithRootDirHandle(handle);
     // Dossiary Sync uploads it now: poll every 2 s; the first answer with `uploading` shows the line.
     if(syncReadPromise) await syncReadPromise;
-    if(syncLibrary && rootDirHandle === handle && readSyncAdminToken()) uploadStatusBegin(sharedAt);
+    if(syncLibrary && rootDirHandle === handle && readSyncAdminToken()) uploadStatusBegin(sharedAt, sharedAt + SYNC_UPLOAD_SHARE_GRACE_MS);
     const done = () => t('shareLibraryDone', { name: sharedName });
     const note = () => isCopy ? t('shareLibraryOriginalNote', { path: `${rootPath}/${handle.name}`, original: original.name }) : '';
     setStatusLive(() => [done(), note()].filter(Boolean).join(' '), 'ok');

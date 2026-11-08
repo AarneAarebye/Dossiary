@@ -175,14 +175,21 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   2026-10-28; the status line stays and the shared library is polled like any synced one. **Upload
   status** (1.64.0, spec `docs/superpowers/specs/2026-11-08-upload-progress-design.md`, step 1):
   `noteUploadState()`, called by `pollSyncState()` for every answer it can read, drives `syncUpload`
-  (`{libraryId, root, since, hubDown, error, build, ticker}`). `uploading: true` → the status line
+  (`{libraryId, root, since, seen, graceUntil, hubDown, error, build, ticker}`, times from
+  `performance.now()`). `uploading: true` → the status line
   "Uploading to the Pi… m:ss" (`syncUploadingLine`, kind busy, spinner), `since` being the share's end
   (`finishShare()` calls `uploadStatusBegin()`) or the first answer that said uploading; `hubReachable:
   false` adds `syncUploadWaitingHub`, a non-empty `lastError` adds `syncUploadProblem` (kind err, the
   error as text) and goes back when it clears; the poll runs every `SYNC_UPLOAD_TICK_MS` = 2 s
-  (`setSyncTickMs()`) instead of 5 s. `uploading: false` with `version >= 1` → `syncUploadDone` (kind
-  ok); false without a version, or no boolean `uploading` (an older Dossiary Sync) → back to 5 s and the
-  line cleared if it is still ours. The line goes through `setStatusLive()`, so a language change
+  (`setSyncTickMs()`) instead of 5 s. **Dossiary Sync leaves the `uploading` key out when it is false**
+  (dossiary-sync `EditorControl.swift` encodes it only when true), so a missing key (or false) means not
+  uploading: once this page saw `uploading: true` for the library (`seen`), such an answer with
+  `version >= 1` → `syncUploadDone` (kind ok); without a version → back to 5 s and the line cleared if it
+  is still ours. An older Dossiary Sync never sends the key: never seen true, nothing changes. Right after
+  a share the first answers may not say uploading yet: for `SYNC_UPLOAD_SHARE_GRACE_MS` (30 s) the 2 s
+  poll and the share's start are kept (a late `uploading: true` continues the elapsed time, a
+  `version >= 1` meanwhile is the done line), then back to 5 s without a message
+  (`__DEBUG_uploadShareFinished(agoMs)` lets tests start it). The line goes through `setStatusLive()`, so a language change
   retranslates it; the 1 s ticker (`uploadTick()`) changes only the text of `.sync-upload-elapsed`
   (spinner and title stay, so nothing flickers; `#status` is not a live region), and only while
   `lastStatusBuild` is still the upload line's builder: another message keeps the line until the next
