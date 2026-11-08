@@ -498,7 +498,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   oder ein Gerät entfernen, und „iPhone oder iPad hinzufügen…“ zeigt einen
   im Browser gezeichneten QR-Code, den das Gerät zum Koppeln scannt. Eine
   Bibliothek mit Dossiary Sync zu teilen bleibt ein Befehl
-  (`dossiary-sync share <Ordner>`).
+  (`dossiary-sync share <Ordner>`). Während die erste Version einer
+  geteilten Bibliothek auf den Pi hochgeladen wird, zeigt die Statuszeile
+  „Wird auf den Pi hochgeladen… m:ss“ mit der bisherigen Dauer, meldet,
+  wenn der Pi nicht erreichbar ist oder das Hochladen ein Problem hat, und
+  sagt, wann es fertig ist.
 - **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
   täglich brauchen (Check inbox, Check reminders, Scan, Add document,
   Details, Columns); Gelegentliches — Manage fields, Manage collections,

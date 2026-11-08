@@ -172,7 +172,22 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   "Shared “<hub's name>” — uploading to the Pi.", and for a copy a notice
   naming `<root>/<Name>.dossiary` and the original (never touched). The sync marker
   that used to read "uploading…" while `GET …/state` said `uploading: true` (`renderSyncMarker()`) was removed on
-  2026-10-28; the status line stays and the shared library is polled like any synced one. Error codes
+  2026-10-28; the status line stays and the shared library is polled like any synced one. **Upload
+  status** (1.64.0, spec `docs/superpowers/specs/2026-11-08-upload-progress-design.md`, step 1):
+  `noteUploadState()`, called by `pollSyncState()` for every answer it can read, drives `syncUpload`
+  (`{libraryId, root, since, hubDown, error, build, ticker}`). `uploading: true` → the status line
+  "Uploading to the Pi… m:ss" (`syncUploadingLine`, kind busy, spinner), `since` being the share's end
+  (`finishShare()` calls `uploadStatusBegin()`) or the first answer that said uploading; `hubReachable:
+  false` adds `syncUploadWaitingHub`, a non-empty `lastError` adds `syncUploadProblem` (kind err, the
+  error as text) and goes back when it clears; the poll runs every `SYNC_UPLOAD_TICK_MS` = 2 s
+  (`setSyncTickMs()`) instead of 5 s. `uploading: false` with `version >= 1` → `syncUploadDone` (kind
+  ok); false without a version, or no boolean `uploading` (an older Dossiary Sync) → back to 5 s and the
+  line cleared if it is still ours. The line goes through `setStatusLive()`, so a language change
+  retranslates it; the 1 s ticker (`uploadTick()`) changes only the text of `.sync-upload-elapsed`
+  (spinner and title stay, so nothing flickers; `#status` is not a live region), and only while
+  `lastStatusBuild` is still the upload line's builder: another message keeps the line until the next
+  poll puts the upload line back. `stopSyncTimer()` (close, switch library, deleted or detached) and a
+  lost admin token stop it. Error codes
   are mapped (already-shared, not-a-library, unknown-device, hub-*; a 404
   without a known code = an older Dossiary Sync); any other is shown with its
   code and status. `shareLibraryRunning` blocks closing while saving, copying

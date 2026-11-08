@@ -428,7 +428,10 @@ working" problem that motivated this project in the first place.
   each phone may see, lets you change that or remove a device, and "Add
   iPhone or iPad…" shows a QR code the phone scans to pair, drawn in the
   browser. Sharing a library with Dossiary Sync stays a command
-  (`dossiary-sync share <folder>`).
+  (`dossiary-sync share <folder>`). While a shared library's first version
+  uploads to the Pi, the status line shows "Uploading to the Pi… m:ss"
+  with the time so far, says when the Pi can't be reached or the upload
+  has a problem, and says when it is done.
 - **A tidy toolbar** — the toolbar keeps what you use every day (Check
   inbox, Check reminders, Scan, Add document, Details, Columns); occasional
   actions — Manage fields, Manage collections, Library check, and Storage

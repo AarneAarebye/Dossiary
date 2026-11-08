@@ -295,6 +295,9 @@ async def main():
         n_state = len(state_gets)
         state_gets = [c for c in await calls(page) if c['method'] == 'GET' and c['url'].endswith('/state')]
         print("1 the shared library is polled like any synced one (GET .../state):", len(state_gets) > n_state, n_state, len(state_gets))
+        # Upload progress (test_upload_progress.py has the details): the state says uploading.
+        upload_line = (await text_of(page, '#status')).strip()
+        print("1 the poll shows the live upload line:", upload_line.startswith('Uploading to the Pi… 0:0') and await page.locator('#status .spinner').count() == 1, upload_line)
         await page.click('#tools-btn')
         print("1 a synced library has no Share item:", not await page.locator('#share-library-btn').is_visible())
         await page.keyboard.press('Escape')

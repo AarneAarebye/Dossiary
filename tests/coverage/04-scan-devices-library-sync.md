@@ -212,7 +212,18 @@ write and its marker leaves the write unproven); `switch_asks_when_unsaved` (the
 keep-aside copy fails: Switch library and Export's "Open it" ask, Cancel keeps
 the change, "Switch anyway" switches). Ticks use `__DEBUG_syncNow()` (no
 argument). `test_devices_dialog.py`, `test_delete_library.py` and
-`test_share_library.py` carry the admin dialogs.
+`test_share_library.py` carry the admin dialogs (the latter also checks the live upload line after a share).
+Upload progress (`test_upload_progress.py`, 1.64.0 -- a synced library with an admin token and a scripted
+`GET …/state`, real time): `uploading: true` shows the spinner line "Uploading to the Pi… m:ss" whose time
+advances while the spinner element stays the same node, the state polled at least twice in 4.6 s; then
+`uploading: false, version: 1` gives the done line (kind ok, no spinner, unchanged afterwards) and polling
+back at 5 s; `hubReachable: false` adds the waiting sentence while the time keeps running, recovery drops
+it without restarting the time; a `lastError` with HTML shown as text (kind err, ticking), cleared back to
+busy; a save message taking the line is changed first by a poll, never the ticker (MutationObserver), the
+line returns, and a switch to German retranslates and keeps ticking; no token (no state request), a 404, a
+body that isn't JSON, no `uploading` field, a non-boolean one and a library not uploading show nothing and
+keep the 5 s poll; Switch library stops the ticker and the requests, and the next library's message stays.
+Confirmed non-vacuous by dropping the ticker's ownership check and its span-only update.
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
