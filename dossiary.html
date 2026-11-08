@@ -9506,7 +9506,7 @@
       const exported = [], failed = [];
       let detailsSkipped = 0, detailsWriteFailed = false;
       const taken = new Set();
-      let out = null;
+      let out = null, fatalError = null;
       // The details file name is always reserved: an exported document is never named
       // export-details.json (an import skips that name), whether or not the file is written.
       taken.add(EXPORT_DETAILS_FILE);
@@ -9545,13 +9545,24 @@
             }catch(e){ detailsWriteFailed = true; } // the documents and index.csv are already written
           }
         }
+      }catch(e){
+        // Creating the subfolder (or writing the index) failed, e.g. permission denied:
+        // say so and hand the dialog back so it can be retried or closed.
+        fatalError = e;
       }finally{
         if(out && !exported.length){ try{ await dest.removeEntry(out.name, { recursive: true }); }catch(e){} }
         exportRunning = false;
         el('modal-close-btn').disabled = false;
       }
+      if(fatalError){
+        statusEl.className = 'status err';
+        statusEl.textContent = (fatalError && fatalError.message) || String(fatalError);
+        startBtn.disabled = cancelBtn.disabled = el('export-index-toggle').disabled = el('export-details-toggle').disabled = false;
+        syncExportDetailsFields();
+        return;
+      }
       statusEl.className = 'status ' + (failed.length || detailsWriteFailed ? 'err' : 'ok');
-      statusEl.innerHTML = escapeHtml(t('exportDone', {count: exported.length, folder: out ? out.name : dest.name}))
+      statusEl.innerHTML = escapeHtml(t('exportDone', {count: exported.length, folder: out && exported.length ? out.name : dest.name}))
         + (detailsSkipped ? ` ${escapeHtml(t('exportDetailsSkipped', {count: detailsSkipped}))}` : '')
         + (detailsWriteFailed ? ` ${escapeHtml(t('exportDetailsWriteFailed'))}` : '')
         + (failed.length ? ` ${escapeHtml(t('exportFailed', {count: failed.length}))}<ul id="export-failed-list">${failed.map(f => `<li>${escapeHtml(displayName(f.d))}: ${escapeHtml(f.error)}</li>`).join('')}</ul>` : '');

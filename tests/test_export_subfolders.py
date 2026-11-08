@@ -92,16 +92,35 @@ async def main():
         await page.close()
 
         page = await start()
-        # Pre-create the subfolder this minute would use, to make the clash deterministic.
+        # Pre-create the names for this minute and the next, so a minute rollover can't matter.
         await page.evaluate("""async () => {
+            const { exportSubfolderName } = window.__DEBUG_exportFolderNames;
             window.__DEST = window.__makeEmptyRoot();
-            window.__NAME = window.__DEBUG_exportFolderNames.exportSubfolderName('Tax 2025', new Date());
-            await window.__DEST.getDirectoryHandle(window.__NAME, { create: true });
+            const now = new Date();
+            window.__NAMES = [exportSubfolderName('Tax 2025', now), exportSubfolderName('Tax 2025', new Date(now.getTime() + 60000))];
+            for(const n of new Set(window.__NAMES)) await window.__DEST.getDirectoryHandle(n, { create: true });
         }""")
         await run_export(page, title='Tax 2025')
         top = await listing(page)
-        base = await page.evaluate("() => window.__NAME")
-        print("A name clash gets ' (2)':", f'{base} (2)' in top and top[base] == [] and len(top[f'{base} (2)']) == 4, list(top))
+        names = await page.evaluate("() => [...new Set(window.__NAMES)]")
+        made = [k for k in top if k.endswith(' (2)') and k[:-4] in names]
+        print("A name clash gets ' (2)' with the files inside:", len(made) == 1 and len(top[made[0]]) == 4, list(top))
+        await page.close()
+
+        # === A failure before the loop (permission denied) hands the dialog back ===
+        page = await start()
+        await page.evaluate("""() => {
+            const d = window.__DEST = window.__makeEmptyRoot();
+            const orig = d.getDirectoryHandle.bind(d);
+            d.getDirectoryHandle = async (n, o) => { if(o && o.create) throw new DOMException('Permission denied', 'NotAllowedError'); return orig(n, o); };
+        }""")
+        await run_export(page, title='x')
+        print("Subfolder creation failing shows the error:", 'Permission denied' in await page.inner_text('#export-status')
+              and 'err' in (await page.get_attribute('#export-status', 'class')))
+        print("...and the dialog is usable again:", await page.is_enabled('#export-start-btn') and await page.is_enabled('#export-cancel-btn')
+              and await page.is_enabled('#modal-close-btn') and await page.is_enabled('#export-index-toggle') and await page.is_enabled('#export-title'))
+        await page.click('#export-cancel-btn'); await page.wait_for_timeout(150)
+        print("...and Cancel closes it:", await page.locator('#export-start-btn').count() == 0)
         await page.close()
 
         # === Forbidden characters and no title ===
@@ -129,7 +148,9 @@ async def main():
         await run_export(page, ids=(1, 2), title='Nothing')
         top = await listing(page)
         print("Every file failing leaves no subfolder behind:", top == {}, top)
-        print("...and the failures are reported:", 'Could not export: 2' in await page.inner_text('#export-status'))
+        status = await page.inner_text('#export-status')
+        print("...and the failures are reported:", 'Could not export: 2' in status)
+        print("...and the message names the picked folder, not the removed subfolder:", 'to “Export ' not in status, repr(status[:80]))
         await page.close()
 
         # === Scenario 9: helpers ===
