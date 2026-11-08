@@ -192,7 +192,7 @@ async def main():
         files = await dest_files(page)
         status = await page.inner_text('#export-status')
         print("Failing details write: documents and index.csv are exported:",
-              '1_a.pdf' in ''.join(files) or any(k.endswith('.pdf') for k in files), list(files))
+              '2026-02-15 Stadtwerke.pdf' in files and '2026-01-10 Water.pdf' in files, list(files))
         print("Failing details write: index.csv written:", 'index.csv' in files)
         print("Failing details write: done text plus the failure sentence:",
               'Exported 2' in status and 'The title and description file could not be written.' in status, repr(status))

@@ -1133,7 +1133,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   a clash gets " (2)", " (3)". Index off still makes the subfolder (files
   only). If nothing was exported the empty subfolder is removed
   (best effort) and the done message names the picked folder instead; a
-  failing subfolder creation shows the error and gives the dialog back; a failure after files were copied (e.g. `index.csv`) shows the error plus `exportDone` naming the subfolder that keeps them.
+  failing subfolder creation shows the error and gives the dialog back; a failure after files were copied (e.g. `index.csv`) shows the error plus `exportDone` naming the subfolder that keeps them. If the `export-details.json` write fails after the file was created, an empty file can remain; import treats unreadable or malformed details as absent, so nothing breaks.
   Otherwise the done message names the subfolder (`exportDone` with
   `folder` = its name). Emailing (Mariner's other export) isn't possible from a browser: a
   `mailto:` link can't carry attachments. **Details in exported PDFs**

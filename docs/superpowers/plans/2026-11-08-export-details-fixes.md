@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Spec: `docs/superpowers/specs/2026-11-07-export-title-design.md` (behaviour unchanged except as listed here).
-- New strings in all 7 languages (en, de, fr, es, it, zh-Hant, hy; Armenian unreviewed); `tests/test_i18n_coverage.py` must pass. New English text is short and plain.
+- New strings in all 7 languages (en, es, fr, de, zh-Hans, zh-Hant, hy; Armenian unreviewed); `tests/test_i18n_coverage.py` must pass. New English text is short and plain.
 - Version 1.61.1 is kept in sync in `dossiary.html` `APP_VERSION`, `scan_watch.py` `__version__`, `tests/test_scan_watch_version.py`.
 - Full suite (all scripts in `tests/`) passes before the final commit. Commit per task. Do not push, tag or release.
 
@@ -27,7 +27,7 @@
 - Produces: string key `exportDetailsWriteFailed` (English: "The title and description file could not be written."), used in the export summary.
 
 - [ ] **Step 1: Reserve the name always.** In `openExportModal()` change `if(withIndex && (detailsTitle || detailsDescription)) taken.add(EXPORT_DETAILS_FILE);` to `taken.add(EXPORT_DETAILS_FILE);` (an exported document is never named `export-details.json`, because an import skips that name, whether or not a details file is written). Update the comment above it accordingly.
-- [ ] **Step 2: Failed details write must not block the summary.** Wrap the details-file write (`dw` create/write/close) in its own try/catch. On failure set a local `detailsWriteFailed = true`; the exported documents and `index.csv` stay counted as successful. Append `exportDetailsWriteFailed` to the final status text (like `detailsSkipped`), escaped, and make the status class `err` in that case. Add the string in all 7 languages (translate properly for de/fr/es/it; zh-Hant by hand; hy best effort).
+- [ ] **Step 2: Failed details write must not block the summary.** Wrap the details-file write (`dw` create/write/close) in its own try/catch. On failure set a local `detailsWriteFailed = true`; the exported documents and `index.csv` stay counted as successful. Append `exportDetailsWriteFailed` to the final status text (like `detailsSkipped`), escaped, and make the status class `err` in that case. Add the string in all 7 languages (translate properly for de/fr/es; zh-Hant by hand; hy best effort).
 - [ ] **Step 3: Spacing.** Add a small `margin-top` (match the existing field spacing used elsewhere in modals) so the Title field does not touch the toggles above it. Check by looking at the dialog in a Playwright screenshot saved to the scratchpad.
 - [ ] **Step 4: Tests** in `tests/test_export_details.py`, following the file's existing stub style:
   1. HTML special characters (`<b>x</b> & "q"`) in the library title/description: the export dialog prefill shows them as text (input value equals the raw text, no markup injected), and the written `export-details.json` contains them unchanged.

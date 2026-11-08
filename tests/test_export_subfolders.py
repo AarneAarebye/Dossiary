@@ -30,7 +30,7 @@ async def main():
         browser = await p.chromium.launch()
         errors = []
 
-        async def start(files=(1, 2)):
+        async def start(files=(1, 2), seed=SEED):
             page = await browser.new_page(viewport={'width': 1440, 'height': 900})
             page.on("pageerror", lambda exc: errors.append(str(exc)))
             page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
@@ -44,7 +44,7 @@ async def main():
             await page.add_init_script(open('stub_studio2.js').read())
             await page.goto(f"file://{APP_PATH}")
             await page.wait_for_timeout(200)
-            await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
+            await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed)});")
             await page.evaluate("""async (nums) => {
                 const dir = await window.__TEST_ROOT.getDirectoryHandle('files', { create: true });
                 for(const i of nums){
@@ -90,6 +90,16 @@ async def main():
         print("The done message names the subfolder:", f'to “{names[0]}”' in status, repr(status[:100]))
 
         # Same-minute clash: the name this minute would use already exists -> ' (2)'
+        await page.close()
+
+        # === Scenario 1b: DEL and C1 control characters are stripped from exported file names ===
+        ctl_docs = [dict(DOCS[0], title="Bad\x7fName\x85End")]
+        page = await start(files=(1,), seed={"documents": ctl_docs, "tags": [], "document_tags": []})
+        await run_export(page, ids=(1,), title='Ctl')
+        top = await listing(page)
+        inner = top[list(top)[0]] if len(top) == 1 else None
+        print("DEL and C1 controls in a title are removed from the file name:",
+              inner is not None and '2026-02-15 Bad-Name-End.pdf' in inner and not any(re.search(r'[\x7f-\x9f]', n) for n in inner), inner)
         await page.close()
 
         page = await start()
