@@ -166,7 +166,7 @@ never by file name. This list maps each of them to what it checks:
     the rollback sentence, Start usable, a retry using the base name without
     ` (2)`), a failing `removeEntry` as well keeping the files and naming the
     subfolder, and a per-file failure still leaving the partial export; DEL and C1 controls
-    replaced; a multi-export import showing 'Export n of total: name' (a
+    replaced; a multi-export import showing 'Importing export n of total: name — document d of c…' (d 1-based, never 0 or c+1; a
     MutationObserver on `#import-status`) and calling `beginPersonFlowHold`
     once (`__DEBUG_holdBegins` counter); the exports panel at 390px without
     horizontal overflow and with the descriptions ellipsized;

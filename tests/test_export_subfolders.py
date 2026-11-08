@@ -396,10 +396,19 @@ async def main():
         await run_import(page)
         lib = await library(page)
         progress = await page.evaluate("() => window.__PROGRESS")
-        print("3. The progress text 'Export n of total: name' shows for each export, in order:",
-              any('Export 1 of 2: Export 2026-11-02 09-00' in x for x in progress)
-              and any('Export 2 of 2: Tax <b>2025</b>' in x for x in progress)
-              and next(i for i, x in enumerate(progress) if 'Export 1 of 2:' in x) < next(i for i, x in enumerate(progress) if 'Export 2 of 2:' in x), progress[:6])
+        print("3. The progress text 'Importing export n of total: name' shows for each export, in order:",
+              any('Importing export 1 of 2: Export 2026-11-02 09-00' in x for x in progress)
+              and any('Importing export 2 of 2: Tax <b>2025</b>' in x for x in progress)
+              and next(i for i, x in enumerate(progress) if 'Importing export 1 of 2:' in x) < next(i for i, x in enumerate(progress) if 'Importing export 2 of 2:' in x), progress[:6])
+        doc_lines = [x.strip() for x in progress if '— document' in x]
+        print("3. ...with the document in progress, 1-based:",
+              'Importing export 1 of 2: Export 2026-11-02 09-00 — document 1 of 2…' in doc_lines
+              and 'Importing export 1 of 2: Export 2026-11-02 09-00 — document 2 of 2…' in doc_lines
+              and 'Importing export 2 of 2: Tax <b>2025</b> — document 1 of 2…' in doc_lines
+              and 'Importing export 2 of 2: Tax <b>2025</b> — document 2 of 2…' in doc_lines, doc_lines)
+        doc_nums = [tuple(map(int, m.groups())) for m in (re.search(r'document (\d+) of (\d+)…', x) for x in doc_lines) if m]
+        print("3. ...never 0 of N nor N+1 of N:", bool(doc_nums) and all(1 <= d <= c for d, c in doc_nums), doc_nums)
+        print("3. ...and no line in the old 'Export n of total: … — Importing' form:", not any('— Importing' in x for x in progress))
         print("3. The whole run holds the person's flow once:", await page.evaluate("() => window.__DEBUG_holdBegins") == 1,
               await page.evaluate("() => window.__DEBUG_holdBegins"))
         colls = {c['name']: c for c in lib['collections']}

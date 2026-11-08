@@ -1266,12 +1266,15 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   "existing" unselected. The ticked exports run one after the other through
   `importOneFolder(src, files, index, about, choice, ctx)` (the per-folder
   body that the single path calls once), under one Person-flow hold and one
-  busy/close lock; progress reads `importExportProgress`, a failure in one
+  busy/close lock; progress reads `importExportProgress` ("Importing export {n} of {total}: {name}…" while
+  the folder is scanned), then `importExportDocProgress` ("… — document {doc} of {count}…", `doc` the
+  1-based document being imported, via `ctx.progressLine`; the single-folder import keeps `importProgress`),
+  a failure in one
   export is recorded (`importExportFailed`) and the next still runs, and the
   summary adds up the counts with one block per export
   (`.import-export-result`, `.failed`) and its collection. Strings
   `importExportsFound(One)`, `importExportFiles(One)`, `importExportsNewPerExport`,
-  `importExportProgress`, `importExportsSummaryHeading`, `importExportFailed`. **Export details**: `readExportDetails()` reads
+  `importExportProgress`, `importExportDocProgress`, `importExportsSummaryHeading`, `importExportFailed`. **Export details**: `readExportDetails()` reads
   `export-details.json` only when a usable `index.csv` is present; it never
   throws and returns `{title, description}` (cleaned and cut to 60/300) or
   `null` for bad JSON, a non-object, or no non-empty text. Values that are
