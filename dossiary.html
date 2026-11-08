@@ -9921,11 +9921,10 @@
     return { added, withDetails, skipped, failed, unmatched, collectionLine, collectionFailed, collectionId, memberIds };
   }
 
-  // The files of one folder to import, sorted by name: hidden files left
-  // out, its own index.csv and export-details.json kept apart. With an
-  // index.csv, "index (N).csv" / "export-details (N).json" come from other
-  // exports into the same folder: never imported, never read, only counted.
-  // Without one they are ordinary files.
+  // The files of one folder to import: hidden files left out, its own
+  // index.csv and export-details.json kept apart, and names like
+  // "index (N).csv" / "export-details (N).json" set aside for
+  // settleExtraIndexFiles().
   async function scanImportFolder(dir){
     const files = [], extraIndexFiles = [];
     let indexHandle = null, detailsHandle = null;
@@ -9936,10 +9935,24 @@
       if(isExtraIndexFileName(name)){ extraIndexFiles.push({ name, handle }); continue; }
       files.push({ name, handle });
     }
-    const extraIndexSkipped = indexHandle ? extraIndexFiles.length : 0;
-    if(!indexHandle) files.push(...extraIndexFiles);
+    return { files, extraIndexFiles, indexHandle, detailsHandle };
+  }
+
+  // The scan's files, sorted, with the "index (N).csv" / "export-details
+  // (N).json" names decided: next to an index.csv such a file comes from
+  // another export into the same folder (never imported, never read, only
+  // counted) -- unless the index lists it, because Export numbers a document
+  // that is itself named index.csv or export-details.json that way. Without
+  // an index.csv they are ordinary files.
+  function settleExtraIndexFiles(scan, index){
+    const files = [...scan.files];
+    let extraIndexSkipped = 0;
+    for(const f of scan.extraIndexFiles){
+      if(!scan.indexHandle || (index && index.has(f.name.toLowerCase()))) files.push(f);
+      else extraIndexSkipped++;
+    }
     files.sort((a, b) => a.name.localeCompare(b.name));
-    return { files, indexHandle, detailsHandle, extraIndexSkipped };
+    return { files, extraIndexSkipped };
   }
 
   // One new collection name per export, in order: importCollectionDefaultName()
@@ -10027,17 +10040,17 @@
     const chosen = pick.selected.map(n => exports[n]);
     const startBtn = el('import-start-btn'), cancelBtn = el('import-cancel-btn');
     startBtn.disabled = cancelBtn.disabled = el('modal-close-btn').disabled = true;
-    importRunning = true;
     statusEl.className = 'status busy';
-    // A type with no field setup at the start counts as new in every export.
-    const newTypes = new Set();
-    for(const e of chosen){
-      for(const rec of e.index.values()) if(rec.document_type && !(typeFieldOrder[rec.document_type] || []).length) newTypes.add(rec.document_type);
-    }
     const results = [];
     const holdMark = beginPersonFlowHold();
     let keptFolders = [];
     try{
+      importRunning = true;
+      // A type with no field setup at the start counts as new in every export.
+      const newTypes = new Set();
+      for(const e of chosen){
+        for(const rec of e.index.values()) if(rec.document_type && !(typeFieldOrder[rec.document_type] || []).length) newTypes.add(rec.document_type);
+      }
       for(let k = 0; k < chosen.length; k++){
         const e = chosen[k];
         const label = (e.about && e.about.title) || e.name;
@@ -10046,7 +10059,7 @@
         const choice = pick.mode === 'existing' ? { mode: 'existing', id: pick.id }
           : pick.mode === 'new-per-export' ? { mode: 'new', name: pick.names[k] } : { mode: 'none' };
         try{
-          const { files, extraIndexSkipped } = await scanImportFolder(e.dirHandle);
+          const { files, extraIndexSkipped } = settleExtraIndexFiles(await scanImportFolder(e.dirHandle), e.index);
           const r = await importOneFolder(e.dirHandle, files, e.index, e.about, choice, { statusEl, newTypes, progressPrefix });
           results.push({ label, r, extraIndexSkipped });
         }catch(err){
@@ -10141,16 +10154,18 @@
       // top-level files are not imported then.
       const kind = await classifyImportFolder(src);
       if(kind.kind === 'exports'){ await importSeveralExports(src, kind.exports, statusEl); return; }
-      const { files, indexHandle, detailsHandle, extraIndexSkipped } = await scanImportFolder(src);
-      if(!files.length){
-        statusEl.className = 'status err';
-        statusEl.textContent = t('importNoFiles', {folder: src.name});
-        return;
-      }
+      const scan = await scanImportFolder(src);
+      const { indexHandle, detailsHandle } = scan;
       let index = null, indexError = null;
       if(indexHandle){
         try{ index = readImportIndex(await (await indexHandle.getFile()).text()); if(!index) indexError = t('importIndexNoFileColumn'); }
         catch(e){ indexError = e.message; }
+      }
+      const { files, extraIndexSkipped } = settleExtraIndexFiles(scan, index);
+      if(!files.length){
+        statusEl.className = 'status err';
+        statusEl.textContent = t('importNoFiles', {folder: src.name});
+        return;
       }
       const about = (index && detailsHandle) ? await readExportDetails(detailsHandle) : null;
       let choice = null;
@@ -10161,17 +10176,17 @@
 
       const startBtn = el('import-start-btn'), cancelBtn = el('import-cancel-btn');
       startBtn.disabled = cancelBtn.disabled = el('modal-close-btn').disabled = true;
-      importRunning = true;
       statusEl.className = 'status busy';
-      const newTypes = new Set();
-      if(index){
-        for(const rec of index.values()) if(rec.document_type && !(typeFieldOrder[rec.document_type] || []).length) newTypes.add(rec.document_type);
-      }
       let r;
       // Saves once per file: one person's flow for its whole length.
       const holdMark = beginPersonFlowHold();
       let keptFolders = [];
       try{
+        importRunning = true;
+        const newTypes = new Set();
+        if(index){
+          for(const rec of index.values()) if(rec.document_type && !(typeFieldOrder[rec.document_type] || []).length) newTypes.add(rec.document_type);
+        }
         r = await importOneFolder(src, files, index, about, choice, { statusEl, newTypes, progressPrefix: '' });
       }finally{
         importRunning = false;

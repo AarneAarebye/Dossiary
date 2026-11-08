@@ -291,7 +291,8 @@ working" problem that motivated this project in the first place.
   ticked ones in one go, each into its own new collection (or all into no
   collection or one existing one). If one export fails, the next still runs.
   Extra `index (2).csv` files from older exports made into the same folder are
-  skipped, not imported as documents. Dossiary versions before 1.63.0 see only
+  skipped, not imported as documents (unless the folder's `index.csv` lists
+  them: then they are exported documents and come back as such). Dossiary versions before 1.63.0 see only
   the subfolders of such a parent folder; pick an export subfolder instead.
 - **Share** — **Share…** (in a document's panel, or More ▾ for a selection)
   hands the files to your system's share sheet — Mail, Messages, AirDrop or

@@ -1107,14 +1107,16 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   prefilled from `libraryTitle`/`libraryDescription`, limits
   `LIBRARY_TITLE_MAX`/`LIBRARY_DESCRIPTION_MAX` = 60/300, cleaned with
   `cleanLibraryText()`; both disabled while `#export-index-toggle` is off):
-  after `index.csv` is written, and only if it got exactly the name
-  `index.csv` (not numbered because one already existed) and at least one
-  text is non-empty, `export-details.json` (`EXPORT_DETAILS_FILE`) is
-  written beside it as `{"format": 1, "title", "description"}`, overwriting
-  an existing one. `export-details.json` is a reserved export name: `taken`
-  holds it up front, always (also when no details file is written), so an
-  exported document that would be called that is numbered, because an import
-  skips the name. A failed write of the details file is reported in the
+  after `index.csv` is written into the export's own new subfolder (so it
+  always has its plain name; see "One subfolder per export" below) and when
+  at least one text is non-empty, `export-details.json`
+  (`EXPORT_DETAILS_FILE`) is written beside it as `{"format": 1, "title",
+  "description"}`; with both texts empty there is no details file. Both
+  `index.csv` and `export-details.json` are reserved export names: `taken`
+  holds them up front, always (also when no details file is written), so an
+  exported document that would be called that is numbered (`index (2).csv`,
+  `export-details (2).json`) and listed in `index.csv` under that name, which
+  is what lets the import take it back as a document (below). A failed write of the details file is reported in the
   summary (`exportDetailsWriteFailed`, status `err`) but does not fail the
   export: the documents and `index.csv` stay counted as exported. The
   library's own settings are never changed. **One subfolder per export**
@@ -1240,8 +1242,14 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   1.63.0): `'single'` when the folder has its own `index.csv` at the top
   (hidden names ignored) -- imported as one folder as above, and any
   `index (N).csv` / `export-details (N).json` (`EXTRA_INDEX_FILE_RES`, N =
-  digits) in it, left by older exports into the same folder, are neither
-  documents nor read, counted in `importExtraIndexSkipped`; `'exports'` when
+  digits) in it that its `index.csv` does not list, left by older exports
+  into the same folder, are neither documents nor read, counted in
+  `importExtraIndexSkipped` (`scanImportFolder()` sets them aside,
+  `settleExtraIndexFiles(scan, index)` decides). A listed one is a document
+  the export numbered (a document named `index.csv` or
+  `export-details.json`) and imports normally with its row; without an
+  `index.csv` they are ordinary files. The 'exports' mode does the same per
+  subfolder; `'exports'` when
   there is no such `index.csv` but at least one direct, non-hidden subfolder
   has an `index.csv` that `readImportIndex()` can use (a subfolder without
   one, with an unusable one, or unreadable is not listed; only one level is

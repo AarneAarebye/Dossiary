@@ -133,17 +133,20 @@ never by file name. This list maps each of them to what it checks:
     date and time, made unique if taken; none, new or existing manual
     collection; only listed files; a skipped duplicate with a row added; no
     empty collection; failure kept in the summary).
-  - `test_export_details.py` (adapted in 1.63.0: it reads the export's subfolder; a document named `index` is numbered while the real `index.csv` keeps its name) -- the export dialog's Title and Description:
+  - `test_export_details.py` (adapted in 1.63.0: it reads the export's subfolder) -- the export dialog's Title and Description:
     prefilled from the library's own, the 60/300 limits and hint, both
     disabled with the index off (no details file), empty texts writing no
     `export-details.json`, edited texts cleaned and written as
-    `{"format": 1, ...}` with the library's settings unchanged, an existing
-    `index.csv` (numbered) writing none, a 100-character title cut to 60, a
-    document named `export-details` numbered while the details file keeps
-    its name, also with both texts empty; HTML special characters kept as
-    text in the prefill and the file; an existing `export-details.json`
-    overwritten by an export with texts and left alone by one without; a
-    failing write of the details file (read-only handle) still exporting the
+    `{"format": 1, ...}` with the library's settings unchanged, a document
+    named `index` numbered `index (2).csv` while the real `index.csv` keeps
+    its name, a document named `export-details` numbered while the details
+    file keeps its name, also with both texts empty; HTML special characters
+    kept as text in the prefill and the file; a details file written when
+    there are texts and none when both are empty; a round trip exporting
+    documents named `index.csv` and `export-details.json` and importing the
+    export folder, both coming back as documents with their details and no
+    extra-index note, while an unlisted `index (3).csv` added to that folder
+    is still skipped with the note; a failing write of the details file (read-only handle) still exporting the
     documents and `index.csv` with the done text plus the failure sentence; and the import side: a real export round-tripped showing
     "About this export" (title as text, not HTML), the new collection
     named after the title and holding exactly the exported files, a bad,

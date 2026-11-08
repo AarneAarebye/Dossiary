@@ -242,6 +242,33 @@ async def main():
         print("Import 4: the collection holds both:", len(colls) == 1 and len([cd for cd in rows['collection_documents'] if cd['collection_id'] == colls[0]['id']]) == 2)
         await close_import(page)
 
+        # === Round trip: documents named index.csv / export-details.json come back ===
+        # Export numbers them "index (2).csv" / "export-details (2).json"; the index
+        # lists those names, so the import takes them as documents, not as extra
+        # index files of another export.
+        rt = await start(SEED_WITH)
+        await open_export(rt, ids=(1, 3, 4))
+        await run_export(rt)
+        exported = await dest_files(rt)
+        await rt.close()
+        print("Round trip: the export numbered both documents:",
+              'index (2).csv' in exported and 'export-details (2).json' in exported and 'index.csv' in exported, list(exported))
+        for extra, label in (({}, 'listed only'), ({'index (3).csv': 'File,Title\n'}, 'plus an unlisted index (3).csv')):
+            rt = await start({"documents": [], "tags": [], "document_tags": []})
+            await import_folder(rt, 'Out', {**exported, **extra})
+            await rt.click('#import-run-btn'); await rt.wait_for_timeout(1200)
+            rows = await library(rt)
+            summary = await rt.inner_text('#import-summary')
+            titles = sorted(d['title'] for d in rows['documents'])
+            print(f"Round trip ({label}): all three documents imported with their details:",
+                  titles == ['Stadtwerke', 'export-details', 'index'] and 'With details from index.csv: 3' in summary
+                  and 'Rows in index.csv without a file' not in summary, titles, repr(summary))
+            if extra:
+                print(f"Round trip ({label}): the unlisted one is skipped with the note:", 'Skipped 1 extra index files from other exports.' in summary, repr(summary))
+            else:
+                print(f"Round trip ({label}): no extra-index note:", 'extra index' not in summary, repr(summary))
+            await rt.close()
+
         # === Import 5: no block without a usable details file ===
         index = 'File,Title\nm.pdf,Em\n'
         for label, extra, fname in [('no details file', {}, 'm1'), ('malformed', {'export-details.json': '{nope'}, 'm2'),

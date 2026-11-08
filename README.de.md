@@ -340,7 +340,8 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Sammlung (oder alle in keine bzw. eine vorhandene Sammlung). Scheitert ein
   Export, läuft der nächste trotzdem. Zusätzliche `index (2).csv` aus älteren
   Exporten im selben Ordner werden übersprungen und nicht als Dokumente
-  importiert. Versionen vor 1.63.0 sehen in einem solchen Elternordner nur die
+  importiert (außer die `index.csv` des Ordners führt sie auf: dann sind es
+  exportierte Dokumente und kommen als solche zurück). Versionen vor 1.63.0 sehen in einem solchen Elternordner nur die
   Unterordner; wählen Sie dann stattdessen einen Export-Unterordner.
 - **Teilen** — **Teilen…** (im Detailbereich eines Dokuments oder unter
   Mehr ▾ für eine Auswahl) übergibt die Dateien an das Teilen-Menü des
