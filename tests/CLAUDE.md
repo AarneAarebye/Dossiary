@@ -162,8 +162,10 @@ never by file name. This list maps each of them to what it checks:
     characters becoming `-`; index off giving files only; every file failing
     leaving no subfolder (message naming the picked folder); index off
     ignoring the disabled Title (generic `Export …` name); a stubbed failing
-    `index.csv` write keeping the copied files and showing the error plus the
-    subfolder holding them with Start usable again; DEL and C1 controls
+    `index.csv` write rolling the export back (subfolder gone, error plus
+    the rollback sentence, Start usable, a retry using the base name without
+    ` (2)`), a failing `removeEntry` as well keeping the files and naming the
+    subfolder, and a per-file failure still leaving the partial export; DEL and C1 controls
     replaced; a multi-export import showing 'Export n of total: name' (a
     MutationObserver on `#import-status`) and calling `beginPersonFlowHold`
     once (`__DEBUG_holdBegins` counter); the exports panel at 390px without

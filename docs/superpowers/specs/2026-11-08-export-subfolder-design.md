@@ -17,6 +17,7 @@ Exporting into a folder that already held an export produced `index (2).csv` and
 - Documents, `index.csv` and `export-details.json` go into the subfolder. The names inside are the plain ones: `index.csv` and `export-details.json` are never numbered away. A document named like either gets the existing numbering (the reserved names stay in `taken`).
 - "Include index.csv" off: the subfolder is still made and holds the files; no index, no details file.
 - Nothing exported (all failed): the empty subfolder is removed (best effort, errors ignored).
+- If writing `index.csv` throws after the files were copied, the export is rolled back: the subfolder this run created is removed (`removeEntry` with `recursive`), safe because Export only copies. The dialog shows the error plus `exportRolledBack` ("nothing was left in the folder"), and a retry makes a fresh subfolder with the base name. If the removal itself fails, the copied files stay and the message names the subfolder (`exportDone`). Per-file failures are not rolled back, and a failing `export-details.json` write stays tolerated.
 - The inside-library check still applies to the picked parent. The done message names the subfolder: `exportDone` with `folder` = the subfolder's name (parent not shown).
 
 ## Import

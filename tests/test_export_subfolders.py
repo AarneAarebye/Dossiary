@@ -156,29 +156,62 @@ async def main():
               len(names) == 1 and bool(re.match(r'^Export \d{4}-\d{2}-\d{2} \d{2}-\d{2}$', names[0])), names)
         await page.close()
 
-        # === A failing index.csv write after the files were copied ===
-        page = await start()
-        await page.evaluate("""() => {
+        # === A failing index.csv write after the files were copied: the export is rolled back ===
+        STUB_INDEX_FAIL = """(failRemove) => {
             const d = window.__DEST = window.__makeEmptyRoot();
+            window.__FAIL_INDEX = true;
             const orig = d.getDirectoryHandle.bind(d);
             d.getDirectoryHandle = async (n, o) => {
                 const h = await orig(n, o);
                 if(o && o.create){
                     const gf = h.getFileHandle.bind(h);
-                    h.getFileHandle = async (fn, fo) => { if(fn === 'index.csv' && fo && fo.create) throw new Error('Disk full'); return gf(fn, fo); };
+                    h.getFileHandle = async (fn, fo) => { if(window.__FAIL_INDEX && fn === 'index.csv' && fo && fo.create) throw new Error('Disk full'); return gf(fn, fo); };
                 }
                 return h;
             };
-        }""")
+            if(failRemove){ d.removeEntry = async () => { throw new Error('Cannot remove'); }; }
+        }"""
+        page = await start()
+        await page.evaluate(STUB_INDEX_FAIL, False)
+        await run_export(page, title='Partial')
+        top = await listing(page)
+        status = await page.inner_text('#export-status')
+        print("A failing index.csv write removes the subfolder this export created:", top == {}, top)
+        print("...and shows the error and the rollback sentence:",
+              'Disk full' in status and 'The export was not completed and nothing was left in the folder.' in status
+              and 'Exported 2 files' not in status and 'err' in await page.get_attribute('#export-status', 'class'), repr(status))
+        print("...and Start is usable again:", await page.is_enabled('#export-start-btn') and await page.is_enabled('#export-cancel-btn')
+              and await page.is_enabled('#modal-close-btn') and await page.is_enabled('#export-title') and await page.is_enabled('#export-index-toggle'))
+        await page.evaluate("() => { window.__FAIL_INDEX = false; window.__NEXT_PICKED_DIR = window.__DEST; }")
+        await page.click('#export-start-btn'); await page.wait_for_timeout(800)
+        top = await listing(page); names = list(top)
+        print("A retry creates a subfolder with the base name (no ' (2)'):",
+              len(names) == 1 and bool(re.match(NAME_RE, names[0])) and not names[0].endswith(')') and 'index.csv' in top[names[0]], top)
+        await page.close()
+
+        # --- the rollback itself fails: today's behaviour, the copied files stay and the subfolder is named ---
+        page = await start()
+        await page.evaluate(STUB_INDEX_FAIL, True)
         await run_export(page, title='Partial')
         top = await listing(page); names = list(top)
         status = await page.inner_text('#export-status')
-        print("A failing index.csv write keeps the copied files in the subfolder:",
+        print("A failing rollback keeps the copied files in the subfolder:",
               len(names) == 1 and top[names[0]] == ['2026-01-10 Water.pdf', '2026-02-15 Stadtwerke.pdf'], top)
-        print("...and the error names the error and the subfolder holding them:",
-              'Disk full' in status and f'Exported 2 files to “{names[0]}”.' in status and 'err' in await page.get_attribute('#export-status', 'class'), repr(status))
+        print("...and the message names the error and the subfolder, without the rollback sentence:",
+              'Disk full' in status and f'Exported 2 files to “{names[0]}”.' in status and 'nothing was left' not in status
+              and 'err' in await page.get_attribute('#export-status', 'class'), repr(status))
         print("...and Start is usable again:", await page.is_enabled('#export-start-btn') and await page.is_enabled('#export-cancel-btn')
               and await page.is_enabled('#modal-close-btn') and await page.is_enabled('#export-title'))
+        await page.close()
+
+        # --- a per-file failure is not rolled back: partial successes stay ---
+        page = await start(files=(1,))
+        await run_export(page, title='Some')
+        top = await listing(page); names = list(top)
+        status = await page.inner_text('#export-status')
+        print("A per-file failure keeps the exported files and index.csv:",
+              len(names) == 1 and top[names[0]] == ['2026-02-15 Stadtwerke.pdf', 'export-details.json', 'index.csv'], top)
+        print("...and reports the failure, with no rollback sentence:", 'Could not export: 1' in status and 'nothing was left' not in status, repr(status[:120]))
         await page.close()
 
         # === Scenario 2: index off -> files only; all failing -> no subfolder ===
