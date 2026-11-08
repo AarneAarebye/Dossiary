@@ -21,7 +21,7 @@ def doc(i, title, date, ext='pdf'):
     }
 
 DOCS = [doc(1, "Stadtwerke", "2026-02-15T00:00:00+00:00"), doc(2, "Water", "2026-01-10T00:00:00+00:00"),
-        doc(3, "export-details", None, 'json')]
+        doc(3, "export-details", None, 'json'), doc(4, "index", None, 'csv')]
 SEED_WITH = {"documents": DOCS, "tags": [], "document_tags": [],
              "settings": [{"key": "library_title", "value": "Birgit’s papers"}, {"key": "library_description", "value": "House and car"}]}
 SEED_WITHOUT = {"documents": DOCS, "tags": [], "document_tags": []}
@@ -43,13 +43,14 @@ async def main():
                     await route.continue_()
             await page.route('**/*', route_handler)
             await page.add_init_script(open('stub_studio2.js').read())
+            await page.add_init_script("window.__sub = async (r) => { for await (const [k, h] of r.entries()) if(h.kind === 'directory') return h; };")
             await page.goto(f"file://{APP_PATH}")
             await page.wait_for_timeout(200)
             await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(seed)});")
             await page.evaluate("""
                 async () => {
                     const dir = await window.__TEST_ROOT.getDirectoryHandle('files', { create: true });
-                    for(const n of ['1_a.pdf', '2_a.pdf', '3_a.json']){
+                    for(const n of ['1_a.pdf', '2_a.pdf', '3_a.json', '4_a.csv']){
                         const w = await (await dir.getFileHandle(n, { create: true })).createWritable();
                         await w.write(new TextEncoder().encode('%PDF-1.4 ' + n)); await w.close();
                     }
@@ -75,7 +76,7 @@ async def main():
             await page.wait_for_timeout(800)
 
         async def dest_files(page):
-            return await page.evaluate("""async () => { const o = {}; for await (const [k, h] of window.__EXPORT_DEST.entries()){ if(h.kind === 'file') o[k] = await (await h.getFile()).text(); } return o; }""")
+            return await page.evaluate("""async () => { const o = {}; const sub = await window.__sub(window.__EXPORT_DEST); for await (const [k, h] of sub.entries()){ if(h.kind === 'file') o[k] = await (await h.getFile()).text(); } return o; }""")
 
         # === Scenario 1: prefilled from the library ===
         page = await start(SEED_WITH)
@@ -119,13 +120,13 @@ async def main():
         print("Fields disabled while/after the run:", await page.is_disabled('#export-title'))
         await page.close()
 
-        # === Scenario 3c: destination already holds an index.csv ===
+        # === Scenario 3c: a document named index.csv is numbered, the index keeps its name ===
         page = await start(SEED_WITH)
-        await open_export(page)
-        await run_export(page, "const w = await (await window.__EXPORT_DEST.getFileHandle('index.csv', { create: true })).createWritable(); await w.write('old'); await w.close();")
+        await open_export(page, ids=(1, 4))
+        await run_export(page)
         files = await dest_files(page)
-        print("Existing index.csv: new index numbered, no details file:",
-              'index (2).csv' in files and files.get('index.csv') == 'old' and 'export-details.json' not in files, list(files))
+        print("A document named index.csv is numbered, the index keeps its name:",
+              'index (2).csv' in files and files['index (2).csv'].startswith('%PDF') and not files.get('index.csv', '').startswith('%PDF'), list(files))
         await page.close()
 
         # === Scenario 4: a 100-character title is cut to 60 ===
@@ -160,21 +161,19 @@ async def main():
         print("Special characters: written unchanged:", d.get('title') == SPECIAL and d.get('description') == SPECIAL, d)
         await page.close()
 
-        # === Scenario 7: a details file already in the destination ===
-        OLD = "const w = await (await window.__EXPORT_DEST.getFileHandle('export-details.json', { create: true })).createWritable(); await w.write('old'); await w.close();"
+        # === Scenario 7: the details file only exists when there are texts ===
         page = await start(SEED_WITH)
         await open_export(page)
-        await run_export(page, OLD)
+        await run_export(page)
         d = json.loads((await dest_files(page)).get('export-details.json', '{}'))
-        print("Existing export-details.json is overwritten by an export with texts:",
+        print("An export with texts writes export-details.json:",
               d.get('title') == 'Birgit’s papers' and d.get('description') == 'House and car', d)
         await page.close()
         page = await start(SEED_WITHOUT)
         await open_export(page)
-        await run_export(page, OLD)
+        await run_export(page)
         files = await dest_files(page)
-        print("Existing export-details.json is left untouched when both texts are empty:",
-              files.get('export-details.json') == 'old' and 'index.csv' in files, list(files))
+        print("No details file when both texts are empty:", 'export-details.json' not in files and 'index.csv' in files, list(files))
         await page.close()
 
         # === Scenario 8: the name stays reserved when no details file is written ===
@@ -189,7 +188,7 @@ async def main():
         # === Scenario 9: a failing details write does not block the summary ===
         page = await start(SEED_WITH)
         await open_export(page)
-        await run_export(page, "const h = await window.__EXPORT_DEST.getFileHandle('export-details.json', { create: true }); h.readOnly = true;")
+        await run_export(page, "const orig = window.__EXPORT_DEST.getDirectoryHandle.bind(window.__EXPORT_DEST); window.__EXPORT_DEST.getDirectoryHandle = async (n, o) => { const d = await orig(n, o); if(o && o.create){ const h = await d.getFileHandle('export-details.json', { create: true }); h.readOnly = true; } return d; };")
         files = await dest_files(page)
         status = await page.inner_text('#export-status')
         print("Failing details write: documents and index.csv are exported:",

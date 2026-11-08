@@ -64,6 +64,7 @@ async def main():
                 await route.continue_()
         await page.route('**/*', route_handler)
         await page.add_init_script(open('stub_studio2.js').read())
+        await page.add_init_script("window.__sub = async (r) => { for await (const [k, h] of r.entries()) if(h.kind === 'directory') return h; };")
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SOURCE)});")
@@ -93,6 +94,8 @@ async def main():
         await page.wait_for_timeout(800)
         await page.click('#export-cancel-btn')
         await page.wait_for_timeout(150)
+        # The export now sits in its own subfolder; pick that one for the import.
+        await page.evaluate("async () => { window.__PARENT = window.__FOLDER; window.__FOLDER = await window.__sub(window.__PARENT); window.__FOLDER.name = 'From Arne'; }")
         # A loose file without an index row, plus a hidden file to ignore.
         await page.evaluate("""async () => {
             for(const [n, c] of [['scan 7.pdf', '%PDF-1.4 loose'], ['.DS_Store', 'junk']]){

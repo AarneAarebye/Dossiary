@@ -4,7 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
-import asyncio, json
+import asyncio, json, re
 from playwright.async_api import async_playwright
 
 # Export selected documents: their files are copied into a folder the person
@@ -61,6 +61,7 @@ async def main():
                 await route.continue_()
         await page.route('**/*', route_handler)
         await page.add_init_script(open('stub_studio2.js').read())
+        await page.add_init_script("window.__sub = async (r) => { for await (const [k, h] of r.entries()) if(h.kind === 'directory') return h; };")
         await page.goto(f"file://{APP_PATH}")
         await page.wait_for_timeout(200)
         await page.evaluate(f"window.__TEST_ROOT = window.__makeSeededRoot({json.dumps(SEED)});")
@@ -102,14 +103,14 @@ async def main():
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
         status = await page.inner_text('#export-status')
-        print("Reports 3 exported and 1 that couldn't be:", 'Exported 3 files to “For advisor”' in status and 'Could not export: 1.' in status, repr(status[:120]))
+        print("Reports 3 exported and 1 that couldn't be:", re.search(r'Exported 3 files to “Export \d{4}-\d\d-\d\d \d\d-\d\d”', status) and 'Could not export: 1.' in status, repr(status[:120]))
         print("...naming the one that failed:", 'Missing file' in await page.inner_text('#export-failed-list'))
-        names = await page.evaluate("async () => { const n = []; for await (const [k] of window.__EXPORT_DEST.entries()) n.push(k); return n.sort(); }")
+        names = await page.evaluate("async () => { const n = []; for await (const [k] of (await window.__sub(window.__EXPORT_DEST)).entries()) n.push(k); return n.sort(); }")
         print("Files named by date and title, clashes numbered, unsafe characters replaced:",
-              names == ['2026-01-10 Insurance- policy-2026.pdf', '2026-02-15 Stadtwerke (2).pdf', '2026-02-15 Stadtwerke (3).pdf', '2026-02-15 Stadtwerke.pdf', 'index.csv'], names)
+              names == ['2026-01-10 Insurance- policy-2026.pdf', '2026-02-15 Stadtwerke (2).pdf', '2026-02-15 Stadtwerke.pdf', 'index.csv'], names)
         existing = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('2026-02-15 Stadtwerke.pdf')).getFile()).text()")
-        print("A file already in the folder is left alone:", existing == 'already here')
-        copied = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('2026-02-15 Stadtwerke (2).pdf')).getFile()).text()")
+        print("A file already in the picked folder is left alone:", existing == 'already here')
+        copied = await page.evaluate("async () => await (await (await (await window.__sub(window.__EXPORT_DEST)).getFileHandle('2026-02-15 Stadtwerke.pdf')).getFile()).text()")
         props = json.loads(copied.split('\n', 1)[1]).get('props') if copied.startswith('%PDF-FAKELIB') else None
         print("By default the exported PDF carries its details:", props == {'title': 'Stadtwerke', 'subject': 'Home · Invoice', 'keywords': ['tax']})
         print("...and only the details changed, not the pages:", json.loads(copied.split('\n', 1)[1])['pages'][0]['src'] == '%PDF-1.4 doc 1')
@@ -117,7 +118,7 @@ async def main():
         print("Writing the details never pauses between chunks (a background tab would stretch each pause to a second):",
               opts['load'].get('parseSpeed') == 'fastest' and opts['save'] == {'objectsPerTick': 'Infinity'})
         print("The details option is on by default:", await page.is_checked('#export-details-toggle'))
-        csv = await page.evaluate("async () => await (await (await window.__EXPORT_DEST.getFileHandle('index.csv')).getFile()).text()")
+        csv = await page.evaluate("async () => await (await (await (await window.__sub(window.__EXPORT_DEST)).getFileHandle('index.csv')).getFile()).text()")
         lines = csv.lstrip('﻿').strip().split('\r\n')
         print("index.csv: a header plus one row per exported file:", len(lines) == 4, len(lines))
         print("...English uses ',' and quotes values that need it:", lines[0].startswith('File,Title,Date') and '"Paid; ""on time"""' in csv)
@@ -135,7 +136,7 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
-        csv_de = await page.evaluate("async () => await (await (await window.__EXPORT_DE.getFileHandle('index.csv')).getFile()).text()")
+        csv_de = await page.evaluate("async () => await (await (await (await window.__sub(window.__EXPORT_DE)).getFileHandle('index.csv')).getFile()).text()")
         print("German index.csv uses ';':", csv_de.lstrip('﻿').startswith('Datei;'))
         await page.click('#export-cancel-btn')
         await page.wait_for_timeout(150)
@@ -146,7 +147,7 @@ async def main():
         await page.wait_for_timeout(200)
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
-        csv_hy = await page.evaluate("async () => await (await (await window.__EXPORT_HY.getFileHandle('index.csv')).getFile()).text()")
+        csv_hy = await page.evaluate("async () => await (await (await (await window.__sub(window.__EXPORT_HY)).getFileHandle('index.csv')).getFile()).text()")
         print("Armenian index.csv uses ';':", csv_hy.lstrip('\ufeff').split('\n')[0].count(';') > 3)
         await page.click('#export-cancel-btn')
         await page.wait_for_timeout(150)
@@ -159,9 +160,9 @@ async def main():
         await page.uncheck('#export-details-toggle')
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
-        names_no = await page.evaluate("async () => { const n = []; for await (const [k] of window.__EXPORT_NO.entries()) n.push(k); return n; }")
+        names_no = await page.evaluate("async () => { const n = []; for await (const [k] of (await window.__sub(window.__EXPORT_NO)).entries()) n.push(k); return n; }")
         print("Without the index option, only the files are written:", 'index.csv' not in names_no and len(names_no) == 3, names_no)
-        raw = await page.evaluate("async () => await (await (await window.__EXPORT_NO.getFileHandle('2026-02-15 Stadtwerke.pdf')).getFile()).text()")
+        raw = await page.evaluate("async () => await (await (await (await window.__sub(window.__EXPORT_NO)).getFileHandle('2026-02-15 Stadtwerke.pdf')).getFile()).text()")
         print("Without the details option, the copy has the document's own bytes:", raw == '%PDF-1.4 doc 1')
 
         # === Scenario 4: a PDF that can't be opened is copied unchanged, and says so ===
@@ -177,7 +178,7 @@ async def main():
         await page.click('#export-start-btn')
         await page.wait_for_timeout(800)
         status_bad = await page.inner_text('#export-status')
-        bad = await page.evaluate("async () => { for await (const [k, h] of window.__EXPORT_BAD.entries()) if(k.startsWith('2026-01-10')) return await (await h.getFile()).text(); }")
+        bad = await page.evaluate("async () => { for await (const [k, h] of (await window.__sub(window.__EXPORT_BAD)).entries()) if(k.startsWith('2026-01-10')) return await (await h.getFile()).text(); }")
         print("A PDF that can't be opened is copied unchanged, and reported:", bad == 'not really a pdf' and '1 PDF(s) ohne Angaben kopiert' in status_bad, repr(status_bad[:200]))
 
         print("JS ERRORS:", errors)

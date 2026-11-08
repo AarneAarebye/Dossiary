@@ -9238,6 +9238,32 @@
     return (name || `document-${d.id}`) + ext;
   }
 
+  // Folder-name helpers for the export subfolder.
+  function sanitizeFolderName(name){
+    return String(name == null ? '' : name).replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100).trim();
+  }
+  function exportSubfolderName(title, now = new Date()){
+    const p = (n) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}-${p(now.getMinutes())}`;
+    const clean = sanitizeFolderName(title);
+    return (clean ? clean + ' · ' : 'Export ') + stamp;
+  }
+  // Creates a new directory in parentHandle, numbering " (2)", " (3)" on a clash.
+  async function uniqueSubfolderIn(parentHandle, baseName){
+    for(let n = 1; ; n++){
+      const candidate = n === 1 ? baseName : `${baseName} (${n})`;
+      let exists = true;
+      try{ await parentHandle.getDirectoryHandle(candidate); }
+      catch(e){
+        if(e && e.name === 'NotFoundError') exists = false;
+        else try{ await parentHandle.getFileHandle(candidate); }catch(e2){ exists = false; }
+      }
+      if(!exists) return await parentHandle.getDirectoryHandle(candidate, { create: true });
+    }
+  }
+
+  window.__DEBUG_exportFolderNames = { sanitizeFolderName, exportSubfolderName, uniqueSubfolderIn }; // test-only hook (tests/test_export_subfolders.py)
+
   async function uniqueFileNameIn(dirHandle, name, taken){
     const dot = name.lastIndexOf('.');
     const stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
@@ -9480,22 +9506,25 @@
       const exported = [], failed = [];
       let detailsSkipped = 0, detailsWriteFailed = false;
       const taken = new Set();
+      let out = null;
       // The details file name is always reserved: an exported document is never named
       // export-details.json (an import skips that name), whether or not the file is written.
       taken.add(EXPORT_DETAILS_FILE);
+      taken.add('index.csv');
       try{
+        out = await uniqueSubfolderIn(dest, exportSubfolderName(detailsTitle, new Date()));
         for(let i = 0; i < docs.length; i++){
           const d = docs[i];
           statusEl.innerHTML = '<span class="spinner"></span> ' + escapeHtml(t('exportProgress', {done: i, total: docs.length}));
           try{
             const file = await (await resolveFileHandle(d.file_path, false)).getFile();
-            const fileName = await uniqueFileNameIn(dest, exportFileName(d), taken);
+            const fileName = await uniqueFileNameIn(out, exportFileName(d), taken);
             let bytes = await file.arrayBuffer();
             if(withDetails && /\.pdf$/i.test(d.file_path)){
               const stamped = await pdfWithDetails(bytes, d);
               if(stamped) bytes = stamped; else detailsSkipped++;
             }
-            const w = await (await dest.getFileHandle(fileName, { create: true })).createWritable();
+            const w = await (await out.getFileHandle(fileName, { create: true })).createWritable();
             await w.write(bytes);
             await w.close();
             exported.push({d, fileName});
@@ -9504,24 +9533,25 @@
           }
         }
         if(withIndex && exported.length){
-          const indexName = await uniqueFileNameIn(dest, 'index.csv', taken);
-          const w = await (await dest.getFileHandle(indexName, { create: true })).createWritable();
+          const indexName = 'index.csv';
+          const w = await (await out.getFileHandle(indexName, { create: true })).createWritable();
           await w.write(buildExportCsv(exported));
           await w.close();
-          if(indexName === 'index.csv' && (detailsTitle || detailsDescription)){
+          if(detailsTitle || detailsDescription){
             try{
-              const dw = await (await dest.getFileHandle(EXPORT_DETAILS_FILE, { create: true })).createWritable();
+              const dw = await (await out.getFileHandle(EXPORT_DETAILS_FILE, { create: true })).createWritable();
               await dw.write(JSON.stringify({ format: 1, title: detailsTitle, description: detailsDescription }, null, 2));
               await dw.close();
             }catch(e){ detailsWriteFailed = true; } // the documents and index.csv are already written
           }
         }
       }finally{
+        if(out && !exported.length){ try{ await dest.removeEntry(out.name, { recursive: true }); }catch(e){} }
         exportRunning = false;
         el('modal-close-btn').disabled = false;
       }
       statusEl.className = 'status ' + (failed.length || detailsWriteFailed ? 'err' : 'ok');
-      statusEl.innerHTML = escapeHtml(t('exportDone', {count: exported.length, folder: dest.name}))
+      statusEl.innerHTML = escapeHtml(t('exportDone', {count: exported.length, folder: out ? out.name : dest.name}))
         + (detailsSkipped ? ` ${escapeHtml(t('exportDetailsSkipped', {count: detailsSkipped}))}` : '')
         + (detailsWriteFailed ? ` ${escapeHtml(t('exportDetailsWriteFailed'))}` : '')
         + (failed.length ? ` ${escapeHtml(t('exportFailed', {count: failed.length}))}<ul id="export-failed-list">${failed.map(f => `<li>${escapeHtml(displayName(f.d))}: ${escapeHtml(f.error)}</li>`).join('')}</ul>` : '');
