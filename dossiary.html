@@ -1046,6 +1046,7 @@
         </div>
         <button id="init-btn" data-i18n="initButton">Use this folder as the library</button>
         <button id="pick-again-btn" data-i18n="initPickAgain">Choose a different folder</button>
+        <button id="cancel-init-btn" data-i18n="commonCancel">Cancel</button>
       </div>
 
       <div class="count-row">
@@ -1157,7 +1158,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.63.0'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.63.1'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -4956,6 +4957,7 @@
   // picker popping up on top of that list forces an extra cancel.
   el('reload-btn').addEventListener('click', () => { switchLibraryAsking(); });
   el('pick-again-btn').addEventListener('click', () => { resetAll(); openLibrary(); });
+  el('cancel-init-btn').addEventListener('click', () => { resetAll(); });
   el('init-btn').addEventListener('click', useFolderAsLibrary);
   el('copy-setup-select').addEventListener('change', onCopySetupChange);
   el('create-library-btn').addEventListener('click', createLibraryFolder);
@@ -9256,7 +9258,7 @@
   function exportFileName(d){
     const ext = ((d.file_path || '').match(/\.[^./]+$/) || [''])[0];
     const date = d.date ? d.date.slice(0, 10) + ' ' : '';
-    const name = (date + displayName(d)).replace(/[\\/:*?"<>|\x00-\x1f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const name = (date + displayName(d)).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120);
     return (name || `document-${d.id}`) + ext;
   }
 

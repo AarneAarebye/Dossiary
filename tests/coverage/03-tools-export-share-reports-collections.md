@@ -74,7 +74,7 @@ every other test that used one of the moved buttons now clicks
 `#tools-btn` first, and `test_footer_pin.py`'s 320px-width check also
 confirms the Tools menu opens fully visible, not clipped by the
 scrollable mobile toolbar), creating a new library (`test_new_library.py`
--- the no-library screen's name form with its default name and folder
+-- the empty-folder panel's Cancel button returning to the start screen with nothing created; the no-library screen's name form with its default name and folder
 preview, creating as the main action; a name with a slash refused, an
 existing `Taken.dossiary` never reused, typing updating the preview and
 clearing the error; Enter creating `Family Papers.dossiary` with the

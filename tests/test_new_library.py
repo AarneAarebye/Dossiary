@@ -83,6 +83,19 @@ async def main():
         await page.wait_for_timeout(500)
         print("...and the library is set up in it directly:", 'library.sqlite' in await entries('window.__TEST_ROOT'))
 
+        # === Scenario 3b: Cancel on the empty-folder panel returns to the start screen ===
+        await pick("(() => { const r = window.__makeEmptyRoot(); r.name = 'Nothing'; return r; })()")
+        print("Empty-folder panel has a Cancel button:", await page.locator('#cancel-init-btn').is_visible()
+              and await page.inner_text('#cancel-init-btn') == 'Cancel')
+        await page.click('#cancel-init-btn')
+        await page.wait_for_timeout(300)
+        print("Cancel hides the panel and shows the start screen:", await page.locator('#init-state').is_hidden()
+              and await page.locator('#empty-state').is_visible())
+        print("...with Recent libraries listed:", await page.locator('#recent-libraries').is_visible()
+              and await page.locator('#recent-libraries-list').count() == 1)
+        print("...nothing was created in the folder:", await entries('window.__TEST_ROOT') == [])
+        print("...and the library toolbar stays hidden:", await page.locator('#toolbar').is_hidden() and await page.locator('#app-nav').is_hidden())
+
         # === Scenario 4: German ===
         await pick("(() => { const r = window.__makeEmptyRoot(); r.name = 'Ablage'; return r; })()")
         await page.select_option('#lang-select', 'de')
