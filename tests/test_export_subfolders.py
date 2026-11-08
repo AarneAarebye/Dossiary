@@ -178,6 +178,71 @@ async def main():
         print("exportSubfolderName: with a title:", r['titled'] == 'Tax · 2026-01-05 07-03')
         await page.close()
 
+        # === Scenario 7: extra "index (N).csv" / "export-details (N).json" next to index.csv ===
+        async def import_folder(page, files, choose_none=True):
+            await page.evaluate("""async (files) => {
+                const dir = window.__makeEmptyRoot(); dir.name = 'Mixed';
+                for(const [n, c] of Object.entries(files)){
+                    const w = await (await dir.getFileHandle(n, {create: true})).createWritable();
+                    await w.write(new TextEncoder().encode(c)); await w.close();
+                }
+                window.__NEXT_PICKED_DIR = dir;
+            }""", files)
+            await page.click('#tools-btn'); await page.click('#import-folder-btn'); await page.wait_for_timeout(200)
+            await page.click('#import-start-btn'); await page.wait_for_timeout(500)
+            if choose_none:
+                await page.check('#import-coll-none'); await page.click('#import-run-btn')
+            await page.wait_for_timeout(1200)
+            lib = await page.evaluate("() => JSON.parse(new TextDecoder().decode(window.__TEST_ROOT._children.get('library.sqlite')._bytes))")
+            return await page.inner_text('#import-summary'), lib
+
+        page = await start()
+        summary, lib = await import_folder(page, {
+            'index.csv': 'File,Title\nnew-a.pdf,Listed A\n',
+            'new-a.pdf': '%PDF-1.4 listed a', 'new-b.pdf': '%PDF-1.4 unlisted b',
+            'index (2).csv': 'File,Title\nnew-b.pdf,Wrong title\n',
+            'export-details (2).json': '{"format": 1, "title": "Other export"}',
+        })
+        new_docs = [d for d in lib['documents'] if d['id'] > 3]
+        titles = sorted(d['title'] for d in new_docs)
+        print("7. index.csv plus extra index files: the two documents import as today:", 'Added: 2' in summary and 'With details from index.csv: 1' in summary, repr(summary))
+        print("7. ...the extra index files are not documents:", len(new_docs) == 2 and not any('index' in t.lower() or 'export-details' in t.lower() for t in titles), titles)
+        print("7. ...and index (2).csv is never read (the unlisted file keeps no title from it):", 'Wrong title' not in titles and 'Listed A' in titles, titles)
+        print("7. ...the note names the skipped files:", 'Skipped 2 extra index files from other exports.' in summary, repr(summary))
+        await page.close()
+
+        page = await start()
+        summary, lib = await import_folder(page, {'new-c.pdf': '%PDF-1.4 c', 'index (3).csv': 'File,Title\n'}, choose_none=False)
+        print("7. Without an index.csv, 'index (3).csv' is an ordinary file and no note shows:",
+              'Added: 2' in summary and 'extra index' not in summary, repr(summary))
+        await page.close()
+
+        # === classifyImportFolder (the 'exports' kind is classified, not yet acted on) ===
+        page = await start()
+        r = await page.evaluate("""async () => {
+            const put = async (dir, n, c) => { const w = await (await dir.getFileHandle(n, {create: true})).createWritable(); await w.write(new TextEncoder().encode(c)); await w.close(); };
+            const single = window.__makeEmptyRoot(); await put(single, 'index.csv', 'File\\n'); await single.getDirectoryHandle('sub', {create: true});
+            const parent = window.__makeEmptyRoot(); await put(parent, 'loose.pdf', 'x');
+            const e1 = await parent.getDirectoryHandle('B export', {create: true});
+            await put(e1, 'index.csv', 'File,Title\\na.pdf,A\\nb.pdf,B\\ngone.pdf,G\\n'); await put(e1, 'a.pdf', '1'); await put(e1, 'b.pdf', '2');
+            await put(e1, 'export-details.json', '{"format":1,"title":"Tax"}');
+            const e2 = await parent.getDirectoryHandle('A export', {create: true}); await put(e2, 'index.csv', 'File\\nz.pdf\\n');
+            await put(await parent.getDirectoryHandle('no index', {create: true}), 'c.pdf', '3');
+            await put(await parent.getDirectoryHandle('.hidden', {create: true}), 'index.csv', 'File\\n');
+            const plain = window.__makeEmptyRoot(); await put(plain, 'a.pdf', '1'); await put(await plain.getDirectoryHandle('sub', {create: true}), 'b.pdf', '2');
+            const c = window.__DEBUG_classifyImportFolder;
+            const ex = await c(parent);
+            return { single: (await c(single)).kind, plain: (await c(plain)).kind, kind: ex.kind,
+                     list: (ex.exports || []).map(e => [e.name, e.fileCount, e.about && e.about.title, !!e.index, e.dirHandle.kind]) };
+        }""")
+        print("classify: own index.csv -> single:", r['single'] == 'single', r)
+        print("classify: neither -> plain:", r['plain'] == 'plain', r)
+        print("classify: export subfolders -> exports, sorted, hidden and index-less ones left out:",
+              r['kind'] == 'exports' and [e[0] for e in r['list']] == ['A export', 'B export'], r['list'])
+        print("classify: file counts are listed rows whose file exists, with the details title:",
+              r['list'][1][1:] == [2, 'Tax', True, 'directory'] and r['list'][0][1] == 0, r['list'])
+        await page.close()
+
         print("No page errors:", not errors, errors)
         await browser.close()
 
