@@ -1111,8 +1111,12 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   `index.csv` (not numbered because one already existed) and at least one
   text is non-empty, `export-details.json` (`EXPORT_DETAILS_FILE`) is
   written beside it as `{"format": 1, "title", "description"}`, overwriting
-  an existing one. `taken` reserves that name up front, so an exported
-  document that would be called `export-details.json` is numbered. The
+  an existing one. `export-details.json` is a reserved export name: `taken`
+  holds it up front, always (also when no details file is written), so an
+  exported document that would be called that is numbered, because an import
+  skips the name. A failed write of the details file is reported in the
+  summary (`exportDetailsWriteFailed`, status `err`) but does not fail the
+  export: the documents and `index.csv` stay counted as exported. The
   library's own settings are never changed. Emailing (Mariner's other export) isn't possible from a browser: a
   `mailto:` link can't carry attachments. **Details in exported PDFs**
   (`pdfWithDetails()`, `#export-details-toggle`, on by default): each
@@ -1211,7 +1215,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   **Collection step** (only with an `index.csv`): `askImportCollection()`
   asks, before the run starts, for no collection, a new manual collection
   or an existing manual one (smart collections are not offered); **the
-  choice starts on "A new collection"** (it was "No collection" in 1.59.0).
+  choice starts on "A new collection"** (it was "No collection" in 1.59.0 and 1.60.0).
   Its name is `importCollectionDefaultName(about, folderName)`: `{export
   title, else folder name} · YYYY-MM-DD HH:MM` in local time, made unique
   against the manual collections with " (2)", " (3)" if taken (the same

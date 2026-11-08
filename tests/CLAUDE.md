@@ -140,7 +140,11 @@ never by file name. This list maps each of them to what it checks:
     `{"format": 1, ...}` with the library's settings unchanged, an existing
     `index.csv` (numbered) writing none, a 100-character title cut to 60, a
     document named `export-details` numbered while the details file keeps
-    its name; and the import side: a real export round-tripped showing
+    its name, also with both texts empty; HTML special characters kept as
+    text in the prefill and the file; an existing `export-details.json`
+    overwritten by an export with texts and left alone by one without; a
+    failing write of the details file (read-only handle) still exporting the
+    documents and `index.csv` with the done text plus the failure sentence; and the import side: a real export round-tripped showing
     "About this export" (title as text, not HTML), the new collection
     named after the title and holding exactly the exported files, a bad,
     non-string or empty details file ignored, a folder without `index.csv`
