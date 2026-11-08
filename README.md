@@ -432,6 +432,18 @@ working" problem that motivated this project in the first place.
   uploads to the Pi, the status line shows "Uploading to the Pi… m:ss"
   with the time so far, says when the Pi can't be reached or the upload
   has a problem, and says when it is done.
+  With Dossiary Sync 0.17.0 or newer the dialog also names the Dossiary
+  Sync folder (the folder the synced libraries live in, standard
+  `~/Dossiary`) and, while that folder is on a cloud drive (iCloud Drive,
+  Dropbox, OneDrive, Google Drive, Box), warns that cloud drives can damage
+  synced libraries and shows the command that moves it
+  (`dossiary-sync libraries-root move ~/Dossiary`, selectable to copy).
+  Sharing or getting a library into a cloud-drive folder is refused with
+  the provider's name, and nothing is left behind. A library you open from
+  directly inside that folder that isn't shared yet gets "Not shared yet:
+  Tools → Share this library…" on the status line (only when Dossiary
+  still has permission for the folder you chose for sharing, and the
+  folder carries Dossiary Sync's `.dossiary-root.json` marker).
 - **A tidy toolbar** — the toolbar keeps what you use every day (Check
   inbox, Check reminders, Scan, Add document, Details, Columns); occasional
   actions — Manage fields, Manage collections, Library check, and Storage

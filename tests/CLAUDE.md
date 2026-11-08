@@ -13,7 +13,7 @@ be False)" labels, raw `is_checked()` results), which made a full run
 unreadable; they were all rewritten, so a full run now prints no `False`
 at all. Keep it that way for new checks.
 
-**Test coverage narrative.** The per-feature account of what the 115 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
+**Test coverage narrative.** The per-feature account of what the 116 scripts cover was one 95 KB paragraph here. It now lives in four parts under `tests/coverage/`, word for word and in the original order; the parts are not loaded automatically, so read the one for the area you are changing (search them for a script name such as `test_reminders.py`):
 
 - [`coverage/01-capture-ocr-fields-inbox-nav.md`](coverage/01-capture-ocr-fields-inbox-nav.md): Capture, OCR, previews, custom fields, inbox, navigation and libraries (lines 16-446 of the old file).
 - [`coverage/02-detail-reminders-bulk-duplicates.md`](coverage/02-detail-reminders-bulk-duplicates.md): Detail panel, reminders, bulk edit, duplicate detection and broken links (lines 447-765 of the old file).

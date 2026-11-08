@@ -214,6 +214,36 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   longer there is ignored when it resumes). Tested by `tests/test_share_library.py`; a
   directory handle's `_granted` in the stub makes `queryPermission()` answer
   granted.
+- **The Dossiary Sync folder and cloud drives** (1.65.0; spec dossiary-sync
+  `docs/superpowers/specs/2026-11-08-standard-libraries-folder-design.md`;
+  `loadDevicesFolder()`, `devicesFolderHtml()`, `cloudProviderOf()`,
+  `showNotSharedHint()`). Dossiary Sync 0.17.0 makes `~/Dossiary` the standard
+  synced-libraries folder, marks it with `.dossiary-root.json` and refuses
+  cloud drives for it. The devices dialog's connected view asks `POST
+  /admin/libraries-root/check` once (with a probe that doesn't exist, like the
+  chooser's first call) and, from the new keys, shows "Dossiary Sync folder:
+  {path}" (`path`, `~` abbreviated by the service) and, only while `cloud` is
+  a string, an amber warning naming the provider with the move command
+  (`SYNC_FOLDER_MOVE_COMMAND`) in its own `<code>` (`user-select: all`, so one
+  click selects it to copy). Both values come from the service and are put in
+  as escaped text: the translated template is split at `{path}`/`{provider}`
+  and at the command instead of being filled by `t()` (whose `replaceAll`
+  would also read `$` patterns in the value). An older service (no keys, or a
+  404 without the route) adds nothing; the result lives in
+  `devicesState.folder`, so a re-render keeps it. A 409 `{"error":
+  "cloud-drive", "provider"}` from share or get maps to
+  `shareLibraryCloudRefused` / `devicesGetCloudRefused`; a copy the share flow
+  made for that share is removed again (it could never be shared) instead of
+  being kept for Try again. **"Not shared yet"**: after a library opens
+  (`afterDbReady()`), when it has no sync file and is directly inside the
+  stored libraries folder whose permission is still granted
+  (`peekLibrariesRoot()`, no prompt; `isDirectlyIn()`) and that folder holds
+  the marker, the status line gets "Not shared yet: Tools → Share this
+  library…" appended (only while the opened line is still the status). The
+  page never learns real paths, so this is the one reliable way to know a
+  library sits in the Dossiary Sync folder; "not registered" means no
+  `.dossiary-sync.json`, the same test that shows the Share item, with no
+  admin call. Tested by `tests/test_libraries_folder.py`.
 - **Saving in a synced library (no editing lease)** (historical context:
   dossiary-ios `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md` and
   `2026-10-23-offline-first-sync-design.md` describe the editing lease and the

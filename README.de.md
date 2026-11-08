@@ -503,6 +503,20 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   „Wird auf den Pi hochgeladen… m:ss“ mit der bisherigen Dauer, meldet,
   wenn der Pi nicht erreichbar ist oder das Hochladen ein Problem hat, und
   sagt, wann es fertig ist.
+  Ab Dossiary Sync 0.17.0 nennt der Dialog außerdem den Dossiary-Sync-Ordner
+  (den Ordner, in dem die synchronisierten Bibliotheken liegen, Standard
+  `~/Dossiary`) und warnt, solange dieser Ordner auf einem Cloud-Speicher
+  liegt (iCloud Drive, Dropbox, OneDrive, Google Drive, Box), dass
+  Cloud-Speicher synchronisierte Bibliotheken beschädigen können; er zeigt
+  den Befehl, der ihn verschiebt (`dossiary-sync libraries-root move
+  ~/Dossiary`, zum Kopieren markierbar). Eine Bibliothek in einen Ordner
+  auf einem Cloud-Speicher zu teilen oder zu holen wird mit dem Namen des
+  Anbieters abgelehnt, und es bleibt nichts zurück. Eine Bibliothek, die Sie
+  direkt aus diesem Ordner öffnen und die noch nicht geteilt ist, bekommt in
+  der Statuszeile „Noch nicht geteilt: Werkzeuge → Diese Bibliothek
+  teilen…“ (nur solange Dossiary noch die Berechtigung für den beim Teilen
+  gewählten Ordner hat und der Ordner die Markierung `.dossiary-root.json`
+  von Dossiary Sync trägt).
 - **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
   täglich brauchen (Check inbox, Check reminders, Scan, Add document,
   Details, Columns); Gelegentliches — Manage fields, Manage collections,

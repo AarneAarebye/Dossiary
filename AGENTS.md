@@ -53,7 +53,7 @@ LICENSE                  MIT
 .gitignore               Excludes personal library data from commits
 .gitattributes            Git attributes for the repo
 docs/architecture/       Architecture notes split out of this file, one per area (index below)
-tests/                   Playwright regression suite (115 scripts) + shared
+tests/                   Playwright regression suite (116 scripts) + shared
                           browser-API stub — see "How this was tested" below
 ```
 
@@ -273,6 +273,7 @@ about to change. Add a new note to the matching file, not here. The list under e
   - iPhone & other devices
   - Delete library
   - Share this library and Get it
+  - The Dossiary Sync folder and cloud drives
   - Saving in a synced library (no editing lease)
 
 ### [`docs/architecture/07-pdf-originals-libraries-i18n.md`](docs/architecture/07-pdf-originals-libraries-i18n.md): Searchable PDF, originals, make searchable, new and recent libraries, UI languages

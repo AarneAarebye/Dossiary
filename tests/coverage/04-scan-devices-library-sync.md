@@ -229,6 +229,20 @@ the ticker and the requests, and the next library's message stays; after a share
 late `uploading: true` continues the time from the share, the grace running out (started 29 s ago) falls
 back to 5 s silently, and a version 1 answer right after a share is the done line.
 Confirmed non-vacuous by dropping the ticker's ownership check and its span-only update.
+The Dossiary Sync folder (`test_libraries_folder.py`, 1.65.0 -- a scripted Mac service whose
+`POST /admin/libraries-root/check` answers the 0.17.0 keys): the devices dialog asks the check route once with
+a probe that doesn't exist (POST, JSON) and shows "Dossiary Sync folder: ~/Dossiary" and no warning for a
+local folder; a `cloud` provider and a `path` holding HTML are shown as text (no element made), the warning
+names the provider, the move command is its own `<code>` with `user-select: all` whose selection is exactly
+the command, and the warning survives a re-render (a device removed); an older answer without the keys and a
+404 add nothing; the German line and warning keep the command unchanged. Share refused with 409 `cloud-drive`
+(provider with HTML) shows the refusal as text, one share call, the dialog open with Share enabled, the
+libraries folder and the library unchanged and unsynced; a copy share refused removes the copy it made, says
+nothing about a kept copy and leaves Share a plain Share; Get it refused shows its refusal and adds no folder.
+The "Not shared yet" hint appears on the opened line for an unsynced library directly in the stored, granted,
+marked libraries folder without a picker or prompt, and not for a library elsewhere, a folder without the
+marker, a synced library, a folder whose permission isn't granted or no stored folder; German, and a switch
+to French retranslates it.
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,
