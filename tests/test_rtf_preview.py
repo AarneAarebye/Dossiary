@@ -50,6 +50,24 @@ async def persisted_docs(page):
         })()
     """))['documents']
 
+async def exists(page, name):
+    return (await thumb_info(page, name))['exists']
+
+async def wait_until(fn, timeout_s=15):
+    """Polls an async predicate every 200 ms; returns its last value (truthy on success)."""
+    end = asyncio.get_event_loop().time() + timeout_s
+    while True:
+        try:
+            v = await fn()
+        except Exception:
+            v = False
+        if v or asyncio.get_event_loop().time() >= end:
+            return v
+        await asyncio.sleep(0.2)
+
+async def row_saved(page, title):
+    return any(d['title'] == title for d in await persisted_docs(page))
+
 async def capture(page, title, name, mime, data):
     await page.click('#add-btn')
     await page.wait_for_timeout(100)
@@ -57,7 +75,9 @@ async def capture(page, title, name, mime, data):
     await page.wait_for_timeout(100)
     await page.fill('#f-title', title)
     await page.click('#save-doc-btn')
-    await page.wait_for_timeout(1500)
+    # the row is persisted and the capture dialog is gone: the save has finished
+    await wait_until(lambda: row_saved(page, title))
+    await page.wait_for_selector('#save-doc-btn', state='hidden', timeout=15000)
 
 async def main():
     async with async_playwright() as p:
@@ -85,6 +105,7 @@ async def main():
 
         # === 1: a normal RTF gets a JPEG preview of the right size ===
         await capture(page, 'Simple RTF', 'letter.rtf', 'text/rtf', SIMPLE_RTF)
+        await wait_until(lambda: exists(page, '1.jpg'))
         t = await thumb_info(page, '1.jpg')
         print("RTF preview file written:", t['exists'])
         print("RTF preview is a JPEG:", t.get('head') == [255, 216])
@@ -101,19 +122,24 @@ async def main():
 
         # === 2: the type is not needed -- the .rtf name is enough ===
         await capture(page, 'Octet RTF', 'other.rtf', 'application/octet-stream', SIMPLE_RTF)
+        await wait_until(lambda: exists(page, '2.jpg'))
         print("RTF with a generic type still gets a preview:", (await thumb_info(page, '2.jpg'))['exists'])
 
         # === 3: a broken RTF keeps no preview, and nothing throws ===
         await capture(page, 'Broken RTF', 'broken.rtf', 'text/rtf', BROKEN_RTF)
+        await page.wait_for_timeout(2000)   # settle: a late thumbnail write would show up now
         docs = await persisted_docs(page)
         broken = [d for d in docs if d['title'] == 'Broken RTF'][0]
         print("broken RTF is saved without a preview:", not broken['thumbnail_path'])
+        print("broken RTF left no preview file:", not (await thumb_info(page, '3.jpg'))['exists'])
 
         # === 4: an RTF over 2 MB keeps no preview ===
         await capture(page, 'Huge RTF', 'huge.rtf', 'text/rtf', TOO_BIG_RTF)
+        await page.wait_for_timeout(2000)   # settle: a late thumbnail write would show up now
         docs = await persisted_docs(page)
         huge = [d for d in docs if d['title'] == 'Huge RTF'][0]
         print("RTF over 2 MB is saved without a preview:", not huge['thumbnail_path'])
+        print("RTF over 2 MB left no preview file:", not (await thumb_info(page, '4.jpg'))['exists'])
 
         # === 5: "Create missing previews" counts an RTF document ===
         await page.close()
@@ -143,7 +169,7 @@ async def main():
         print("Create missing previews button is shown for an RTF:", await btn.is_visible())
         print("button counts 1 document:", '(1)' in (await btn.inner_text()))
         await btn.click()
-        await page.wait_for_timeout(3000)
+        await wait_until(lambda: exists(page, '1.jpg'))
         print("bulk job made the RTF preview:", (await thumb_info(page, '1.jpg'))['exists'])
 
         print("no page or console errors:", errors == [])

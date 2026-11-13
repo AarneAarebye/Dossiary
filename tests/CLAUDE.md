@@ -223,6 +223,7 @@ per-type configuration, or running an end-to-end migration through
 was never checked into this suite and shouldn't be — see the `.gitignore`
 entries for `tests/*.sqlite`/`tests/*.documentwalletsql` if a real fixture
 ever gets added locally for similar ad-hoc checks.
+`test_rtf_preview.py` is the one script that needs a live network (rtf.js from jsDelivr); it prints `SKIP` and exits 0 when the CDN is unreachable.
 
 Real `sql.js` and `Tesseract.js` can't be fetched in a fully offline/sandboxed
 dev environment, and `showDirectoryPicker` requires a real native OS dialog
