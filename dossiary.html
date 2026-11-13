@@ -1161,7 +1161,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.65.0'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.66.0'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -1413,6 +1413,7 @@
       librariesUseTesseract: 'OCR text extraction',
       librariesUseJsPdf: 'Building the searchable PDF layer for captured images',
       librariesUsePdfJs: 'Rendering PDF pages (first page for previews, every page for edit-time OCR)',
+      librariesUseRtfJs: 'Reading RTF documents to make previews (first page)',
       dragdropOverlayText: 'Drop to add for review',
       dragdropInboxBannerWaitingSingular: '{count} document waiting in the inbox folder.',
       dragdropInboxBannerWaitingPlural: '{count} documents waiting in the inbox folder.',
@@ -1649,6 +1650,7 @@
       librariesUseTesseract: 'Extracción de texto por OCR',
       librariesUseJsPdf: 'Creación de la capa de PDF con texto buscable para las imágenes capturadas',
       librariesUsePdfJs: 'Renderizado de páginas de PDF (primera página para vistas previas, todas las páginas para el OCR al editar)',
+      librariesUseRtfJs: 'Lectura de documentos RTF para crear vistas previas (primera página)',
       dragdropOverlayText: 'Suelta aquí para añadir a revisión',
       dragdropInboxBannerWaitingSingular: '{count} documento esperando en la carpeta de bandeja de entrada.',
       dragdropInboxBannerWaitingPlural: '{count} documentos esperando en la carpeta de bandeja de entrada.',
@@ -1885,6 +1887,7 @@
       librariesUseTesseract: 'Extraction de texte par OCR',
       librariesUseJsPdf: 'Création de la couche PDF avec texte interrogeable pour les images capturées',
       librariesUsePdfJs: "Rendu des pages PDF (première page pour les aperçus, toutes les pages pour l'OCR en cours de modification)",
+      librariesUseRtfJs: "Lecture des documents RTF pour créer des aperçus (première page)",
       dragdropOverlayText: 'Déposez ici pour ajouter à la révision',
       dragdropInboxBannerWaitingSingular: '{count} document en attente dans le dossier de la boîte de réception.',
       dragdropInboxBannerWaitingPlural: '{count} documents en attente dans le dossier de la boîte de réception.',
@@ -2121,6 +2124,7 @@
       librariesUseTesseract: 'OCR-Texterkennung',
       librariesUseJsPdf: 'Erzeugen der durchsuchbaren PDF-Ebene für erfasste Bilder',
       librariesUsePdfJs: 'Rendern von PDF-Seiten (erste Seite für Vorschauen, jede Seite für OCR beim Bearbeiten)',
+      librariesUseRtfJs: 'Lesen von RTF-Dokumenten für Vorschauen (erste Seite)',
       dragdropOverlayText: 'Zum Prüfen ablegen',
       dragdropInboxBannerWaitingSingular: '{count} Dokument wartet im Posteingangsordner.',
       dragdropInboxBannerWaitingPlural: '{count} Dokumente warten im Posteingangsordner.',
@@ -2357,6 +2361,7 @@
       librariesUseTesseract: 'OCR 文本提取',
       librariesUseJsPdf: '为录入的图像构建可搜索的 PDF 文本层',
       librariesUsePdfJs: '渲染 PDF 页面（预览时渲染首页，编辑时 OCR 渲染每一页）',
+      librariesUseRtfJs: '读取 RTF 文档以生成预览（首页）',
       dragdropOverlayText: '拖放以添加待审核',
       dragdropInboxBannerWaitingSingular: '收件箱文件夹中有 {count} 个文档等待处理。',
       dragdropInboxBannerWaitingPlural: '收件箱文件夹中有 {count} 个文档等待处理。',
@@ -2719,6 +2724,7 @@
       librariesUseTesseract: 'OCR 文本提取',
       librariesUseJsPdf: '爲錄入的圖像構建可搜索的 PDF 文本層',
       librariesUsePdfJs: '渲染 PDF 頁面（預覽時渲染首頁，編輯時 OCR 渲染每一頁）',
+      librariesUseRtfJs: '讀取 RTF 文件以產生預覽（首頁）',
       dragdropOverlayText: '拖放以添加待審覈',
       dragdropInboxBannerWaitingSingular: '收件箱文件夾中有 {count} 個文檔等待處理。',
       dragdropInboxBannerWaitingPlural: '收件箱文件夾中有 {count} 個文檔等待處理。',
@@ -3438,6 +3444,7 @@
       librariesUseTesseract: "Տեքստի ճանաչում",
       librariesUseJsPdf: "Ավելացված պատկերների համար որոնելի PDF շերտի ստեղծում",
       librariesUsePdfJs: "PDF էջերի ցուցադրում (առաջին էջը՝ նախադիտումների համար, բոլոր էջերը՝ խմբագրման ժամանակ տեքստի ճանաչման համար)",
+      librariesUseRtfJs: "RTF փաստաթղթերի ընթերցում նախադիտումների համար (առաջին էջը)",
       dragdropOverlayText: "Թողեք այստեղ՝ ստուգման համար ավելացնելու",
       dragdropInboxBannerWaitingSingular: "Մուտքային թղթապանակում սպասում է {count} փաստաթուղթ։",
       dragdropInboxBannerWaitingPlural: "Մուտքային թղթապանակում սպասում է {count} փաստաթուղթ։",
@@ -10494,6 +10501,7 @@
     { name: 'Tesseract.js', url: 'https://github.com/naptha/tesseract.js', license: 'Apache-2.0', useKey: 'librariesUseTesseract' },
     { name: 'jsPDF', url: 'https://github.com/parallax/jsPDF', license: 'MIT', useKey: 'librariesUseJsPdf' },
     { name: 'pdf.js', url: 'https://github.com/mozilla/pdf.js', license: 'Apache-2.0', useKey: 'librariesUsePdfJs' },
+    { name: 'rtf.js', url: 'https://github.com/tbluemel/rtf.js', license: 'MIT', useKey: 'librariesUseRtfJs' },
     { name: 'pdf-lib', url: 'https://github.com/Hopding/pdf-lib', license: 'MIT', useKey: 'librariesUsePdfLib' },
     { name: 'qrcode-generator', url: 'https://github.com/kazuhikoarase/qrcode-generator', license: 'MIT', useKey: 'librariesUseQrCode' },
   ];

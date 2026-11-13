@@ -39,7 +39,7 @@ new Scenario 3 proving the actual, unpatched, shipped-default app genuinely
 hides both the thumbnail slot and the Generate/Regenerate button from the
 detail panel while thumbnail generation itself keeps running exactly as
 before, still writing a real `thumbnail_path` and a real file under
-`thumbnails/` to disk), generic custom fields
+`thumbnails/` to disk; `test_rtf_preview.py` captures RTF documents (a real rtf.js from the CDN, skipped when offline): a JPEG of 640 px longest side, a type-less `.rtf`, a broken and an oversized RTF without a preview, and the grid's Create missing previews counting and making an RTF preview), generic custom fields
 (all four types), dynamic per-type field show/hide/reorder, Field Settings
 (add/remove/reorder fields per type, default document type, the per-field
 Column/Autocomplete capability checkboxes), creating a brand new custom

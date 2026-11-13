@@ -205,7 +205,7 @@ working" problem that motivated this project in the first place.
   library. Tiles work like rows (with their own **Select all visible** above them): click to see details, double-click to
   open, right-click for the menu, tick to select, J/K to move. Documents
   without a preview show a placeholder, and **Create missing previews**
-  makes them for the listed documents (it can be stopped). New previews
+  makes them for the listed documents (images, PDFs and RTF files) (it can be stopped). New previews
   are twice as sharp as before and stored as compact JPEGs; **Recreate
   older previews** replaces small ones (for example those migrated from
   Mariner) with sharp ones, leaving any that are already large enough
@@ -470,7 +470,8 @@ working" problem that motivated this project in the first place.
   its detail view. Migrated documents get Mariner's own thumbnail, copied
   over directly by `migrate_to_new_library.py`. Newly captured documents
   get one generated automatically (an image gets downscaled directly; a
-  PDF gets its first page rendered via [pdf.js](https://mozilla.github.io/pdf.js/)).
+  PDF gets its first page rendered via [pdf.js](https://mozilla.github.io/pdf.js/);
+  an RTF gets its first page drawn via [rtf.js](https://github.com/tbluemel/rtf.js)).
   A "Generate preview" / "Regenerate preview" button in the detail view
   lets you create one on demand for any document that's missing one, or
   refresh an existing one.
@@ -1039,6 +1040,7 @@ your own browser.
 | [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR text extraction | Apache-2.0 |
 | [jsPDF](https://github.com/parallax/jsPDF) | Building the searchable PDF layer for captured images | MIT |
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendering a PDF's first page (for previews and OCR) | Apache-2.0 |
+| [rtf.js](https://github.com/tbluemel/rtf.js) | Reading RTF documents to make previews (first page) | MIT |
 | [pdf-lib](https://github.com/Hopding/pdf-lib) | Editing pages: rotating, reordering, splitting and combining PDFs | MIT |
 | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | Drawing the QR code that pairs an iPhone or iPad | MIT |
 

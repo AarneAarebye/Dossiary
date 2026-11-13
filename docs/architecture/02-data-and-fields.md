@@ -142,10 +142,18 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   bulk preview generation on library open; across several libraries with
   potentially thousands of documents each, silently rendering every
   missing preview on open would be slow and surprising. `generateThumbnail()`
-  handles two input types only: `image/*` (direct canvas downscale) and
-  `application/pdf` (first page rendered via pdf.js) — anything else
-  returns `null`, which is an expected, non-error outcome, not something
-  to add more format branches for without being asked. The pdf.js main
+  handles three input types: `image/*` (direct canvas downscale),
+  `application/pdf` (first page rendered via pdf.js) and RTF
+  (`isRtfFile()`: type `text/rtf` or `application/rtf`, or a `.rtf`
+  name) — anything else returns `null`, which is an expected, non-error
+  outcome, not something to add more format branches for without being
+  asked. RTF was added on request (most documents in Mariner-migrated
+  libraries are RTF): `rtfFirstPageCanvas()` loads rtf.js (three bundles,
+  pinned to `RTFJS_VERSION`, loaded in WMFJS, EMFJS, RTFJS order), draws
+  the first A4 page in a hidden box and snapshots it through an SVG
+  `foreignObject`; files over 2 MB, renders over 10 s and unreadable RTF
+  return `null`. The design is
+  `docs/superpowers/specs/2026-11-13-rtf-previews-design.md`. The pdf.js main
   library and its worker script **must be the exact same pinned CDN
   version** (`PDFJS_VERSION`) — pdf.js throws a hard error if they
   mismatch, so don't update one without the other.

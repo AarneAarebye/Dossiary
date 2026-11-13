@@ -241,7 +241,7 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   die Details, Doppelklick öffnet, Rechtsklick öffnet das Menü, Haken
   wählt aus, J/K wechselt. Dokumente ohne Vorschau zeigen einen Platzhalter,
   und **Fehlende Vorschauen erstellen** erzeugt sie für die angezeigten
-  Dokumente (lässt sich anhalten). Neue Vorschauen sind doppelt so scharf
+  Dokumente (Bilder, PDFs und RTF-Dateien; lässt sich anhalten). Neue Vorschauen sind doppelt so scharf
   wie bisher und werden als kompakte JPEGs gespeichert; **Ältere
   Vorschauen neu erstellen** ersetzt kleine (etwa aus Mariner übernommene)
   durch scharfe und lässt bereits ausreichend große unverändert. Die
@@ -549,7 +549,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   eigenes Vorschaubild, direkt von `migrate_to_new_library.py` übernommen.
   Neu erfasste Dokumente bekommen automatisch eines erzeugt (ein Bild wird
   direkt verkleinert; bei einem PDF wird die erste Seite über
-  [pdf.js](https://mozilla.github.io/pdf.js/) gerendert). Ein Schalter
+  [pdf.js](https://mozilla.github.io/pdf.js/) gerendert; bei einem RTF wird
+  die erste Seite über [rtf.js](https://github.com/tbluemel/rtf.js)
+  gezeichnet). Ein Schalter
   „Generate preview“ / „Regenerate preview“ in der Detailansicht erlaubt
   es, für jedes Dokument ohne Vorschau eine zu erzeugen, oder eine
   bestehende zu erneuern.
@@ -1197,6 +1199,7 @@ eigenen Browser.
 | [Tesseract.js](https://github.com/naptha/tesseract.js) | OCR-Texterkennung | Apache-2.0 |
 | [jsPDF](https://github.com/parallax/jsPDF) | Aufbau der durchsuchbaren PDF-Ebene für erfasste Bilder | MIT |
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendern der ersten Seite eines PDFs (für Vorschauen und OCR) | Apache-2.0 |
+| [rtf.js](https://github.com/tbluemel/rtf.js) | Lesen von RTF-Dokumenten für Vorschauen (erste Seite) | MIT |
 | [pdf-lib](https://github.com/Hopding/pdf-lib) | Seiten bearbeiten: PDFs drehen, umsortieren, aufteilen und zusammenfügen | MIT |
 | [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | Zeichnet den QR-Code, mit dem ein iPhone oder iPad gekoppelt wird | MIT |
 
