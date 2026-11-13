@@ -243,21 +243,13 @@ Insert directly above `// Reads just the page count from a PDF File` (the commen
     return window.RTFJS;
   }
 
-  function blobToDataUrl(blob){
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(r.result);
-      r.onerror = () => reject(r.error);
-      r.readAsDataURL(blob);
-    });
-  }
-
-  // A snapshot can't load outside references: turn blob:/http images into data URLs.
+  // A snapshot can't load outside references: turn blob:/http images into data URLs
+  // (fileToDataUrl reads any Blob).
   async function inlineRtfImages(root){
     for(const img of root.querySelectorAll('img')){
       const src = img.getAttribute('src') || '';
       if(!src || src.startsWith('data:')) continue;
-      try{ img.setAttribute('src', await blobToDataUrl(await (await fetch(src)).blob())); }
+      try{ img.setAttribute('src', await fileToDataUrl(await (await fetch(src)).blob())); }
       catch(e){ img.remove(); }
     }
   }
