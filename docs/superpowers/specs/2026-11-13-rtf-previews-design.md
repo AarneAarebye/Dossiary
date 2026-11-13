@@ -84,8 +84,11 @@ wrong, the plan switches to html2canvas (also pinned, lazy) and the spec is upda
 
 2026-11-13: the foreignObject snapshot works in headless Chromium on the built-in samples (formatted text, embedded
 PNG) and on three real RTFs (German tax-letter templates, 10 to 52 KB, one with centred and right-aligned
-paragraphs); the canvas is not tainted (`toBlob` succeeds) and text, bold, italic, colour and the picture are
-visible, black on white, with the page clipped at the bottom. One caveat: in the built-in sample the minimal table
-(`\trowd`/`\cell`) came out as running text ("Cell ACell B"), not a grid, so rtf.js did not lay it out as a table
-there; none of the three real files contained a table to check this. A malformed file makes `render` throw
-("Not a valid rtf document"), so the caller must catch it and show no preview. The code in Task 2 is the spike's JS.
+paragraphs); the canvas is not tainted (`toBlob` succeeds) and text, bold, italic and the picture are visible, black
+on white, with the page clipped at the bottom. Colour was checked only on the built-in sample (no real file had
+colour). Two rtf.js limits showed up. The minimal table (`\trowd`/`\cell`) in the built-in sample came out as running
+text ("Cell ACell B"), not a grid; none of the three real files contained a table to check this. Line breaks and tabs
+inside a paragraph (for example a letter header with address lines) are lost and the lines run together, as with the
+table; the rest of the page lays out correctly. `rtfFirstPageCanvas` returns null only for files over 2 MB; a
+malformed file makes `render` throw ("Not a valid rtf document"), so the caller must catch it and show no preview.
+The code in Task 2 is the spike's JS.
