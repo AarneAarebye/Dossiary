@@ -79,3 +79,13 @@ wrong, the plan switches to html2canvas (also pinned, lazy) and the spec is upda
 - The detail panel's preview stays hidden behind `SHOW_DOCUMENT_PREVIEW`.
 - Other types (DOCX, ODT, RTFD, plain text) and a page count for RTF.
 - Several pages: only page one is drawn.
+
+## Spike result
+
+2026-11-13: the foreignObject snapshot works in headless Chromium on the built-in samples (formatted text, embedded
+PNG) and on three real RTFs (German tax-letter templates, 10 to 52 KB, one with centred and right-aligned
+paragraphs); the canvas is not tainted (`toBlob` succeeds) and text, bold, italic, colour and the picture are
+visible, black on white, with the page clipped at the bottom. One caveat: in the built-in sample the minimal table
+(`\trowd`/`\cell`) came out as running text ("Cell ACell B"), not a grid, so rtf.js did not lay it out as a table
+there; none of the three real files contained a table to check this. A malformed file makes `render` throw
+("Not a valid rtf document"), so the caller must catch it and show no preview. The code in Task 2 is the spike's JS.
