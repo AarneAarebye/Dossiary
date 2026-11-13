@@ -23,9 +23,11 @@ the same `thumbnails/<id>.jpg` files, so a preview made by the page shows up the
 1. **Detection.** `generateThumbnail(file)` gets a third branch after image and PDF: the file is RTF when
    `file.type` is `text/rtf` or `application/rtf`, or `file.name` ends in `.rtf` (case-insensitive). Browsers report
    different types for RTF, hence both checks.
-2. **Library.** `ensureRtfJs()` loads rtf.js 3.0.9 (MIT, depends on `codepage`) from a CDN the page already uses,
-   the same way `ensurePdfJs()` does: lazy, once, pinned to an exact version. If the library fails to load the branch
-   returns `null`.
+2. **Library.** `ensureRtfJs()` loads rtf.js 3.0.9 (MIT; it bundles its `codepage` dependency) from jsDelivr, a CDN the
+   page already uses for Tesseract, the same way `ensurePdfJs()` does: lazy, once, pinned to an exact version. rtf.js
+   ships as three bundles loaded in this order: `WMFJS.bundle.min.js`, `EMFJS.bundle.min.js` (about 56 KB each, they
+   draw pictures embedded in RTF) and `RTFJS.bundle.min.js` (about 2.1 MB). If one fails to load the branch returns
+   `null`.
 3. **RTF to HTML.** The file's bytes go to rtf.js, which produces DOM nodes. They are put into a hidden, white,
    A4-sized box (794 × 1123 CSS px, 20 mm margins), black text on white regardless of the page's dark theme. Anything
    below the first page height is clipped.
@@ -37,8 +39,9 @@ the same `thumbnails/<id>.jpg` files, so a preview made by the page shows up the
 6. **Hook-ups.** `docsMissingPreview()` matches `.rtf` besides `.pdf/.jpg/.jpeg/.png`. `docsWithOlderPreview()` is not
    changed: it compares sizes of existing previews through `createImageBitmap`, which is only relevant for previews
    the page has made itself. An RTF preview the page made is already full size.
-7. **No new texts.** The existing "Create missing previews (N)", "No preview" and error strings are reused, so no
-   translation work.
+7. **One new text.** The existing "Create missing previews (N)", "No preview" and error strings are reused. The only
+   new text is the line for rtf.js in the open-source libraries list (`OPEN_SOURCE_LIBRARIES`, key
+   `librariesUseRtfJs`), translated in all seven languages.
 
 ## Failure behaviour
 
