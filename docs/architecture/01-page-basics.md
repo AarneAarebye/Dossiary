@@ -274,7 +274,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, `ensurePdfLib()`,
-  `ensureQrCode()`,
+  `ensureQrCode()`, `ensureRtfJs()` (rtf.js, MIT, three bundles pinned to `RTFJS_VERSION`),
   plus sql.js loaded unconditionally for the database itself) — keep it in sync if a
   dependency is added, removed, or swapped. The license for each was
   verified directly against its own repo's `LICENSE` file when this was

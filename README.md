@@ -205,7 +205,7 @@ working" problem that motivated this project in the first place.
   library. Tiles work like rows (with their own **Select all visible** above them): click to see details, double-click to
   open, right-click for the menu, tick to select, J/K to move. Documents
   without a preview show a placeholder, and **Create missing previews**
-  makes them for the listed documents (images, PDFs and RTF files) (it can be stopped). New previews
+  makes them for the listed documents (images, PDFs and RTF files; it can be stopped). New previews
   are twice as sharp as before and stored as compact JPEGs; **Recreate
   older previews** replaces small ones (for example those migrated from
   Mariner) with sharp ones, leaving any that are already large enough
@@ -1030,9 +1030,9 @@ them the same way. See [CONTRIBUTING.md](CONTRIBUTING.md) for more.
 
 Dossiary itself has no dependencies to install — everything below is
 loaded from a CDN at runtime, only when a feature that needs it is actually
-used (OCR, generating a searchable PDF, or rendering a PDF page for a
-preview/OCR). None of it ever touches your documents except locally, in
-your own browser.
+used (OCR, generating a searchable PDF, rendering a PDF page for a
+preview/OCR, or reading an RTF for a preview). None of it ever touches your documents
+except locally, in your own browser.
 
 | Library | Used for | License |
 |---|---|---|

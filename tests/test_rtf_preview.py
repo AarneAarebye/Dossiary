@@ -141,10 +141,16 @@ async def main():
         print("RTF over 2 MB is saved without a preview:", not huge['thumbnail_path'])
         print("RTF over 2 MB left no preview file:", not (await thumb_info(page, '4.jpg'))['exists'])
 
+        # === 4b: a control character (RTF \'01) is illegal in XML but must not cost the preview ===
+        await capture(page, 'Control char RTF', 'control.rtf', 'text/rtf', rb"{\rtf1\ansi Hello \'01 world\par}")
+        await wait_until(lambda: exists(page, '5.jpg'))
+        print("RTF with a control character still gets a preview:", (await thumb_info(page, '5.jpg'))['exists'])
+
         # === 5: "Create missing previews" counts an RTF document ===
         await page.close()
         page = await browser.new_page()
         page.on("pageerror", lambda exc: errors.append(str(exc)))
+        page.on("console", lambda msg: errors.append(f"[console.{msg.type}] {msg.text}") if msg.type == "error" else None)
         await page.route('**/*', route_handler)
         stub_js = open('stub_studio2.js').read()
         await page.add_init_script(stub_js + f"""

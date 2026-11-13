@@ -4484,35 +4484,44 @@
   const RTF_RENDER_TIMEOUT_MS = 10000;
   const RTF_PAGE_W = 794, RTF_PAGE_H = 1123, RTF_MARGIN = 76; // A4 at 96 dpi, 20 mm margins
   let RtfJsLoaded = false;
+  let RtfJsLoading = null; // in-flight load, so repeated calls share it
 
   function isRtfFile(file){
     return file.type === 'text/rtf' || file.type === 'application/rtf' || /\.rtf$/i.test(file.name || '');
   }
 
-  async function ensureRtfJs(){
-    if(RtfJsLoaded && window.RTFJS) return window.RTFJS;
-    // Order matters: RTFJS draws embedded pictures with the WMFJS and EMFJS globals.
-    for(const name of ['WMFJS.bundle.min.js', 'EMFJS.bundle.min.js', 'RTFJS.bundle.min.js']){
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = `https://cdn.jsdelivr.net/npm/rtf.js@${RTFJS_VERSION}/dist/${name}`;
-        s.onload = resolve;
-        s.onerror = () => reject(new Error('Failed to load RTF reader from CDN'));
-        document.head.appendChild(s);
-      });
-    }
-    window.RTFJS.loggingEnabled(false);
-    window.WMFJS.loggingEnabled(false);
-    window.EMFJS.loggingEnabled(false);
-    RtfJsLoaded = true;
-    return window.RTFJS;
+  function ensureRtfJs(){
+    if(RtfJsLoaded && window.RTFJS) return Promise.resolve(window.RTFJS);
+    if(RtfJsLoading) return RtfJsLoading;
+    RtfJsLoading = (async () => {
+      // Order matters: RTFJS draws embedded pictures with the WMFJS and EMFJS globals.
+      for(const [name, global] of [['WMFJS.bundle.min.js', 'WMFJS'], ['EMFJS.bundle.min.js', 'EMFJS'], ['RTFJS.bundle.min.js', 'RTFJS']]){
+        if(window[global]) continue; // already loaded by an earlier, partly failed attempt
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = `https://cdn.jsdelivr.net/npm/rtf.js@${RTFJS_VERSION}/dist/${name}`;
+          s.onload = resolve;
+          s.onerror = () => { s.remove(); reject(new Error('Failed to load RTF reader from CDN')); };
+          document.head.appendChild(s);
+        });
+      }
+      window.RTFJS.loggingEnabled(false);
+      window.WMFJS.loggingEnabled(false);
+      window.EMFJS.loggingEnabled(false);
+      RtfJsLoaded = true;
+      return window.RTFJS;
+    })();
+    RtfJsLoading.catch(() => { RtfJsLoading = null; });
+    return RtfJsLoading;
   }
 
-  // A snapshot can't load outside references: turn blob:/http images into data URLs.
+  // A snapshot can't load outside references. rtf.js emits data: URLs (blob: in older
+  // releases): keep data:, turn blob: into data:, drop anything else unfetched.
   async function inlineRtfImages(root){
     for(const img of root.querySelectorAll('img')){
       const src = img.getAttribute('src') || '';
-      if(!src || src.startsWith('data:')) continue;
+      if(src.startsWith('data:')) continue;
+      if(!src.startsWith('blob:')){ img.remove(); continue; }
       try{ img.setAttribute('src', await fileToDataUrl(await (await fetch(src)).blob())); }
       catch(e){ img.remove(); }
     }
@@ -4532,9 +4541,13 @@
     document.body.appendChild(box);
     try{
       await inlineRtfImages(box);
-      box.style.position = 'static';
-      box.style.left = '0';
-      const xhtml = new XMLSerializer().serializeToString(box);
+      // Serialize a detached clone, so the page itself never shows the box in normal flow.
+      const clone = box.cloneNode(true);
+      clone.style.position = 'static';
+      clone.style.left = '0';
+      // Control characters (e.g. from RTF \'01) are illegal in XML and would break the SVG.
+      const xhtml = new XMLSerializer().serializeToString(clone)
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]/g, '');
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${RTF_PAGE_W}" height="${RTF_PAGE_H}">`
         + `<foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`;
       const img = await new Promise((resolve, reject) => {
@@ -4640,6 +4653,8 @@
     if(isRtfFile(file)){
       // Any trouble (unreadable RTF, CDN unreachable, too big, too slow) just means no preview.
       try{
+        if(file.size > RTF_MAX_BYTES) return null;
+        await ensureRtfJs(); // outside the render timer: the first CDN load must not eat its budget
         const canvas = await nullAfter(rtfFirstPageCanvas(file), RTF_RENDER_TIMEOUT_MS);
         if(!canvas) return null;
         return canvasToThumbBytes(scaledCanvasFromImage(canvas));

@@ -31,7 +31,7 @@ the same `thumbnails/<id>.jpg` files, so a preview made by the page shows up the
 3. **RTF to HTML.** The file's bytes go to rtf.js, which produces DOM nodes. They are put into a hidden, white,
    A4-sized box (794 × 1123 CSS px, 20 mm margins), black text on white regardless of the page's dark theme. Anything
    below the first page height is clipped.
-4. **Pictures.** Images inside the RTF (blob URLs from rtf.js) are turned into data URLs before the snapshot, because
+4. **Pictures.** Images inside the RTF (rtf.js 3.0.9 emits `data:` URLs; only `blob:` sources are fetched and turned into data URLs, anything else is removed) before the snapshot, because
    a snapshot cannot load outside references. WMF/EMF pictures that rtf.js draws as SVG are inlined as they are.
 5. **Snapshot.** The box's HTML plus the CSS it needs is wrapped in an SVG `foreignObject`, loaded as an image from a
    data URL and drawn to a canvas, scaled so the longest side is `THUMB_MAX_DIM` (640 px). `canvasToThumbBytes()`
@@ -92,3 +92,5 @@ inside a paragraph (for example a letter header with address lines) are lost and
 table; the rest of the page lays out correctly. `rtfFirstPageCanvas` returns null only for files over 2 MB; a
 malformed file makes `render` throw ("Not a valid rtf document"), so the caller must catch it and show no preview.
 The code in Task 2 is the spike's JS.
+
+A real RTF with a `\pict\wmetafile` picture made rtf.js 3.0.9 throw a TypeError, so such a document gets no preview (handled as null).

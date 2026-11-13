@@ -1189,7 +1189,8 @@ auf dieselbe Weise überprüfen möchten. Siehe [CONTRIBUTING.md](CONTRIBUTING.m
 Dossiary selbst hat keine zu installierenden Abhängigkeiten — alles
 Folgende wird zur Laufzeit von einem CDN geladen, nur dann, wenn eine
 Funktion, die es benötigt, tatsächlich genutzt wird (OCR, Erzeugen eines
-durchsuchbaren PDFs, oder Rendern einer PDF-Seite für eine Vorschau/OCR).
+durchsuchbaren PDFs, Rendern einer PDF-Seite für eine Vorschau/OCR oder
+Lesen eines RTFs für eine Vorschau).
 Nichts davon fasst Ihre Dokumente jemals an, außer lokal, in Ihrem
 eigenen Browser.
 
