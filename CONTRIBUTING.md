@@ -110,11 +110,18 @@ these agree with each other or with the tag, so work through this by hand:
 
 ## Reporting bugs / requesting features
 
-Open a GitHub issue. Please include your browser — Chrome or Edge only,
-since Safari/Firefox don't support the File System Access API this app
-depends on — and, if it's a data issue, whether the library was created
-fresh here or migrated from Mariner Paperless via `migrate_to_new_library.py`
-in the sibling `LibraryLifeboat` repo.
+Open a GitHub issue and pick the form: **Feature request** or **Bug report**.
+
+- **Labels.** `enhancement` or `bug`, an `area:` label for the app (`area:page`, `area:mac`, `area:ios`,
+  `area:sync`, `area:helper`), and `idea` for a thought that is not yet a request.
+- **Life of a request.** A new request carries `needs-spec`. Once the design is agreed it gets `planned` and the issue links
+  the spec in `docs/superpowers/specs/` (the plan lives in `docs/superpowers/plans/`). The release that ships it names the issue number
+  in its notes and closes it.
+- **Large changes.** Discuss in the issue before sending a pull request.
+
+Please include your browser — Chrome or Edge only, since Safari/Firefox don't support the File System Access API this app
+depends on — and, if it's a data issue, whether the library was created fresh here or migrated from Mariner Paperless via
+`migrate_to_new_library.py` in the sibling `LibraryLifeboat` repo.
 
 ## License
 
