@@ -9509,7 +9509,9 @@
     }
   }
 
-  window.__DEBUG_exportFolderNames = { exportFileName, sanitizeFolderName, exportSubfolderName, exportNameSuffix, uniqueSubfolderIn }; // test-only hook (tests/test_export_subfolders.py)
+  window.__DEBUG_exportFolderNames = { exportFileName, sanitizeFolderName, exportSubfolderName, exportNameSuffix, uniqueSubfolderIn, // test-only hook (tests/test_export_subfolders.py)
+    stripInvisibleChars, displayName, isIncompleteMarkerName, tIn, EXPORT_INCOMPLETE_FILE, BACKUP_INCOMPLETE_FILE, EXPORT_DETAILS_FILE,
+    uniqueFileNameIn, buildExportCsv, csvSeparator }; // read-only, also for tests/export_name_cases.py (golden cases for the Mac app)
 
   async function uniqueFileNameIn(dirHandle, name, taken){
     const dot = name.lastIndexOf('.');
