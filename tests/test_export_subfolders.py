@@ -196,8 +196,8 @@ async def main():
         await run_export(page, title='Partial')
         top = await listing(page); names = list(top)
         status = await page.inner_text('#export-status')
-        print("A failing rollback keeps the copied files in the subfolder:",
-              len(names) == 1 and top[names[0]] == ['2026-01-10 Water.pdf', '2026-02-15 Stadtwerke.pdf'], top)
+        print("A failing rollback keeps the copied files in the subfolder, marked as not finished:",
+              len(names) == 1 and top[names[0]] == ['2026-01-10 Water.pdf', '2026-02-15 Stadtwerke.pdf', 'INCOMPLETE - this export was not finished.txt'], top)
         print("...and the message names the error and the subfolder, without the rollback sentence:",
               'Disk full' in status and f'Exported 2 files to “{names[0]}”.' in status and 'nothing was left' not in status
               and 'err' in await page.get_attribute('#export-status', 'class'), repr(status))

@@ -156,7 +156,7 @@ async def main():
         check("index.csv lists exactly the copied files", listed == pdfs, (listed, pdfs))
         status = await page.inner_text('#export-status')
         cls = await page.get_attribute('#export-status', 'class')
-        expected = f'Stopped after {STOP_AT} of {N} files. They are in “{names[0] if names else ""}”.'
+        expected = f'Stopped after {STOP_AT} of {N} files. They are in “{names[0] if names else ""}”, which is marked as incomplete.'
         check("The message says it stopped, how many and where", status.strip() == expected and 'ok' in cls, (status, cls))
         check("Start is hidden and the Cancel button reads Close",
               not await page.is_visible('#export-start-btn') and await page.inner_text('#export-cancel-btn') == 'Close'

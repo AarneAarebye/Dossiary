@@ -456,6 +456,8 @@ class FakePdfLibDoc {
     if(own) return new FakePdfLibDoc(own);
     const text = new TextDecoder().decode(bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : bytes);
     if(!text.startsWith('%PDF')) throw new Error('Failed to parse PDF document');
+    // An encrypted PDF (an /Encrypt entry in the trailer): real pdf-lib 1.17.1 throws a plain Error with this message.
+    if(/trailer[\s\S]*\/Encrypt\b/.test(text) && !(options && options.ignoreEncryption)) throw new Error('Input document to `PDFDocument.load` is encrypted. You can use `PDFDocument.load(..., { ignoreEncryption: true })` if you wish to load the document anyways.');
     const src = text.split('\n')[0];
     return new FakePdfLibDoc(Array.from({ length: window.__STUB_PDF_NUM_PAGES || 1 },
       (_, i) => ({ src, page: i + 1, rotation: 0, text: text.includes('%TEXTLAYER') })));
