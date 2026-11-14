@@ -1161,7 +1161,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.66.0'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.66.1'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -9394,16 +9394,21 @@
   // changes, and a folder inside the library is refused so the export can't
   // end up as untracked files in files/.
   const EXPORT_DETAILS_FILE = 'export-details.json';
+  // Invisible format characters (zero-width space and joiners, bidi marks, soft hyphen, BOM) can sit in a title copied from
+  // elsewhere; Chrome refuses them in a file or folder name ("Name is not allowed"), so they are dropped, not replaced.
+  function stripInvisibleChars(text){
+    return String(text).replace(/[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]/g, '');
+  }
   function exportFileName(d){
     const ext = ((d.file_path || '').match(/\.[^./]+$/) || [''])[0];
     const date = d.date ? d.date.slice(0, 10) + ' ' : '';
-    const name = (date + displayName(d)).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const name = stripInvisibleChars(date + displayName(d)).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120);
     return (name || `document-${d.id}`) + ext;
   }
 
   // Folder-name helpers for the export subfolder.
   function sanitizeFolderName(name){
-    return String(name == null ? '' : name).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100).trim();
+    return stripInvisibleChars(String(name == null ? '' : name)).replace(/[\\/:*?"<>|\x00-\x1f\x7f-\x9f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 100).trim();
   }
   // Four random lowercase hex characters, chosen per call, so two exports in the same second rarely clash.
   function exportNameSuffix(){
@@ -9431,7 +9436,7 @@
     }
   }
 
-  window.__DEBUG_exportFolderNames = { sanitizeFolderName, exportSubfolderName, exportNameSuffix, uniqueSubfolderIn }; // test-only hook (tests/test_export_subfolders.py)
+  window.__DEBUG_exportFolderNames = { exportFileName, sanitizeFolderName, exportSubfolderName, exportNameSuffix, uniqueSubfolderIn }; // test-only hook (tests/test_export_subfolders.py)
 
   async function uniqueFileNameIn(dirHandle, name, taken){
     const dot = name.lastIndexOf('.');
