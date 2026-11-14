@@ -5,8 +5,9 @@ APP_PATH = _os.path.abspath(_os.path.join('..', 'dossiary.html'))
 # Writes sidecar-cases.json for the Mac app (dossiary-osx, MacCore Sidecar): the page's own buildSidecarText,
 # sidecarTextForDoc and sidecarBaseNameFromFilePath, evaluated on a set of documents. Not part of the suite.
 # The functions are cut out of dossiary.html as they are (the page needs no test hook) and run in a blank page.
-# Custom and person fields are listed in name order in every case: the Mac app's Document keeps them in an unordered
-# dictionary, so it writes them sorted by name (the page writes them in field order).
+# The page writes custom and person fields in object insertion order (row order of the document's values); each case
+# records that order (customOrder / personOrder, the dict's key order as written here, integer-like names are put first by
+# JavaScript itself) because the Mac app's Document keeps the fields in unordered dictionaries.
 # Usage: /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 export_sidecar_cases.py [output file]
 # Default output: ../../dossiary-osx/MacCore/Tests/MacCoreTests/Fixtures/sidecar-cases.json
 
@@ -52,6 +53,9 @@ DOCS = [
         {'category': 'Tiny', 'amount': 1e-7, 'note': ''}, {'category': 'Big', 'amount': 123456789.987, 'note': ''},
         {'category': 'Whole', 'amount': 3, 'note': ''}, {'category': 'Neg', 'amount': -0.004, 'note': ''},
     ]),
+    doc(title='Order', customFields={'Zeta': '1', 'Alpha': '2', '2024': 'y', 'Organization': 'o', '7': 's', 'Amount': '5',
+                                     'Currency': 'EUR', 'Mid': 'm', 'Beta': 'b'},
+        personFieldValues={'People': ['P'], 'Writer': ['W1'], 'Author': ['A1', 'A2'], '10': ['T'], '9': ['N']}),
     doc(title='No people', personFieldValues={'Author': []}, tags=[]),
     doc(title='Umlaute äöü "quote" \'apos\'', notes='  spaced  ', file_path=None),
 ]
@@ -72,7 +76,8 @@ async def main():
         res = await page.evaluate(JS, [SOURCE, DOCS, BASE_PATHS])
         await browser.close()
     out = {'pageVersion': version,
-           'docs': [{'doc': d, 'expected': t} for d, t in zip(DOCS, res['texts'])],
+           'docs': [{'doc': d, 'expected': t, 'customOrder': list(d['customFields']),
+                     'personOrder': list(d['personFieldValues'])} for d, t in zip(DOCS, res['texts'])],
            'baseNames': [{'path': p, 'expected': b} for p, b in zip(BASE_PATHS, res['bases'])]}
     with open(OUT, 'w', encoding='utf-8') as fh:
         json.dump(out, fh, ensure_ascii=False, indent=1)
