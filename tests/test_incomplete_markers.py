@@ -261,6 +261,90 @@ async def main():
         left = await page.evaluate("""async (marker) => { for await (const [k, d] of window.__BACKUP_PARENT.entries()){ try{ await d.getFileHandle(marker); return true; }catch(e){ return false; } } return null; }""", BACKUP_MARKER)
         check("Backup: the marker is in the backup folder while copying", seen is True, seen)
         check("Backup: a clean finish removes it", left is False, left)
+        check("Backup: a clean finish is reported as done", 'ok' in await page.get_attribute('#backup-status', 'class')
+              and (await page.inner_text('#backup-status')).startswith('Backed up '))
+        await page.close()
+
+        BACKUP_LEFT_JS = """async (marker) => { for await (const [k, d] of window.__BACKUP_PARENT.entries()){ try{ await d.getFileHandle(marker); return true; }catch(e){ return false; } } return null; }"""
+
+        async def run_backup(page):
+            await page.click('#tools-btn'); await page.click('#backup-btn'); await page.wait_for_timeout(200)
+            await page.click('#backup-start-btn')
+            await page.wait_for_function("() => /\\b(ok|err)\\b/.test(document.getElementById('backup-status').className)", timeout=20000)
+
+        # === 3a. Backup with a file that can't be copied: the marker stays, no success claimed ===
+        page = await start(docs[:2], {"1_a.pdf": VALID_PDF, "2_a.pdf": VALID_PDF})
+        await page.evaluate("""async () => {
+            window.__BACKUP_PARENT = window.__makeEmptyRoot();
+            const files = await window.__TEST_ROOT.getDirectoryHandle('files');
+            const h = await files.getFileHandle('2_a.pdf');
+            h.getFile = async () => { throw new Error('Read failed'); };
+            window.__NEXT_PICKED_DIR = window.__BACKUP_PARENT;
+        }""")
+        await run_backup(page)
+        left = await page.evaluate(BACKUP_LEFT_JS, BACKUP_MARKER)
+        status = await page.inner_text('#backup-status')
+        cls = await page.get_attribute('#backup-status', 'class')
+        check("Backup with a failed file: the marker stays", left is True, left)
+        check("Backup with a failed file: red, says not complete and marked as incomplete, lists the failure",
+              'err' in cls and status.startswith('Backup not complete: ') and 'The folder is marked as incomplete.' in status
+              and 'Could not copy: 1.' in status and 'files/2_a.pdf' in status, (cls, status))
+        check("Backup with a failed file: it doesn't count as the last backup",
+              await page.inner_text('#backup-last') == 'No backup of this library yet.', await page.inner_text('#backup-last'))
+        await page.close()
+
+        # === 3c. Removing the marker after a clean finish fails: the status says so ===
+        REMOVE_FAILS_JS = """async ([marker]) => {
+            const proto = Object.getPrototypeOf(window.__makeEmptyRoot());
+            const orig = proto.removeEntry;
+            proto.removeEntry = async function(name, opts){
+                if(name === marker) throw new DOMException('Permission denied', 'NotAllowedError');
+                return orig.call(this, name, opts);
+            };
+        }"""
+        page = await start(docs[:2], {"1_a.pdf": VALID_PDF, "2_a.pdf": VALID_PDF})
+        await page.evaluate("() => { window.__BACKUP_PARENT = window.__makeEmptyRoot(); window.__NEXT_PICKED_DIR = window.__BACKUP_PARENT; }")
+        await page.evaluate(REMOVE_FAILS_JS, [BACKUP_MARKER])
+        await run_backup(page)
+        status = await page.inner_text('#backup-status')
+        check("Backup: a marker that can't be removed is named in the status",
+              f'The note “{BACKUP_MARKER}” could not be removed; delete it by hand once you have checked the folder.' in status
+              and 'err' in await page.get_attribute('#backup-status', 'class'), status)
+        await page.close()
+
+        page = await start(docs, files)
+        await page.evaluate(REMOVE_FAILS_JS, [EXPORT_MARKER])
+        await export(page, range(1, 7))
+        status = await page.inner_text('#export-status')
+        sub = list((await page.evaluate(LIST_DEST)).values())[0]
+        check("Export: a marker that can't be removed stays and is named in the status",
+              EXPORT_MARKER in sub and f'The note “{EXPORT_MARKER}” could not be removed; delete it by hand once you have checked the folder.' in status
+              and 'err' in await page.get_attribute('#export-status', 'class'), status)
+        await page.close()
+
+        # === 3d. Both marker names are reserved in an export ===
+        bdocs = [doc(1, "INCOMPLETE - this export was not finished", None, 'txt'), doc(2, "INCOMPLETE - this backup was not finished", None, 'txt')]
+        page = await start(bdocs, {"1_a.txt": b"one", "2_a.txt": b"two"})
+        await export(page, [1, 2])
+        sub = list((await page.evaluate(LIST_DEST)).values())[0]
+        check("Export: documents named like either marker are numbered",
+              'INCOMPLETE - this export was not finished (2).txt' in sub and 'INCOMPLETE - this backup was not finished (2).txt' in sub
+              and EXPORT_MARKER not in sub and BACKUP_MARKER not in sub, list(sub))
+        await page.close()
+
+        # === 3e. Importing a folder with the backup marker asks with backup wording ===
+        page = await start([], {})
+        await page.evaluate("""async ([marker]) => {
+            const put = async (dir, n, c) => { const w = await (await dir.getFileHandle(n, {create: true})).createWritable(); await w.write(new TextEncoder().encode(c)); await w.close(); };
+            const a = window.__makeEmptyRoot(); a.name = 'Some backup';
+            await put(a, 'a1.pdf', '%PDF-1.4 a1'); await put(a, marker, 'not finished');
+            window.__NEXT_PICKED_DIR = a;
+        }""", [BACKUP_MARKER])
+        page.accept_dialogs = False
+        await page.click('#tools-btn'); await page.click('#import-folder-btn'); await page.wait_for_timeout(200)
+        await page.click('#import-start-btn'); await page.wait_for_timeout(500)
+        check("Import: a folder with the backup marker asks with backup wording",
+              page.dialogs == ['This backup was not finished and may be missing files. Import it anyway?'], page.dialogs)
         await page.close()
 
         # === 3b. Opening a library that has the backup marker asks first ===
