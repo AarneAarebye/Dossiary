@@ -180,7 +180,8 @@ async def main():
             for i in ids:
                 await page.check(f'tr[data-id="{i}"] .row-select-checkbox')
             await page.click('#bulk-more-btn')
-            await page.click('#bulk-export-library-btn')
+            await page.click('#bulk-export-btn')
+            await page.check('#export-kind-library')  # one Export… entry: choose New library
             await page.wait_for_timeout(300)
             await page.fill('#export-library-name', name)
             await page.check(f'input[name="export-library-output"][value="{output}"]')
@@ -363,7 +364,8 @@ async def main():
         await page.click('#nav-item-all')
         await page.check('tr[data-id="2"] .row-select-checkbox')
         await page.click('#bulk-more-btn')
-        await page.click('#bulk-export-library-btn')
+        await page.click('#bulk-export-btn')
+        await page.check('#export-kind-library')  # one Export… entry: choose New library
         await page.wait_for_timeout(300)
         body = await page.text_content(".modal")  # inner_text would give the CSS-uppercased labels
         print("German output choices:", 'Bibliothek + Dossiary als Ordner' in body and 'Beides: Ordner und .zip-Datei' in body)

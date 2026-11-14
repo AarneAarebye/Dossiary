@@ -252,8 +252,8 @@ working" problem that motivated this project in the first place.
   export only, up to 60 and 300 characters). With the `index.csv` they are
   saved as an `export-details.json` beside it, and shown when the folder is
   imported; leave both empty and no such file is written.
-- **Export as library** — select documents and choose **More ▾ → Export as
-  library…** to make a new, ready-to-open `<Name>.dossiary` library from
+- **Export as library** — select documents, choose **More ▾ → Export…** and
+  pick **New library** under **Export as** to make a new, ready-to-open `<Name>.dossiary` library from
   them: to hand documents to someone, or to split a library. **Copy** leaves
   this library as it is; **Move** puts the documents in this library's Waste
   bin once the new library is written (restoring them undoes it). The new

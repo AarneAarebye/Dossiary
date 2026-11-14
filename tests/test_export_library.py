@@ -196,7 +196,8 @@ async def main():
             for i in ids:
                 await page.check(f'tr[data-id="{i}"] .row-select-checkbox')
             await page.click('#bulk-more-btn')
-            await page.click('#bulk-export-library-btn')
+            await page.click('#bulk-export-btn')
+            await page.check('#export-kind-library')  # one Export… entry: choose New library
             await page.wait_for_timeout(300)
 
         # === Scenario 3: the dialog's defaults, and the library's own folder is refused ===

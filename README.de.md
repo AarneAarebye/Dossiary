@@ -294,8 +294,8 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   Mit der `index.csv` werden sie als `export-details.json` daneben
   gespeichert und beim Import des Ordners angezeigt; sind beide leer, wird
   keine solche Datei geschrieben.
-- **Als Bibliothek exportieren** — Dokumente auswählen und **Mehr ▾ → Als
-  Bibliothek exportieren…** wählen: Daraus entsteht eine neue
+- **Als Bibliothek exportieren** — Dokumente auswählen, **Mehr ▾ → Exportieren…**
+  wählen und unter **Exportieren als** **Neue Bibliothek** anklicken: Daraus entsteht eine neue
   `<Name>.dossiary`-Bibliothek, die sich sofort öffnen lässt — zum
   Weitergeben oder um eine Bibliothek aufzuteilen. **Kopieren** lässt diese
   Bibliothek, wie sie ist; **Verschieben** legt die Dokumente hier in den

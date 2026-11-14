@@ -1157,7 +1157,11 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   the tab showed anything (measured 2026-11-06; with the options it needs none and takes about 25 ms). The stub's fake records
   the options it was given (`window.__pdfLibLoadOptions`, `__pdfLibSaveOptions`) and `test_export.py` checks them.
 - **Export as library** (`openExportLibraryModal()`, `buildExportLibraryDb()`,
-  `#bulk-export-library-btn` in the bulk More menu; spec
+  reached since 1.66.2 through the one `#bulk-export-btn` "Export…" entry and its
+  "Export as: Files in a folder / New library" row (`openExportDialog()`,
+  `exportKindChoice` kept for the page's life, `#export-kind-files` /
+  `#export-kind-library`; switching re-renders the other dialog for the same ids,
+  the row is disabled while either export runs); spec
   `docs/superpowers/specs/2026-10-15-export-as-library-design.md`) turns the
   selected documents into a new `<Name>.dossiary` library, copied or moved.
   The new database is built in memory from the open one with **ids kept**, so

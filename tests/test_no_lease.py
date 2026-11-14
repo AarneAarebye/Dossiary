@@ -1179,7 +1179,8 @@ async def scenario_export_leaves_sync_files(p):
     await page.evaluate("() => { window.__EXPORT_PARENT = window.__makeEmptyRoot(); window.__EXPORT_PARENT.name = 'Outside'; window.__NEXT_PICKED_DIR = window.__EXPORT_PARENT; }")
     await page.check('tr[data-id="1"] .row-select-checkbox')
     await page.click('#bulk-more-btn')
-    await page.click('#bulk-export-library-btn')
+    await page.click('#bulk-export-btn')
+    await page.check('#export-kind-library')  # one Export… entry: choose New library
     await page.wait_for_timeout(300)
     await page.click('#export-library-start-btn')
     await page.wait_for_timeout(1000)
@@ -1641,7 +1642,8 @@ async def scenario_switch_asks_when_unsaved(p):
     await page.evaluate("() => { window.__EXPORT_PARENT = window.__makeEmptyRoot(); window.__EXPORT_PARENT.name = 'Outside'; window.__NEXT_PICKED_DIR = window.__EXPORT_PARENT; }")
     await page.check('tr[data-id="1"] .row-select-checkbox')
     await page.click('#bulk-more-btn')
-    await page.click('#bulk-export-library-btn')
+    await page.click('#bulk-export-btn')
+    await page.check('#export-kind-library')  # one Export… entry: choose New library
     await page.wait_for_timeout(300)
     await page.click('#export-library-start-btn')
     await page.wait_for_timeout(1000)
