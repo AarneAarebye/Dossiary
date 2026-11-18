@@ -1161,7 +1161,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.66.2'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.67.0'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -13769,6 +13769,14 @@
     if(!fieldDef) return;
     db.run(`UPDATE fields SET ${key}=? WHERE id=?`, [value ? 1 : 0, fieldDef.id]);
     fieldDef[key === 'show_as_column' ? 'showAsColumn' : 'autocomplete'] = value;
+    // Ticking "Show as column" also switches the column on in the table (unticking
+    // switches it off), written in the same save as the flag so the Mac app, which
+    // does the same, and this page follow each other. People has its own fixed column.
+    if(key === 'show_as_column' && fieldDef.name !== 'People'){
+      const colId = `field-${fieldDef.id}`;
+      if(value) visibleColumns.add(colId); else visibleColumns.delete(colId);
+      db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('visible_columns', ?)", [JSON.stringify([...visibleColumns])]);
+    }
     await persistDb();
     renderColumnsMenu(); applyColumnVisibility(); populateFilters(); populateDatalists(); render();
     renderFieldSettingsFieldColumns();

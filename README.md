@@ -849,7 +849,7 @@ fields
     id                INTEGER PRIMARY KEY
     name              TEXT UNIQUE
     type              TEXT      -- 'text', 'number', 'date', 'checkbox', 'person', or 'reminder'
-    show_as_column    INTEGER   -- 0/1; adds a sortable table column, and (text/
+    show_as_column    INTEGER   -- 0/1; adds a sortable table column (ticking it also switches it on in visible_columns), and (text/
                                   -- checkbox types only) a toolbar filter dropdown.
                                   -- Not offered for 'person'-type fields (see below).
     autocomplete      INTEGER   -- 0/1; text-type fields only -- offers previously-

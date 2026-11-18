@@ -101,18 +101,12 @@ async def main():
             await page.click('#save-doc-btn')
             await page.wait_for_timeout(300)
 
-        # === Column: hidden by default (dynamicColumnDefs() -> defaultVisible:false),
-        # visible once toggled in the Columns menu ===
-        th_visible_before = await page.locator(f'th[data-field="{col_id}"]').is_visible()
-        print("Status column hidden by default:", not th_visible_before)
-        await page.click('#columns-btn')
-        await page.wait_for_timeout(100)
-        await page.check(f'#col-toggle-{col_id}')
-        await page.wait_for_timeout(150)
-        await page.click('#columns-btn')
-        await page.wait_for_timeout(100)
-        th_visible_after = await page.locator(f'th[data-field="{col_id}"]').is_visible()
-        print("Status column visible after toggling on:", th_visible_after)
+        # === Column: ticking "Show as column" in Field Settings also switched it on
+        # in the table (and saved visible_columns with the flag) ===
+        th_visible = await page.locator(f'th[data-field="{col_id}"]').is_visible()
+        print("Status column visible right after ticking Show as column:", th_visible)
+        vc = json.loads(next(r for r in persisted0['settings'] if r['key'] == 'visible_columns')['value'])
+        print("visible_columns persisted with the Status column:", col_id in vc)
 
         cell_values = await page.locator(f'#doc-tbody td[data-field="{col_id}"]').all_inner_texts()
         print("Status column shows the right values:", sorted(cell_values))
