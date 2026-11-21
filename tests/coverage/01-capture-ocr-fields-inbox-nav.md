@@ -368,7 +368,16 @@ no saved value; a checkbox field explicitly saved as unchecked (`'0'`) is
 correctly excluded as real data, not "unset"; and a Smart Collection saved
 with a "not set" filter active reproduces the same filtering from its own
 saved criteria, proving the shared `matchesCriteria()` path works for both
-live toolbar and persisted Smart Collection filters), Currency opting into
+live toolbar and persisted Smart Collection filters), the built-in File
+type column (`test_file_type_column.py` — hidden by default with no stored
+`visible_columns`; the Columns menu listing it, toggling it on storing
+`file_type` in `visible_columns` beside the defaults; `fileTypeOf()`'s values
+for pdf, rtf, `JPG` and `jpeg` (kept distinct), no extension, no file, a dot
+only in a folder name, and a dot-file; ascending sort putting empty values
+first and descending last, with `sort_key` stored as `file_type`; the filter
+listing the distinct types plus "— Not set —", one type narrowing to exactly
+its documents and "not set" to those without a type; Reports' breakdown not
+offering it; the German label; the column surviving a reopen), Currency opting into
 the generic column/filter/autocomplete/sort system and the new Amount range
 filter (`test_amount_currency_filter.py` — Currency's own Column capability
 checkbox appearing in Field Settings while Amount's still doesn't; the

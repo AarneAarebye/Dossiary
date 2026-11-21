@@ -200,6 +200,9 @@ never by file name. This list maps each of them to what it checks:
     another dialog or during a long operation; the empty-state text with no
     button semantics, opening nothing by click or Enter, also after a
     language change. Confirmed non-vacuous by dropping each guard.
+  - `test_file_type_column.py` -- the File type column (`file_type`, the
+    file's uppercased extension): hidden by default, toggled and stored in
+    `visible_columns`, its values, sort, and filter (one type, not set).
   - `test_import_date_column.py` -- the Imported column: visible by
     default, in the Columns menu, toggled off and on, showing a real date.
   - `test_sticky_header.py` -- with many rows, the table header stays at

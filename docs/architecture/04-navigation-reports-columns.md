@@ -497,7 +497,8 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   call, so `applyColumnVisibility()` runs again at the end of `render()`
   to reapply to the new cells), and the `<span class="filter-wrap">`
   wrapping each filter `<select>`. `FIELD_DEFS` only holds the fixed,
-  built-in columns (Category, Type, People, Date, Imported, Amount, Tags)
+  built-in columns (Category, Type, People, Date, Imported, Amount, Tags,
+  File type)
   now — Payment method was removed from it and, since it's a plain
   `fields` row with `show_as_column:1`, flows through `dynamicColumnDefs()`
   instead: any field with `show_as_column` set gets appended as a dynamic
@@ -542,6 +543,18 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   support depends on the SQLite version sql.js happens to bundle, and
   `INSERT OR REPLACE` has been supported forever), not browser storage —
   keep it that way so the preference travels with the library folder.
+  **File type** (`file_type`, hidden by default) is the one built-in column
+  with no stored value: `fileTypeOf(d.file_path)` gives the uppercased
+  extension of the active file's last path component (`PDF`, `JPG` and
+  `JPEG` kept distinct; no extension, a dot-file or no file gives `''`), the
+  same rule as the Mac app, which shares the id through `visible_columns`
+  (before the browser knew the id, `loadColumnSettings()` dropped it as
+  stale and the next save erased the Mac's choice). It sorts as text and has
+  a dropdown filter (`#file-type-filter`) with "— Not set —", applied in
+  `applyFilters()` rather than `currentFilters()`/`matchesCriteria()`:
+  Smart Collection rules are shared with the Mac and iOS apps, which have no
+  file-type rule, so saving the toolbar as a Smart Collection leaves this
+  filter out. Reports' breakdown list leaves it out too.
 - **The "🛠 Tools" toolbar dropdown** (`#tools-btn`, `#tools-menu`,
   `.tools-menu-item`, `toggleToolbarMenu()`) holds the occasional-use
   actions -- Manage fields, Manage collections, Library details, Library check, and

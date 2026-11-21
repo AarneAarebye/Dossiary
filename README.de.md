@@ -530,7 +530,9 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   bleiben immer.
 - **Konfigurierbare Spalten & Filter** — über den Schalter „⚙ Columns“ in
   der Symbolleiste lassen sich Tabellenspalten ein-/ausblenden (Kategorie,
-  Typ, Zahlungsmethode, Personen, Datum, Importiert, Betrag, Tags); jede
+  Typ, Zahlungsmethode, Personen, Datum, Importiert, Betrag, Tags und
+  Dateityp — die Dateiendung wie PDF oder JPG, ausgeblendet, bis man sie
+  einschaltet); jede
   Spalte, die Filterung unterstützt, blendet dabei gleichzeitig ihr
   passendes Filter-Dropdown ein oder aus. Die Auswahl wird in
   `library.sqlite` selbst gespeichert und reist damit mit dem

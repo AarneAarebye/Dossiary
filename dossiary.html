@@ -947,6 +947,7 @@
         <span class="filter-wrap" data-field="category"><select id="category-filter"><option value="" data-i18n="toolbarAllCategories">All categories</option></select></span>
         <span class="filter-wrap" data-field="document_type"><select id="type-filter"><option value="" data-i18n="toolbarAllTypes">All types</option></select></span>
         <span class="filter-wrap" data-field="people"><select id="person-filter"><option value="" data-i18n="toolbarAllPeople">All people</option></select></span>
+        <span class="filter-wrap" data-field="file_type"><select id="file-type-filter"><option value="" data-i18n="toolbarAllFileTypes">All file types</option></select></span>
         <span id="dynamic-filters"></span>
         <span class="amount-filter-range" id="amount-filter-range-wrap">
           <span class="field-with-clear">
@@ -1117,6 +1118,7 @@
                 <th data-key="import_date" data-field="import_date" data-i18n="tableColImported">Imported</th>
                 <th data-key="amount" data-field="amount" data-i18n="tableColAmount">Amount</th>
                 <th data-field="tags" data-i18n="tableColTags">Tags</th>
+                <th data-key="file_type" data-field="file_type" data-i18n="tableColFileType">File type</th>
               </tr>
             </thead>
             <tbody id="doc-tbody"></tbody>
@@ -1161,7 +1163,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.67.0'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.68.0'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -1254,7 +1256,7 @@
       navStyleToggleAriaLabel: 'Switch navigation layout',
       toolbarSearchPlaceholder: 'Search title, category, notes, tags, OCR text…',
       toolbarSearchClearAriaLabel: 'Clear search', toolbarAllCategories: 'All categories',
-      toolbarAllTypes: 'All types', toolbarAllPeople: 'All people', toolbarAllDynamic: 'All {label}', toolbarFieldNotSet: '— Not set —',
+      toolbarAllTypes: 'All types', toolbarAllPeople: 'All people', toolbarAllDynamic: 'All {label}', toolbarFieldNotSet: '— Not set —', toolbarAllFileTypes: 'All file types',
       toolbarShowArchived: 'Show archived', toolbarBreakdownByTitle: 'Break down by',
       toolbarFromDateTitle: 'From date', toolbarToDateTitle: 'To date',
       toolbarAmountMinTitle: 'Min amount', toolbarAmountMaxTitle: 'Max amount', toolbarAmountUnsetLabel: 'Amount not set',
@@ -1293,7 +1295,7 @@
       statusLoadingSqliteEngine: 'Loading SQLite engine…', statusReadingLibrary: 'Reading library.sqlite…',
       statusOpenedLibrary: 'Opened {count} documents from {name}.',
       tableColDocument: 'Document', tableColCategory: 'Category', tableColType: 'Type', tableColPeople: 'People',
-      tableColDate: 'Date', tableColImported: 'Imported', tableColAmount: 'Amount', tableColTags: 'Tags',
+      tableColDate: 'Date', tableColImported: 'Imported', tableColAmount: 'Amount', tableColTags: 'Tags', tableColFileType: 'File type',
       tableSelectAllTitle: 'Select all visible', tableRowEditTitle: 'Edit',
       tablePillNew: 'new', tablePillFromInbox: 'from inbox', tablePillArchived: 'archived',
       tableShowingCount: 'Showing {shown} of {total} documents', tableNoValue: '—',
@@ -1491,7 +1493,7 @@
       navStyleToggleAriaLabel: 'Cambiar diseño de navegación',
       toolbarSearchPlaceholder: 'Buscar título, categoría, notas, etiquetas, texto OCR…',
       toolbarSearchClearAriaLabel: 'Borrar búsqueda', toolbarAllCategories: 'Todas las categorías',
-      toolbarAllTypes: 'Todos los tipos', toolbarAllPeople: 'Todas las personas', toolbarAllDynamic: 'Todos los {label}', toolbarFieldNotSet: '— Sin definir —',
+      toolbarAllTypes: 'Todos los tipos', toolbarAllPeople: 'Todas las personas', toolbarAllDynamic: 'Todos los {label}', toolbarFieldNotSet: '— Sin definir —', toolbarAllFileTypes: 'Todos los tipos de archivo',
       toolbarShowArchived: 'Mostrar archivados', toolbarBreakdownByTitle: 'Desglosar por',
       toolbarFromDateTitle: 'Desde fecha', toolbarToDateTitle: 'Hasta fecha',
       toolbarAmountMinTitle: 'Importe mín.', toolbarAmountMaxTitle: 'Importe máx.', toolbarAmountUnsetLabel: 'Importe sin definir',
@@ -1530,7 +1532,7 @@
       statusLoadingSqliteEngine: 'Cargando el motor SQLite…', statusReadingLibrary: 'Leyendo library.sqlite…',
       statusOpenedLibrary: 'Se abrieron {count} documentos de {name}.',
       tableColDocument: 'Documento', tableColCategory: 'Categoría', tableColType: 'Tipo', tableColPeople: 'Personas',
-      tableColDate: 'Fecha', tableColImported: 'Importado', tableColAmount: 'Importe', tableColTags: 'Etiquetas',
+      tableColDate: 'Fecha', tableColImported: 'Importado', tableColAmount: 'Importe', tableColTags: 'Etiquetas', tableColFileType: 'Tipo de archivo',
       tableSelectAllTitle: 'Seleccionar todos los visibles', tableRowEditTitle: 'Editar',
       tablePillNew: 'nuevo', tablePillFromInbox: 'de bandeja de entrada', tablePillArchived: 'archivado',
       tableShowingCount: 'Mostrando {shown} de {total} documentos', tableNoValue: '—',
@@ -1728,7 +1730,7 @@
       navStyleToggleAriaLabel: 'Changer la disposition de navigation',
       toolbarSearchPlaceholder: 'Rechercher titre, catégorie, notes, étiquettes, texte OCR…',
       toolbarSearchClearAriaLabel: 'Effacer la recherche', toolbarAllCategories: 'Toutes les catégories',
-      toolbarAllTypes: 'Tous les types', toolbarAllPeople: 'Toutes les personnes', toolbarAllDynamic: '{label} : tous', toolbarFieldNotSet: '— Non défini —',
+      toolbarAllTypes: 'Tous les types', toolbarAllPeople: 'Toutes les personnes', toolbarAllDynamic: '{label} : tous', toolbarFieldNotSet: '— Non défini —', toolbarAllFileTypes: 'Tous les types de fichier',
       toolbarShowArchived: 'Afficher les archivés', toolbarBreakdownByTitle: 'Répartir par',
       toolbarFromDateTitle: 'Date de début', toolbarToDateTitle: 'Date de fin',
       toolbarAmountMinTitle: 'Montant min.', toolbarAmountMaxTitle: 'Montant max.', toolbarAmountUnsetLabel: 'Montant non défini',
@@ -1767,7 +1769,7 @@
       statusLoadingSqliteEngine: 'Chargement du moteur SQLite…', statusReadingLibrary: 'Lecture de library.sqlite…',
       statusOpenedLibrary: '{count} documents ouverts depuis {name}.',
       tableColDocument: 'Document', tableColCategory: 'Catégorie', tableColType: 'Type', tableColPeople: 'Personnes',
-      tableColDate: 'Date', tableColImported: 'Importé', tableColAmount: 'Montant', tableColTags: 'Étiquettes',
+      tableColDate: 'Date', tableColImported: 'Importé', tableColAmount: 'Montant', tableColTags: 'Étiquettes', tableColFileType: 'Type de fichier',
       tableSelectAllTitle: 'Sélectionner tous les éléments visibles', tableRowEditTitle: 'Modifier',
       tablePillNew: 'nouveau', tablePillFromInbox: 'depuis la boîte de réception', tablePillArchived: 'archivé',
       tableShowingCount: 'Affichage de {shown} sur {total} documents', tableNoValue: '—',
@@ -1965,7 +1967,7 @@
       navStyleToggleAriaLabel: 'Navigationslayout wechseln',
       toolbarSearchPlaceholder: 'Titel, Kategorie, Notizen, Tags, OCR-Text durchsuchen…',
       toolbarSearchClearAriaLabel: 'Suche leeren', toolbarAllCategories: 'Alle Kategorien',
-      toolbarAllTypes: 'Alle Typen', toolbarAllPeople: 'Alle Personen', toolbarAllDynamic: 'Alle {label}', toolbarFieldNotSet: '— Nicht gesetzt —',
+      toolbarAllTypes: 'Alle Typen', toolbarAllPeople: 'Alle Personen', toolbarAllDynamic: 'Alle {label}', toolbarFieldNotSet: '— Nicht gesetzt —', toolbarAllFileTypes: 'Alle Dateitypen',
       toolbarShowArchived: 'Archivierte anzeigen', toolbarBreakdownByTitle: 'Aufschlüsseln nach',
       toolbarFromDateTitle: 'Von Datum', toolbarToDateTitle: 'Bis Datum',
       toolbarAmountMinTitle: 'Betrag min.', toolbarAmountMaxTitle: 'Betrag max.', toolbarAmountUnsetLabel: 'Betrag nicht gesetzt',
@@ -2004,7 +2006,7 @@
       statusLoadingSqliteEngine: 'SQLite-Engine wird geladen…', statusReadingLibrary: 'library.sqlite wird gelesen…',
       statusOpenedLibrary: '{count} Dokumente aus {name} geöffnet.',
       tableColDocument: 'Dokument', tableColCategory: 'Kategorie', tableColType: 'Typ', tableColPeople: 'Personen',
-      tableColDate: 'Datum', tableColImported: 'Importiert', tableColAmount: 'Betrag', tableColTags: 'Tags',
+      tableColDate: 'Datum', tableColImported: 'Importiert', tableColAmount: 'Betrag', tableColTags: 'Tags', tableColFileType: 'Dateityp',
       tableSelectAllTitle: 'Alle sichtbaren auswählen', tableRowEditTitle: 'Bearbeiten',
       tablePillNew: 'neu', tablePillFromInbox: 'aus Posteingang', tablePillArchived: 'archiviert',
       tableShowingCount: '{shown} von {total} Dokumenten angezeigt', tableNoValue: '—',
@@ -2202,7 +2204,7 @@
       navStyleToggleAriaLabel: '切换导航布局',
       toolbarSearchPlaceholder: '搜索标题、分类、备注、标签、OCR 文本…',
       toolbarSearchClearAriaLabel: '清除搜索', toolbarAllCategories: '所有分类',
-      toolbarAllTypes: '所有类型', toolbarAllPeople: '所有人员', toolbarAllDynamic: '所有{label}', toolbarFieldNotSet: '— 未设置 —',
+      toolbarAllTypes: '所有类型', toolbarAllPeople: '所有人员', toolbarAllDynamic: '所有{label}', toolbarFieldNotSet: '— 未设置 —', toolbarAllFileTypes: '所有文件类型',
       toolbarShowArchived: '显示已归档', toolbarBreakdownByTitle: '细分依据',
       toolbarFromDateTitle: '起始日期', toolbarToDateTitle: '结束日期',
       toolbarAmountMinTitle: '最小金额', toolbarAmountMaxTitle: '最大金额', toolbarAmountUnsetLabel: '金额未设置',
@@ -2241,7 +2243,7 @@
       statusLoadingSqliteEngine: '正在加载 SQLite 引擎…', statusReadingLibrary: '正在读取 library.sqlite…',
       statusOpenedLibrary: '已从 {name} 打开 {count} 个文档。',
       tableColDocument: '文档', tableColCategory: '分类', tableColType: '类型', tableColPeople: '人员',
-      tableColDate: '日期', tableColImported: '导入日期', tableColAmount: '金额', tableColTags: '标签',
+      tableColDate: '日期', tableColImported: '导入日期', tableColAmount: '金额', tableColTags: '标签', tableColFileType: '文件类型',
       tableSelectAllTitle: '全选可见项', tableRowEditTitle: '编辑',
       tablePillNew: '新', tablePillFromInbox: '来自收件箱', tablePillArchived: '已归档',
       tableShowingCount: '显示 {total} 个文档中的 {shown} 个', tableNoValue: '—',
@@ -2455,6 +2457,7 @@
       toolbarSearchClearAriaLabel: '清除搜索',
       toolbarAllCategories: '所有分類',
       toolbarAllTypes: '所有類型',
+      toolbarAllFileTypes: '所有檔案類型',
       toolbarAllPeople: '所有人員',
       toolbarAllDynamic: '所有{label}',
       toolbarFieldNotSet: '— 未設置 —',
@@ -2526,6 +2529,7 @@
       tableColImported: '導入日期',
       tableColAmount: '金額',
       tableColTags: '標籤',
+      tableColFileType: '檔案類型',
       tableSelectAllTitle: '全選可見項',
       tableRowEditTitle: '編輯',
       tablePillNew: '新',
@@ -3080,6 +3084,7 @@
       toolbarSearchClearAriaLabel: "Մաքրել որոնումը",
       toolbarAllCategories: "Բոլոր կատեգորիաները",
       toolbarAllTypes: "Բոլոր տեսակները",
+      toolbarAllFileTypes: "Բոլոր ֆայլի տեսակները",
       toolbarAllPeople: "Բոլոր անձինք",
       toolbarAllDynamic: "Բոլորը՝ {label}",
       toolbarFieldNotSet: "— Նշված չէ —",
@@ -3156,6 +3161,7 @@
       tableColImported: "Ներմուծված",
       tableColAmount: "Գումար",
       tableColTags: "Պիտակներ",
+      tableColFileType: "Ֆայլի տեսակ",
       tableSelectAllTitle: "Ընտրել բոլոր տեսանելիները",
       tableRowEditTitle: "Խմբագրել",
       tablePillNew: "նոր",
@@ -3890,7 +3896,22 @@
     { id: 'import_date', label: 'Imported', labelKey: 'tableColImported', hasFilter: false, defaultVisible: true },
     { id: 'amount', label: 'Amount', labelKey: 'tableColAmount', hasFilter: false, defaultVisible: true },
     { id: 'tags', label: 'Tags', labelKey: 'tableColTags', hasFilter: false, defaultVisible: true },
+    // Derived from the active file's name (fileTypeOf()), not stored anywhere.
+    // The id is shared with the Mac app through the visible_columns setting.
+    { id: 'file_type', label: 'File type', labelKey: 'tableColFileType', hasFilter: true, defaultVisible: false },
   ];
+  // The File type column's value: the active file's extension, uppercased
+  // ('PDF', 'JPG', 'JPEG' -- no mapping). Only the last path component counts,
+  // so a dot in a folder name doesn't; no extension (none, a leading dot only
+  // like '.txt', or a trailing dot) or no file at all gives ''. The Mac app
+  // applies the same rule.
+  function fileTypeOf(path){
+    if(!path) return '';
+    const name = String(path).split(/[\\/]/).pop();
+    const dot = name.lastIndexOf('.');
+    if(dot <= 0 || dot === name.length - 1) return '';
+    return name.slice(dot + 1).toUpperCase();
+  }
   // Any field flagged show_as_column=1 (toggled per-field in Field Settings) becomes
   // a dynamic table column/filter/sort target, appended after the fixed ones above.
   // Filter dropdowns only get built for text/checkbox fields -- a dropdown listing
@@ -4009,6 +4030,7 @@
   const categoryFilter = el('category-filter');
   const typeFilter = el('type-filter');
   const personFilter = el('person-filter');
+  const fileTypeFilter = el('file-type-filter');
   const showArchivedToggle = el('show-archived-toggle');
   const showArchivedWrap = el('show-archived-wrap');
   const reportDateFrom = el('report-date-from');
@@ -7387,6 +7409,8 @@
     categoryFilter.innerHTML = `<option value="">${t('toolbarAllCategories')}</option>` + notSetOption + categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     typeFilter.innerHTML = `<option value="">${t('toolbarAllTypes')}</option>` + notSetOption + types.map(tp => `<option value="${escapeHtml(tp)}">${escapeHtml(tp)}</option>`).join('');
     personFilter.innerHTML = `<option value="">${t('toolbarAllPeople')}</option>` + notSetOption + people.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    const fileTypes = [...new Set(allDocs.map(d => fileTypeOf(d.file_path)).filter(Boolean))].sort();
+    fileTypeFilter.innerHTML = `<option value="">${t('toolbarAllFileTypes')}</option>` + notSetOption + fileTypes.map(ft => `<option value="${escapeHtml(ft)}">${escapeHtml(ft)}</option>`).join('');
 
     const dynamicFiltersEl = el('dynamic-filters');
     dynamicFiltersEl.innerHTML = dynamicColumnDefs().filter(f => f.hasFilter).map(f => {
@@ -7401,7 +7425,7 @@
     }).join('');
     dynamicFiltersEl.querySelectorAll('select').forEach(sel => sel.addEventListener('change', render));
 
-    // Report breakdown dropdown -- Category/Type/People plus any custom field
+    // Report breakdown dropdown -- Category/Type/People/Tags plus any custom field
     // flagged show_as_column (same source dynamicColumnDefs() already uses for
     // table columns/filters). Deliberately excludes date/import_date/amount/tags
     // from FIELD_DEFS -- see reportBreakdownFields()'s own comment.
@@ -7499,6 +7523,9 @@
   // being summed, not something to group by). Tags is multi-valued like People:
   // a document with two tags counts under both.
   function reportBreakdownFields(){
+    // An explicit list, so File type (file_type) is left out on purpose:
+    // reportBreakdownFieldInfo() has no reader for it, and grouping totals by
+    // file format isn't a reporting question.
     const fixed = FIELD_DEFS.filter(f => ['category', 'document_type', 'people', 'tags'].includes(f.id));
     // Currency is deliberately excluded here (joining Date/Amount,
     // already excluded from dynamicColumnDefs()'s own callers for their own
@@ -7918,8 +7945,13 @@
   }
   function applyFilters(docs){
     const filters = currentFilters();
+    // File type is a toolbar-only filter, deliberately outside currentFilters()/
+    // matchesCriteria(): Smart Collection rules are shared with the Mac and iOS
+    // apps, which have no file-type rule, so "Save as smart collection" leaves it out.
+    const fileType = fileTypeFilter.value;
     return docs.filter(d => {
       if(!matchesView(d, currentView, filters.showArchived)) return false;
+      if(fileType && (fileType === FILTER_UNSET ? !!fileTypeOf(d.file_path) : fileTypeOf(d.file_path) !== fileType)) return false;
       if(currentView === 'reports'){
         const { dateFrom, dateTo } = currentReportDateRange();
         if(dateFrom && (!d.date || d.date.slice(0, 10) < dateFrom)) return false;
@@ -7941,6 +7973,9 @@
       if(sortKey === 'date'){
         const av = a.date || '', bv = b.date || '';
         return av.localeCompare(bv) * dir;
+      }
+      if(sortKey === 'file_type'){
+        return fileTypeOf(a.file_path).toLowerCase().localeCompare(fileTypeOf(b.file_path).toLowerCase()) * dir;
       }
       // Any show_as_column custom field (see dynamicColumnDefs()) -- numeric compare
       // for number-typed fields, case-insensitive string compare otherwise (ISO
@@ -8168,6 +8203,7 @@
         <td class="date" data-field="import_date">${formatDate(d.import_date)}</td>
         <td class="amount" data-field="amount">${formatAmount(d)}</td>
         <td data-field="tags">${(d.tags||[]).map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join('') || `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>
+        <td data-field="file_type">${fileTypeOf(d.file_path) ? escapeHtml(fileTypeOf(d.file_path)) : `<span class="doc-sub">${t('tableNoValue')}</span>`}</td>
         ${dynDefs.map(f => {
           if(f.type === 'person'){
             const names = personNamesFor(d, f.label);
@@ -8325,6 +8361,7 @@
   categoryFilter.addEventListener('change', render);
   typeFilter.addEventListener('change', render);
   personFilter.addEventListener('change', render);
+  fileTypeFilter.addEventListener('change', render);
   showArchivedToggle.addEventListener('change', render);
   reportDateFrom.addEventListener('change', render);
   reportDateTo.addEventListener('change', render);
@@ -18394,7 +18431,7 @@
       if(db !== old || !stillClear(seq0)){ try{ fresh.close(); }catch(e){} return false; }
       // From here to loadDocumentsFromDb() everything is synchronous.
       const prefs = queryAll('SELECT key, value FROM settings').rows.filter(r => SYNC_VIEW_PREF_KEYS.includes(r[0]));
-      const filterValues = [categoryFilter, typeFilter, personFilter, ...document.querySelectorAll('#dynamic-filters select')]
+      const filterValues = [categoryFilter, typeFilter, personFilter, fileTypeFilter, ...document.querySelectorAll('#dynamic-filters select')]
         .map(sel => [sel.id, sel.value]);
       const scrollTop = tableWrap.scrollTop, scrollLeft = tableWrap.scrollLeft;
       const keepSelected = selectedDocId;

@@ -455,7 +455,9 @@ working" problem that motivated this project in the first place.
   Add document and Tools always stay.
 - **Configurable columns & filters** — the "⚙ Columns" button in the
   toolbar lets you show/hide table columns (Category, Type, Payment method,
-  People, Date, Imported, Amount, Tags); each one that supports filtering
+  People, Date, Imported, Amount, Tags, and File type — the file's
+  extension such as PDF or JPG, hidden until you switch it on); each one
+  that supports filtering
   shows or hides its matching filter dropdown at the same time. The choice
   is saved in `library.sqlite` itself, so it travels with the library
   folder rather than being tied to one browser or device. Any custom field
