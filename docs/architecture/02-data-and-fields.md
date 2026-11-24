@@ -607,8 +607,14 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
 - **`default_people` (1.69.0, a `settings` row like `default_currency`)**: `'adder'` means a new document's built-in
   People field is filled with the person adding it; empty or missing means off, and any other value reads as off
   (reserved, e.g. for fixed names later). Field Settings › New documents has the checkbox (`#fs-default-people`,
-  `loadDefaultPeople()`/`saveDefaultPeople()`). **The page itself never fills People**: only Dossiary for Mac and the
-  iOS app know the person adding a document (their hub's name for them), and a phone's add through the Pi hub is filled
-  by the hub from the device's token (dossiary-sync 0.27.0, `LibraryEditor.fillDefaultPeople`). The design is
-  `dossiary-sync/docs/superpowers/specs/2026-11-24-people-default-adder-design.md`; a per-browser "I am …" that would
-  let the capture form show the name as an amber guess, like Currency, is left for later.
+  `loadDefaultPeople()`/`saveDefaultPeople()`). Dossiary for Mac and the iOS app use their hub's name for the person
+  adding a document, and a phone's add through the Pi hub is filled by the hub from the device's token (dossiary-sync
+  0.27.0, `LibraryEditor.fillDefaultPeople`). **The page uses "Your name in this browser"** (1.70.0, `#fs-adder-name`,
+  `readAdderName()`/`saveAdderName()`): kept per browser in `localStorage` (`dossiary_adder_name`, trimmed, every
+  access in try/catch), never in the library, since two people can share a library from two browsers. With the
+  setting on and a name set (`adderGuess()`), the capture form's People (only the built-in field, only when empty,
+  never in Edit) shows the name as an amber guess with `fieldPeopleGuessHint`, cleared on first touch by the same
+  `.field-guess` wiring as Currency, and saved when kept; an Inbox or drop add (`createReviewDocumentFromFile()`, not a
+  folder import, whose index.csv says who) is filed under it directly (`fillDefaultPeople()`, in the add's own save).
+  No name, or the setting off: nothing is filled. Designs: `dossiary-sync/docs/superpowers/specs/2026-11-24-people-default-adder-design.md`
+  and `dossiary-osx/docs/superpowers/specs/2026-11-24-admin-and-maintenance-design.md` (P1).

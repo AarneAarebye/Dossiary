@@ -116,10 +116,12 @@ never by file name. This list maps each of them to what it checks:
   - `test_edit_currency_guess.py` -- the Edit-form Currency guess, only
     for a document with a real, non-zero Amount and no Currency.
   - `test_default_people.py` -- Field Settings' "Set People to the
-    person adding the document" (1.69.0): in New documents, off without
-    the setting, its hint, ticking storing `default_people = adder`,
-    still ticked on reopening, unticking storing an empty value, and an
-    unknown value reading as off.
+    person adding the document" (1.69.0) and "Your name in this browser"
+    (1.70.0): the checkbox and `default_people = adder`, the name kept
+    trimmed in `localStorage` and never in the library, no guess without a
+    name, the capture guess (value, amber, hint, cleared by typing, saved
+    with a typed name), an Inbox add filed under the name, nothing with the
+    setting off, an unknown value reading as off.
   - `test_payment_date.py` -- a Payment Date custom field ordered among
     Payment method/Amount/Currency, saved, formatted in the panel, and
     pre-filled in Edit.
