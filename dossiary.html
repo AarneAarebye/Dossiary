@@ -1163,7 +1163,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.68.0'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.69.0'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -1387,7 +1387,7 @@
       ocrJobNoText: "No text found in “{title}”.",
       ocrJobFailed: "Couldn’t make “{title}” searchable: {error}",
       fieldSettingsScanOcrLanguageLabel: "Text recognition language",
-      fieldSettingsScannerIntegrationHeading: "Scanning", fieldSettingsGroupNewDocuments: "New documents", fieldSettingsGroupReminders: "Reminders", fieldSettingsDefaultDocTypeHint: "Pre-filled when adding a document.", fieldSettingsDefaultCurrencyHint: "Suggested on new documents, e.g. EUR.", fieldSettingsReminderLookaheadHint: "Reminders due within this many days are shown.", fieldSettingsScanBridgeUrlHint: "Only needed for a helper running on a port other than 8765 or 8766.",
+      fieldSettingsScannerIntegrationHeading: "Scanning", fieldSettingsGroupNewDocuments: "New documents", fieldSettingsGroupReminders: "Reminders", fieldSettingsDefaultDocTypeHint: "Pre-filled when adding a document.", fieldSettingsDefaultCurrencyHint: "Suggested on new documents, e.g. EUR.", fieldSettingsDefaultPeopleLabel: "Fill in People with the person adding the document", fieldSettingsDefaultPeopleHint: "Done on a Mac or iPhone that is paired with a hub, with your name there. This browser doesn’t know who you are, so it leaves People empty.", fieldSettingsReminderLookaheadHint: "Reminders due within this many days are shown.", fieldSettingsScanBridgeUrlHint: "Only needed for a helper running on a port other than 8765 or 8766.",
       fieldSettingsScannerIntegrationText: "Scanning from the toolbar needs a small helper app running on this computer: dossiary-scan-helper for most scanners, or scanix500 for a ScanSnap iX500. Dossiary finds either one by itself; the address below is only for a helper on another port.",
       fieldSettingsScannerIntegrationLink: "Get dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "Get scanix500 (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Document Types', fieldSettingsColFields: 'Fields', fieldSettingsColDisplayFields: 'Display Fields',
@@ -1624,7 +1624,7 @@
       ocrJobNoText: "No se encontró texto en «{title}».",
       ocrJobFailed: "No se pudo hacer buscable «{title}»: {error}",
       fieldSettingsScanOcrLanguageLabel: "Idioma del reconocimiento de texto",
-      fieldSettingsScannerIntegrationHeading: "Escaneo", fieldSettingsGroupNewDocuments: "Documentos nuevos", fieldSettingsGroupReminders: "Recordatorios", fieldSettingsDefaultDocTypeHint: "Se rellena al añadir un documento.", fieldSettingsDefaultCurrencyHint: "Se sugiere en documentos nuevos, p. ej., EUR.", fieldSettingsReminderLookaheadHint: "Se muestran los recordatorios que vencen en estos días.", fieldSettingsScanBridgeUrlHint: "Solo para un asistente que no esté en el puerto 8765 o 8766.",
+      fieldSettingsScannerIntegrationHeading: "Escaneo", fieldSettingsGroupNewDocuments: "Documentos nuevos", fieldSettingsGroupReminders: "Recordatorios", fieldSettingsDefaultDocTypeHint: "Se rellena al añadir un documento.", fieldSettingsDefaultCurrencyHint: "Se sugiere en documentos nuevos, p. ej., EUR.", fieldSettingsDefaultPeopleLabel: "Rellenar Personas con quien añade el documento", fieldSettingsDefaultPeopleHint: "Lo hace un Mac o iPhone vinculado a un hub, con tu nombre allí. Este navegador no sabe quién eres, así que deja Personas vacío.", fieldSettingsReminderLookaheadHint: "Se muestran los recordatorios que vencen en estos días.", fieldSettingsScanBridgeUrlHint: "Solo para un asistente que no esté en el puerto 8765 o 8766.",
       fieldSettingsScannerIntegrationText: "Escanear desde la barra de herramientas requiere una pequeña aplicación auxiliar en este equipo: dossiary-scan-helper para la mayoría de los escáneres, o scanix500 para un ScanSnap iX500. Dossiary encuentra cualquiera de las dos por sí mismo; la dirección de abajo solo hace falta para un asistente en otro puerto.",
       fieldSettingsScannerIntegrationLink: "Obtener dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "Obtener scanix500 (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Tipos de documento', fieldSettingsColFields: 'Campos', fieldSettingsColDisplayFields: 'Campos mostrados',
@@ -1861,7 +1861,7 @@
       ocrJobNoText: "Aucun texte trouvé dans « {title} ».",
       ocrJobFailed: "Impossible de rendre « {title} » consultable : {error}",
       fieldSettingsScanOcrLanguageLabel: "Langue de reconnaissance du texte",
-      fieldSettingsScannerIntegrationHeading: "Numérisation", fieldSettingsGroupNewDocuments: "Nouveaux documents", fieldSettingsGroupReminders: "Rappels", fieldSettingsDefaultDocTypeHint: "Prérempli lors de l'ajout d'un document.", fieldSettingsDefaultCurrencyHint: "Suggérée pour les nouveaux documents, p. ex. EUR.", fieldSettingsReminderLookaheadHint: "Les rappels qui arrivent à échéance dans ce délai sont affichés.", fieldSettingsScanBridgeUrlHint: "Seulement pour un assistant qui n'est pas sur le port 8765 ou 8766.",
+      fieldSettingsScannerIntegrationHeading: "Numérisation", fieldSettingsGroupNewDocuments: "Nouveaux documents", fieldSettingsGroupReminders: "Rappels", fieldSettingsDefaultDocTypeHint: "Prérempli lors de l'ajout d'un document.", fieldSettingsDefaultCurrencyHint: "Suggérée pour les nouveaux documents, p. ex. EUR.", fieldSettingsDefaultPeopleLabel: "Remplir Personnes avec la personne qui ajoute le document", fieldSettingsDefaultPeopleHint: "Fait par un Mac ou un iPhone associé à un hub, avec votre nom sur celui-ci. Ce navigateur ne sait pas qui vous êtes : il laisse Personnes vide.", fieldSettingsReminderLookaheadHint: "Les rappels qui arrivent à échéance dans ce délai sont affichés.", fieldSettingsScanBridgeUrlHint: "Seulement pour un assistant qui n'est pas sur le port 8765 ou 8766.",
       fieldSettingsScannerIntegrationText: "Numériser depuis la barre d'outils nécessite une petite application auxiliaire sur cet ordinateur : dossiary-scan-helper pour la plupart des scanners, ou scanix500 pour un ScanSnap iX500. Dossiary trouve l'une ou l'autre tout seul ; l'adresse ci-dessous n'est utile que pour un assistant sur un autre port.",
       fieldSettingsScannerIntegrationLink: "Obtenir dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "Obtenir scanix500 (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Types de document', fieldSettingsColFields: 'Champs', fieldSettingsColDisplayFields: 'Champs affichés',
@@ -2098,7 +2098,7 @@
       ocrJobNoText: "Kein Text in „{title}“ gefunden.",
       ocrJobFailed: "„{title}“ konnte nicht durchsuchbar gemacht werden: {error}",
       fieldSettingsScanOcrLanguageLabel: "Sprache der Texterkennung",
-      fieldSettingsScannerIntegrationHeading: "Scannen", fieldSettingsGroupNewDocuments: "Neue Dokumente", fieldSettingsGroupReminders: "Erinnerungen", fieldSettingsDefaultDocTypeHint: "Wird beim Hinzufügen eines Dokuments vorausgefüllt.", fieldSettingsDefaultCurrencyHint: "Wird bei neuen Dokumenten vorgeschlagen, z. B. EUR.", fieldSettingsReminderLookaheadHint: "Erinnerungen, die in so vielen Tagen fällig sind, werden angezeigt.", fieldSettingsScanBridgeUrlHint: "Nur für einen Helfer, der nicht auf Port 8765 oder 8766 läuft.",
+      fieldSettingsScannerIntegrationHeading: "Scannen", fieldSettingsGroupNewDocuments: "Neue Dokumente", fieldSettingsGroupReminders: "Erinnerungen", fieldSettingsDefaultDocTypeHint: "Wird beim Hinzufügen eines Dokuments vorausgefüllt.", fieldSettingsDefaultCurrencyHint: "Wird bei neuen Dokumenten vorgeschlagen, z. B. EUR.", fieldSettingsDefaultPeopleLabel: "Personen mit der Person ausfüllen, die das Dokument hinzufügt", fieldSettingsDefaultPeopleHint: "Das übernimmt ein Mac oder iPhone, der mit einem Hub gekoppelt ist, mit deinem Namen dort. Dieser Browser weiß nicht, wer du bist, und lässt Personen leer.", fieldSettingsReminderLookaheadHint: "Erinnerungen, die in so vielen Tagen fällig sind, werden angezeigt.", fieldSettingsScanBridgeUrlHint: "Nur für einen Helfer, der nicht auf Port 8765 oder 8766 läuft.",
       fieldSettingsScannerIntegrationText: "Zum Scannen aus der Werkzeugleiste braucht es eine kleine Hilfs-App auf diesem Computer: dossiary-scan-helper für die meisten Scanner oder scanix500 für einen ScanSnap iX500. Dossiary findet beide von selbst; die Adresse unten ist nur für einen Helfer auf einem anderen Port nötig.",
       fieldSettingsScannerIntegrationLink: "dossiary-scan-helper herunterladen", fieldSettingsScannerIntegrationLinkScanix500: "scanix500 herunterladen (ScanSnap iX500)",
       fieldSettingsColDocTypes: 'Dokumenttypen', fieldSettingsColFields: 'Felder', fieldSettingsColDisplayFields: 'Anzeigefelder',
@@ -2335,7 +2335,7 @@
       ocrJobNoText: "在“{title}”中未找到文字。",
       ocrJobFailed: "无法使“{title}”可搜索：{error}",
       fieldSettingsScanOcrLanguageLabel: "文字识别语言",
-      fieldSettingsScannerIntegrationHeading: "扫描", fieldSettingsGroupNewDocuments: "新文档", fieldSettingsGroupReminders: "提醒", fieldSettingsDefaultDocTypeHint: "添加文档时预先填入。", fieldSettingsDefaultCurrencyHint: "新文档时自动建议，例如 EUR。", fieldSettingsReminderLookaheadHint: "显示在这么多天内到期的提醒。", fieldSettingsScanBridgeUrlHint: "仅用于不在 8765 或 8766 端口的助手。",
+      fieldSettingsScannerIntegrationHeading: "扫描", fieldSettingsGroupNewDocuments: "新文档", fieldSettingsGroupReminders: "提醒", fieldSettingsDefaultDocTypeHint: "添加文档时预先填入。", fieldSettingsDefaultCurrencyHint: "新文档时自动建议，例如 EUR。", fieldSettingsDefaultPeopleLabel: "用添加文档的人填写人员", fieldSettingsDefaultPeopleHint: "由与中心配对的 Mac 或 iPhone 完成，使用你在中心上的名字。此浏览器不知道你是谁，因此人员留空。", fieldSettingsReminderLookaheadHint: "显示在这么多天内到期的提醒。", fieldSettingsScanBridgeUrlHint: "仅用于不在 8765 或 8766 端口的助手。",
       fieldSettingsScannerIntegrationText: "从工具栏扫描需要在这台电脑上运行一个小型助手应用：大多数扫描仪使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。Dossiary 会自动找到它们；下面的地址仅用于运行在其他端口的助手。",
       fieldSettingsScannerIntegrationLink: "获取 dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "获取 scanix500（ScanSnap iX500）",
       fieldSettingsColDocTypes: '文档类型', fieldSettingsColFields: '字段', fieldSettingsColDisplayFields: '显示字段',
@@ -2683,7 +2683,7 @@
       ocrJobNoText: "在「{title}」中未找到文字。",
       ocrJobFailed: "無法使「{title}」可搜索：{error}",
       fieldSettingsScanOcrLanguageLabel: "文字識別語言",
-      fieldSettingsScannerIntegrationHeading: "掃描", fieldSettingsGroupNewDocuments: "新文檔", fieldSettingsGroupReminders: "提醒", fieldSettingsDefaultDocTypeHint: "添加文檔時預先填入。", fieldSettingsDefaultCurrencyHint: "新文檔時自動建議，例如 EUR。", fieldSettingsReminderLookaheadHint: "顯示在這麼多天內到期的提醒。", fieldSettingsScanBridgeUrlHint: "僅用於不在 8765 或 8766 端口的助手。",
+      fieldSettingsScannerIntegrationHeading: "掃描", fieldSettingsGroupNewDocuments: "新文檔", fieldSettingsGroupReminders: "提醒", fieldSettingsDefaultDocTypeHint: "添加文檔時預先填入。", fieldSettingsDefaultCurrencyHint: "新文檔時自動建議，例如 EUR。", fieldSettingsDefaultPeopleLabel: "用新增文檔的人填寫人員", fieldSettingsDefaultPeopleHint: "由與中心配對的 Mac 或 iPhone 完成，使用你在中心上的名字。此瀏覽器不知道你是誰，因此人員留空。", fieldSettingsReminderLookaheadHint: "顯示在這麼多天內到期的提醒。", fieldSettingsScanBridgeUrlHint: "僅用於不在 8765 或 8766 端口的助手。",
       fieldSettingsScannerIntegrationText: "從工具欄掃描需要在這臺電腦上運行一個小型助手應用：大多數掃描儀使用 dossiary-scan-helper，ScanSnap iX500 使用 scanix500。Dossiary 會自動找到它們；下面的地址僅用於運行在其他端口的助手。",
       fieldSettingsScannerIntegrationLink: "獲取 dossiary-scan-helper", fieldSettingsScannerIntegrationLinkScanix500: "獲取 scanix500（ScanSnap iX500）",
       fieldSettingsColDocTypes: '文檔類型',
@@ -3410,6 +3410,8 @@
       fieldSettingsGroupReminders: "Հիշեցումներ",
       fieldSettingsDefaultDocTypeHint: "Լրացվում է նախապես՝ փաստաթուղթ ավելացնելիս։",
       fieldSettingsDefaultCurrencyHint: "Առաջարկվում է նոր փաստաթղթերում, օրինակ՝ AMD։",
+      fieldSettingsDefaultPeopleLabel: "Լրացնել Անձինք-ը փաստաթուղթն ավելացնող անձով",
+      fieldSettingsDefaultPeopleHint: "Կատարվում է հանգույցի հետ զուգակցված Mac-ում կամ iPhone-ում՝ ձեր այնտեղի անունով։ Այս դիտարկիչը չգիտի, թե ով եք դուք, ուստի Անձինք-ը թողնում է դատարկ։",
       fieldSettingsReminderLookaheadHint: "Ցուցադրվում են այսքան օրվա ընթացքում ժամկետ ունեցող հիշեցումները։",
       fieldSettingsScanBridgeUrlHint: "Միայն 8765 կամ 8766 պորտից տարբեր պորտում աշխատող օգնականի համար։",
       fieldSettingsScannerIntegrationText: "Գործիքագոտուց սկանավորելու համար այս համակարգչում պետք է աշխատի փոքր օգնական ծրագիր՝ dossiary-scan-helper՝ սկաներների մեծ մասի համար, կամ scanix500՝ ScanSnap iX500-ի համար։ Dossiary-ն դրանցից յուրաքանչյուրն ինքն է գտնում. ստորև նշված հասցեն միայն այլ պորտում աշխատող օգնականի համար է։",
@@ -3953,6 +3955,7 @@
   let fieldValuesByDocId = {}; // { docId: { fieldName: valueString, ... } }
   let defaultDocumentType = null; // prefills Document Type when opening "Add document"
   let defaultCurrency = null;     // prefills Currency (as a dismissible guess) on new captures; unset means no guess
+  let defaultPeopleAdder = false; // settings.default_people = 'adder': a Mac or iPhone paired with a hub files new documents under the person adding them (this page knows nobody, so it fills nothing)
   let reminderLookaheadDays = 30; // how many days ahead a reminder-type field value counts as "coming up soon"; see checkReminders()
   let scanAutoOcr = true; // "Make scans searchable automatically" (scan_auto_ocr, missing = on)
   let scanOcrLanguage = 'eng+deu'; // OCR language for scans (scan_ocr_language), an ocrLanguageOptionsHtml() value
@@ -5568,7 +5571,7 @@
     allDocs = []; tagsByDocId = {}; tagNameToId = {}; peopleByDocId = {}; personFieldValuesByDocId = {}; personNameToId = {};
     nextDocId = 1; nextTagId = 1; nextPersonId = 1;
     fieldDefs = []; fieldNameToId = {}; nextFieldId = 1; fieldValuesByDocId = {}; typeFieldOrder = {}; fieldDescriptions = {};
-    defaultDocumentType = null; defaultCurrency = null; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null; scanAutoOcr = true; scanOcrLanguage = 'eng+deu';
+    defaultDocumentType = null; defaultCurrency = null; defaultPeopleAdder = false; fsSelectedType = null; reminderLookaheadDays = 30; scanBridgeUrl = null; scanAutoOcr = true; scanOcrLanguage = 'eng+deu';
     collections = []; collectionFolders = []; collapsedCollectionFolders = new Set(); collectionDocIds = {}; nextCollectionId = 1; collectionsNavExpanded = true; collectionsTabsOpen = false; selectedDocIds = new Set();
     reminderSnoozes = {}; notDuplicateKeys = new Set();
     reportDrilldownIds = new Set(); reportDrilldownLabel = ''; reportDrilldownReturnTo = 'reports';
@@ -5725,6 +5728,7 @@
     loadColumnSettings();
     loadDefaultDocumentType();
     loadDefaultCurrency();
+    loadDefaultPeople();
     loadReminderLookaheadDays();
     loadScanBridgeUrl();
     loadNavStyle();
@@ -6001,6 +6005,20 @@
       setStatusT('libraryDetailsSaved', {}, 'ok');
     });
     el('library-details-title').focus();
+  }
+
+  // default_people (1.69.0): 'adder' fills a new document's People with the person adding it. Only Dossiary for Mac
+  // and the iOS app know that person (their hub's name for them); this page shows and stores the setting but fills
+  // nothing itself. Any other value reads as off; switching off stores an empty value, as the default currency does.
+  function loadDefaultPeople(){
+    const rows = queryAll("SELECT value FROM settings WHERE key = 'default_people'").rows;
+    defaultPeopleAdder = rows.length > 0 && rows[0][0] === 'adder';
+  }
+
+  async function saveDefaultPeople(on){
+    defaultPeopleAdder = !!on;
+    db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('default_people', ?)", [defaultPeopleAdder ? 'adder' : '']);
+    await persistDb();
   }
 
   async function saveDefaultCurrency(value){
@@ -13494,6 +13512,10 @@
                   <input type="text" id="fs-default-currency" list="currency-list" value="${escapeHtml(defaultCurrency || '')}" placeholder="${t('commonNone')}" />
                   <div class="field-hint">${t('fieldSettingsDefaultCurrencyHint')}</div>
                 </div>
+                <div class="field">
+                  <label class="checkbox-label" for="fs-default-people"><input type="checkbox" id="fs-default-people" ${defaultPeopleAdder ? 'checked' : ''} /> ${t('fieldSettingsDefaultPeopleLabel')}</label>
+                  <div class="field-hint">${t('fieldSettingsDefaultPeopleHint')}</div>
+                </div>
               </div>
             </section>
             <section class="fs-group">
@@ -13569,6 +13591,7 @@
     }
     el('fs-default-type').addEventListener('change', (e) => saveDefaultDocumentType(e.target.value));
     el('fs-default-currency').addEventListener('change', (e) => saveDefaultCurrency(e.target.value));
+    el('fs-default-people').addEventListener('change', (e) => saveDefaultPeople(e.target.checked));
     el('fs-reminder-lookahead').addEventListener('change', (e) => saveReminderLookaheadDays(e.target.value));
     el('fs-scan-bridge-url').addEventListener('change', (e) => saveScanBridgeUrl(e.target.value));
     el('fs-scan-auto-ocr').addEventListener('change', async (e) => { scanAutoOcr = e.target.checked; writeSetting('scan_auto_ocr', scanAutoOcr ? '1' : '0'); await persistDb(); if(scanAutoOcr && ocrJobRows().length) startOcrJobRunner(); });

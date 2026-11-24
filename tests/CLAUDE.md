@@ -115,6 +115,11 @@ never by file name. This list maps each of them to what it checks:
     `default_currency` guess in capture (persisted, flagged, cleared).
   - `test_edit_currency_guess.py` -- the Edit-form Currency guess, only
     for a document with a real, non-zero Amount and no Currency.
+  - `test_default_people.py` -- Field Settings' "Fill in People with the
+    person adding the document" (1.69.0): in New documents, off without
+    the setting, its hint, ticking storing `default_people = adder`,
+    still ticked on reopening, unticking storing an empty value, and an
+    unknown value reading as off.
   - `test_payment_date.py` -- a Payment Date custom field ordered among
     Payment method/Amount/Currency, saved, formatted in the panel, and
     pre-filled in Edit.

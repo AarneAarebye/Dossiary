@@ -230,6 +230,7 @@ about to change. Add a new note to the matching file, not here. The list under e
   - The one-time backfill (`migrateSentinelFieldsToGeneric()`) was the first in-app data migration this codebas...
   - `migratePeopleToGenericField()` followed the same precedent shortly
   - `default_currency` (a `settings` row, exactly like `default_document_type`
+  - `default_people` (1.69.0): 'adder' fills People with the person adding a document, done by the Mac/iOS apps and the hub, never the page
 
 ### [`docs/architecture/03-detail-and-edit.md`](docs/architecture/03-detail-and-edit.md): Detail view, editing, archive, review queue, waste bin
 
