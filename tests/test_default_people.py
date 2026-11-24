@@ -78,7 +78,7 @@ async def main():
         await close_settings()
 
         # A value the page doesn't know (a later version's) reads as off.
-        await page.evaluate("""(() => { db.run("UPDATE settings SET value = 'Arne' WHERE key = 'default_people'"); loadDefaultPeople(); })()""")
+        await page.evaluate("""(() => { window.__DEBUG_dbRun("INSERT OR REPLACE INTO settings (key, value) VALUES ('default_people', ?)", ['Arne']); window.__DEBUG_loadDefaultPeople(); })()""")
         await open_settings()
         print("another value reads as off:", not await page.is_checked(box))
 
