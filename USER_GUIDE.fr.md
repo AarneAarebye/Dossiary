@@ -198,13 +198,6 @@ une petite application distincte sur votre Mac, que vous installez et avec
 laquelle vous partagez chaque bibliothèque une fois (voir ses propres
 instructions).
 
-Le jumelage d'un iPhone ou d'un iPad, le choix de ce qu'il peut voir et le
-retrait d'un appareil se font dans **Dossiary pour Mac**, dans sa fenêtre
-Personnes. La récupération d'une bibliothèque depuis le Pi et la suppression
-d'une bibliothèque se trouvent dans son menu Fichier. Pour mettre une
-bibliothèque sur le Pi pour la première fois, ouvrez-la ici et choisissez
-**🛠 Outils → ⇪ Partager cette bibliothèque…**.
-
 Dossiary dans le navigateur se connecte seulement à Dossiary Sync, afin
 qu'une bibliothèque synchronisée reste protégée pendant que vous la modifiez
 ici :

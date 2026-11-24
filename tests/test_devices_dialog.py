@@ -8,8 +8,8 @@ import asyncio, json
 from playwright.async_api import async_playwright
 
 # Tools › "🔗 Dossiary Sync…" talks to Dossiary Sync's admin API on
-# http://127.0.0.1:8769. Since 1.71.0 it only connects: devices, pairing,
-# deleting and getting libraries are Dossiary for Mac's, and the page keeps
+# http://127.0.0.1:8769. Since 1.71.0 it only connects (devices, pairing,
+# deleting and getting libraries left the page), and the page keeps
 # its token so an open synced library is checked with Dossiary Sync. A fake
 # fetch plays that service per scenario; the shared stub would refuse any
 # real request to it anyway, so no test reaches a Dossiary Sync running on
@@ -197,9 +197,8 @@ async def scenario_connected(p):
     print("dialog titled Dossiary Sync:", (await page.inner_text('.devices-dialog h2')) == 'Dossiary Sync')
     print("a stored, valid token goes straight to the connected view:",
           'Connected to Dossiary Sync on this Mac' in await page.inner_text('#devices-connected-text'))
-    print("...pointing at Dossiary for Mac for the rest:",
-          (await page.inner_text('#devices-mac-note')) == 'Devices, sharing, deleting libraries and getting them from the Pi are in Dossiary for Mac.')
     body = await page.inner_text('#devices-dialog-body')
+    print("no note about another app:", await page.locator('#devices-mac-note').count() == 0 and 'Dossiary for Mac' not in body)
     print("no devices, pairing or Get it any more:",
           await page.locator('.devices-row, #devices-add-btn, #devices-available-slot, #devices-libraries').count() == 0)
     print("...and no library names from the service:", 'Household' not in body and 'Taxes' not in body)
@@ -304,7 +303,6 @@ async def scenario_german(p):
     await page.evaluate("([k]) => localStorage.setItem(k, 'admin-tok')", [TOKEN_KEY])
     await open_dialog(page)
     print("German connected text:", 'Mit Dossiary Sync auf diesem Mac verbunden' in await page.inner_text('#devices-connected-text'))
-    print("German note:", 'Dossiary für Mac' in await page.inner_text('#devices-mac-note'))
     print("no page errors:", not errors, errors)
     await browser.close()
 

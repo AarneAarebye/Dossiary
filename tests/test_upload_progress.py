@@ -306,52 +306,12 @@ async def scenario_switch_library_stops(p):
     await browser.close()
 
 
-async def scenario_share_grace(p):
-    # Right after a share the first answers may not say uploading yet (key left out, version 0): the 2 s poll
-    # and the share's start time are kept for 30 s, a late uploading: true continues the elapsed time.
-    browser, page, errors = await open_app(p, state(uploading=None))
-    before = await status(page)
-    print("share finished (hook):", await page.evaluate("window.__DEBUG_uploadShareFinished(0)"))
-    await tick(page)
-    print("no flag yet: no upload line, no message:", await status(page) == before, await status(page))
-    n = await state_calls_between(page, 4.6)
-    print("...the 2 s poll is kept:", n >= 2, n)
-    await set_state(page, state())
-    await tick(page)
-    text = await status(page)
-    e = elapsed_of(text)
-    print("a late uploading: true continues the time from the share (not 0:00):", e is not None and e >= 4, text)
-    await set_state(page, state(version=1, uploading=None))
-    await tick(page)
-    print("...and the key left out at version 1 is done:", await status(page) == DONE_TEXT, await status(page))
-    await browser.close()
-
-    # The grace runs out: back to the 5 s poll without a message.
-    browser, page, errors2 = await open_app(p, state(uploading=None))
-    before = await status(page)
-    await page.evaluate("window.__DEBUG_uploadShareFinished(29000)")
-    await page.wait_for_timeout(3500)   # the 2 s poll answers after the 30 s
-    n = await state_calls_between(page, 5.5)
-    print("grace over: back to polling every 5 s:", 1 <= n <= 2, n)
-    print("...without a message:", await status(page) == before and 'Pi' not in await status(page), await status(page))
-    await browser.close()
-
-    # A small library done before the first poll after the share: the done line.
-    browser, page, errors3 = await open_app(p, state(version=1, uploading=None))
-    await page.evaluate("window.__DEBUG_uploadShareFinished(0)")
-    await tick(page)
-    print("done before the first poll after a share: the done line:", await status(page) == DONE_TEXT, await status(page))
-    print("no page errors:", not (errors + errors2 + errors3), errors + errors2 + errors3)
-    await browser.close()
-
-
 async def main():
     import sys
     only = sys.argv[1:]
     async with async_playwright() as p:
         for scenario in (scenario_uploading_then_done, scenario_uploading_then_done_explicit_false, scenario_hub_unreachable,
-                         scenario_last_error, scenario_replaced_line_returns, scenario_nothing_new, scenario_switch_library_stops,
-                         scenario_share_grace):
+                         scenario_last_error, scenario_replaced_line_returns, scenario_nothing_new, scenario_switch_library_stops):
             if only and not any(o in scenario.__name__ for o in only):
                 continue
             print(f"--- {scenario.__name__}")

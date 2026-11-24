@@ -100,8 +100,8 @@ this library in Tools; the Tools entry named Dossiary Sync; not running with
 the install link and Look again; Connect asking for a code as JSON, a wrong
 code, the right one normalised and its token stored, the token checked with
 `GET /admin/libraries`; a 429 naming the wait (header or body); a stored
-valid token going straight to the connected view (`syncConnectedText`, the
-note pointing at Dossiary for Mac, no devices, pairing, Get it or library
+valid token going straight to the connected view (`syncConnectedText`, no
+note about Dossiary for Mac since 1.72.0, no devices, pairing, Get it or library
 names, only health and libraries asked); the language switch blocked while
 open; Disconnect revoking the token and showing Connect with its new text;
 a revoked token dropped on open and on a 401 from the libraries call; a
@@ -135,28 +135,8 @@ trashed state with a change made before it, while a first answer in the grace pe
 trashed) closes with the notice, keeping an unwritten change aside first
 (every other scenario first gets one ordinary answer); a hostile `deletedBy`
 shown as text).
-Share this library (`test_share_library.py` -- a fake `fetch`
-playing the Mac's check, share and state routes, and a fake
-libraries folder `window.__LIB_ROOT`: the Tools item only for an unsynced
-library; phones only, none ticked; no stored folder → the chooser naming the
-root from a check with a probe that doesn't exist; a wrong folder refused
-(probe written there, then removed, nothing stored); the right one stored
-with its path; in place: one JSON share `{folder, phones: []}` after
-`library.sqlite` was saved, no copy, reopened synced, the status line, the
-status line "Shared … uploading to the Pi.", the shared library polled like any
-synced one, the header height unchanged, no Share item afterwards; from elsewhere with the stored folder
-(no picker): the numbered " 2" copy with the ticked phone, every file but
-the sync bookkeeping and clutter, `library.sqlite` from memory, the original
-unchanged, Recent replaced, the hub's name and the note; Stop (Escape
-blocked meanwhile) and an unreadable file removing the copy; a 503 after the
-copy keeping it and Try again posting the same copy; not connected → Connect
-opening the Dossiary Sync dialog; in place known up front (read-only name); 409
-already-shared and an unknown code with its status; German labels (Get it's
-checks left in 1.71.0); an
-IndexedDB spy (`IDB_SPY`) confirming the folder lives in its own
-`dossiary-libraries-root` database at version 1 while `dossiary-app-db` stays
-at version 1 with only `recentLibraries`, and `window.__IDB_FAIL = 'blocked' |
-'error'` showing the chooser instead of a hang, the share going ahead).
+Share this library left the page in 1.72.0 (Dossiary for Mac's Put on Hub…), and with it
+`test_share_library.py` and `test_libraries_folder.py`.
 Saving in a synced library (`test_no_lease.py`, 37 scenarios -- replaced
 `test_sync_lease.py`, removed with the editing lease; a fake folder
 (`__LIB_ROOT`-style stub with `.dossiary-sync.json` and `.dossiary-base.json`
@@ -186,9 +166,8 @@ each marker names the version before it, nothing kept aside),
 `base_pull_between_write_and_marker` (a pull's marker written between the tab's
 write and its marker leaves the write unproven); `switch_asks_when_unsaved` (the
 keep-aside copy fails: Switch library and Export's "Open it" ask, Cancel keeps
-the change, "Switch anyway" switches). Ticks use `__DEBUG_syncNow()` (no
-argument). `test_devices_dialog.py`, `test_deleted_elsewhere.py` and
-`test_share_library.py` carry the admin dialogs (the latter also checks the live upload line after a share).
+the change, "Switch anyway" switches; `devices_dialog` also checks that Tools has no Share item). Ticks use `__DEBUG_syncNow()` (no
+argument). `test_devices_dialog.py` and `test_deleted_elsewhere.py` carry the Dossiary Sync dialog and a library deleted elsewhere.
 Upload progress (`test_upload_progress.py`, 1.64.0 -- a synced library with an admin token and a scripted
 `GET …/state`, real time): `uploading: true` shows the spinner line "Uploading to the Pi… m:ss" whose time
 advances while the spinner element stays the same node, the state polled at least twice in 4.6 s; then
@@ -200,24 +179,9 @@ busy; a save message taking the line is changed first by a poll, never the ticke
 line returns, and a switch to German retranslates and keeps ticking; no token (no state request), a 404, a
 body that isn't JSON, no `uploading` field, a non-boolean one and a library not uploading (false, or the key
 left out at version 4 and 0, never seen uploading) show nothing and keep the 5 s poll; Switch library stops
-the ticker and the requests, and the next library's message stays; after a share
-(`__DEBUG_uploadShareFinished()`) answers without the key at version 0 keep the 2 s poll with no message, a
-late `uploading: true` continues the time from the share, the grace running out (started 29 s ago) falls
-back to 5 s silently, and a version 1 answer right after a share is the done line.
+the ticker and the requests, and the next library's message stays (the after-share grace and its
+scenario left with sharing in 1.72.0).
 Confirmed non-vacuous by dropping the ticker's ownership check and its span-only update.
-The Dossiary Sync folder (`test_libraries_folder.py`, 1.65.0 -- a scripted Mac service whose
-`POST /admin/libraries-root/check` answers the 0.17.0 keys; the devices dialog's folder line and cloud
-warning, and their checks, left in 1.71.0). Share refused with 409 `cloud-drive`
-(provider with HTML) shows the refusal as text, one share call, the dialog open with Share enabled, the
-libraries folder and the library unchanged and unsynced; a copy share refused removes the copy it made, says
-nothing about a kept copy and leaves Share a plain Share; a copy kept after a 500 and then refused on Try again is removed
-while it is still the same folder, but a folder replaced under its name is left alone and still named as kept;
-a removal that throws keeps the copy with the copy-kept text, and Try again shares that copy with no second
-numbered one.
-The "Not shared yet" hint appears on the opened line for an unsynced library directly in the stored, granted,
-marked libraries folder without a picker or prompt, and not for a library elsewhere, a folder without the
-marker, a synced library, a folder whose permission isn't granted or no stored folder; German, and a switch
-to French retranslates it.
 `export_smart_rule_cases.py` is likewise not a test: it writes the Smart Collection cases the iPhone app (`dossiary-ios`) checks its Swift port against.
 This
 list itself can go stale — if you add a test, or a feature loses its test,

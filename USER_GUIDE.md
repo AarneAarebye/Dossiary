@@ -179,12 +179,6 @@ desk. It gets them from [Dossiary Sync](https://github.com/AarneAarebye/dossiary
 a small separate app on your Mac that you install and share each library
 with once (see its own instructions).
 
-Pairing an iPhone or iPad, choosing what it may see, and removing a device
-are done in **Dossiary for Mac**, in its People window. Getting a library
-from the Pi and deleting one are in its File menu. To put a library on the
-Pi for the first time, open it here and choose **🛠 Tools → ⇪ Share this
-library…**.
-
 Dossiary in the browser only connects to Dossiary Sync, so that a synced
 library stays safe while you edit it here:
 

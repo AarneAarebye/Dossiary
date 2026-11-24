@@ -192,12 +192,6 @@ Sie bekommt sie von [Dossiary Sync](https://github.com/AarneAarebye/dossiary-syn
 einer kleinen eigenen App auf deinem Mac, die du installierst und mit der du
 jede Bibliothek einmal teilst (siehe ihre eigene Anleitung).
 
-Ein iPhone oder iPad koppeln, festlegen, was es sehen darf, und ein Gerät
-entfernen erledigst du in **Dossiary für Mac**, im Fenster „Personen“. Eine
-Bibliothek vom Pi holen und eine löschen findest du dort im Menü „Ablage“.
-Um eine Bibliothek zum ersten Mal auf den Pi zu bringen, öffne sie hier und
-wähle **🛠 Werkzeuge → ⇪ Diese Bibliothek teilen…**.
-
 Dossiary im Browser verbindet sich nur mit Dossiary Sync, damit eine
 synchronisierte Bibliothek sicher bleibt, während du sie hier bearbeitest:
 

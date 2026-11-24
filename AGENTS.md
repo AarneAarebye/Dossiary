@@ -269,12 +269,11 @@ about to change. Add a new note to the matching file, not here. The list under e
   - scan_watch.py
   - Scanning: the scan dialog and its helpers
 
-### [`docs/architecture/06-sync-and-libraries.md`](docs/architecture/06-sync-and-libraries.md): Dossiary Sync: the connection, a library deleted elsewhere, share library, saving without a lease
+### [`docs/architecture/06-sync-and-libraries.md`](docs/architecture/06-sync-and-libraries.md): Dossiary Sync: the connection, a library deleted elsewhere, putting a library on the hub, saving without a lease
 
   - Dossiary Sync connection (since 1.71.0 the page only connects; device and library admin is Dossiary for Mac's)
   - A library deleted elsewhere
-  - Share this library
-  - The Dossiary Sync folder and cloud drives
+  - Putting a library on the hub left the page in 1.72.0
   - Saving in a synced library (no editing lease)
 
 ### [`docs/architecture/07-pdf-originals-libraries-i18n.md`](docs/architecture/07-pdf-originals-libraries-i18n.md): Searchable PDF, originals, make searchable, new and recent libraries, UI languages

@@ -187,12 +187,6 @@ del escritorio. Las obtiene de [Dossiary Sync](https://github.com/AarneAarebye/d
 una pequeña aplicación aparte en tu Mac que instalas y con la que compartes
 cada biblioteca una vez (consulta sus propias instrucciones).
 
-Emparejar un iPhone o iPad, elegir lo que puede ver y quitar un dispositivo
-se hace en **Dossiary para Mac**, en su ventana Personas. Obtener una
-biblioteca de la Pi y eliminar una están en su menú Archivo. Para poner una
-biblioteca en la Pi por primera vez, ábrela aquí y elige **🛠 Herramientas →
-⇪ Compartir esta biblioteca…**.
-
 Dossiary en el navegador solo se conecta con Dossiary Sync, para que una
 biblioteca sincronizada siga a salvo mientras la editas aquí:
 

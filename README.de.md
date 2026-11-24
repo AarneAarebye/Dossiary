@@ -494,21 +494,11 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   wird nur `127.0.0.1`), damit die Seite eine synchronisierte Bibliothek,
   solange sie geöffnet ist, mit Dossiary Sync abgleicht: Sie übernimmt
   neuere Versionen, ihre eigenen Speichervorgänge schieben die Basis weiter,
-  und ein Löschen an anderer Stelle wird bemerkt. iPhones und iPads koppeln,
-  festlegen, was sie sehen dürfen, Geräte entfernen, eine Bibliothek vom Pi
-  holen und Bibliotheken löschen liegen seit 1.71.0 in Dossiary für Mac.
+  und ein Löschen an anderer Stelle wird bemerkt.
   Während die erste Version einer geteilten Bibliothek auf den Pi
   hochgeladen wird, zeigt die Statuszeile „Wird auf den Pi hochgeladen…
   m:ss“ mit der bisherigen Dauer, meldet, wenn der Pi nicht erreichbar ist
-  oder das Hochladen ein Problem hat, und sagt, wann es fertig ist. Eine
-  Bibliothek in einen Ordner auf einem Cloud-Speicher (iCloud Drive,
-  Dropbox, OneDrive, Google Drive, Box) zu teilen wird mit dem Namen des
-  Anbieters abgelehnt, und es bleibt nichts zurück. Eine Bibliothek, die Sie
-  direkt aus dem Dossiary-Sync-Ordner öffnen und die noch nicht geteilt ist,
-  bekommt in der Statuszeile „Noch nicht geteilt: Werkzeuge → Diese
-  Bibliothek teilen…“ (nur solange Dossiary noch die Berechtigung für den
-  beim Teilen gewählten Ordner hat und der Ordner die Markierung
-  `.dossiary-root.json` von Dossiary Sync trägt).
+  oder das Hochladen ein Problem hat, und sagt, wann es fertig ist.
 - **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
   täglich brauchen (Check inbox, Check reminders, Scan, Add document,
   Details, Columns); Gelegentliches — Manage fields, Manage collections,

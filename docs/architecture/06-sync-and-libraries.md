@@ -1,4 +1,4 @@
-# Dossiary architecture notes: Dossiary Sync: the connection, a library deleted elsewhere, share library, saving without a lease
+# Dossiary architecture notes: Dossiary Sync: the connection, a library deleted elsewhere, putting a library on the hub, saving without a lease
 
 Moved out of `AGENTS.md` (section "Architecture notes") without changes to the wording. Read this file when you touch the area it describes; `AGENTS.md` lists the notes it holds. Add a new note for this area here, not in `AGENTS.md`.
 
@@ -13,8 +13,8 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   keeping only a library deleted on another device); the start screen's `#empty-devices-btn`
   and the Recent libraries 🗑 went too. The page keeps the token so an open
   synced library is checked with `pollSyncState()` (`GET
-  /admin/libraries/<id>/state`) and so Share this library… works until the
-  Mac has Put on Hub. The dialog talks to the loopback-only admin API on
+  /admin/libraries/<id>/state`); putting a library on the hub followed in 1.72.0
+  (below). The dialog talks to the loopback-only admin API on
   `http://127.0.0.1:8769` (3 s health timeout, 15 s for every other call,
   so a hung service never leaves a button disabled). Not answering → an
   explanation and the dossiary-sync link, with Look again (the token is
@@ -29,8 +29,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   service no longer knows (`connected: false`, or a 401 from `GET
   /admin/libraries`, the one protected call the dialog makes) is dropped and
   Connect comes back. Connected (`loadDevicesConnected()`):
-  `syncConnectedText`, `syncAdminInMacNote` pointing at Dossiary for Mac,
-  and Disconnect (`DELETE /admin/connect`, the token forgotten either way);
+  `syncConnectedText` and Disconnect (`DELETE /admin/connect`, the token forgotten either way);
   another failure of that call is shown as escaped text with Look again.
   `devicesDialogSeq` drops answers for a dialog that was closed or reopened
   meanwhile. `normalizeSyncDevice()` stays for Share's phone list. Tested by
@@ -67,131 +66,15 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   the Recent entry stays, the sync file is left alone (it may be shared
   again), and the status line says `syncLibraryDetachedLocal`. Closing every dialog loses text typed into an open form (memory's
   changes are kept aside), and a running dialog's job finds its library gone. Tested by `tests/test_deleted_elsewhere.py`.
-- **Share this library** (`openShareLibraryDialog()`,
-  `ensureLibrariesRootHandle()`, `copyLibraryInto()`; Tools → `#share-library-btn`, shown only for an open
-  library without `.dossiary-sync.json` (`updateShareLibraryItem()`, run when Tools
-  opens); spec in dossiary-ios
-  `docs/superpowers/specs/2026-10-25-share-library-design.md`). Every synced
-  library lives in this Mac's **libraries folder**; a page never learns real
-  paths, so Dossiary keeps a handle to that folder in a database of its own,
-  `dossiary-libraries-root` (version 1, store `librariesRoot`, `{id: 'root',
-  handle, root}`). `dossiary-app-db` deliberately stays at version 1: bumping
-  it would block forever while an older Dossiary tab held the old connection,
-  and an older copy on the shared `file://` origin would then hit a
-  VersionError and show no Recent libraries. A blocked or failing open of the
-  new database rejects (`onblocked`/`onerror`), so the stored folder counts as
-  missing and the chooser appears instead of a hang (a choice that can't be
-  stored is used for that time only). `ensureLibrariesRootHandle({slot, isOpen})` uses the
-  stored handle when its permission is (or is again) granted; otherwise the
-  slot names the folder to choose (the `root` a `POST
-  /admin/libraries-root/check` with a probe that doesn't exist answers) and
-  "Choose folder…" picks it: a `.dossiary-probe-<uuid>` file is written into
-  the choice, the check is asked, and the probe is removed again either way;
-  `ok: false` → "That isn't {root}. Choose that folder." and nothing stored.
-  **Share**: without an admin token the dialog explains and offers Connect
-  (the Dossiary Sync dialog); otherwise a name (the folder name without
-  `.dossiary`, read-only once the library is known to be in place) and one
-  unticked checkbox per paired phone (`GET /admin/devices`, role `phone`).
-  Share: the libraries folder (refused with `shareLibraryRootIsLibrary` when
-  it is the open library's own folder or inside it, `isInsideLibraryFolder()`),
-  then background jobs are held (`holdBackgroundForShare()`:
-  `shareHoldsBackground` stops a preview run after its current preview,
-  skips OCR runner passes and makes `persistDb({background: true})` a no-op,
-  until the reopen's `resetAll()` or a failure releases it), then
-  `persistDb()` (the share route hashes `library.sqlite` at call time --
-  deliberately after the folder choice, so the save sits right before the
-  call), then either in place (`root.resolve(rootDirHandle)` is one step
-  long) → `POST /admin/libraries/share {folder, phones}` with no timeout (the
-  Mac creates the library on the Pi first), or a copy into a new
-  `<Name>.dossiary` (numbered " 2", … when taken;
-  `createEmptyLibraryFolder()` checks the folder it got is empty -- a
-  same-named folder that appeared between the name check and the create is
-  never used or removed, the next name is tried) by `copyLibraryInto()` --
-  Back up's copier, pulled out of it unchanged: `library.sqlite` from
-  `db.export()`, every other file from `listLibraryFiles()` (no sync
-  bookkeeping, no `.DS_Store`/`._*`), 4 at a time -- with progress and Stop;
-  Stop or the first unreadable/unwritable file removes the copy and says
-  which file and why. A share that fails after the copy keeps it, says so,
-  and the button becomes "Try again" (the same copy, posted again). No
-  answer, or a 409 `already-shared` (a Try again after an answer that never
-  arrived): when the folder's `.dossiary-sync.json` now names a library (not
-  the one it named before the first attempt, `ctx.priorSyncIds`, nor a
-  detached one), the share went through and is finished as a success.
-  Success:
-  `resetAll()` + `proceedWithRootDirHandle()` on the shared folder (so the new
-  sync file is read), a copy replaces the original in Recent libraries
-  (`forgetRecentLibrary()` first, the open records the copy), the status line
-  "Shared “<hub's name>” — uploading to the Pi.", and for a copy a notice
-  naming `<root>/<Name>.dossiary` and the original (never touched). The sync marker
-  that used to read "uploading…" while `GET …/state` said `uploading: true` (`renderSyncMarker()`) was removed on
-  2026-10-28; the status line stays and the shared library is polled like any synced one. **Upload
-  status** (1.64.0, spec `docs/superpowers/specs/2026-11-08-upload-progress-design.md`, step 1):
-  `noteUploadState()`, called by `pollSyncState()` for every answer it can read, drives `syncUpload`
-  (`{libraryId, root, since, seen, graceUntil, hubDown, error, build, ticker}`, times from
-  `performance.now()`). `uploading: true` → the status line
-  "Uploading to the Pi… m:ss" (`syncUploadingLine`, kind busy, spinner), `since` being the share's end
-  (`finishShare()` calls `uploadStatusBegin()`) or the first answer that said uploading; `hubReachable:
-  false` adds `syncUploadWaitingHub`, a non-empty `lastError` adds `syncUploadProblem` (kind err, the
-  error as text) and goes back when it clears; the poll runs every `SYNC_UPLOAD_TICK_MS` = 2 s
-  (`setSyncTickMs()`) instead of 5 s. **Dossiary Sync leaves the `uploading` key out when it is false**
-  (dossiary-sync `EditorControl.swift` encodes it only when true), so a missing key (or false) means not
-  uploading: once this page saw `uploading: true` for the library (`seen`), such an answer with
-  `version >= 1` → `syncUploadDone` (kind ok); without a version → back to 5 s and the line cleared if it
-  is still ours. An older Dossiary Sync never sends the key: never seen true, nothing changes. Right after
-  a share the first answers may not say uploading yet: for `SYNC_UPLOAD_SHARE_GRACE_MS` (30 s) the 2 s
-  poll and the share's start are kept (a late `uploading: true` continues the elapsed time, a
-  `version >= 1` meanwhile is the done line), then back to 5 s without a message
-  (`__DEBUG_uploadShareFinished(agoMs)` lets tests start it). The line goes through `setStatusLive()`, so a language change
-  retranslates it; the 1 s ticker (`uploadTick()`) changes only the text of `.sync-upload-elapsed`
-  (spinner and title stay, so nothing flickers; `#status` is not a live region), and only while
-  `lastStatusBuild` is still the upload line's builder: another message keeps the line until the next
-  poll puts the upload line back. `stopSyncTimer()` (close, switch library, deleted or detached) and a
-  lost admin token stop it. Error codes
-  are mapped (already-shared, not-a-library, unknown-device, hub-*; a 404
-  without a known code = an older Dossiary Sync); any other is shown with its
-  code and status. `shareLibraryRunning` blocks closing while saving, copying
-  or sharing. **Get it** (the
-  devices dialog's list of hub libraries) left in 1.71.0 for Dossiary for
-  Mac's Get from Hub…. Tested by `tests/test_share_library.py`; a
-  directory handle's `_granted` in the stub makes `queryPermission()` answer
-  granted.
-- **The Dossiary Sync folder and cloud drives** (1.65.0; spec dossiary-sync
-  `docs/superpowers/specs/2026-11-08-standard-libraries-folder-design.md`;
-  `cloudProviderOf()`, `showNotSharedHint()`). Dossiary Sync 0.17.0 makes
-  `~/Dossiary` the standard synced-libraries folder, marks it with
-  `.dossiary-root.json` and refuses cloud drives for it. The devices dialog's
-  folder line and cloud warning left in 1.71.0 (Dossiary for Mac shows the
-  warning); what follows up to the 409 is history. The devices dialog's connected view asks `POST
-  /admin/libraries-root/check` once (with a probe that doesn't exist, like the
-  chooser's first call) and, from the new keys, shows "Dossiary Sync folder:
-  {path}" (`path`, `~` abbreviated by the service) and, only while `cloud` is
-  a string, an amber warning naming the provider with the move command
-  (`SYNC_FOLDER_MOVE_COMMAND`) in its own `<code>` (`user-select: all`, so one
-  click selects it to copy). Both values come from the service and are put in
-  as escaped text: the translated template is split at `{path}`/`{provider}`
-  and at the command instead of being filled by `t()` (whose `replaceAll`
-  would also read `$` patterns in the value). An older service (no keys, or a
-  404 without the route) adds nothing; the result lives in
-  `devicesState.folder`, so a re-render kept it. A 409 `{"error":
-  "cloud-drive", "provider"}` from share maps to
-  `shareLibraryCloudRefused`; a copy the share flow
-  made for that share is removed again (it could never be shared) instead of
-  being kept for Try again. `removeOwnShareCopy()` removes it (and a partial
-  copy after a failed or stopped copy) only when the folder of that name is
-  still the very handle the flow created (`isSameEntry`) and has no sync file;
-  a renamed, replaced or vanished folder is left alone. Only a removal that
-  worked forgets `ctx.copy`; otherwise the copy-kept text shows and Try again
-  shares that same copy, no second numbered copy. **"Not shared yet"**: after a library opens
-  (`afterDbReady()`), when it has no sync file and is directly inside the
-  stored libraries folder whose permission is still granted
-  (`peekLibrariesRoot()`, no prompt; `isDirectlyIn()`) and that folder holds
-  the marker, the status line gets "Not shared yet: Tools → Share this
-  library…" appended (only while the opened line is still the status). The
-  page never learns real paths, so this is the one reliable way to know a
-  library sits in the Dossiary Sync folder; "not registered" means
-  `!syncLibrary && !syncLibraryGone` after `readSyncFile()` (no usable
-  `.dossiary-sync.json`, or one naming a library detached in this session),
-  the same test that shows the Share item, with no admin call. Tested by `tests/test_libraries_folder.py`.
+- **Putting a library on the hub left the page in 1.72.0** (Dossiary for Mac 0.14.0 has File › Put on Hub…; dossiary-osx
+  `docs/superpowers/specs/2026-11-24-admin-and-maintenance-design.md`). Gone with it: Tools › Share this library…
+  (`openShareLibraryDialog()` and its copy/share flow, spec dossiary-ios
+  `docs/superpowers/specs/2026-10-25-share-library-design.md`), the stored libraries-folder handle (the
+  `dossiary-libraries-root` IndexedDB database, `ensureLibrariesRootHandle()` and the `POST /admin/libraries-root/check`
+  chooser, 1.65.0; a database left in a browser is simply never opened), the "Not shared yet" status hint that read it,
+  `shareHoldsBackground`, their translations, and `tests/test_share_library.py` and `tests/test_libraries_folder.py`.
+  The page stands on its own and doesn't mention Dossiary for Mac: the Sync dialog's `syncAdminInMacNote`, the
+  README's and the user guides' paragraphs pointing at it went in 1.72.0 too. `copyLibraryInto()` stays for Back up.
 - **Saving in a synced library (no editing lease)** (historical context:
   dossiary-ios `docs/superpowers/specs/2026-10-22-pi-hub-lease-design.md` and
   `2026-10-23-offline-first-sync-design.md` describe the editing lease and the

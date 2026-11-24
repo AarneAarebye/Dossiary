@@ -138,8 +138,6 @@ Dossiary 會記住你的掃描儀和設置，下次直接使用。如果掃描�
 
 iPhone 和 iPad 上的 Dossiary 應用讓你離開電腦也能查看資料庫。它從 [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync) 獲取資料庫——這是你 Mac 上一個獨立的小應用，安裝後用它把每個資料庫共享一次即可（參見它自己的說明）。
 
-配對 iPhone 或 iPad、選擇它可以查看的內容以及移除設備，都在 **Dossiary for Mac** 的「人員」視窗中完成。從 Pi 獲取資料庫和刪除資料庫在它的「檔案」菜單中。要第一次把資料庫放到 Pi 上，請在這裏打開它，然後選擇 **🛠 工具 → ⇪ 共享此資料庫…**。
-
 瀏覽器中的 Dossiary 只連接 Dossiary Sync，這樣你在這裏編輯同步資料庫時，它也能保持安全：
 
 1. 選擇 **🛠 工具 → 🔗 Dossiary Sync…**。

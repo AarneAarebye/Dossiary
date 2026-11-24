@@ -138,8 +138,6 @@ Dossiary 会记住你的扫描仪和设置，下次直接使用。如果扫描�
 
 iPhone 和 iPad 上的 Dossiary 应用让你离开电脑也能查看资料库。它从 [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync) 获取资料库——这是你 Mac 上一个独立的小应用，安装后用它把每个资料库共享一次即可（参见它自己的说明）。
 
-配对 iPhone 或 iPad、选择它可以查看的内容以及移除设备，都在 **Dossiary for Mac** 的“人员”窗口中完成。从 Pi 获取资料库和删除资料库在它的“文件”菜单中。要第一次把资料库放到 Pi 上，请在这里打开它，然后选择 **🛠 工具 → ⇪ 共享此资料库…**。
-
 浏览器中的 Dossiary 只连接 Dossiary Sync，这样你在这里编辑同步资料库时，它也能保持安全：
 
 1. 选择 **🛠 工具 → 🔗 Dossiary Sync…**。

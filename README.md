@@ -424,19 +424,11 @@ working" problem that motivated this project in the first place.
   on this Mac (it shows a code in a notification; only `127.0.0.1` is ever
   contacted), so that while a synced library is open the page checks it
   with Dossiary Sync: it picks up newer versions, its own saves move the
-  base on, and a deletion elsewhere is noticed. Pairing iPhones and iPads,
-  choosing what they may see, removing devices, getting a library from the
-  Pi and deleting libraries are in Dossiary for Mac since 1.71.0.
+  base on, and a deletion elsewhere is noticed.
   While a shared library's first version uploads to the Pi, the status
   line shows "Uploading to the Pi… m:ss" with the time so far, says when
   the Pi can't be reached or the upload has a problem, and says when it is
-  done. Sharing a library into a cloud-drive folder (iCloud Drive,
-  Dropbox, OneDrive, Google Drive, Box) is refused with the provider's
-  name, and nothing is left behind. A library you open from directly
-  inside the Dossiary Sync folder that isn't shared yet gets "Not shared
-  yet: Tools → Share this library…" on the status line (only when Dossiary
-  still has permission for the folder you chose for sharing, and the
-  folder carries Dossiary Sync's `.dossiary-root.json` marker).
+  done.
 - **A tidy toolbar** — the toolbar keeps what you use every day (Check
   inbox, Check reminders, Scan, Add document, Details, Columns); occasional
   actions — Manage fields, Manage collections, Library check, and Storage
