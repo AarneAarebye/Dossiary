@@ -419,29 +419,22 @@ working" problem that motivated this project in the first place.
   disk space the library folder uses: documents (split into active files,
   preserved originals, and untracked files no document points to),
   previews, inbox, and the database itself. Read-only; nothing is changed.
-- **iPhone & other devices** — "🛠 Tools → 📱 iPhone & other devices…"
-  manages the devices that [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync)
-  shares your libraries with (the Dossiary app on iPhone and iPad, a
-  Raspberry Pi copy), without the command line. Dossiary connects once to
-  the service on this Mac (it shows a code in a notification; only
-  `127.0.0.1` is ever contacted), then lists the devices with the libraries
-  each phone may see, lets you change that or remove a device, and "Add
-  iPhone or iPad…" shows a QR code the phone scans to pair, drawn in the
-  browser. Sharing a library with Dossiary Sync stays a command
-  (`dossiary-sync share <folder>`). While a shared library's first version
-  uploads to the Pi, the status line shows "Uploading to the Pi… m:ss"
-  with the time so far, says when the Pi can't be reached or the upload
-  has a problem, and says when it is done.
-  With Dossiary Sync 0.17.0 or newer the dialog also names the Dossiary
-  Sync folder (the folder the synced libraries live in, standard
-  `~/Dossiary`) and, while that folder is on a cloud drive (iCloud Drive,
-  Dropbox, OneDrive, Google Drive, Box), warns that cloud drives can damage
-  synced libraries and shows the command that moves it
-  (`dossiary-sync libraries-root move ~/Dossiary`, selectable to copy).
-  Sharing or getting a library into a cloud-drive folder is refused with
-  the provider's name, and nothing is left behind. A library you open from
-  directly inside that folder that isn't shared yet gets "Not shared yet:
-  Tools → Share this library…" on the status line (only when Dossiary
+- **Dossiary Sync** — "🛠 Tools → 🔗 Dossiary Sync…" connects Dossiary
+  once to [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync)
+  on this Mac (it shows a code in a notification; only `127.0.0.1` is ever
+  contacted), so that while a synced library is open the page checks it
+  with Dossiary Sync: it picks up newer versions, its own saves move the
+  base on, and a deletion elsewhere is noticed. Pairing iPhones and iPads,
+  choosing what they may see, removing devices, getting a library from the
+  Pi and deleting libraries are in Dossiary for Mac since 1.71.0.
+  While a shared library's first version uploads to the Pi, the status
+  line shows "Uploading to the Pi… m:ss" with the time so far, says when
+  the Pi can't be reached or the upload has a problem, and says when it is
+  done. Sharing a library into a cloud-drive folder (iCloud Drive,
+  Dropbox, OneDrive, Google Drive, Box) is refused with the provider's
+  name, and nothing is left behind. A library you open from directly
+  inside the Dossiary Sync folder that isn't shared yet gets "Not shared
+  yet: Tools → Share this library…" on the status line (only when Dossiary
   still has permission for the folder you chose for sharing, and the
   folder carries Dossiary Sync's `.dossiary-root.json` marker).
 - **A tidy toolbar** — the toolbar keeps what you use every day (Check
@@ -1044,6 +1037,5 @@ except locally, in your own browser.
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendering a PDF's first page (for previews and OCR) | Apache-2.0 |
 | [rtf.js](https://github.com/tbluemel/rtf.js) | Reading RTF documents to make previews (first page) | MIT |
 | [pdf-lib](https://github.com/Hopding/pdf-lib) | Editing pages: rotating, reordering, splitting and combining PDFs | MIT |
-| [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | Drawing the QR code that pairs an iPhone or iPad | MIT |
 
 Same in-app, via the "Libraries" link in the footer.

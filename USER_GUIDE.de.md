@@ -192,25 +192,25 @@ Sie bekommt sie von [Dossiary Sync](https://github.com/AarneAarebye/dossiary-syn
 einer kleinen eigenen App auf deinem Mac, die du installierst und mit der du
 jede Bibliothek einmal teilst (siehe ihre eigene Anleitung).
 
-1. Wähle **🛠 Werkzeuge → 📱 iPhone & andere Geräte…**.
+Ein iPhone oder iPad koppeln, festlegen, was es sehen darf, und ein Gerät
+entfernen erledigst du in **Dossiary für Mac**, im Fenster „Personen“. Eine
+Bibliothek vom Pi holen und eine löschen findest du dort im Menü „Ablage“.
+Um eine Bibliothek zum ersten Mal auf den Pi zu bringen, öffne sie hier und
+wähle **🛠 Werkzeuge → ⇪ Diese Bibliothek teilen…**.
+
+Dossiary im Browser verbindet sich nur mit Dossiary Sync, damit eine
+synchronisierte Bibliothek sicher bleibt, während du sie hier bearbeitest:
+
+1. Wähle **🛠 Werkzeuge → 🔗 Dossiary Sync…**.
 2. Klicke beim ersten Mal auf **Verbinden**: Dossiary Sync zeigt auf deinem
    Mac einen Code in einer Mitteilung. Gib ihn im Dialog ein.
-3. Klicke auf **iPhone oder iPad hinzufügen…**, hake die Bibliotheken an,
-   die das Gerät sehen darf, und klicke auf **QR-Code zeigen**.
-4. Wähle in der Dossiary-App auf dem iPhone oder iPad **Vom Mac hinzufügen**
-   und scanne den Code. Er gilt ein paar Minuten; ist er abgelaufen, klicke
-   auf **Neuer Code**.
-
-Derselbe Dialog listet deine Geräte: Hake eine Bibliothek an oder ab, um zu
-ändern, was ein iPhone sehen darf, oder entferne ein Gerät, das du nicht
-mehr benutzt.
 
 Speichern auf dem Mac schreibt direkt in die Bibliothek auf der Festplatte.
 Änderungen vom iPhone werden sofort übernommen, auch wenn Dossiary auf dem Mac
 geöffnet ist. Kollidiert ein Speichern auf dem Mac mit einer Änderung vom
 iPhone, gilt die Änderung vom iPhone, und die Version des Macs wird im Ordner
 `.kept-aside` der Bibliothek beiseitegelegt. Hast du Dossiary mit Dossiary Sync
-verbunden (Schritt 2 oben), regelt Dossiary Sync das, und Dossiary zeigt nur
+verbunden (oben), regelt Dossiary Sync das, und Dossiary zeigt nur
 eine Meldung in der Statuszeile: Die Änderungen vom Mac an diesem Tag ließen
 sich nicht zusammenführen und sind sicher aufbewahrt. Hast du es nicht
 verbunden, zeigt Dossiary eine Mitteilung, die den Ordner nennt.

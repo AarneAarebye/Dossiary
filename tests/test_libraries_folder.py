@@ -9,16 +9,15 @@ from playwright.async_api import async_playwright
 
 # The Dossiary Sync folder (spec dossiary-sync
 # docs/superpowers/specs/2026-11-08-standard-libraries-folder-design.md,
-# sections 2, 3 and 5): the Devices dialog names the folder from
-# POST /admin/libraries-root/check {path} and warns when {cloud} names a cloud
-# drive (with the move command as selectable text); Share and Get it show the
-# refusal for a 409 {"error":"cloud-drive","provider"}; a library opened from
+# sections 2, 3 and 5): Share shows the refusal for a 409
+# {"error":"cloud-drive","provider"}; a library opened from
 # directly inside the stored, marked libraries folder that isn't synced gets
 # the "Not shared yet" hint. A fake fetch plays the Mac service.
 # config: { token, check: body dict (ok is set from the probe) | 'missing' (404),
-#           share: {status, body}, get: {status, body}, available: list }
+#           share: {status, body} }
+# The devices dialog's folder line and cloud warning, and Get it's refusal,
+# left the page in 1.71.0 (Dossiary for Mac has them).
 ROOT_PATH = '/Users/test/Dossiary'
-COMMAND = 'dossiary-sync libraries-root move ~/Dossiary'
 FAKE_SYNC = """
 (config) => {
     window.__CALLS = [];
@@ -124,85 +123,12 @@ async def calls(page, suffix):
     return [c for c in await page.evaluate("window.__CALLS") if c['url'].endswith(suffix)]
 
 
-async def open_devices(page):
-    await page.click('#tools-btn')
-    await page.click('#devices-btn')
-    await page.wait_for_timeout(500)
-
-
 async def status_text(page):
     return (await page.get_attribute('#status', 'title')) or (await text_of(page, '#status'))
 
 
 async def main():
     async with async_playwright() as p:
-        # === 1. Devices dialog: the folder, no warning for a local folder ===
-        browser, page, errors = await open_app(p, {"token": "tok", "check": CHECK_LOCAL})
-        await open_devices(page)
-        checks = await calls(page, '/admin/libraries-root/check')
-        print("1 the dialog asks the check route once, with a probe that doesn't exist, as JSON:",
-              len(checks) == 1 and checks[0]['method'] == 'POST' and checks[0]['contentType'] == 'application/json'
-              and re.fullmatch(r'\.dossiary-probe-[A-Za-z0-9-]{1,64}', checks[0]['body']['probe']) is not None, checks)
-        folder = await text_of(page, '#devices-folder')
-        print("1 the folder line:", folder == 'Dossiary Sync folder: ~/Dossiary', repr(folder))
-        print("1 no cloud warning for a local folder:", await page.locator('#devices-cloud-warning').count() == 0)
-        print("1 the rest of the dialog is there:", await page.locator('.devices-row').count() == 1 and await page.locator('#devices-share-note').count() == 1)
-        print("1 no page errors:", errors == [], errors)
-        await browser.close()
-
-        # === 2. A cloud folder: the warning, provider and path shown as text, command selectable ===
-        provider = 'Drop<b>box</b>'
-        path = '~/Library/CloudStorage/<i>Dropbox</i>/Dossiary'
-        browser, page, errors = await open_app(p, {"token": "tok", "check": dict(CHECK_LOCAL, cloud=provider, path=path)})
-        await open_devices(page)
-        folder = await text_of(page, '#devices-folder')
-        print("2 the path shown as text:", folder == f'Dossiary Sync folder: {path}', repr(folder))
-        warning = await text_of(page, '#devices-cloud-warning')
-        print("2 the warning names the provider:", warning == f'This folder is on {provider}. Cloud drives can damage synced libraries. Move it with: {COMMAND}', repr(warning))
-        print("2 no HTML from the service:", await page.locator('#devices-dialog-body b, #devices-dialog-body i').count() == 0)
-        code = page.locator('#devices-cloud-warning code')
-        print("2 the command is its own code element:", await code.count() == 1 and (await code.inner_text()) == COMMAND)
-        user_select = (await code.evaluate("e => getComputedStyle(e).userSelect")) if await code.count() else None
-        print("2 the command is selectable:", user_select in ('all', 'text', 'auto'), user_select)
-        selected = await page.evaluate("""() => {
-            const c = document.querySelector('#devices-cloud-warning code');
-            if(!c) return null;
-            const r = document.createRange(); r.selectNodeContents(c);
-            const s = getSelection(); s.removeAllRanges(); s.addRange(r);
-            return s.toString();
-        }""")
-        print("2 selecting it gives the command:", selected == COMMAND, repr(selected))
-        # The warning stays when the connected view is drawn again (a device removed, a library got).
-        page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
-        await page.click('.devices-remove-btn')
-        await page.wait_for_timeout(400)
-        print("2 the warning survives a re-render:", await page.locator('.devices-row').count() == 0 and await page.locator('#devices-cloud-warning').count() == 1)
-        print("2 no page errors:", errors == [], errors)
-        await browser.close()
-
-        # === 3. An older Dossiary Sync: no folder line, no warning ===
-        browser, page, errors = await open_app(p, {"token": "tok", "check": {"root": ROOT_PATH}})
-        await open_devices(page)
-        print("3 an answer without the keys adds nothing:", await page.locator('#devices-folder').count() == 0 and await page.locator('#devices-cloud-warning').count() == 0)
-        print("3 the dialog is otherwise complete:", await page.locator('.devices-row').count() == 1)
-        await page.evaluate("window.__SYNC.check = 'missing'")
-        await page.click('#modal-close-btn'); await page.wait_for_timeout(100)
-        await open_devices(page)
-        print("3 no check route (404): nothing added, nothing shown as an error:",
-              await page.locator('#devices-folder').count() == 0 and await page.locator('#devices-cloud-warning').count() == 0
-              and 'Not found' not in await text_of(page, '#devices-dialog-body'))
-        print("3 no page errors:", errors == [], errors)
-        await browser.close()
-
-        # === 4. German ===
-        browser, page, errors = await open_app(p, {"token": "tok", "check": dict(CHECK_LOCAL, cloud='iCloud Drive')}, lang='de')
-        await open_devices(page)
-        print("4 German folder line:", await text_of(page, '#devices-folder') == 'Dossiary-Sync-Ordner: ~/Dossiary', await text_of(page, '#devices-folder'))
-        w = await text_of(page, '#devices-cloud-warning')
-        print("4 German warning, the command unchanged:", w.startswith('Dieser Ordner liegt auf iCloud Drive.') and w.endswith(COMMAND)
-              and (await text_of(page, '#devices-cloud-warning code')) == COMMAND, repr(w))
-        await browser.close()
-
         # === 5. Share refused for a cloud drive: the refusal text, nothing else changes ===
         browser, page, errors = await open_app(p, {"token": "tok", "check": CHECK_LOCAL,
             "share": {"status": 409, "body": {"error": "cloud-drive", "provider": "iCloud <img src=x onerror=window.__XSS=1>"}}},
@@ -282,18 +208,6 @@ async def main():
         print("5d Try again shares that same copy, no second numbered copy:", len(shares) == 2 and shares[1]['body']['folder'] == 'Tax 2026.dossiary'
               and await page.evaluate("() => [...window.__LIB_ROOT._children.keys()].sort()") == ['.dossiary-root.json', 'Tax 2026.dossiary'], shares)
         print("5d no page errors:", errors == [], errors)
-        await browser.close()
-
-        # === 6. Get it refused for a cloud drive ===
-        browser, page, errors = await open_app(p, {"token": "tok", "check": CHECK_LOCAL,
-            "available": [{"id": "lib-a", "name": "Household", "available": True}],
-            "get": {"status": 409, "body": {"error": "cloud-drive", "provider": "OneDrive"}}})
-        await open_devices(page)
-        if await page.locator('#devices-available-list .devices-get-btn').count():
-            await page.click('#devices-available-list .devices-get-btn'); await page.wait_for_timeout(500)
-        err = await text_of(page, '#devices-available-list .devices-get-error')
-        print("6 the Get it refusal text:", err == "OneDrive is a cloud drive. Dossiary Sync can't download libraries there.", repr(err))
-        print("6 no folder added to the libraries folder:", await page.evaluate("() => [...window.__LIB_ROOT._children.keys()].sort()") == ['.dossiary-root.json', 'Tax 2026.dossiary'])
         await browser.close()
 
         # === 7. "Not shared yet" hint ===

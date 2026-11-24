@@ -18,7 +18,7 @@ at all. Keep it that way for new checks.
 - [`coverage/01-capture-ocr-fields-inbox-nav.md`](coverage/01-capture-ocr-fields-inbox-nav.md): Capture, OCR, previews, custom fields, inbox, navigation and libraries (lines 16-446 of the old file).
 - [`coverage/02-detail-reminders-bulk-duplicates.md`](coverage/02-detail-reminders-bulk-duplicates.md): Detail panel, reminders, bulk edit, duplicate detection and broken links (lines 447-765 of the old file).
 - [`coverage/03-tools-export-share-reports-collections.md`](coverage/03-tools-export-share-reports-collections.md): Tools menu, export, sharing, reports, collections, autofill and calendar (lines 766-1090 of the old file).
-- [`coverage/04-scan-devices-library-sync.md`](coverage/04-scan-devices-library-sync.md): Scan dialog, devices, deleting and sharing libraries, leases and page counts (lines 1091-1322 of the old file).
+- [`coverage/04-scan-devices-library-sync.md`](coverage/04-scan-devices-library-sync.md): Scan dialog, the Dossiary Sync connection, deleted and shared libraries, leases and page counts (lines 1091-1322 of the old file).
 **The older scripts, by name.** The narrative (now in `coverage/`) grew feature by
 feature and describes most of the early tests only by what they cover,
 never by file name. This list maps each of them to what it checks:

@@ -274,14 +274,13 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
 - **`OPEN_SOURCE_LIBRARIES`** (the array backing the footer's "Libraries"
   link/modal) lists exactly the CDN dependencies this file actually loads
   (`ensureTesseract()`, `ensureJsPdf()`, `ensurePdfJs()`, `ensurePdfLib()`,
-  `ensureQrCode()`, `ensureRtfJs()` (rtf.js, MIT, three bundles pinned to `RTFJS_VERSION`),
+  `ensureRtfJs()` (rtf.js, MIT, three bundles pinned to `RTFJS_VERSION`),
   plus sql.js loaded unconditionally for the database itself) — keep it in sync if a
   dependency is added, removed, or swapped. The license for each was
   verified directly against its own repo's `LICENSE` file when this was
   written (sql.js MIT, Tesseract.js Apache-2.0, jsPDF MIT, pdf.js
-  Apache-2.0, pdf-lib MIT -- checked against Hopding/pdf-lib's LICENSE.md,
-  qrcode-generator MIT -- checked against kazuhikoarase/qrcode-generator's
-  LICENSE), not assumed from general familiarity — if any of these
+  Apache-2.0, pdf-lib MIT -- checked against Hopding/pdf-lib's LICENSE.md;
+  qrcode-generator left with the devices dialog's pairing in 1.71.0), not assumed from general familiarity — if any of these
   ever change their license, or a new dependency gets added, verify the
   same way rather than guessing; this is exactly the kind of detail
   that's easy to get subtly wrong from memory.

@@ -179,23 +179,24 @@ desk. It gets them from [Dossiary Sync](https://github.com/AarneAarebye/dossiary
 a small separate app on your Mac that you install and share each library
 with once (see its own instructions).
 
-1. Choose **🛠 Tools → 📱 iPhone & other devices…**.
+Pairing an iPhone or iPad, choosing what it may see, and removing a device
+are done in **Dossiary for Mac**, in its People window. Getting a library
+from the Pi and deleting one are in its File menu. To put a library on the
+Pi for the first time, open it here and choose **🛠 Tools → ⇪ Share this
+library…**.
+
+Dossiary in the browser only connects to Dossiary Sync, so that a synced
+library stays safe while you edit it here:
+
+1. Choose **🛠 Tools → 🔗 Dossiary Sync…**.
 2. The first time, click **Connect**: Dossiary Sync shows a code in a
    notification on your Mac. Type it into the dialog.
-3. Click **Add iPhone or iPad…**, tick the libraries the device may see,
-   and click **Show QR code**.
-4. In the Dossiary app on the iPhone or iPad, choose **Add from Mac** and
-   scan the code. It's valid for a few minutes; if it runs out, click
-   **New code**.
-
-The same dialog lists your devices: tick or untick a library to change what
-a phone may see, or remove a device you no longer use.
 
 Saving on the Mac writes straight to the library on disk. Changes made on the
 phone are applied at once, even while Dossiary is open on the Mac. If a save
 on the Mac collides with a change from the phone, the phone's change wins and
 the Mac's version is kept aside in the library's `.kept-aside` folder. If you
-have connected Dossiary to Dossiary Sync (step 2 above), Dossiary Sync sorts
+have connected Dossiary to Dossiary Sync (above), Dossiary Sync sorts
 this out and Dossiary only shows a message in its status line saying that the
 Mac's changes from that day couldn't be combined and are kept safe. If you
 haven't, Dossiary shows a notice that names the folder.

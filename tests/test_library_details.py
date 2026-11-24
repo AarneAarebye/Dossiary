@@ -279,8 +279,9 @@ async def main():
         print("...and the plain last-opened text:", (await b_row.locator('[id^=recent-lib-status-]').inner_text()).startswith('Last opened '))
         print("A library with seeded details shows them in the list too:", await row_of('Family archive').locator('.recent-lib-description').inner_text() == 'Shared with the kids')
         print("Every entry has a pencil:", await page.locator('#recent-libraries-list .recent-details-btn').count() == await page.locator('#recent-libraries-list .review-queue-row').count())
-        print("The pencil sits before the trash button:",
-              await a_row.evaluate("r => { const p = r.querySelector('.recent-details-btn'), t = r.querySelector('.recent-delete-btn'); return !!p && p.nextElementSibling === t; }"))
+        print("The pencil sits before the remove button:",
+              await a_row.evaluate("r => { const p = r.querySelector('.recent-details-btn'), t = r.querySelector('.recent-lib-remove-btn'); return !!p && p.nextElementSibling === t; }"))
+        print("No trash button on a row (deleting moved to Dossiary for Mac in 1.71.0):", await page.locator('#recent-libraries-list .recent-delete-btn').count() == 0)
         print("The pencil's label names the title:", await a_row.locator('.recent-details-btn').get_attribute('aria-label') == 'Edit title and description of Home papers')
 
         # === Scenario 6/7: the pencil opens the library once, then the dialog ===

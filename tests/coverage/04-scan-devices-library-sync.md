@@ -1,4 +1,4 @@
-# Test coverage narrative, part 4 of 4: Scan dialog, devices, deleting and sharing libraries, leases and page counts
+# Test coverage narrative, part 4 of 4: Scan dialog, the Dossiary Sync connection, deleted and shared libraries, leases and page counts
 
 Split out of `tests/CLAUDE.md`. This part continues mid-sentence from part 3; the whole narrative was one long paragraph in `tests/CLAUDE.md` and is kept word for word.
 
@@ -92,49 +92,29 @@ stub fails every request to another localhost origin unless
 `window.__ALLOW_REAL_HELPERS` is set, which only
 `manual_scan_reference_helper.py` (a manual check against the real
 reference helper, not part of the suite) does).
-The devices dialog (`test_devices_dialog.py` -- a fake `fetch` playing
-Dossiary Sync's admin API on `127.0.0.1:8769` per scenario (`FAKE_SYNC`,
-answering 415 to a POST without JSON like the real one): the start screen's
-button opening it with no library open; not running with
+The Dossiary Sync dialog (`test_devices_dialog.py`, cut down to Connect in
+1.71.0 -- a fake `fetch` playing Dossiary Sync's admin API on
+`127.0.0.1:8769` per scenario (`FAKE_SYNC`, answering 415 to a POST without
+JSON like the real one): no devices button on the start screen and no Delete
+this library in Tools; the Tools entry named Dossiary Sync; not running with
 the install link and Look again; Connect asking for a code as JSON, a wrong
-code, the right one normalised and its token stored; a 429 naming the wait;
-a stored valid token going straight to the devices with role labels and
-relative last-seen times; per-library checkboxes for phones only, allow and
-deny requests with the status line, a refused change undone; Remove behind
-`confirm()`; the ✎ rename (input with the current name, Enter/blur posts the
-trimmed name as JSON, Escape/unchanged/empty send nothing and keep the dialog,
-400/503 shown under the input, hostile name as text, 401 back to Connect);
-the language switch blocked while open; Disconnect; a revoked
-token dropped on open and on a 401; a blocked `localStorage`, and one that
-reads but won't store (the token stays in memory); German labels and
-relative times; "Add iPhone or iPad…" with a fake `window.qrcode` (the
-cdnjs request is aborted): no library ticked keeps "Show QR code" disabled
-and sends nothing, a refused pair-code shows the reason, the QR SVG of the
-`link`, the grouped code and fingerprint as text, the countdown, expiry
-clearing the QR and offering New code, the QR surviving a Remove, Done
-reloading the devices, a 401 on pair-code, the library failing to load,
-no shared libraries; hostile `<img onerror>` device/library/code/
-fingerprint names shown as text; the service going down after connecting
-(toggle, Remove and Show QR code each end in a clear error, nothing stuck
-disabled); an answer in the wrong shape and the failing one of the two
-list requests reported; every call carrying a timeout signal).
-Delete library (`test_delete_library.py` -- a fake `fetch` playing the
-admin API's state and delete routes: a synced delete from Tools (the typed
-name enabling the button, one JSON POST with `takeOver: false`, the library
-closed, the Recent entry gone, the success text in the dialog and on the
-status line, no lease call and no admin call afterwards); another device
-holding the lease (the state's `lease.holder: 'other'`) → "Take over and delete" posting `takeOver: true` and the
-`trashed: false` text; a 501
-saying the library was closed but not deleted (Recent entry kept), a 409
-offering take over, 503/502/an old service's 404 each keeping the dialog
-open with its reason, then 404 `unknown-library` counted as gone; a
-`.kept-aside` write failing (the root's `getDirectoryHandle` patched)
-leaving the library open, sending nothing, the change still saved later;
-Escape blocked while the request runs; no token → the connect hint and the
-devices button; unsynced → Close and forget, no admin call at all, the
-folder named and left on disk; the Recent row's 🗑 asking for read
-permission first and deleting a library that isn't open, and a denied
-permission noted on the row; deleted on another Mac via the state poll,
+code, the right one normalised and its token stored, the token checked with
+`GET /admin/libraries`; a 429 naming the wait (header or body); a stored
+valid token going straight to the connected view (`syncConnectedText`, the
+note pointing at Dossiary for Mac, no devices, pairing, Get it or library
+names, only health and libraries asked); the language switch blocked while
+open; Disconnect revoking the token and showing Connect with its new text;
+a revoked token dropped on open and on a 401 from the libraries call; a
+blocked `localStorage`, and one that reads but won't store (the token stays
+in memory); German labels; a failing service's hostile error shown as text
+with the token kept and Look again connecting; the service down keeping the
+token; every call carrying a timeout signal). Before 1.71.0 it also covered
+the devices list, rename, Make editor, pairing with a QR code and Remove;
+those are Dossiary for Mac's now.
+A library deleted on another device (`test_deleted_elsewhere.py`, until
+1.71.0 `test_delete_library.py`, whose scenarios for the page's own Delete
+dialog left with it -- a fake `fetch` playing the admin API's state route):
+deleted on another Mac via the state poll,
 with nothing unsaved (no `.kept-aside`) and with an unwritten change (a
 `.kept-aside` copy holding it, named in the notice) and with a change
 only in memory when the poll answers (kept aside, then closed); ordinary, `deleted:
@@ -150,14 +130,13 @@ no device closing a clean tab ("another Mac") and a save made before the poll
 knows being written with no admin call, the poll then closing the clean tab; a tab opened after the deletion (no live answer
 first, `open_app(live=False)`) staying open as a local library -- no notice,
 Recent kept, no base marker for a local library, editing and a save writing to disk, no admin calls
-after the first answer, the sync file left, Delete taking the unsynced
-path, a reopen this session still local -- also when its first answer is the
+after the first answer, the sync file left, a reopen this session still local -- also when its first answer is the
 trashed state with a change made before it, while a first answer in the grace period (deleted, not
 trashed) closes with the notice, keeping an unwritten change aside first
-(every other scenario first gets one ordinary answer); German labels; a hostile
-folder name, busy device and `deletedBy` shown as text).
-Share this library and Get it (`test_share_library.py` -- a fake `fetch`
-playing the Mac's check, share, state, available and get routes, and a fake
+(every other scenario first gets one ordinary answer); a hostile `deletedBy`
+shown as text).
+Share this library (`test_share_library.py` -- a fake `fetch`
+playing the Mac's check, share and state routes, and a fake
 libraries folder `window.__LIB_ROOT`: the Tools item only for an unsynced
 library; phones only, none ticked; no stored folder → the chooser naming the
 root from a check with a probe that doesn't exist; a wrong folder refused
@@ -171,11 +150,9 @@ the sync bookkeeping and clutter, `library.sqlite` from memory, the original
 unchanged, Recent replaced, the hub's name and the note; Stop (Escape
 blocked meanwhile) and an unreadable file removing the copy; a 503 after the
 copy keeping it and Try again posting the same copy; not connected → Connect
-opening the devices dialog; in place known up front (read-only name); 409
-already-shared and an unknown code with its status; Get it: the list, the
-uploading one disabled, the chooser under the row, Downloading…, `{}` as
-JSON, Open opening the folder and Recent recording it, errors under the row,
-the section hidden for an empty list and a 404; German labels; an
+opening the Dossiary Sync dialog; in place known up front (read-only name); 409
+already-shared and an unknown code with its status; German labels (Get it's
+checks left in 1.71.0); an
 IndexedDB spy (`IDB_SPY`) confirming the folder lives in its own
 `dossiary-libraries-root` database at version 1 while `dossiary-app-db` stays
 at version 1 with only `recentLibraries`, and `window.__IDB_FAIL = 'blocked' |
@@ -184,8 +161,7 @@ Saving in a synced library (`test_no_lease.py`, 37 scenarios -- replaced
 `test_sync_lease.py`, removed with the editing lease; a fake folder
 (`__LIB_ROOT`-style stub with `.dossiary-sync.json` and `.dossiary-base.json`
 files), a fake `fetch` playing the state route, a stored admin token or none).
-Checks that no lease call is ever made (only `GET …/state`, and
-`POST …/delete` from the Delete dialog); `synced_save` (a save writes
+Checks that no lease call is ever made (only `GET …/state`); `synced_save` (a save writes
 `library.sqlite` at once plus a base marker naming the loaded version);
 `base_follows_loaded_version`, `newer_reloads` and `guard` (a newer version in
 the sync file reloads quietly when nothing is in the way; a save with memory
@@ -211,7 +187,7 @@ each marker names the version before it, nothing kept aside),
 write and its marker leaves the write unproven); `switch_asks_when_unsaved` (the
 keep-aside copy fails: Switch library and Export's "Open it" ask, Cancel keeps
 the change, "Switch anyway" switches). Ticks use `__DEBUG_syncNow()` (no
-argument). `test_devices_dialog.py`, `test_delete_library.py` and
+argument). `test_devices_dialog.py`, `test_deleted_elsewhere.py` and
 `test_share_library.py` carry the admin dialogs (the latter also checks the live upload line after a share).
 Upload progress (`test_upload_progress.py`, 1.64.0 -- a synced library with an admin token and a scripted
 `GET …/state`, real time): `uploading: true` shows the spinner line "Uploading to the Pi… m:ss" whose time
@@ -230,18 +206,14 @@ late `uploading: true` continues the time from the share, the grace running out 
 back to 5 s silently, and a version 1 answer right after a share is the done line.
 Confirmed non-vacuous by dropping the ticker's ownership check and its span-only update.
 The Dossiary Sync folder (`test_libraries_folder.py`, 1.65.0 -- a scripted Mac service whose
-`POST /admin/libraries-root/check` answers the 0.17.0 keys): the devices dialog asks the check route once with
-a probe that doesn't exist (POST, JSON) and shows "Dossiary Sync folder: ~/Dossiary" and no warning for a
-local folder; a `cloud` provider and a `path` holding HTML are shown as text (no element made), the warning
-names the provider, the move command is its own `<code>` with `user-select: all` whose selection is exactly
-the command, and the warning survives a re-render (a device removed); an older answer without the keys and a
-404 add nothing; the German line and warning keep the command unchanged. Share refused with 409 `cloud-drive`
+`POST /admin/libraries-root/check` answers the 0.17.0 keys; the devices dialog's folder line and cloud
+warning, and their checks, left in 1.71.0). Share refused with 409 `cloud-drive`
 (provider with HTML) shows the refusal as text, one share call, the dialog open with Share enabled, the
 libraries folder and the library unchanged and unsynced; a copy share refused removes the copy it made, says
 nothing about a kept copy and leaves Share a plain Share; a copy kept after a 500 and then refused on Try again is removed
 while it is still the same folder, but a folder replaced under its name is left alone and still named as kept;
 a removal that throws keeps the copy with the copy-kept text, and Try again shares that copy with no second
-numbered one; Get it refused shows its refusal and adds no folder.
+numbered one.
 The "Not shared yet" hint appears on the opened line for an unsynced library directly in the stored, granted,
 marked libraries folder without a picker or prompt, and not for a library elsewhere, a folder without the
 marker, a synced library, a folder whose permission isn't granted or no stored folder; German, and a switch

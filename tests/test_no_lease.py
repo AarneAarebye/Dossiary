@@ -439,21 +439,13 @@ async def scenario_no_sync_file(p):
 
 
 async def scenario_devices_dialog(p):
-    # 4. The devices dialog still opens and lists libraries; share and delete are still offered.
+    # 4. The Dossiary Sync dialog still opens and shows it is connected; share is still offered.
     browser, page, errors = await open_app(p, sync={"token": "admin-tok", "state": state(3),
                                                     "libraries": [{"id": LIB_ID, "name": "Household", "available": True}]})
     await page.click('#tools-btn')
     await page.click('#devices-btn')
     await page.wait_for_timeout(400)
-    libs = await page.inner_text('#devices-libraries') if await page.locator('#devices-libraries').count() else ''
-    print("the devices dialog opens and lists the library:", 'Household' in libs, repr(libs))
-    await page.keyboard.press('Escape')
-    await page.wait_for_timeout(200)
-    await page.click('#tools-btn')
-    print("Delete this library is still offered:", await page.locator('#delete-library-btn').is_visible())
-    await page.click('#delete-library-btn')
-    await page.wait_for_timeout(400)
-    print("...and opens its dialog:", await page.locator('#delete-library-body').count() == 1)
+    print("the Dossiary Sync dialog opens connected:", await page.locator('#devices-connected-text').count() == 1)
     await page.keyboard.press('Escape')
     await page.wait_for_timeout(200)
     await browser.close()
@@ -1159,10 +1151,6 @@ async def scenario_kept_aside(p):
     await seed_and_open(page, {"token": "admin-tok", "state": state(3, None, KEPT)}, seed=SEED2)
     await tick(page)
     print("...not repeated after reopening the page:", 'kept safe' not in await status(page), await status(page))
-    await page.click('#tools-btn'); await page.click('#devices-btn')
-    await page.wait_for_timeout(400)
-    libs = await page.inner_text('#devices-libraries') if await page.locator('#devices-libraries').count() else ''
-    print("the devices dialog shows it under the library:", 'Household' in libs and KEPT_TEXT in libs, repr(libs))
     print("no page errors:", not errors, errors)
     await browser.close()
     browser, page, errors = await open_app(p, seed=SEED2, sync={"token": "admin-tok", "state": state(3, None, KEPT)}, lang='de')

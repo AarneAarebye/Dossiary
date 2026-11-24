@@ -5,18 +5,19 @@ import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
 import asyncio, json
-from datetime import datetime, timedelta, timezone
 from playwright.async_api import async_playwright
 
-# The "📱 iPhone & other devices…" dialog talks to Dossiary Sync's admin API
-# on http://127.0.0.1:8769. A fake fetch plays that service per scenario; the
-# shared stub would refuse any real request to it anyway, so no test reaches
-# a Dossiary Sync running on this machine.
-# config: { down, token, code, tooSoon (Retry-After seconds), libraries,
-#           devices, forgotten (token revoked), failAllow (status),
-#           librariesRaw (body for /admin/libraries instead of the list),
-#           devicesStatus (status for /admin/devices), pairFail (status),
-#           pairExpiresIn (seconds), pairCode, pairFingerprint }
+# Tools › "🔗 Dossiary Sync…" talks to Dossiary Sync's admin API on
+# http://127.0.0.1:8769. Since 1.71.0 it only connects: devices, pairing,
+# deleting and getting libraries are Dossiary for Mac's, and the page keeps
+# its token so an open synced library is checked with Dossiary Sync. A fake
+# fetch plays that service per scenario; the shared stub would refuse any
+# real request to it anyway, so no test reaches a Dossiary Sync running on
+# this machine.
+# config: { down, token, code, tooSoon (Retry-After seconds), tooSoonBody,
+#           libraries, forgotten (token revoked), librariesRaw (body for
+#           /admin/libraries instead of the list), librariesStatus,
+#           librariesError, libraries401 (a 401 although health says connected) }
 # Every request is logged in window.__CALLS.
 FAKE_SYNC = """
 (config) => {
@@ -48,47 +49,10 @@ FAKE_SYNC = """
         }
         if(!valid) return json(401, { error: 'Unauthorized' });
         if(path === '/admin/connect' && method === 'DELETE'){ S.forgotten = true; return new Response(null, { status: 204 }); }
-        if(path === '/admin/libraries') return json(200, S.librariesRaw !== undefined ? S.librariesRaw : (S.libraries || []));
-        if(path === '/admin/devices') return S.devicesStatus ? json(S.devicesStatus, { error: 'Device store broken' }) : json(200, S.devices || []);
-        if(path === '/admin/pair-code' && method === 'POST'){
-            const libs = JSON.parse(opts.body || '{}').libraries;
-            if(S.pairFail) return json(S.pairFail, { error: 'Unknown library' });
-            if(!Array.isArray(libs) || !libs.length) return json(400, { error: 'Choose at least one library' });
-            const code = S.pairCode || 'QWER7YUP', f = S.pairFingerprint || 'AB:CD:EF:01';
-            S.pairCount = (S.pairCount || 0) + 1;
-            return json(200, { code, fingerprint: f,
-                               expires: new Date(Date.now() + (S.pairExpiresIn || 300) * 1000).toISOString(),
-                               addresses: ['https://mac.local:8443'],
-                               link: `dossiary-sync://pair?v=1&f=${encodeURIComponent(f)}&c=${code}&a=${encodeURIComponent('https://mac.local:8443')}&n=${S.pairCount}` });
-        }
-        const m = /^\\/admin\\/devices\\/([^/]+)(?:\\/(allow|deny|name|role))?$/.exec(path);
-        if(m){
-            const id = decodeURIComponent(m[1]);
-            const device = (S.devices || []).find(d => d.id === id);
-            if(!device) return json(404, { error: 'Unknown device' });
-            if(m[2] === 'role'){
-                // roleFail: { status, error } makes the hub answer that instead.
-                if(S.roleFail) return json(S.roleFail.status, S.roleFail.error ? { error: S.roleFail.error } : {});
-                const role = JSON.parse(opts.body || '{}').role;
-                if(role === 'editor'){ device.role = 'editor'; device.promoted = true; }
-                else if(role === 'phone'){ device.role = 'phone'; device.promoted = false; }
-                else return json(400, { error: 'bad-role' });
-                return json(200, device);
-            }
-            if(m[2] === 'name'){
-                if(S.renameFail) return json(S.renameFail, { error: S.renameFail === 400 ? 'empty-name' : 'hub-unreachable' });
-                const name = JSON.parse(opts.body || '{}').name;
-                device.name = name;
-                return json(200, device);
-            }
-            if(m[2]){
-                if(S.failAllow) return json(S.failAllow, { error: 'Unknown library' });
-                const lib = JSON.parse(opts.body || '{}').library;
-                if(m[2] === 'allow' && !device.libraries.includes(lib)) device.libraries.push(lib);
-                if(m[2] === 'deny') device.libraries = device.libraries.filter(x => x !== lib);
-                return json(200, device);
-            }
-            if(method === 'DELETE'){ S.devices = S.devices.filter(d => d.id !== id); return new Response(null, { status: 204 }); }
+        if(path === '/admin/libraries'){
+            if(S.libraries401) return json(401, { error: 'Unauthorized' });
+            if(S.librariesStatus) return json(S.librariesStatus, { error: S.librariesError || 'Library store broken' });
+            return json(200, S.librariesRaw !== undefined ? S.librariesRaw : (S.libraries || []));
         }
         return json(404, { error: 'Not found' });
     };
@@ -96,23 +60,7 @@ FAKE_SYNC = """
 """
 
 TOKEN_KEY = 'dossiary_sync_admin_token'
-
-# Stands in for qrcode-generator (the real one comes from cdnjs, which the
-# tests never reach): records what it was asked to encode.
-FAKE_QR = """
-() => {
-    window.__QR_DATA = [];
-    window.qrcode = (type, ecl) => ({
-        addData(d){ window.__QR_DATA.push({ d, type, ecl }); }, make(){},
-        getModuleCount(){ return 21; }, isDark(r, c){ return (r * c + r) % 3 === 0; },
-    });
-}
-"""
 HOSTILE = '<img src=x onerror=window.__xss=1>'
-
-
-def iso_ago(**kw):
-    return (datetime.now(timezone.utc) - timedelta(**kw)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def sample_sync():
@@ -120,15 +68,10 @@ def sample_sync():
         "token": "admin-tok",
         "libraries": [{"id": "lib-a", "name": "Household", "available": True},
                       {"id": "lib-b", "name": "Taxes", "available": False}],
-        "devices": [
-            {"id": "dev-1", "name": "Arne's iPhone", "role": "phone", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=5)},
-            {"id": "dev-2", "name": "pi-copy", "role": "mirror", "libraries": [], "lastSeen": iso_ago(days=2)},
-            {"id": "dev-3", "name": "Old Mac", "role": "restore", "libraries": [], "lastSeen": None},
-        ],
     }
 
 
-async def open_app(p, sync=None, token=None, lang=None, qr=True):
+async def open_app(p, sync=None, token=None, lang=None):
     browser = await p.chromium.launch()
     page = await browser.new_page()
     errors = []
@@ -139,8 +82,6 @@ async def open_app(p, sync=None, token=None, lang=None, qr=True):
         url = route.request.url
         if 'sql-wasm.js' in url or 'tesseract' in url or 'jspdf' in url or 'pdf.js' in url:
             await route.fulfill(body="/* stubbed */", content_type='application/javascript')
-        elif 'qrcode' in url:
-            await route.abort()   # the QR library never loads from the network in tests
         else:
             await route.continue_()
     await page.route('**/*', route_handler)
@@ -153,8 +94,6 @@ async def open_app(p, sync=None, token=None, lang=None, qr=True):
         await page.evaluate("([k, t]) => localStorage.setItem(k, t)", [TOKEN_KEY, token])
     if sync is not None:
         await page.evaluate(FAKE_SYNC, sync)
-    if qr:
-        await page.evaluate(FAKE_QR)
     await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot({}); window.__TEST_ROOT.name = 'TestLib';")
     await page.click('#open-btn')
     await page.wait_for_timeout(300)
@@ -177,7 +116,8 @@ async def stored_token(page):
 
 async def scenario_not_running(p):
     browser, page, errors = await open_app(p)
-    print("Tools menu has the devices entry:", await page.locator('#tools-menu #devices-btn').count() == 1)
+    print("Tools menu has the Dossiary Sync entry:", await page.locator('#tools-menu #devices-btn').count() == 1)
+    print("...named Dossiary Sync:", 'Dossiary Sync' in await page.locator('#devices-btn').text_content())
     await open_dialog(page)
     body = await page.inner_text('#devices-dialog-body')
     print("nothing answering: says Dossiary Sync isn't running:", "isn't running" in body)
@@ -221,9 +161,9 @@ async def scenario_connect(p):
     print("right code posted as {code, client}, normalised:",
           json.loads(conn['body']) == {"code": "KX7P2M9Q", "client": "Dossiary"} and conn['contentType'] == 'application/json')
     print("token stored in localStorage:", await stored_token(page) == 'admin-tok')
-    print("connected view shows the devices:", await page.locator('.devices-row').count() == 3)
-    devs = [c for c in await calls(page) if c['url'].endswith('/admin/devices')]
-    print("devices asked with the token:", devs and devs[-1]['auth'] == 'Bearer admin-tok')
+    print("connected view says so:", await page.locator('#devices-connected-text').count() == 1)
+    libs = [c for c in await calls(page) if c['url'].endswith('/admin/libraries')]
+    print("the token is checked with it:", libs and libs[-1]['auth'] == 'Bearer admin-tok')
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -254,69 +194,24 @@ async def scenario_too_soon(p):
 async def scenario_connected(p):
     browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok')
     await open_dialog(page)
-    print("a stored, valid token goes straight to the devices:", await page.locator('.devices-row').count() == 3)
-    roles = await page.eval_on_selector_all('.devices-row .devices-role', 'els => els.map(e => e.textContent)')
-    print("role labels:", roles == ['iPhone or iPad', 'Raspberry Pi copy', 'Restore'], roles)
-    seen = await page.eval_on_selector_all('.devices-row .devices-seen', 'els => els.map(e => e.textContent)')
-    print("last seen is relative:", '5 minutes ago' in seen[0] and '2 days ago' in seen[1] and 'never' in seen[2].lower(), seen)
-    phone_boxes = await page.eval_on_selector_all('.devices-row[data-id="dev-1"] .devices-lib-checkbox',
-                                                  'els => els.map(e => [e.dataset.library, e.checked])')
-    print("a phone gets one checkbox per shared library:", phone_boxes == [['lib-a', True], ['lib-b', False]], phone_boxes)
-    print("a mirror gets none:", await page.locator('.devices-row[data-id="dev-2"] .devices-lib-checkbox').count() == 0)
-    libs = await page.inner_text('#devices-libraries')
-    print("shared libraries listed read-only, unavailable marked:", 'Household' in libs and 'Taxes' in libs and 'not available' in libs)
-    print("...with the note pointing at Tools › Share this library:", (await page.inner_text('#devices-share-note')) == 'To share another library, open it in Dossiary and choose “Share this library…” in the Tools menu.' and 'dossiary-sync share' not in await page.inner_text('#devices-dialog-body'))
-
-    # Allow
-    await page.check('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]')
-    await page.wait_for_timeout(300)
-    allow = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/allow')]
-    print("ticking sends allow {library} as JSON with the token:",
-          len(allow) == 1 and json.loads(allow[0]['body']) == {"library": "lib-b"}
-          and allow[0]['contentType'] == 'application/json' and allow[0]['auth'] == 'Bearer admin-tok')
-    status = await page.inner_text('#status')
-    print("status line confirms:", "Arne's iPhone" in status and 'Taxes' in status, status)
-    print("fake service updated:", await page.evaluate("window.__SYNC.devices[0].libraries") == ['lib-a', 'lib-b'])
-
-    # Deny
-    await page.uncheck('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-a"]')
-    await page.wait_for_timeout(300)
-    deny = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/deny')]
-    print("unticking sends deny:", len(deny) == 1 and json.loads(deny[0]['body']) == {"library": "lib-a"})
-    print("fake service updated again:", await page.evaluate("window.__SYNC.devices[0].libraries") == ['lib-b'])
-
-    # Failure reverts the box and shows the error
-    await page.evaluate("window.__SYNC.failAllow = 400")
-    await page.check('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-a"]')
-    await page.wait_for_timeout(300)
-    box = page.locator('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-a"]')
-    print("a refused change is undone:", not await box.is_checked())
-    print("...and the status line shows the error:", 'err' in (await page.get_attribute('#status', 'class')) and 'Unknown library' in await page.inner_text('#status'))
-    await page.evaluate("window.__SYNC.failAllow = 0")
-
-    # Remove: cancel first, then accept
-    dialogs = []
-    async def dismiss(d):
-        dialogs.append(d.message); await d.dismiss()
-    page.once('dialog', lambda d: asyncio.ensure_future(dismiss(d)))
-    await page.click('.devices-row[data-id="dev-2"] .devices-remove-btn')
-    await page.wait_for_timeout(200)
-    print("Remove asks first, naming the device:", dialogs and 'pi-copy can no longer fetch anything' in dialogs[0], dialogs)
-    print("cancel removes nothing:", not any(c['method'] == 'DELETE' for c in await calls(page)) and await page.locator('.devices-row').count() == 3)
-    page.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
-    await page.click('.devices-row[data-id="dev-2"] .devices-remove-btn')
-    await page.wait_for_timeout(300)
-    rm = [c for c in await calls(page) if c['method'] == 'DELETE' and c['url'].endswith('/admin/devices/dev-2')]
-    print("confirming sends DELETE with the token:", len(rm) == 1 and rm[0]['auth'] == 'Bearer admin-tok')
-    print("...and the row is gone:", await page.locator('.devices-row[data-id="dev-2"]').count() == 0 and await page.locator('.devices-row').count() == 2)
-    print("...status confirms:", 'pi-copy' in await page.inner_text('#status'))
+    print("dialog titled Dossiary Sync:", (await page.inner_text('.devices-dialog h2')) == 'Dossiary Sync')
+    print("a stored, valid token goes straight to the connected view:",
+          'Connected to Dossiary Sync on this Mac' in await page.inner_text('#devices-connected-text'))
+    print("...pointing at Dossiary for Mac for the rest:",
+          (await page.inner_text('#devices-mac-note')) == 'Devices, sharing, deleting libraries and getting them from the Pi are in Dossiary for Mac.')
+    body = await page.inner_text('#devices-dialog-body')
+    print("no devices, pairing or Get it any more:",
+          await page.locator('.devices-row, #devices-add-btn, #devices-available-slot, #devices-libraries').count() == 0)
+    print("...and no library names from the service:", 'Household' not in body and 'Taxes' not in body)
+    print("only health and libraries asked:",
+          sorted({c['url'].rsplit('8769', 1)[1] for c in await calls(page)}) == ['/admin/health', '/admin/libraries'])
 
     # Language switch is blocked while the dialog is open (existing modal rule).
     await page.select_option('#lang-select', 'de', force=True)
     await page.wait_for_timeout(200)
     print("language switch blocked while open:",
           await page.evaluate("document.getElementById('lang-select').value") == 'en'
-          and 'iPhone or iPad' in await page.inner_text('#devices-dialog-body'))
+          and 'Connected to Dossiary Sync' in await page.inner_text('#devices-dialog-body'))
 
     # Disconnect
     await page.click('#devices-disconnect-btn')
@@ -324,6 +219,8 @@ async def scenario_connected(p):
     disc = [c for c in await calls(page) if c['method'] == 'DELETE' and c['url'].endswith('/admin/connect')]
     print("Disconnect revokes the token:", len(disc) == 1 and disc[0]['auth'] == 'Bearer admin-tok')
     print("...drops it locally and shows Connect:", await stored_token(page) is None and await page.locator('#devices-connect-btn').count() == 1)
+    print("...whose text says what connecting is for:", 'keep synced libraries safe' in await page.inner_text('#devices-dialog-body'))
+    print("every call had a timeout signal:", all(c['hasSignal'] for c in await calls(page)))
     print("no page errors:", not errors, errors)
     await browser.close()
 
@@ -334,16 +231,13 @@ async def scenario_token_dropped(p):
     browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
     await open_dialog(page)
     print("a revoked token is dropped, back to Connect:", await stored_token(page) is None and await page.locator('#devices-connect-btn').count() == 1)
+    print("...saying why:", 'connect again' in (await page.inner_text('#devices-dialog-body')).lower())
     await page.click('#modal-close-btn')
 
-    # Revoked while the dialog is open: the next protected call gets 401.
+    # Revoked between health and the libraries call: the 401 drops it too.
     await page.evaluate("([k]) => localStorage.setItem(k, 'admin-tok')", [TOKEN_KEY])
-    await page.evaluate("window.__SYNC.forgotten = false")
+    await page.evaluate("window.__SYNC.forgotten = false; window.__SYNC.libraries401 = true")
     await open_dialog(page)
-    print("connected again:", await page.locator('.devices-row').count() == 3)
-    await page.evaluate("window.__SYNC.forgotten = true")
-    await page.check('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]')
-    await page.wait_for_timeout(300)
     print("a 401 drops the token and returns to Connect:", await stored_token(page) is None and await page.locator('#devices-connect-btn').count() == 1)
     print("...saying why:", 'connect again' in (await page.inner_text('#devices-dialog-body')).lower())
     print("no page errors:", not errors, errors)
@@ -374,246 +268,8 @@ async def scenario_blocked_storage(p):
     await page.fill('#devices-code-input', 'KX7P2M9Q')
     await page.click('#devices-code-submit')
     await page.wait_for_timeout(400)
-    print("blocked localStorage: still connects (token in memory):", await page.locator('.devices-row').count() == 3)
+    print("blocked localStorage: still connects (token in memory):", await page.locator('#devices-connected-text').count() == 1)
     print("no page errors:", not errors, errors)
-    await browser.close()
-
-
-async def scenario_german(p):
-    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok', lang='de')
-    await page.click('#tools-btn')
-    print("German menu label:", 'iPhone' in await page.inner_text('#devices-btn') and 'Geräte' in await page.inner_text('#devices-btn'))
-    await page.click('#devices-btn')
-    await page.wait_for_timeout(300)
-    roles = await page.eval_on_selector_all('.devices-row .devices-role', 'els => els.map(e => e.textContent)')
-    print("German role labels:", roles == ['iPhone oder iPad', 'Raspberry-Pi-Kopie', 'Wiederherstellung'], roles)
-    seen = await page.eval_on_selector_all('.devices-row .devices-seen', 'els => els.map(e => e.textContent)')
-    print("German relative time:", 'vor 5 Minuten' in seen[0], seen)
-    print("German add button:", await page.inner_text('#devices-add-btn') == 'iPhone oder iPad hinzufügen…')
-    print("no page errors:", not errors, errors)
-    await browser.close()
-
-
-async def scenario_pair(p):
-    sync = sample_sync(); sync['pairFail'] = 400; sync['pairExpiresIn'] = 3
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    await page.click('#devices-add-btn')
-    boxes = await page.eval_on_selector_all('.devices-pair-lib-checkbox', 'els => els.map(e => [e.dataset.library, e.checked])')
-    print("Add iPhone or iPad lists the shared libraries, none ticked:", boxes == [['lib-a', False], ['lib-b', False]], boxes)
-    print("Show QR code disabled with no library:", await page.is_disabled('#devices-show-qr-btn'))
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    print("...enabled once one is ticked:", not await page.is_disabled('#devices-show-qr-btn'))
-    await page.uncheck('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    print("...disabled again when unticked:", await page.is_disabled('#devices-show-qr-btn'))
-    await page.evaluate("document.getElementById('devices-show-qr-btn').disabled = false")
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(200)
-    print("zero libraries: asks for one, sends nothing:",
-          'at least one library' in await page.inner_text('#devices-pair-status')
-          and not any(c['url'].endswith('/admin/pair-code') for c in await calls(page)))
-
-    # The service refuses: its reason is shown, the choice stays.
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(300)
-    print("a refused pair-code shows the reason:", 'Unknown library' in await page.inner_text('#devices-pair-status'))
-    print("...keeps the ticked library and the button usable:",
-          await page.is_checked('.devices-pair-lib-checkbox[data-library="lib-a"]') and not await page.is_disabled('#devices-show-qr-btn'))
-
-    await page.evaluate("window.__SYNC.pairFail = 0")
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(300)
-    pc = [c for c in await calls(page) if c['url'].endswith('/admin/pair-code')][-1]
-    print("pair-code posted {libraries} as JSON with the token:",
-          json.loads(pc['body']) == {"libraries": ["lib-a"]} and pc['contentType'] == 'application/json' and pc['auth'] == 'Bearer admin-tok')
-    link = await page.get_attribute('#devices-qr', 'data-link')
-    print("QR drawn as SVG:", await page.locator('#devices-qr svg path').count() == 1)
-    qr_data = await page.evaluate("window.__QR_DATA")
-    print("...of the link:", link.startswith('dossiary-sync://pair?v=1&') and qr_data[-1]['d'] == link, link)
-    print("code shown as text, grouped:", await page.inner_text('#devices-pair-code') == 'QWER 7YUP')
-    print("fingerprint shown as text:", await page.inner_text('#devices-pair-fingerprint') == 'AB:CD:EF:01')
-    print("instructions:", 'Add from Mac' in await page.inner_text('#devices-add-slot'))
-    cd = await page.inner_text('#devices-pair-countdown')
-    print("countdown:", cd in ('Valid for 0:03', 'Valid for 0:02'), cd)
-    print("New code hidden while valid:", not await page.is_visible('#devices-qr-new-btn'))
-
-    # Copy link: copies exactly the QR's link, confirms briefly, shows no link text.
-    await page.evaluate("""() => { window.__COPIED = [];
-        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async t => { window.__COPIED.push(t); } } }); }""")
-    print("Copy link button visible while valid:", await page.is_visible('#devices-copy-link-btn'))
-    print("...with the hint:", 'send it this link' in await page.inner_text('#devices-copy-link-area'))
-    await page.click('#devices-copy-link-btn')
-    await page.wait_for_timeout(100)
-    print("...copies exactly the pair link:", await page.evaluate("window.__COPIED") == [link])
-    print("...confirms 'Link copied':", await page.inner_text('#devices-link-copied') == 'Link copied')
-    print("...never shows the link as text:", 'dossiary-sync://' not in await page.inner_text('#devices-add-slot'))
-    # Fallback: no async clipboard -> hidden textarea + execCommand('copy').
-    await page.evaluate("""() => { window.__COPIED = [];
-        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
-        document.execCommand = c => { const ta = document.querySelector('textarea'); if(c === 'copy' && ta){ window.__COPIED.push(ta.value); return true; } return false; }; }""")
-    await page.click('#devices-copy-link-btn')
-    await page.wait_for_timeout(100)
-    print("fallback copies the link via textarea:", await page.evaluate("window.__COPIED") == [link]
-          and await page.locator('textarea').count() == 0)
-    await page.wait_for_timeout(2200)
-    print("confirmation disappears:", await page.inner_text('#devices-link-copied') == '')
-    print("link not in localStorage:", not await page.evaluate("Object.values(localStorage).some(v => v.includes('dossiary-sync://'))"))
-
-    await page.wait_for_timeout(3500)
-    print("expired: says so:", await page.inner_text('#devices-pair-countdown') == 'This code has expired.')
-    print("...removes the QR:", await page.locator('#devices-qr svg').count() == 0)
-    print("...offers New code:", await page.is_visible('#devices-qr-new-btn'))
-    print("...hides Copy link:", not await page.is_visible('#devices-copy-link-btn'))
-
-    await page.evaluate("window.__SYNC.pairExpiresIn = 125")
-    await page.click('#devices-qr-new-btn')
-    await page.wait_for_timeout(300)
-    link2 = await page.get_attribute('#devices-qr', 'data-link')
-    print("New code asks again and draws the new link:",
-          len([c for c in await calls(page) if c['url'].endswith('/admin/pair-code')]) == 3 and link2 != link
-          and await page.locator('#devices-qr svg').count() == 1)
-    cd = await page.inner_text('#devices-pair-countdown')
-    print("countdown shows minutes:", cd in ('Valid for 2:05', 'Valid for 2:04'), cd)
-
-    # A device removed meanwhile re-renders the list; the QR stays.
-    page.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
-    await page.click('.devices-row[data-id="dev-3"] .devices-remove-btn')
-    await page.wait_for_timeout(300)
-    print("QR survives a removal:", await page.get_attribute('#devices-qr', 'data-link') == link2)
-
-    n_dev_calls = len([c for c in await calls(page) if c['url'].endswith('/admin/devices')])
-    await page.click('#devices-pair-done-btn')
-    await page.wait_for_timeout(300)
-    print("Done reloads the devices and folds the section:",
-          len([c for c in await calls(page) if c['url'].endswith('/admin/devices')]) == n_dev_calls + 1
-          and await page.locator('#devices-add-btn').count() == 1 and await page.locator('#devices-qr').count() == 0)
-
-    # Closing the dialog with a QR open stops the countdown quietly.
-    await page.click('#devices-add-btn')
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-b"]')
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(300)
-    await page.click('#modal-close-btn')
-    await page.wait_for_timeout(1300)
-    print("every call had a timeout signal:", all(c['hasSignal'] for c in await calls(page)))
-    print("no page errors:", not errors, errors)
-    await browser.close()
-
-
-async def scenario_pair_edge_cases(p):
-    # 401 on pair-code: the token is gone.
-    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok')
-    await open_dialog(page)
-    await page.click('#devices-add-btn')
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    await page.evaluate("window.__SYNC.forgotten = true")
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(300)
-    print("401 on pair-code: back to Connect, token dropped:",
-          await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
-    await browser.close()
-
-    # The QR library can't load (offline): the code and fingerprint still show.
-    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok', qr=False)
-    await open_dialog(page)
-    await page.click('#devices-add-btn')
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(600)
-    print("QR library missing: says so:", "couldn't be drawn" in await page.inner_text('#devices-pair-status'))
-    print("...still shows code and fingerprint:", await page.inner_text('#devices-pair-code') == 'QWER 7YUP'
-          and await page.inner_text('#devices-pair-fingerprint') == 'AB:CD:EF:01')
-    print("...and no SVG:", await page.locator('#devices-qr svg').count() == 0)
-    print("...offers New code:", await page.is_visible('#devices-qr-new-btn'))
-    n = await page.evaluate("window.__SYNC.pairCount")
-    await page.click('#devices-qr-new-btn')
-    await page.wait_for_timeout(600)
-    print("...New code requests a fresh code:", await page.evaluate("window.__SYNC.pairCount") == n + 1)
-    print("...and only one QR script tried per draw:",
-          await page.evaluate("document.querySelectorAll('script[src*=qrcode-generator]').length") <= 1)
-    print("no page errors:", not [e for e in errors if 'ERR_FAILED' not in e], errors)
-    await browser.close()
-
-    # No libraries shared: nothing to choose.
-    sync = sample_sync(); sync['libraries'] = []
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    await page.click('#devices-add-btn')
-    print("no shared libraries: no QR button, says so:",
-          await page.locator('#devices-show-qr-btn').count() == 0 and 'No libraries are shared yet' in await page.inner_text('#devices-add-slot'))
-    await page.click('#devices-pair-cancel-btn')
-    print("Cancel folds it again:", await page.locator('#devices-add-btn').count() == 1)
-    print("no page errors:", not errors, errors)
-    await browser.close()
-
-
-async def scenario_hostile_names(p):
-    sync = sample_sync()
-    sync['libraries'][0]['name'] = HOSTILE
-    sync['devices'][0]['name'] = HOSTILE
-    sync['pairFingerprint'] = HOSTILE
-    sync['pairCode'] = HOSTILE
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    await page.click('#devices-add-btn')
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(400)
-    body = await page.inner_text('#devices-dialog-body')
-    print("hostile device/library/code/fingerprint shown as text:", body.count(HOSTILE) >= 5, body.count(HOSTILE))
-    print("...no element injected:", await page.locator('#devices-dialog-body img').count() == 0)
-    print("...no script ran:", await page.evaluate("window.__xss") is None)
-    # The status line names them too.
-    await page.check('.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]')
-    await page.wait_for_timeout(300)
-    print("status line shows the name as text:", HOSTILE in await page.inner_text('#status')
-          and await page.evaluate("window.__xss") is None)
-    print("no page errors:", not errors, errors)
-    await browser.close()
-
-
-async def scenario_service_goes_down(p):
-    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok')
-    await open_dialog(page)
-    await page.evaluate("window.__SYNC.down = true")
-    box = '.devices-row[data-id="dev-1"] .devices-lib-checkbox[data-library="lib-b"]'
-    await page.click(box)   # not check(): the refusal undoes the tick before check() could see it
-    await page.wait_for_timeout(300)
-    status = await page.inner_text('#status')
-    print("toggling with the service gone: clear error:", "didn't answer" in status and 'err' in await page.get_attribute('#status', 'class'), status)
-    print("...tick undone, checkbox usable again:", not await page.is_checked(box) and not await page.is_disabled(box))
-    page.once('dialog', lambda d: asyncio.ensure_future(d.accept()))
-    await page.click('.devices-row[data-id="dev-2"] .devices-remove-btn')
-    await page.wait_for_timeout(300)
-    status = await page.inner_text('#status')
-    print("Remove with the service gone: clear error:", "Couldn't remove pi-copy" in status and "didn't answer" in status, status)
-    print("...row kept:", await page.locator('.devices-row[data-id="dev-2"]').count() == 1)
-    await page.click('#devices-add-btn')
-    await page.check('.devices-pair-lib-checkbox[data-library="lib-a"]')
-    await page.click('#devices-show-qr-btn')
-    await page.wait_for_timeout(300)
-    print("Show QR code with the service gone: clear error, button usable:",
-          "didn't answer" in await page.inner_text('#devices-pair-status') and not await page.is_disabled('#devices-show-qr-btn'))
-    print("no page errors:", not errors, errors)
-    await browser.close()
-
-
-async def scenario_bad_answers(p):
-    # /admin/libraries answers 200 but not a list: say so, not "refused (200)".
-    sync = sample_sync(); sync['librariesRaw'] = {"oops": True}
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    body = await page.inner_text('#devices-dialog-body')
-    print("libraries in an unknown shape: reported as such:", "doesn't understand" in body and '(200)' not in body, body)
-    await browser.close()
-    # /admin/devices fails while libraries are fine: that failure is reported.
-    sync = sample_sync(); sync['devicesStatus'] = 500
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    body = await page.inner_text('#devices-dialog-body')
-    print("devices failing: its error is the one shown:", 'Device store broken (500)' in body, body)
-    print("no page errors:", not [e for e in errors if '500' not in e], errors)
     await browser.close()
 
 
@@ -627,18 +283,66 @@ async def scenario_storage_refuses_write(p):
     await page.fill('#devices-code-input', 'KX7P2M9Q')
     await page.click('#devices-code-submit')
     await page.wait_for_timeout(400)
-    devs = [c for c in await calls(page) if c['url'].endswith('/admin/devices')]
-    print("token kept in memory when it can't be stored:", await page.locator('.devices-row').count() == 3
-          and devs and devs[-1]['auth'] == 'Bearer admin-tok')
+    libs = [c for c in await calls(page) if c['url'].endswith('/admin/libraries')]
+    print("token kept in memory when it can't be stored:", await page.locator('#devices-connected-text').count() == 1
+          and libs and libs[-1]['auth'] == 'Bearer admin-tok')
     await page.click('#modal-close-btn')
     await open_dialog(page)
-    print("...and used again on the next open:", await page.locator('.devices-row').count() == 3)
+    print("...and used again on the next open:", await page.locator('#devices-connected-text').count() == 1)
     print("no page errors:", not errors, errors)
     await browser.close()
 
 
-async def scenario_start_screen(p):
-    # Managing devices doesn't need a library: the start screen offers it too.
+async def scenario_german(p):
+    browser, page, errors = await open_app(p, sync=sample_sync(), lang='de')
+    await page.click('#tools-btn')
+    print("German menu label:", (await page.inner_text('#devices-btn')) == '🔗 Dossiary Sync…')
+    await page.click('#devices-btn')
+    await page.wait_for_timeout(300)
+    print("German Connect text:", 'synchronisierte Bibliotheken schützen' in await page.inner_text('#devices-dialog-body'))
+    await page.click('#modal-close-btn')
+    await page.evaluate("([k]) => localStorage.setItem(k, 'admin-tok')", [TOKEN_KEY])
+    await open_dialog(page)
+    print("German connected text:", 'Mit Dossiary Sync auf diesem Mac verbunden' in await page.inner_text('#devices-connected-text'))
+    print("German note:", 'Dossiary für Mac' in await page.inner_text('#devices-mac-note'))
+    print("no page errors:", not errors, errors)
+    await browser.close()
+
+
+async def scenario_bad_answers(p):
+    # /admin/libraries answers an error: shown as text with Look again, the token kept.
+    sync = sample_sync(); sync['librariesStatus'] = 500; sync['librariesError'] = HOSTILE
+    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
+    await open_dialog(page)
+    body = await page.inner_text('#devices-dialog-body')
+    print("a failing service: its error shown as text:", HOSTILE in body and '(500)' in body, body)
+    print("...no element injected:", await page.locator('#devices-dialog-body img').count() == 0)
+    print("...no script ran:", await page.evaluate("window.__xss") is None)
+    print("...the token is kept:", await stored_token(page) == 'admin-tok')
+    await page.evaluate("delete window.__SYNC.librariesStatus")
+    await page.click('#devices-retry-btn')
+    await page.wait_for_timeout(300)
+    print("Look again connects:", await page.locator('#devices-connected-text').count() == 1)
+    print("no page errors:", not [e for e in errors if '500' not in e], errors)
+    await browser.close()
+
+
+async def scenario_service_goes_down(p):
+    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok')
+    await page.evaluate("window.__SYNC.down = true")
+    await open_dialog(page)
+    print("the service gone: says it isn't running:", "isn't running" in await page.inner_text('#devices-dialog-body'))
+    print("...the token is kept for when it's back:", await stored_token(page) == 'admin-tok')
+    await page.evaluate("window.__SYNC.down = false")
+    await page.click('#devices-retry-btn')
+    await page.wait_for_timeout(300)
+    print("Look again: connected without a new code:", await page.locator('#devices-connected-text').count() == 1)
+    print("no page errors:", not [e for e in errors if 'Failed to fetch' not in e], errors)
+    await browser.close()
+
+
+async def scenario_admin_gone(p):
+    # 1.71.0: the start screen, the Recent libraries rows and Tools have no device or delete entries any more.
     browser = await p.chromium.launch()
     page = await browser.new_page()
     errors = []
@@ -646,234 +350,17 @@ async def scenario_start_screen(p):
     await page.add_init_script(open('stub_studio2.js').read())
     await page.goto(f"file://{APP_PATH}")
     await page.wait_for_timeout(200)
-    await page.evaluate(FAKE_SYNC, sample_sync())
-    print("start screen shows the devices button:", await page.is_visible('#empty-devices-btn'))
-    await page.click('#empty-devices-btn')
-    await page.wait_for_selector('#devices-connect-btn')
-    print("it opens the dialog without a library, offering Connect:", await page.locator('#devices-connect-btn').count() == 1)
-    await page.click('#modal-close-btn')
+    print("no devices button on the start screen:", await page.locator('#empty-devices-btn').count() == 0)
+    await page.evaluate("window.__TEST_ROOT = window.__makeSeededRoot({}); window.__TEST_ROOT.name = 'TestLib';")
+    await page.click('#open-btn')
+    await page.wait_for_timeout(300)
+    print("no Delete this library in Tools:", await page.locator('#delete-library-btn').count() == 0)
     print("no page errors:", not errors, errors)
     await browser.close()
 
 
-async def scenario_rename(p):
-    sync = sample_sync()
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    row = '.devices-row[data-id="dev-1"]'
-    print("each device has a Rename button:", await page.locator('.devices-rename-btn').count() == 3
-          and await page.get_attribute(row + ' .devices-rename-btn', 'aria-label') == 'Rename')
-    await page.click(row + ' .devices-rename-btn')
-    inp = row + ' .devices-rename-input'
-    print("pencil opens an input with the current name:", await page.input_value(inp) == "Arne's iPhone"
-          and await page.get_attribute(inp, 'maxlength') == '64'
-          and 'all your Macs' in await page.get_attribute(inp, 'title'))
-    n0 = len(await calls(page))
-    await page.keyboard.press('Escape')
-    await page.wait_for_timeout(100)
-    print("Escape closes the input, no request, dialog stays open:", await page.locator('.devices-rename-input').count() == 0
-          and await page.locator('#devices-dialog-body').count() == 1 and len(await calls(page)) == n0)
-    await page.click(row + ' .devices-rename-btn')
-    await page.keyboard.press('Enter')
-    await page.wait_for_timeout(100)
-    print("unchanged name sends nothing:", await page.locator('.devices-rename-input').count() == 0 and len(await calls(page)) == n0)
-    await page.click(row + ' .devices-rename-btn')
-    await page.fill(inp, '   ')
-    await page.keyboard.press('Enter')
-    await page.wait_for_timeout(100)
-    print("empty name sends nothing:", await page.locator('.devices-rename-input').count() == 0 and len(await calls(page)) == n0)
-    await page.click(row + ' .devices-rename-btn')
-    await page.fill(inp, ' My-Private ')
-    await page.keyboard.press('Enter')
-    await page.wait_for_timeout(300)
-    posts = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/name')]
-    print("Enter posts the trimmed name as JSON:", len(posts) == 1 and posts[0]['method'] == 'POST'
-          and posts[0]['contentType'] == 'application/json' and json.loads(posts[0]['body']) == {"name": "My-Private"}
-          and posts[0]['auth'] == 'Bearer admin-tok')
-    print("list shows the new name:", await page.inner_text(row + ' .devices-name') == 'My-Private'
-          and await page.locator('.devices-rename-input').count() == 0)
-    # blur saves
-    await page.click(row + ' .devices-rename-btn')
-    await page.fill(inp, 'Blurred')
-    await page.click('#devices-dialog-body h3')
-    await page.wait_for_timeout(300)
-    print("blur saves:", await page.inner_text(row + ' .devices-name') == 'Blurred')
-    # failures keep the input open
-    for status, text in ((400, 'empty-name'), (503, 'hub-unreachable')):
-        await page.evaluate("(s) => { window.__SYNC.renameFail = s; }", status)
-        await page.click(row + ' .devices-rename-btn')
-        await page.fill(inp, 'Nope')
-        await page.keyboard.press('Enter')
-        await page.wait_for_timeout(300)
-        err = await page.inner_text(row + ' .devices-rename-error') if await page.locator(row + ' .devices-rename-error').count() else ''
-        print(f"{status}: reason shown under the input, input open and usable:", text in err or str(status) in err,
-              await page.locator(inp).count() == 1 and not await page.is_disabled(inp), err)
-        await page.keyboard.press('Escape')
-        await page.wait_for_timeout(100)
-    print("name unchanged after failures:", await page.inner_text(row + ' .devices-name') == 'Blurred')
-    await page.evaluate("() => { window.__SYNC.renameFail = 0; }")
-    # hostile name is text
-    await page.click(row + ' .devices-rename-btn')
-    await page.fill(inp, HOSTILE)
-    await page.keyboard.press('Enter')
-    await page.wait_for_timeout(300)
-    print("hostile name shown as text:", await page.inner_text(row + ' .devices-name') == HOSTILE
-          and await page.locator(row + ' img').count() == 0 and not await page.evaluate("window.__xss"))
-    # 401 drops the token
-    await page.evaluate("() => { window.__SYNC.forgotten = true; }")
-    await page.click(row + ' .devices-rename-btn')
-    await page.fill(inp, 'Again')
-    await page.keyboard.press('Enter')
-    await page.wait_for_timeout(300)
-    print("401 sends back to Connect:", await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
-    print("no page errors:", not [e for e in errors if '400' not in e and '503' not in e], errors)
-    await browser.close()
-    # German
-    browser, page, errors = await open_app(p, sync=sample_sync(), token='admin-tok', lang='de')
-    await open_dialog(page)
-    btn = '.devices-row[data-id="dev-1"] .devices-rename-btn'
-    print("German labels:", await page.get_attribute(btn, 'title') == 'Umbenennen')
-    await page.click(btn)
-    print("German hint:", 'Macs angezeigt' in await page.get_attribute('.devices-rename-input', 'title'))
-    await browser.close()
-
-
-async def scenario_make_editor(p):
-    sync = sample_sync()
-    sync["devices"] = [
-        {"id": "dev-1", "name": "Arne's iPhone", "role": "phone", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=5), "promoted": False},
-        {"id": "dev-4", "name": "Promoted iPad", "role": "editor", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=9), "promoted": True},
-        {"id": "dev-5", "name": "Studio iMac", "role": "editor", "libraries": ["lib-a"], "lastSeen": iso_ago(minutes=1), "promoted": False},
-        {"id": "dev-2", "name": "pi-copy", "role": "mirror", "libraries": [], "lastSeen": iso_ago(days=2), "promoted": False},
-    ]
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok')
-    await open_dialog(page)
-    row = lambda i: f'.devices-row[data-id="{i}"]'
-    role = lambda i: page.inner_text(row(i) + ' .devices-role')
-    btn_text = lambda i: page.locator(row(i) + ' .devices-role-btn').all_inner_texts()
-    print("role labels:", await role('dev-1') == 'iPhone or iPad' and await role('dev-4') == 'iPhone or iPad (editor)'
-          and await role('dev-5') == 'Mac' and await role('dev-2') == 'Raspberry Pi copy', await role('dev-2'))
-    print("Make editor only on the phone:", await btn_text('dev-1') == ['Make editor'])
-    print("Make phone again only on the promoted editor:", await btn_text('dev-4') == ['Make phone again'])
-    print("no role button on the Mac or the mirror:", await btn_text('dev-5') == [] and await btn_text('dev-2') == [])
-    notes = await page.inner_text(row('dev-4'))
-    print("promoted row: both notes, no checkboxes:", 'Can change every library on this hub.' in notes
-          and 'As a phone, it keeps only the libraries ticked for it.' in notes
-          and await page.locator(row('dev-4') + ' .devices-lib-checkbox').count() == 0)
-    print("Mac row keeps its libraries, no notes:", 'Household' in await page.inner_text(row('dev-5'))
-          and 'Can change every library' not in await page.inner_text(row('dev-5')))
-    print("phone row keeps its checkboxes:", await page.locator(row('dev-1') + ' .devices-lib-checkbox').count() == 2)
-
-    # Panel opens, one at a time.
-    n0 = len(await calls(page))
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    panel = '.devices-role-panel'
-    print("Make editor opens one panel with the confirm text:", await page.locator(panel).count() == 1
-          and await page.inner_text(panel + ' .devices-role-text') == "Arne's iPhone will be able to change every library on this hub. It can also delete libraries for everyone, remove devices and make pairing codes."
-          and await page.locator(row('dev-1') + ' ' + panel).count() == 1
-          and await page.locator(panel + ' button').all_inner_texts() == ['Make editor', 'Cancel'])
-    await page.click(panel + ' .devices-role-cancel')
-    print("Cancel closes it, sends nothing:", await page.locator(panel).count() == 0 and len(await calls(page)) == n0
-          and await page.locator('#devices-dialog-body').count() == 1)
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.keyboard.press('Escape')
-    await page.wait_for_timeout(100)
-    print("Escape closes it, sends nothing, dialog stays open:", await page.locator(panel).count() == 0
-          and len(await calls(page)) == n0 and await page.locator('#devices-dialog-body').count() == 1
-          and await page.locator('#modal-close-btn').count() == 1)
-
-    # A second Make editor closes the first; names are escaped.
-    await page.evaluate("""(h) => { window.__SYNC.devices.push({ id: 'dev-6', name: h, role: 'phone', libraries: [], lastSeen: null, promoted: false }); }""", HOSTILE)
-    await page.click('#modal-close-btn')
-    await open_dialog(page)
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.click(row('dev-6') + ' .devices-role-btn')
-    print("opening another closes the first:", await page.locator(panel).count() == 1
-          and await page.locator(row('dev-6') + ' ' + panel).count() == 1)
-    print("hostile name in the confirm text is text:", HOSTILE in await page.inner_text(panel + ' .devices-role-text')
-          and await page.locator(panel + ' img').count() == 0 and not await page.evaluate("window.__xss"))
-    await page.click(panel + ' .devices-role-cancel')
-
-    # Confirm.
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.click(panel + ' .devices-role-confirm')
-    await page.wait_for_timeout(300)
-    posts = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/role')]
-    print("confirm posts exactly the role as JSON:", len(posts) == 1 and posts[0]['method'] == 'POST'
-          and posts[0]['url'] == 'http://127.0.0.1:8769/admin/devices/dev-1/role'
-          and posts[0]['contentType'] == 'application/json' and json.loads(posts[0]['body']) == {"role": "editor"}
-          and posts[0]['auth'] == 'Bearer admin-tok')
-    print("row is now the promoted editor:", await role('dev-1') == 'iPhone or iPad (editor)'
-          and await btn_text('dev-1') == ['Make phone again'] and await page.locator(panel).count() == 0
-          and await page.locator(row('dev-1') + ' .devices-lib-checkbox').count() == 0)
-    print("status line says it:", await page.inner_text('#status') == "Arne's iPhone is now an editor.")
-
-    # Make phone again at once.
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.wait_for_timeout(300)
-    posts = [c for c in await calls(page) if c['url'].endswith('/admin/devices/dev-1/role')]
-    print("Make phone again posts phone, no panel:", len(posts) == 2 and json.loads(posts[1]['body']) == {"role": "phone"}
-          and posts[1]['contentType'] == 'application/json')
-    print("row is a phone row with checkboxes again:", await role('dev-1') == 'iPhone or iPad'
-          and await btn_text('dev-1') == ['Make editor'] and await page.locator(row('dev-1') + ' .devices-lib-checkbox').count() == 2
-          and await page.inner_text('#status') == "Arne's iPhone is a phone again.")
-
-    # Failures.
-    cases = (({"status": 404, "error": "needs-hub"}, "Only a Raspberry Pi hub can make a phone an editor. This Mac isn't joined to one."),
-             ({"status": 409, "error": "not-promoted"}, "This device was paired as an editor, so it can't become a phone. Remove it and pair it again."),
-             ({"status": 404}, "Update Dossiary Sync on this Mac first."),
-             ({"status": 503, "error": "hub-unreachable"}, "The Raspberry Pi can't be reached. Try again when it's on and connected."),
-             ({"status": 502, "error": "hub-unauthorized"}, "The Raspberry Pi didn't accept this Mac. Pair this Mac with the Pi again in Dossiary Sync."))
-    for fail, text in cases:
-        await page.evaluate("(f) => { window.__SYNC.roleFail = f; }", fail)
-        await page.click(row('dev-1') + ' .devices-role-btn')
-        await page.click(panel + ' .devices-role-confirm')
-        await page.wait_for_timeout(300)
-        err = await page.inner_text(row('dev-1') + ' .devices-role-error') if await page.locator(row('dev-1') + ' .devices-role-error').count() else ''
-        print(f"{fail['status']} {fail.get('error')}: text under the row, row unchanged:", text in err
-              and await role('dev-1') == 'iPhone or iPad' and await btn_text('dev-1') == ['Make editor']
-              and await page.locator(panel + ' button:disabled').count() == 0, err)
-        await page.keyboard.press('Escape')
-        await page.wait_for_timeout(100)
-    # Escape after clicking the panel's own text cancels only the panel.
-    await page.evaluate("() => { window.__SYNC.roleFail = null; }")
-    n1 = len(await calls(page))
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.click(panel + ' .devices-role-text')
-    await page.keyboard.press('Escape')
-    await page.wait_for_timeout(100)
-    print("Escape after clicking the panel text closes only the panel, sends nothing:", await page.locator(panel).count() == 0
-          and len(await calls(page)) == n1 and await page.locator('#devices-dialog-body').count() == 1
-          and await page.locator('#modal-close-btn').count() == 1)
-    # Same for Make phone again: error line under the head.
-    await page.evaluate("() => { window.__SYNC.roleFail = null; }")
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.click(panel + ' .devices-role-confirm')
-    await page.wait_for_timeout(300)
-    await page.evaluate("() => { window.__SYNC.roleFail = { status: 409, error: 'not-promoted' }; }")
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.wait_for_timeout(300)
-    err = await page.inner_text(row('dev-1') + ' .devices-role-error') if await page.locator(row('dev-1') + ' .devices-role-error').count() else ''
-    print("Make phone again 409: text under the row, row unchanged, button usable:", "can't become a phone" in err
-          and await role('dev-1') == 'iPhone or iPad (editor)' and not await page.is_disabled(row('dev-1') + ' .devices-role-btn'), err)
-
-    # 401 drops the token.
-    await page.evaluate("() => { window.__SYNC.roleFail = null; window.__SYNC.forgotten = true; }")
-    await page.click(row('dev-1') + ' .devices-role-btn')
-    await page.wait_for_timeout(300)
-    print("401 sends back to Connect:", await page.locator('#devices-connect-btn').count() == 1 and await stored_token(page) is None)
-    print("no page errors:", not [e for e in errors if '404' not in e and '409' not in e and '503' not in e and '502' not in e and '401' not in e], errors)
-    await browser.close()
-
-    browser, page, errors = await open_app(p, sync=sync, token='admin-tok', lang='de')
-    await open_dialog(page)
-    de = await page.locator('.devices-role-btn').first.inner_text()
-    print("German: Make editor is the German string:", de == 'Zum Editor machen', de)
-    await browser.close()
-
-
-SCENARIOS = [scenario_start_screen, scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped, scenario_blocked_storage, scenario_german,
-             scenario_pair, scenario_pair_edge_cases, scenario_hostile_names, scenario_service_goes_down, scenario_bad_answers, scenario_storage_refuses_write, scenario_rename, scenario_make_editor]
+SCENARIOS = [scenario_admin_gone, scenario_not_running, scenario_connect, scenario_too_soon, scenario_connected, scenario_token_dropped,
+             scenario_blocked_storage, scenario_storage_refuses_write, scenario_german, scenario_bad_answers, scenario_service_goes_down]
 
 
 async def main():

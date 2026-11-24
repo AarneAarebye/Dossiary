@@ -10,9 +10,9 @@ from playwright.async_api import async_playwright
 # Share this library (spec dossiary-ios docs/superpowers/specs/2026-10-25-share-library-design.md):
 # Tools › "Share this library…" shares the open, unsynced library through
 # Dossiary Sync -- in place when it's directly in this Mac's libraries folder,
-# otherwise as a copy made there first -- and iPhone & other devices… gets a
-# library on the Pi this Mac doesn't have ("Get it"). A fake fetch plays the
-# Mac service; the libraries folder is a fake directory (window.__LIB_ROOT).
+# otherwise as a copy made there first. ("Get it", a library on the Pi this
+# Mac doesn't have, left the page in 1.71.0: Dossiary for Mac's Get from
+# Hub….) A fake fetch plays the Mac service; the libraries folder is a fake directory (window.__LIB_ROOT).
 # config: { token, devices, shares (list of {status, body}, one per POST, the
 #           last repeating; default 200), uploading, available (list, or
 #           'missing' for 404), gets (list of answers), hangGet }
@@ -443,68 +443,12 @@ async def main():
         print("5 no errors:", errors == [], errors)
         await browser.close()
 
-        # === 6. Get it: list, disabled while uploading, download, Open ===
-        available = [{"id": "lib-a", "name": "Household", "available": True}, {"id": "lib-b", "name": "Tax 2027", "available": False}]
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "available": available, "hangGet": True,
-                                                   "gets": [{"status": 200, "body": {"id": "lib-a", "name": "Household", "folder": f"{ROOT_PATH}/Household.dossiary"}}]})
-        await page.click('#tools-btn')
-        await page.click('#devices-btn')
-        await page.wait_for_timeout(500)
-        slot = await text_of(page, '#devices-available-slot')
-        print("6 section listed:", 'On the Pi, not on this Mac' in slot and 'Household' in slot and 'Tax 2027' in slot, slot)
-        rows = await page.locator('#devices-available-list li').evaluate_all("els => els.map(li => [li.dataset.library, li.querySelector('button').disabled, li.textContent.includes('being uploaded')])")
-        print("6 still-uploading one disabled with a note:", rows == [['lib-a', False, False], ['lib-b', True, True]])
-        await page.click('#devices-available-list li[data-library="lib-a"] .devices-get-btn')
-        await page.wait_for_timeout(300)
-        print("6 no stored folder: the chooser opens under the row:", f"Choose this Mac's libraries folder: {ROOT_PATH}." in await text_of(page, '#devices-available-list li[data-library="lib-a"]'))
-        await page.evaluate("window.__NEXT_PICKED_DIR = window.__LIB_ROOT")
-        await page.click('#devices-available-list .libraries-root-choose-btn')
-        await page.wait_for_timeout(300)
-        btn = page.locator('#devices-available-list li[data-library="lib-a"] .devices-get-btn')
-        print("6 running: Downloading…", (await btn.inner_text()) == 'Downloading…' and await btn.is_disabled())
-        gets = await calls(page, 'http://127.0.0.1:8769/admin/libraries/lib-a/get')
-        print("6 one get POST as JSON {}:", len(gets) == 1 and gets[0]['body'] == {} and gets[0]['contentType'] == 'application/json')
-        await page.evaluate("window.__releaseGet()")
-        await page.wait_for_timeout(300)
-        print("6 done: Open offered:", await page.locator('#devices-available-list .devices-open-btn').count() == 1 and '“Household” is now on this Mac.' in await text_of(page, '#devices-available-list'))
-        await page.click('#devices-available-list .devices-open-btn')
-        await page.wait_for_timeout(600)
-        print("6 Open opens the downloaded folder:", (await text_of(page, '#sub-label')) == 'Household.dossiary' and await page.locator('#devices-dialog-body').count() == 0)
-        await page.wait_for_timeout(200)
-        print("6 added to Recent:", 'Household.dossiary' in await recent_names(page))
-        print("6 no errors:", errors == [], errors)
-        await browser.close()
-
-        # Errors under the row, hidden when empty / older service
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "available": available[:1],
-                                                   "gets": [{"status": 409, "body": {"error": "not-ready"}}]}, store_root=True)
-        await page.click('#tools-btn'); await page.click('#devices-btn'); await page.wait_for_timeout(500)
-        await page.click('#devices-available-list .devices-get-btn')
-        await page.wait_for_timeout(400)
-        print("6 not-ready shown under the row:", (await text_of(page, '#devices-available-list .devices-get-error')) == "It hasn't finished uploading yet. Try again in a moment.")
-        await page.evaluate("window.__SYNC.gets = [{status: 502, body: {error: 'download-failed'}}]")
-        await page.click('#devices-available-list .devices-get-btn')
-        await page.wait_for_timeout(400)
-        print("6 unknown code shown with the code:", (await text_of(page, '#devices-available-list .devices-get-error')) == "Couldn't get it: download-failed (502).")
-        await page.keyboard.press('Escape')
-        for avail, label in (([], 'empty list'), ('missing', 'older service (404)')):
-            await page.evaluate(f"window.__SYNC.available = {json.dumps(avail)}")
-            await page.click('#tools-btn'); await page.click('#devices-btn'); await page.wait_for_timeout(500)
-            print(f"6 section hidden for an {label}:", (await text_of(page, '#devices-available-slot')).strip() == '' and await page.locator('#devices-list').count() == 1)
-            await page.keyboard.press('Escape')
-        print("6 no errors (errors run):", errors == [], errors)
-        await browser.close()
-
         # === 7. German labels ===
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "available": available[:1]}, lang='de', store_root=True)
+        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES}, lang='de', store_root=True)
         await page.click('#tools-btn')
         print("7 German Tools item:", (await text_of(page, '#share-library-btn')).strip() == '⇪ Diese Bibliothek teilen…')
         await page.click('#share-library-btn'); await page.wait_for_timeout(300)
         print("7 German dialog:", (await text_of(page, '#share-library-title')) == 'Diese Bibliothek teilen' and (await text_of(page, '#share-library-share-btn')) == 'Teilen')
-        await page.keyboard.press('Escape')
-        await page.click('#tools-btn'); await page.click('#devices-btn'); await page.wait_for_timeout(500)
-        slot = await text_of(page, '#devices-available-slot')
-        print("7 German Get it section:", 'Auf dem Pi, nicht auf diesem Mac' in slot and 'Holen' in slot, slot)
         print("7 no errors:", errors == [], errors)
         await browser.close()
 
@@ -633,30 +577,6 @@ async def main():
         print("12 nothing shared:", len(await calls(page, SHARE_URL)) == 0)
         print("12 Share can be clicked again:", await page.locator('#share-library-share-btn').is_enabled())
         print("12 no errors:", errors == [], errors)
-        await browser.close()
-
-        # === 13. Devices dialog: the share note; Get it refreshes the libraries; a dropped chooser frees its row ===
-        available = [{"id": "lib-a", "name": "Household", "available": True}, {"id": "lib-c", "name": "Cars", "available": True}]
-        browser, page, errors = await open_app(p, {"token": "admin-tok", "devices": DEVICES, "available": available, "libraries": [],
-                                                   "gets": [{"status": 200, "body": {"id": "lib-c", "name": "Cars", "folder": f"{ROOT_PATH}/Cars.dossiary"}}]})
-        await page.click('#tools-btn'); await page.click('#devices-btn'); await page.wait_for_timeout(500)
-        nt = await text_of(page, '#devices-share-note')
-        print("13 share note points at Tools:", nt == 'To share another library, open it in Dossiary and choose “Share this library…” in the Tools menu.', nt)
-        print("13 no command line in the dialog:", 'dossiary-sync share' not in await text_of(page, '#devices-dialog-body'))
-        await page.click('#devices-available-list li[data-library="lib-a"] .devices-get-btn')
-        await page.wait_for_timeout(300)
-        print("13 chooser under Household, its button disabled:", await page.locator('#devices-available-list li[data-library="lib-a"] .libraries-root-choose-btn').count() == 1 and await page.locator('#devices-available-list li[data-library="lib-a"] .devices-get-btn').is_disabled())
-        await page.click('#devices-available-list li[data-library="lib-c"] .devices-get-btn')
-        await page.wait_for_timeout(300)
-        await page.evaluate("""() => { window.__SYNC.libraries = [{ id: 'lib-c', name: 'Cars', available: true }]; window.__NEXT_PICKED_DIR = window.__LIB_ROOT; }""")
-        await page.click('#devices-available-list li[data-library="lib-c"] .libraries-root-choose-btn')
-        await page.wait_for_timeout(600)
-        libs = await text_of(page, '#devices-libraries')
-        print("13 after Get it the library is listed at once:", 'Cars' in libs, libs)
-        print("13 ...and offered to the phone:", await page.locator('.devices-row[data-id="phone-1"] .devices-lib-checkbox[data-library="lib-c"]').count() == 1)
-        print("13 Open still offered:", await page.locator('#devices-available-list li[data-library="lib-c"] .devices-open-btn').count() == 1)
-        print("13 the dropped chooser frees Household's Get it:", await page.locator('#devices-available-list li[data-library="lib-a"] .devices-get-btn').is_enabled())
-        print("13 no errors:", errors == [], errors)
         await browser.close()
 
         # === 8. The libraries-folder database blocked or failing: the chooser, never a hang ===

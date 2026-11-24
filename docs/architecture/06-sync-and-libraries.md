@@ -1,91 +1,45 @@
-# Dossiary architecture notes: Dossiary Sync: devices dialog, delete library, share library, saving without a lease
+# Dossiary architecture notes: Dossiary Sync: the connection, a library deleted elsewhere, share library, saving without a lease
 
 Moved out of `AGENTS.md` (section "Architecture notes") without changes to the wording. Read this file when you touch the area it describes; `AGENTS.md` lists the notes it holds. Add a new note for this area here, not in `AGENTS.md`.
 
-- **iPhone & other devices** (`openDevicesDialog()`, `syncAdminFetch()`,
-  Tools → `#devices-btn`, and `#empty-devices-btn` on the start screen,
-  since it needs no open library; spec in dossiary-ios
-  `docs/superpowers/specs/2026-10-22-dossiary-devices-dialog-design.md`)
-  manages Dossiary Sync's paired devices through its loopback-only admin
-  API on `http://127.0.0.1:8769` (3 s health timeout, 15 s for every other
-  call, so a hung service never leaves a button disabled). Not answering → an
-  explanation and the dossiary-sync link; otherwise Connect asks the service
-  to show a code as a macOS notification (a 429 names the wait) and swaps
-  the typed code for an admin token, kept per browser in `localStorage`
-  (`dossiary_sync_admin_token`, every access in try/catch; when
-  `localStorage` refuses to store it, the in-memory copy is used for the
-  rest of the session). **Every POST carries `Content-Type:
-  application/json` and a JSON body** (`{}` when there's nothing to say):
-  the service answers 415 otherwise, and the fake in the tests does the
-  same, so a missing header fails the suite. A token the service no longer
-  knows (`connected: false`, or a 401) is dropped and Connect comes back.
-  Connected: devices with role labels (phone/mirror/restore), relative
-  last-seen (`Intl.RelativeTimeFormat`), one checkbox per shared library
-  for phones (allow/deny at once, status line, a refusal undoes the tick),
-  Remove behind `confirm()`, a ✎ next to each name (`startDeviceRename()`, `POST
-  /admin/devices/<id>/name {name}`: inline input, Enter/blur saves, Escape
-  cancels with `stopPropagation()`, unchanged/empty sends nothing, a failure
-  keeps the input open with `.devices-rename-error`), shared libraries read-only with a
-  note pointing at Tools › "Share this library…" (`#devices-share-note`), Disconnect. An answer in the wrong
-  shape says so (`devicesUnexpectedAnswer`), and when libraries and devices
-  are fetched together the error shown is the one that actually failed.
-  **"Add iPhone or iPad…"** (`#devices-add-slot`, `renderDevicesAddSlot()`,
-  `requestPairCode()`, state in `devicesPair`, which survives a re-render of
-  the list such as Remove): library checkboxes, none ticked, and "Show QR
-  code" disabled until one is; `POST /admin/pair-code {libraries}` →
-  `{code, expires, fingerprint, addresses, link}`. The QR code of `link`
-  (`dossiary-sync://pair?v=1&f=…&c=…&a=…`) is drawn locally as an SVG
-  (`qrSvgMarkup()`, one `<path>`, black on white with a 4-module quiet zone
-  whatever the theme) by **qrcode-generator 1.4.4** (Kazuhiko Arase, MIT,
-  checked against its repo's LICENSE), loaded from cdnjs on demand by
-  `ensureQrCode()` like pdf-lib (skipped when `window.qrcode` already
-  exists, which is how the tests' fake takes over) and listed in
-  `OPEN_SOURCE_LIBRARIES`; nothing is sent anywhere. Beside it: the
-  instructions, a "Valid for m:ss" countdown (`devicesPairTimer`, stopped
-  when the dialog closes or the section re-renders), the code (grouped
-  `XXXX XXXX`) and fingerprint as text. Expired → the QR is cleared and
-  "New code" asks again; Done folds the section and reloads the devices so
-  the new phone shows. Closing the dialog doesn't cancel the code (it
-  expires on its own; a new one replaces it on the service). A QR library
-  that can't load still shows code and fingerprint, with a note. A 401
-  anywhere drops the token. `devicesDialogSeq` drops answers for a dialog
-  that was closed or reopened meanwhile. Every service-supplied string
-  (device, library, code, fingerprint) is escaped; tests feed `<img
-  onerror>` names. Tested by `tests/test_devices_dialog.py` (a fake `fetch`
-  per scenario plus a fake `window.qrcode`; the shared stub blocks the real
-  service, and the cdnjs QR request is aborted). The real library was
-  checked once by rendering a link and decoding the screenshot with
-  OpenCV.
-- **Delete library** (`openDeleteLibraryDialog(handle, {open})`, Tools →
-  `#delete-library-btn`, and the 🗑 `.recent-delete-btn` on each Recent
-  libraries row, which asks for read permission on the stored handle first,
-  like reconnect; spec in dossiary-ios
-  `docs/superpowers/specs/2026-10-25-delete-library-design.md`). The dialog
-  reads `.dossiary-sync.json` (`readSyncLibraryIdOf()`; the open library's
-  `syncLibrary` when it's the one being deleted). **Synced**: needs an admin
-  token (without one it says to connect in iPhone & other devices… and
-  offers that button); the library's name ("Household" for
-  `Household.dossiary`, `libraryDisplayName()`; the folder name works too)
-  must be typed to enable Delete; a `GET …/state` first, and the service
-  answering `lease.holder: 'other'` (another device is editing) turns the button
-  into "Take over and delete" (`takeOver: true`; the page never takes a lease
-  itself, the service's delete does the taking over). On click the open library is closed first --
-  anything memory holds that isn't on disk is written to `.kept-aside/`
-  inside the folder (`keepAsideBeforeClosing()`; if that copy can't be
-  written, nothing is closed or sent and the dialog shows why), then
-  `resetAll()` -- then `POST /admin/libraries/<id>/delete {takeOver}`; the
-  page takes no lease before it and releases none after. When the delete then
-  fails the error adds "… was closed but not deleted" (`deleteLibraryClosedNotDeleted`);
-  the Recent entry stays. 200 `deleted` (with `trashed`
-  true or false) and 404 `unknown-library` (already gone) forget the Recent
-  entry (`forgetRecentLibrary()`, by `isSameEntry()`) and show the outcome in
-  the dialog and on the status line; 409 offers take over; 501 (hub too
-  old), 503, 502, a 404 without `unknown-library` (this Mac's dossiary-sync
-  too old) and no answer keep the dialog open with the reason; a 401 drops
-  the token. `deleteLibraryRunning` blocks closing while the request runs.
-  **Unsynced**: "Close and forget" without typing and without any admin
-  call -- the browser never erases a folder (it can't move one to the
-  Trash), so the result names the folder to trash in Finder. **Deleted
+- **Dossiary Sync connection** (`openDevicesDialog()`, `syncAdminFetch()`,
+  Tools → `#devices-btn`, "🔗 Dossiary Sync…"). **Since 1.71.0 the page
+  only connects**: the devices list, Remove, a phone's libraries, pairing
+  with a QR code, Make editor/phone, Rename, Delete library and Get it moved
+  to Dossiary for Mac (0.11–0.13; dossiary-osx
+  `docs/superpowers/specs/2026-11-24-admin-and-maintenance-design.md`,
+  decision 6), with their page code, translations and qrcode-generator
+  (`tests/test_delete_library.py` became `tests/test_deleted_elsewhere.py`,
+  keeping only a library deleted on another device); the start screen's `#empty-devices-btn`
+  and the Recent libraries 🗑 went too. The page keeps the token so an open
+  synced library is checked with `pollSyncState()` (`GET
+  /admin/libraries/<id>/state`) and so Share this library… works until the
+  Mac has Put on Hub. The dialog talks to the loopback-only admin API on
+  `http://127.0.0.1:8769` (3 s health timeout, 15 s for every other call,
+  so a hung service never leaves a button disabled). Not answering → an
+  explanation and the dossiary-sync link, with Look again (the token is
+  kept); otherwise Connect asks the service to show a code as a macOS
+  notification (a 429 names the wait) and swaps the typed code for an admin
+  token, kept per browser in `localStorage` (`dossiary_sync_admin_token`,
+  every access in try/catch; when `localStorage` refuses to store it, the
+  in-memory copy is used for the rest of the session). **Every POST carries
+  `Content-Type: application/json` and a JSON body** (`{}` when there's
+  nothing to say): the service answers 415 otherwise, and the fake in the
+  tests does the same, so a missing header fails the suite. A token the
+  service no longer knows (`connected: false`, or a 401 from `GET
+  /admin/libraries`, the one protected call the dialog makes) is dropped and
+  Connect comes back. Connected (`loadDevicesConnected()`):
+  `syncConnectedText`, `syncAdminInMacNote` pointing at Dossiary for Mac,
+  and Disconnect (`DELETE /admin/connect`, the token forgotten either way);
+  another failure of that call is shown as escaped text with Look again.
+  `devicesDialogSeq` drops answers for a dialog that was closed or reopened
+  meanwhile. `normalizeSyncDevice()` stays for Share's phone list. Tested by
+  `tests/test_devices_dialog.py` (a fake `fetch` per scenario; the shared
+  stub blocks the real service).
+- **A library deleted elsewhere** (`syncLibraryDeletedElsewhere()`,
+  `syncDetachDeleted()`; the page's own Delete library left in 1.71.0 --
+  Dossiary for Mac's File › Delete Library… replaces it, spec in dossiary-ios
+  `docs/superpowers/specs/2026-10-25-delete-library-design.md`). **Deleted
   elsewhere**: `pollSyncState()` seeing `deleted` in the state calls
   `syncLibraryDeletedElsewhere()` (after the save, when the poll is a
   save's confirm) -- also a late one, after the folder is already in the
@@ -109,14 +63,12 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   meets the service's persisted record -- calls `syncDetachDeleted()`
   instead: `syncLibrary` = null (no admin calls or marker; saves go
   straight to disk), the id joins `syncDetachedLibraryIds` so reopening it
-  this session stays local and the Delete dialog takes the unsynced path,
+  this session stays local,
   the Recent entry stays, the sync file is left alone (it may be shared
   again), and the status line says `syncLibraryDetachedLocal`. Closing every dialog loses text typed into an open form (memory's
-  changes are kept aside), and a running dialog's job finds its library gone. Every name in the dialog is escaped. Tested by
-  `tests/test_delete_library.py`.
-- **Share this library and Get it** (`openShareLibraryDialog()`,
-  `ensureLibrariesRootHandle()`, `copyLibraryInto()`, `loadDevicesAvailable()`,
-  `getLibraryHere()`; Tools → `#share-library-btn`, shown only for an open
+  changes are kept aside), and a running dialog's job finds its library gone. Tested by `tests/test_deleted_elsewhere.py`.
+- **Share this library** (`openShareLibraryDialog()`,
+  `ensureLibrariesRootHandle()`, `copyLibraryInto()`; Tools → `#share-library-btn`, shown only for an open
   library without `.dossiary-sync.json` (`updateShareLibraryItem()`, run when Tools
   opens); spec in dossiary-ios
   `docs/superpowers/specs/2026-10-25-share-library-design.md`). Every synced
@@ -137,7 +89,7 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   the choice, the check is asked, and the probe is removed again either way;
   `ok: false` → "That isn't {root}. Choose that folder." and nothing stored.
   **Share**: without an admin token the dialog explains and offers Connect
-  (the devices dialog); otherwise a name (the folder name without
+  (the Dossiary Sync dialog); otherwise a name (the folder name without
   `.dossiary`, read-only once the library is known to be in place) and one
   unticked checkbox per paired phone (`GET /admin/devices`, role `phone`).
   Share: the libraries folder (refused with `shareLibraryRootIsLibrary` when
@@ -198,28 +150,18 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   are mapped (already-shared, not-a-library, unknown-device, hub-*; a 404
   without a known code = an older Dossiary Sync); any other is shown with its
   code and status. `shareLibraryRunning` blocks closing while saving, copying
-  or sharing. **Get it**: the devices dialog's `#devices-available-slot` lists
-  `GET /admin/libraries/available` under "On the Pi, not on this Mac"
-  (hidden when empty or not OK -- an older service's 404, an origin Mac's
-  `[]`); "Get it" is disabled with "being uploaded" while `available` is
-  false; a click makes sure of the libraries folder (the chooser opens under
-  the row), then `POST …/<id>/get {}` with no timeout (`syncAdminFetch(...,
-  {noTimeout: true})`) shows "Downloading…", and success offers "Open", which
-  opens the last path component of `folder` inside the libraries folder
-  (`switchLibraryAsking()` + `proceedWithRootDirHandle()`; Recent records it).
-  After a successful Get the libraries are fetched again, so the new one
-  shows under Libraries and in the phones' checkboxes at once. Errors show
-  under the row. A re-render drops a chooser still open under a row and
-  frees that row's button (each attempt is an object in `gets`; one no
-  longer there is ignored when it resumes). Tested by `tests/test_share_library.py`; a
+  or sharing. **Get it** (the
+  devices dialog's list of hub libraries) left in 1.71.0 for Dossiary for
+  Mac's Get from Hub…. Tested by `tests/test_share_library.py`; a
   directory handle's `_granted` in the stub makes `queryPermission()` answer
   granted.
 - **The Dossiary Sync folder and cloud drives** (1.65.0; spec dossiary-sync
   `docs/superpowers/specs/2026-11-08-standard-libraries-folder-design.md`;
-  `loadDevicesFolder()`, `devicesFolderHtml()`, `cloudProviderOf()`,
-  `showNotSharedHint()`). Dossiary Sync 0.17.0 makes `~/Dossiary` the standard
-  synced-libraries folder, marks it with `.dossiary-root.json` and refuses
-  cloud drives for it. The devices dialog's connected view asks `POST
+  `cloudProviderOf()`, `showNotSharedHint()`). Dossiary Sync 0.17.0 makes
+  `~/Dossiary` the standard synced-libraries folder, marks it with
+  `.dossiary-root.json` and refuses cloud drives for it. The devices dialog's
+  folder line and cloud warning left in 1.71.0 (Dossiary for Mac shows the
+  warning); what follows up to the 409 is history. The devices dialog's connected view asks `POST
   /admin/libraries-root/check` once (with a probe that doesn't exist, like the
   chooser's first call) and, from the new keys, shows "Dossiary Sync folder:
   {path}" (`path`, `~` abbreviated by the service) and, only while `cloud` is
@@ -230,9 +172,9 @@ Moved out of `AGENTS.md` (section "Architecture notes") without changes to the w
   and at the command instead of being filled by `t()` (whose `replaceAll`
   would also read `$` patterns in the value). An older service (no keys, or a
   404 without the route) adds nothing; the result lives in
-  `devicesState.folder`, so a re-render keeps it. A 409 `{"error":
-  "cloud-drive", "provider"}` from share or get maps to
-  `shareLibraryCloudRefused` / `devicesGetCloudRefused`; a copy the share flow
+  `devicesState.folder`, so a re-render kept it. A 409 `{"error":
+  "cloud-drive", "provider"}` from share maps to
+  `shareLibraryCloudRefused`; a copy the share flow
   made for that share is removed again (it could never be shared) instead of
   being kept for Try again. `removeOwnShareCopy()` removes it (and a partial
   copy after a failed or stopped copy) only when the folder of that name is

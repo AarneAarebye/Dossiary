@@ -488,35 +488,27 @@ das dieses Projekt überhaupt erst ausgelöst hat.
   (aufgeteilt in aktive Dateien, aufbewahrte Originale und nicht
   zugeordnete Dateien, auf die kein Dokument verweist), Vorschaubilder,
   Inbox und die Datenbank selbst. Nur zur Ansicht; nichts wird verändert.
-- **iPhone & andere Geräte** — „🛠 Tools → 📱 iPhone & andere Geräte…“
-  verwaltet die Geräte, mit denen [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync)
-  Ihre Bibliotheken teilt (die Dossiary-App auf iPhone und iPad, eine
-  Raspberry-Pi-Kopie), ohne Kommandozeile. Dossiary verbindet sich einmal
-  mit dem Dienst auf diesem Mac (er zeigt dazu einen Code in einer
-  Mitteilung; angesprochen wird nur `127.0.0.1`), listet dann die Geräte
-  mit den Bibliotheken, die jedes iPhone sehen darf, lässt Sie das ändern
-  oder ein Gerät entfernen, und „iPhone oder iPad hinzufügen…“ zeigt einen
-  im Browser gezeichneten QR-Code, den das Gerät zum Koppeln scannt. Eine
-  Bibliothek mit Dossiary Sync zu teilen bleibt ein Befehl
-  (`dossiary-sync share <Ordner>`). Während die erste Version einer
-  geteilten Bibliothek auf den Pi hochgeladen wird, zeigt die Statuszeile
-  „Wird auf den Pi hochgeladen… m:ss“ mit der bisherigen Dauer, meldet,
-  wenn der Pi nicht erreichbar ist oder das Hochladen ein Problem hat, und
-  sagt, wann es fertig ist.
-  Ab Dossiary Sync 0.17.0 nennt der Dialog außerdem den Dossiary-Sync-Ordner
-  (den Ordner, in dem die synchronisierten Bibliotheken liegen, Standard
-  `~/Dossiary`) und warnt, solange dieser Ordner auf einem Cloud-Speicher
-  liegt (iCloud Drive, Dropbox, OneDrive, Google Drive, Box), dass
-  Cloud-Speicher synchronisierte Bibliotheken beschädigen können; er zeigt
-  den Befehl, der ihn verschiebt (`dossiary-sync libraries-root move
-  ~/Dossiary`, zum Kopieren markierbar). Eine Bibliothek in einen Ordner
-  auf einem Cloud-Speicher zu teilen oder zu holen wird mit dem Namen des
+- **Dossiary Sync** — „🛠 Tools → 🔗 Dossiary Sync…“ verbindet Dossiary
+  einmal mit [Dossiary Sync](https://github.com/AarneAarebye/dossiary-sync)
+  auf diesem Mac (er zeigt dazu einen Code in einer Mitteilung; angesprochen
+  wird nur `127.0.0.1`), damit die Seite eine synchronisierte Bibliothek,
+  solange sie geöffnet ist, mit Dossiary Sync abgleicht: Sie übernimmt
+  neuere Versionen, ihre eigenen Speichervorgänge schieben die Basis weiter,
+  und ein Löschen an anderer Stelle wird bemerkt. iPhones und iPads koppeln,
+  festlegen, was sie sehen dürfen, Geräte entfernen, eine Bibliothek vom Pi
+  holen und Bibliotheken löschen liegen seit 1.71.0 in Dossiary für Mac.
+  Während die erste Version einer geteilten Bibliothek auf den Pi
+  hochgeladen wird, zeigt die Statuszeile „Wird auf den Pi hochgeladen…
+  m:ss“ mit der bisherigen Dauer, meldet, wenn der Pi nicht erreichbar ist
+  oder das Hochladen ein Problem hat, und sagt, wann es fertig ist. Eine
+  Bibliothek in einen Ordner auf einem Cloud-Speicher (iCloud Drive,
+  Dropbox, OneDrive, Google Drive, Box) zu teilen wird mit dem Namen des
   Anbieters abgelehnt, und es bleibt nichts zurück. Eine Bibliothek, die Sie
-  direkt aus diesem Ordner öffnen und die noch nicht geteilt ist, bekommt in
-  der Statuszeile „Noch nicht geteilt: Werkzeuge → Diese Bibliothek
-  teilen…“ (nur solange Dossiary noch die Berechtigung für den beim Teilen
-  gewählten Ordner hat und der Ordner die Markierung `.dossiary-root.json`
-  von Dossiary Sync trägt).
+  direkt aus dem Dossiary-Sync-Ordner öffnen und die noch nicht geteilt ist,
+  bekommt in der Statuszeile „Noch nicht geteilt: Werkzeuge → Diese
+  Bibliothek teilen…“ (nur solange Dossiary noch die Berechtigung für den
+  beim Teilen gewählten Ordner hat und der Ordner die Markierung
+  `.dossiary-root.json` von Dossiary Sync trägt).
 - **Aufgeräumte Symbolleiste** — die Symbolleiste enthält, was Sie
   täglich brauchen (Check inbox, Check reminders, Scan, Add document,
   Details, Columns); Gelegentliches — Manage fields, Manage collections,
@@ -1204,6 +1196,5 @@ eigenen Browser.
 | [pdf.js](https://github.com/mozilla/pdf.js) | Rendern der ersten Seite eines PDFs (für Vorschauen und OCR) | Apache-2.0 |
 | [rtf.js](https://github.com/tbluemel/rtf.js) | Lesen von RTF-Dokumenten für Vorschauen (erste Seite) | MIT |
 | [pdf-lib](https://github.com/Hopding/pdf-lib) | Seiten bearbeiten: PDFs drehen, umsortieren, aufteilen und zusammenfügen | MIT |
-| [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) | Zeichnet den QR-Code, mit dem ein iPhone oder iPad gekoppelt wird | MIT |
 
 Dasselbe auch innerhalb der App, über den Link „Libraries“ im Footer.

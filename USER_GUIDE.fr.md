@@ -198,26 +198,28 @@ une petite application distincte sur votre Mac, que vous installez et avec
 laquelle vous partagez chaque bibliothèque une fois (voir ses propres
 instructions).
 
-1. Choisissez **🛠 Outils → 📱 iPhone et autres appareils…**.
+Le jumelage d'un iPhone ou d'un iPad, le choix de ce qu'il peut voir et le
+retrait d'un appareil se font dans **Dossiary pour Mac**, dans sa fenêtre
+Personnes. La récupération d'une bibliothèque depuis le Pi et la suppression
+d'une bibliothèque se trouvent dans son menu Fichier. Pour mettre une
+bibliothèque sur le Pi pour la première fois, ouvrez-la ici et choisissez
+**🛠 Outils → ⇪ Partager cette bibliothèque…**.
+
+Dossiary dans le navigateur se connecte seulement à Dossiary Sync, afin
+qu'une bibliothèque synchronisée reste protégée pendant que vous la modifiez
+ici :
+
+1. Choisissez **🛠 Outils → 🔗 Dossiary Sync…**.
 2. La première fois, cliquez sur **Se connecter** : Dossiary Sync affiche un
    code dans une notification sur votre Mac. Saisissez-le dans la fenêtre.
-3. Cliquez sur **Ajouter un iPhone ou un iPad…**, cochez les bibliothèques
-   que l'appareil pourra voir, puis cliquez sur **Afficher le code QR**.
-4. Dans l'application Dossiary de l'iPhone ou de l'iPad, choisissez
-   **Ajouter depuis le Mac** et scannez le code. Il reste valable quelques
-   minutes ; s'il expire, cliquez sur **Nouveau code**.
-
-La même fenêtre liste vos appareils : cochez ou décochez une bibliothèque
-pour changer ce qu'un téléphone peut voir, ou retirez un appareil que vous
-n'utilisez plus.
 
 Un enregistrement sur le Mac écrit directement dans la bibliothèque sur le
 disque. Les modifications faites sur le téléphone sont appliquées aussitôt,
 même quand Dossiary est ouvert sur le Mac. Si un enregistrement sur le Mac
 entre en conflit avec une modification du téléphone, celle du téléphone
 l'emporte et la version du Mac est mise de côté dans le dossier `.kept-aside`
-de la bibliothèque. Si vous avez connecté Dossiary à Dossiary Sync (étape 2
-ci-dessus), Dossiary Sync règle cela et Dossiary affiche seulement un message
+de la bibliothèque. Si vous avez connecté Dossiary à Dossiary Sync
+(ci-dessus), Dossiary Sync règle cela et Dossiary affiche seulement un message
 dans sa ligne d'état : les modifications du Mac de ce jour n'ont pas pu être
 combinées et sont conservées en lieu sûr. Sinon, Dossiary affiche une
 notification qui indique le dossier.

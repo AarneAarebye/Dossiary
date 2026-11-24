@@ -187,25 +187,25 @@ del escritorio. Las obtiene de [Dossiary Sync](https://github.com/AarneAarebye/d
 una pequeña aplicación aparte en tu Mac que instalas y con la que compartes
 cada biblioteca una vez (consulta sus propias instrucciones).
 
-1. Elige **🛠 Herramientas → 📱 iPhone y otros dispositivos…**.
+Emparejar un iPhone o iPad, elegir lo que puede ver y quitar un dispositivo
+se hace en **Dossiary para Mac**, en su ventana Personas. Obtener una
+biblioteca de la Pi y eliminar una están en su menú Archivo. Para poner una
+biblioteca en la Pi por primera vez, ábrela aquí y elige **🛠 Herramientas →
+⇪ Compartir esta biblioteca…**.
+
+Dossiary en el navegador solo se conecta con Dossiary Sync, para que una
+biblioteca sincronizada siga a salvo mientras la editas aquí:
+
+1. Elige **🛠 Herramientas → 🔗 Dossiary Sync…**.
 2. La primera vez, haz clic en **Conectar**: Dossiary Sync muestra un código
    en una notificación en tu Mac. Escríbelo en el diálogo.
-3. Haz clic en **Añadir iPhone o iPad…**, marca las bibliotecas que podrá
-   ver el dispositivo y haz clic en **Mostrar código QR**.
-4. En la aplicación Dossiary del iPhone o iPad, elige **Añadir desde el
-   Mac** y escanea el código. Es válido unos minutos; si caduca, haz clic en
-   **Código nuevo**.
-
-El mismo diálogo muestra tus dispositivos: marca o desmarca una biblioteca
-para cambiar lo que puede ver un teléfono, o quita un dispositivo que ya no
-uses.
 
 Al guardar en el Mac, los cambios se escriben directamente en la biblioteca
 del disco. Los cambios hechos en el teléfono se aplican al instante, incluso
 con Dossiary abierto en el Mac. Si un guardado en el Mac coincide con un
 cambio del teléfono, prevalece el del teléfono y la versión del Mac se
 conserva aparte en la carpeta `.kept-aside` de la biblioteca. Si has conectado
-Dossiary con Dossiary Sync (paso 2 de arriba), Dossiary Sync lo resuelve y
+Dossiary con Dossiary Sync (arriba), Dossiary Sync lo resuelve y
 Dossiary solo muestra un mensaje en la línea de estado: los cambios del Mac de
 ese día no se pudieron combinar y están guardados a salvo. Si no lo has
 conectado, Dossiary muestra un aviso que indica la carpeta.
