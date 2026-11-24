@@ -4,7 +4,7 @@ _os.chdir(_os.path.dirname(_os.path.abspath(__file__)))  # so relative paths (do
 import os as _os2
 APP_PATH = _os2.path.abspath(_os2.path.join('..', 'dossiary.html'))  # tests/ sits alongside dossiary.html at the repo root
 
-# Field Settings > New documents > "Fill in People with the person adding the document" (1.69.0): the checkbox stores
+# Field Settings > New documents > "Set People to the person adding the document" (1.69.0): the checkbox stores
 # settings.default_people = 'adder' (empty when switched off). Only Dossiary for Mac and the iOS app know the person
 # adding a document, so the page's own capture still leaves People empty.
 
