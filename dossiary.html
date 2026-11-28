@@ -1122,7 +1122,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.2.1/dist/sql-wasm.js"></script>
 <script>
 (function(){
-  const APP_VERSION = '1.72.0'; // shown in the footer; bump alongside the matching git tag on release
+  const APP_VERSION = '1.73.0'; // shown in the footer; bump alongside the matching git tag on release
   // Hides the detail panel's document-preview thumbnail (and its "no
   // preview yet"/"preview missing" placeholder) plus the Generate/
   // Regenerate preview action, without touching thumbnail *generation* on
@@ -7785,9 +7785,7 @@
       if(f.value === FILTER_UNSET ? actual !== undefined : actual !== f.value) return false;
     }
     if(q){
-      const personFieldNames = Object.values(d.personFieldValues || {}).map(names => (names || []).join(' '));
-      const hay = [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
-      if(!hay.includes(q)) return false;
+      if(!smartSearchText(d).includes(q)) return false;
     }
     return true;
   }
@@ -14932,9 +14930,22 @@
     return d[field];
   }
 
+  // The name of a document's stored file, without the folder and the "<id>_" the library puts in front (so a
+  // search for "120" doesn't match every file numbered 120..., 1200...). dossiary-ios's Document.searchFileName
+  // is the same rule.
+  function searchFileName(d, path){
+    if(!path) return '';
+    const name = String(path).split('/').pop();
+    const prefix = `${d.id}_`;
+    return name.startsWith(prefix) ? name.slice(prefix.length) : name;
+  }
+
+  // The toolbar search and the "any field" smart rule look in the same text; dossiary-ios's Document.searchText
+  // is the same list in the same order.
   function smartSearchText(d){
     const personFieldNames = Object.values(d.personFieldValues || {}).map(names => (names || []).join(' '));
-    return [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' ')].filter(Boolean).join(' ').toLowerCase();
+    const fileNames = [...new Set([searchFileName(d, d.file_path), searchFileName(d, d.original_file_path)])];
+    return [d.title, d.category, d.subcategory, d.document_type, d.notes, d.ocr_text, ...Object.values(d.customFields || {}), ...personFieldNames, (d.tags||[]).join(' '), ...fileNames].filter(Boolean).join(' ').toLowerCase();
   }
 
   function monthShift(isoMonth, delta){ // 'YYYY-MM' +/- months

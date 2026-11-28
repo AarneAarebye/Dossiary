@@ -38,7 +38,8 @@ SEED = {
             import_date=iso(T - timedelta(days=4)), notes="Business trip", ocr_text="Grand Hotel Berlin total 120,00 EUR"),
         doc(2, "Train", category="Travel", document_type="Ticket", date=iso(T - timedelta(days=40)), import_date=iso(T - timedelta(days=39))),
         doc(3, "Groceries", category="Food", archived=1, date=iso(LAST_YEAR_JUNE)),
-        doc(4, "Letter", needs_review=1, notes="important contract"),
+        doc(4, "Letter", needs_review=1, notes="important contract",
+            file_path="files/4_Scan CFD12 - 28.06.26.pdf", original_file_path="originals/4_Scan CFD12.tiff"),
         doc(5, "Old ticket", category="Travel", deleted=1, date=iso(T - timedelta(days=5))),
         doc(6, "Electricity", category="Home", document_type="Invoice", date=iso(LAST_MONTH_FIRST)),
         doc(7, "Dentist", category="Health", date=iso(THIS_YEAR_JAN2)),
@@ -94,6 +95,9 @@ RULE_CASES = [
     ("any contains", rules(("any", "contains", "berlin"))),
     ("any not_contains", rules(("any", "not_contains", "trip"))),
     ("any contains empty", rules(("any", "contains", ""))),
+    ("any contains file name", rules(("any", "contains", "cfd12"))),
+    ("any contains original file name", rules(("any", "contains", ".tiff"))),
+    ("any contains id prefix", rules(("any", "contains", "4_"))),
     ("any not_contains empty", rules(("any", "not_contains", ""))),
     ("title is (case)", rules(("title", "is", "train"))),
     ("title is_not", rules(("title", "is_not", "Train"))),
@@ -172,6 +176,7 @@ BASE = {"q": "", "category": "", "type": "", "person": "", "showArchived": False
 def snap(**changes): return {**BASE, **changes}
 SNAPSHOT_CASES = [
     ("snapshot q", snap(q="hotel")),
+    ("snapshot q file name", snap(q="28.06.26")),
     ("snapshot category", snap(category="Travel")),
     ("snapshot category split", snap(category="Household")),
     ("snapshot category unset", snap(category="__unset__")),

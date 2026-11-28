@@ -36,7 +36,8 @@ never by file name. This list maps each of them to what it checks:
   - `test_edit_cancel.py` -- Cancel discards the edit: the panel and row
     keep the original title.
   - `test_subcategory.py` -- subcategory shown in the row, the panel and
-    the sidecar, persisted, and found by search.
+    the sidecar, persisted, and found by search; search also finds the
+    stored file's name without its folder and `<id>_` (1.73.0).
   - `test_date_preset.py` -- the capture date's "today" guess: amber
     styling and hint, both cleared on the first edit, the value saved; and
     "today" being the local day, not the UTC one (just after midnight in

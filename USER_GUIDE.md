@@ -105,9 +105,10 @@ a time with each document on its date.
 The whole point of doing this is being able to find something again in
 seconds, months or years later. Above your documents:
 
-- **Search** looks across titles, categories, notes, tags, and the OCR'd
-  text — so even if you don't remember what you called something, typing
-  a word you know was *on* the document will usually find it.
+- **Search** looks across titles, categories, notes, tags, file names,
+  and the OCR'd text — so even if you don't remember what you called
+  something, typing a word you know was *on* the document will usually
+  find it.
 - **Filters** (category, type, person) narrow the list to just what
   matches.
 - In the table, click any **column header** to sort by it; the tiles

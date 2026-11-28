@@ -80,7 +80,18 @@ async def main():
         await page.fill('#search', 'Dentist')
         await page.wait_for_timeout(150)
         rows = await page.locator('#doc-tbody tr').count()
-        print("rows found searching 'Dentist':", rows)
+        print("rows found searching 'Dentist':", rows == 1)
+
+        # search finds the stored file's name (1.73.0), without the folder and the "<id>_" in front
+        await page.evaluate("window.__DEBUG_dbRun('UPDATE documents SET file_path = ? WHERE id = ?', ['files/1_Scan CFD12 - 28.06.26.pdf', 1])")
+        await page.evaluate("window.__DEBUG_loadDocumentsFromDb()")
+        for term, expected in (('cfd12', 1), ('28.06.26', 1), ('1_scan', 0), ('files/', 0)):
+            await page.fill('#search', '')
+            await page.wait_for_timeout(100)
+            await page.fill('#search', term)
+            await page.wait_for_timeout(150)
+            found = await page.locator('#doc-tbody tr[data-id]').count()
+            print(f"searching {term!r} finds {expected} row(s):", found == expected)
 
         print("JS ERRORS:", errors)
         await browser.close()
